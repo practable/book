@@ -10,7 +10,7 @@ type Interval struct {
 }
 
 // Comparator function (sort by IDs)
-func byInterval(a, b interface{}) int {
+func Comparator(a, b interface{}) int {
 
 	// Type assertion, program will panic if this is not respected
 	t1 := a.(Interval)

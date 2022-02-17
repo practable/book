@@ -17,22 +17,22 @@ func TestComparator(t *testing.T) {
 
 	b := Interval{Start: now.Add(3 * time.Second), End: now.Add(4 * time.Second)}
 
-	assert.Equal(t, -1, byInterval(a, b))
+	assert.Equal(t, -1, Comparator(a, b))
 
-	assert.Equal(t, 1, byInterval(b, a))
+	assert.Equal(t, 1, Comparator(b, a))
 
-	assert.Equal(t, 0, byInterval(a, a))
+	assert.Equal(t, 0, Comparator(a, a))
 
 	// overlap partially with a
 	c := Interval{Start: now.Add(time.Second), End: now.Add(3 * time.Second)}
 
-	assert.Equal(t, 0, byInterval(a, c))
+	assert.Equal(t, 0, Comparator(a, c))
 
 }
 
 func TestAVL(t *testing.T) {
 
-	at := avl.NewWith(byInterval)
+	at := avl.NewWith(Comparator)
 
 	now := time.Now()
 	a := Interval{Start: now, End: now.Add(2 * time.Second)}
