@@ -67,6 +67,7 @@ func TestResource(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, r.GetCount())
 	bookings, err = r.GetBookings()
+	assert.NoError(t, err)
 	assert.Equal(t, bookings[0].When.Start, b.Start)
 	assert.Equal(t, bookings[0].ID, ub)
 
@@ -75,14 +76,15 @@ func TestResource(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 2, r.GetCount())
 	// clear from before a time in the middle of a booking - must keep that booking
-	err = r.ClearBefore(w.Add(3 * time.Second))
+	r.ClearBefore(w.Add(3 * time.Second))
 	assert.NoError(t, err)
 	assert.Equal(t, 2, r.GetCount())
 	// clear the first booking only
-	err = r.ClearBefore(w.Add(6 * time.Second))
+	r.ClearBefore(w.Add(6 * time.Second))
 	assert.NoError(t, err)
 	assert.Equal(t, 1, r.GetCount())
 	bookings, err = r.GetBookings()
+	assert.NoError(t, err)
 	assert.Equal(t, bookings[0].When.Start, b.Start)
 	assert.Equal(t, bookings[0].ID, ub)
 

@@ -83,7 +83,7 @@ func (r *Resource) GetBookings() ([]Booking, error) {
 
 }
 
-func (r *Resource) ClearBefore(t time.Time) error {
+func (r *Resource) ClearBefore(t time.Time) {
 
 	slots := r.bookings.Keys() //these are given in order
 
@@ -92,7 +92,4 @@ func (r *Resource) ClearBefore(t time.Time) error {
 			r.bookings.Remove(when)
 		}
 	}
-
-	return nil
-
 }
