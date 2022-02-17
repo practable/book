@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	avl "github.com/emirpasic/gods/trees/avltree"
 	"github.com/stretchr/testify/assert"
+	avl "github.com/timdrysdale/interval/trees/avltree"
 )
 
 func TestComparator(t *testing.T) {
@@ -37,21 +37,27 @@ func TestAVL(t *testing.T) {
 	a := Interval{Start: now, End: now.Add(2 * time.Second)}
 	b := Interval{Start: now.Add(3 * time.Second), End: now.Add(4 * time.Second)}
 
-	at.Put(a, "x")
-	at.Put(b, "y")
+	_, err := at.Put(a, "x")
+	assert.NoError(t, err)
+
+	_, err = at.Put(b, "y")
+	assert.NoError(t, err)
+
 	v := at.Values()
 	assert.Equal(t, 2, at.Size())
 	assert.Equal(t, "x", v[0])
 	assert.Equal(t, "y", v[1])
 
-	// overlap partially with a -> should replace a
-	// we don't want this behaviour in a booking system, but it is what
-	// this implementation does ....
+	// overlap partially with a -> should reject the Put
 	c := Interval{Start: now.Add(time.Second), End: now.Add(3 * time.Second)}
-	at.Put(c, "z")
+
+	_, err = at.Put(c, "z")
+
+	assert.Error(t, err)
+	assert.Equal(t, "conflict with existing", err.Error())
 	assert.Equal(t, 2, at.Size())
 	v = at.Values()
 
-	assert.Equal(t, "z", v[0])
+	assert.Equal(t, "x", v[0])
 	assert.Equal(t, "y", v[1])
 }

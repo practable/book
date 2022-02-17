@@ -10,7 +10,9 @@
 package avltree
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/emirpasic/gods/trees"
 	"github.com/emirpasic/gods/utils"
 )
@@ -52,8 +54,9 @@ func NewWithStringComparator() *Tree {
 
 // Put inserts node into the tree.
 // Key should adhere to the comparator's type assertion, otherwise method panics.
-func (t *Tree) Put(key interface{}, value interface{}) {
-	t.put(key, value, nil, &t.Root)
+// return error rather and reject the Put operation if the comparator returns equal
+func (t *Tree) Put(key interface{}, value interface{}) (bool, error) {
+	return t.put(key, value, nil, &t.Root)
 }
 
 // Get searches the node in the tree by key and returns its value or nil if key is not found in tree.
@@ -200,19 +203,20 @@ func (n *Node) String() string {
 	return fmt.Sprintf("%v", n.Key)
 }
 
-func (t *Tree) put(key interface{}, value interface{}, p *Node, qp **Node) bool {
+func (t *Tree) put(key interface{}, value interface{}, p *Node, qp **Node) (bool, error) {
 	q := *qp
 	if q == nil {
 		t.size++
 		*qp = &Node{Key: key, Value: value, Parent: p}
-		return true
+		return true, nil
 	}
 
 	c := t.Comparator(key, q.Key)
 	if c == 0 {
-		q.Key = key
-		q.Value = value
-		return false
+		//do not overwrite an existing node
+		//q.Key = key
+		//q.Value = value
+		return false, errors.New("conflict with existing")
 	}
 
 	if c < 0 {
@@ -221,12 +225,20 @@ func (t *Tree) put(key interface{}, value interface{}, p *Node, qp **Node) bool 
 		c = 1
 	}
 	a := (c + 1) / 2
+
 	var fix bool
-	fix = t.put(key, value, q, &q.Children[a])
+
+	fix, err := t.put(key, value, q, &q.Children[a])
+
+	if err != nil {
+		return false, err
+	}
+
 	if fix {
 		return putFix(int8(c), qp)
 	}
-	return false
+
+	return false, nil
 }
 
 func (t *Tree) remove(key interface{}, qp **Node) bool {
@@ -283,16 +295,18 @@ func removeMin(qp **Node, minKey *interface{}, minVal *interface{}) bool {
 	return false
 }
 
-func putFix(c int8, t **Node) bool {
+// I _think_ this is fixing things, when a new node is added, so there can be no
+// "conflicts with existing" error possible; but add error to work with put()
+func putFix(c int8, t **Node) (bool, error) {
 	s := *t
 	if s.b == 0 {
 		s.b = c
-		return true
+		return true, nil
 	}
 
 	if s.b == -c {
 		s.b = 0
-		return false
+		return false, nil
 	}
 
 	if s.Children[(c+1)/2].b == c {
@@ -301,7 +315,7 @@ func putFix(c int8, t **Node) bool {
 		s = doublerot(c, s)
 	}
 	*t = s
-	return false
+	return false, nil
 }
 
 func removeFix(c int8, t **Node) bool {
