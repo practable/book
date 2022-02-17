@@ -13,13 +13,8 @@ import (
 	"errors"
 	"fmt"
 
-	"interval/internal/trees"
 	"interval/internal/utils"
 )
-
-func assertTreeImplementation() {
-	var _ trees.Tree = new(Tree)
-}
 
 // Tree holds elements of the AVL tree.
 type Tree struct {

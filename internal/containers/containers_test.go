@@ -25,7 +25,7 @@ func (container ContainerTest) Size() int {
 }
 
 func (container ContainerTest) Clear() {
-	container.values = []interface{}{}
+	panic("containerTest.Clear() not implemented") // previous implementation was throwing SA4005;
 }
 
 func (container ContainerTest) Values() []interface{} {

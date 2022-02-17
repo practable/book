@@ -6,14 +6,8 @@ package avltree
 
 import (
 	"encoding/json"
-	"interval/internal/containers"
 	"interval/internal/utils"
 )
-
-func assertSerializationImplementation() {
-	var _ containers.JSONSerializer = (*Tree)(nil)
-	var _ containers.JSONDeserializer = (*Tree)(nil)
-}
 
 // ToJSON outputs the JSON representation of the tree.
 func (tree *Tree) ToJSON() ([]byte, error) {
@@ -32,7 +26,10 @@ func (tree *Tree) FromJSON(data []byte) error {
 	if err == nil {
 		tree.Clear()
 		for key, value := range elements {
-			tree.Put(key, value)
+			_, err = tree.Put(key, value)
+			if err != nil {
+				break
+			}
 		}
 	}
 	return err
