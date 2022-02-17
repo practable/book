@@ -13,8 +13,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/emirpasic/gods/trees"
-	"github.com/emirpasic/gods/utils"
+	"interval/internal/trees"
+	"interval/internal/utils"
 )
 
 func assertTreeImplementation() {

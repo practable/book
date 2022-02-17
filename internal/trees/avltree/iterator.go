@@ -4,7 +4,7 @@
 
 package avltree
 
-import "github.com/emirpasic/gods/containers"
+import "interval/internal/containers"
 
 func assertIteratorImplementation() {
 	var _ containers.ReverseIteratorWithKey = (*Iterator)(nil)

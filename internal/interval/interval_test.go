@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	avl "github.com/timdrysdale/interval/internal/trees/avltree"
+	avl "interval/internal/trees/avltree"
 
 	"github.com/stretchr/testify/assert"
 )
