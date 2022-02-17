@@ -17,7 +17,7 @@ func TestAVLTreePut(t *testing.T) {
 	tree.Put(4, "d")
 	tree.Put(1, "x")
 	tree.Put(2, "b")
-	tree.Put(1, "a") //overwrite
+	tree.Put(1, "a") //do not overwrite
 
 	if actualValue := tree.Size(); actualValue != 7 {
 		t.Errorf("Got %v expected %v", actualValue, 7)
@@ -25,12 +25,12 @@ func TestAVLTreePut(t *testing.T) {
 	if actualValue, expectedValue := fmt.Sprintf("%d%d%d%d%d%d%d", tree.Keys()...), "1234567"; actualValue != expectedValue {
 		t.Errorf("Got %v expected %v", actualValue, expectedValue)
 	}
-	if actualValue, expectedValue := fmt.Sprintf("%s%s%s%s%s%s%s", tree.Values()...), "abcdefg"; actualValue != expectedValue {
+	if actualValue, expectedValue := fmt.Sprintf("%s%s%s%s%s%s%s", tree.Values()...), "xbcdefg"; actualValue != expectedValue {
 		t.Errorf("Got %v expected %v", actualValue, expectedValue)
 	}
 
 	tests1 := [][]interface{}{
-		{1, "a", true},
+		{1, "x", true},
 		{2, "b", true},
 		{3, "c", true},
 		{4, "d", true},
@@ -58,7 +58,7 @@ func TestAVLTreeRemove(t *testing.T) {
 	tree.Put(4, "d")
 	tree.Put(1, "x")
 	tree.Put(2, "b")
-	tree.Put(1, "a") //overwrite
+	tree.Put(1, "a") //do not overwrite
 
 	tree.Remove(5)
 	tree.Remove(6)
@@ -69,10 +69,10 @@ func TestAVLTreeRemove(t *testing.T) {
 	if actualValue, expectedValue := fmt.Sprintf("%d%d%d%d", tree.Keys()...), "1234"; actualValue != expectedValue {
 		t.Errorf("Got %v expected %v", actualValue, expectedValue)
 	}
-	if actualValue, expectedValue := fmt.Sprintf("%s%s%s%s", tree.Values()...), "abcd"; actualValue != expectedValue {
+	if actualValue, expectedValue := fmt.Sprintf("%s%s%s%s", tree.Values()...), "xbcd"; actualValue != expectedValue {
 		t.Errorf("Got %v expected %v", actualValue, expectedValue)
 	}
-	if actualValue, expectedValue := fmt.Sprintf("%s%s%s%s", tree.Values()...), "abcd"; actualValue != expectedValue {
+	if actualValue, expectedValue := fmt.Sprintf("%s%s%s%s", tree.Values()...), "xbcd"; actualValue != expectedValue {
 		t.Errorf("Got %v expected %v", actualValue, expectedValue)
 	}
 	if actualValue := tree.Size(); actualValue != 4 {
@@ -80,7 +80,7 @@ func TestAVLTreeRemove(t *testing.T) {
 	}
 
 	tests2 := [][]interface{}{
-		{1, "a", true},
+		{1, "x", true},
 		{2, "b", true},
 		{3, "c", true},
 		{4, "d", true},
@@ -132,13 +132,13 @@ func TestAVLTreeLeftAndRight(t *testing.T) {
 	tree.Put(7, "g")
 	tree.Put(3, "c")
 	tree.Put(4, "d")
-	tree.Put(1, "x") // overwrite
+	tree.Put(1, "x") // do not overwrite
 	tree.Put(2, "b")
 
 	if actualValue, expectedValue := fmt.Sprintf("%d", tree.Left().Key), "1"; actualValue != expectedValue {
 		t.Errorf("Got %v expected %v", actualValue, expectedValue)
 	}
-	if actualValue, expectedValue := fmt.Sprintf("%s", tree.Left().Value), "x"; actualValue != expectedValue {
+	if actualValue, expectedValue := fmt.Sprintf("%s", tree.Left().Value), "a"; actualValue != expectedValue {
 		t.Errorf("Got %v expected %v", actualValue, expectedValue)
 	}
 
