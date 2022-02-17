@@ -58,4 +58,9 @@ func TestAVL(t *testing.T) {
 
 	assert.Equal(t, "x", v[0])
 	assert.Equal(t, "y", v[1])
+
+	assert.Equal(t, 2, at.Size())
+	at.Remove(a)
+	assert.Equal(t, 1, at.Size())
+
 }

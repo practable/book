@@ -27,7 +27,7 @@ var c = interval.Interval{
 	End:   w.Add(12 * time.Second),
 }
 
-func TestRequest(t *testing.T) {
+func TestResource(t *testing.T) {
 
 	r := New()
 
@@ -51,11 +51,23 @@ func TestRequest(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "00000000-0000-0000-0000-000000000000", u.String())
 
+	// Get current bookings
 	bookings, err := r.GetBookings()
 	assert.NoError(t, err)
+	assert.Equal(t, 2, len(bookings))
 	assert.Equal(t, bookings[0].When.Start, a.Start)
 	assert.Equal(t, bookings[0].ID, ua)
 	assert.Equal(t, bookings[1].When.Start, b.Start)
 	assert.Equal(t, bookings[1].ID, ub)
+
+	// Delete a booking
+	assert.Equal(t, 2, r.GetCount())
+	err = r.Delete(ua)
+	assert.NoError(t, err)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, r.GetCount())
+	bookings, err = r.GetBookings()
+	assert.Equal(t, bookings[0].When.Start, b.Start)
+	assert.Equal(t, bookings[0].ID, ub)
 
 }

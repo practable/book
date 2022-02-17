@@ -26,9 +26,19 @@ func New() *Resource {
 	}
 }
 
-func (r *Resource) Delete(id uuid.UUID) error {
+func (r *Resource) Delete(delete uuid.UUID) error {
 
-	return errors.New("not implemented yet")
+	slots := r.bookings.Keys() //these are given in order
+	IDs := r.bookings.Values()
+
+	for idx, ID := range IDs {
+		if delete == ID {
+			r.bookings.Remove(slots[idx])
+			return nil
+		}
+	}
+
+	return errors.New("ID not found")
 
 }
 
@@ -45,6 +55,10 @@ func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
 
 	return u, err
 
+}
+
+func (r *Resource) GetCount() int {
+	return r.bookings.Size()
 }
 
 func (r *Resource) GetBookings() ([]Booking, error) {
