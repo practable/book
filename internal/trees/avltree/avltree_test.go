@@ -693,9 +693,11 @@ func benchmarkGet(b *testing.B, tree *Tree, size int) {
 }
 
 func benchmarkPut(b *testing.B, tree *Tree, size int) {
+	idx := size //tree is preloaded in calling function
 	for i := 0; i < b.N; i++ {
 		for n := 0; n < size; n++ {
-			_, err := tree.Put(n, struct{}{})
+			idx++
+			_, err := tree.Put(idx, struct{}{})
 			assert.NoError(b, err)
 		}
 	}
