@@ -3,19 +3,23 @@ package interval
 
 import (
 	"errors"
+	"net/url"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 var errNotFound = errors.New("resource not found")
 
-/*
 //UserCommands represents commands that users will send to the system
 var UserCommands = []string{
-       "cancelBooking",  //cancel an existing booking. Fails if booking has been collected already.
-       "collectBooking", //get access to the experiment (may trigger some checks on video/data)
-       "requestBooking", // make a new booking, only completes if within allowable number of booked slots, and slot is free
-       "swapBooking",    // atomic action to cancel an existing booking and replace with a new one, only completes if new booking succesful
-       "getBookings",    // return my current bookings
-       "listBookings",   // return bookings for a given slot, in a particular interval.
+	"cancelBooking",  //cancel an existing booking. Fails if booking has been collected already.
+	"collectBooking", //get access to the experiment (may trigger some checks on video/data)
+	"requestBooking", // make a new booking, only completes if within allowable number of booked slots, and slot is free
+	"swapBooking",    // atomic action to cancel an existing booking and replace with a new one, only completes if new booking succesful
+	"getBookings",    // return my current bookings
+	"listBookings",   // return bookings for a given slot, in a particular interval.
 
 }
 
@@ -23,9 +27,9 @@ var UserCommands = []string{
 // Notes ... do we separate configuration from user commands in the transaction history (probably no, for testing reasons)
 //
 var AdminCommands = []string{
-       "importTransactions",
-       "addSlot",
-       "deleteSlot",
+	"importTransactions",
+	"addSlot",
+	"deleteSlot",
 }
 
 // Action represents a booking action, including the time it was taken
@@ -34,17 +38,16 @@ var AdminCommands = []string{
 type Action struct {
 	IssuedAt  time.Time
 	Do        string
-	When      interval.Interval
+	When      Interval
 	SlotID    uuid.UUID
 	BookingID uuid.UUID
 	UserID    uuid.UUID
 }
-*/
-/*
+
 type Slot struct {
 	*sync.Mutex `json:"-"`
 	ID          uuid.UUID
-	Resource    *resource.Resource
+	Resource    *Resource
 	TimePolicy  *TimePolicy //usually points to to the DefaultTimePolicy
 
 }
@@ -57,7 +60,7 @@ type Booking struct {
 	SlotID  uuid.UUID
 	Started bool
 	UserID  uuid.UUID
-	When    interval.Interval
+	When    Interval
 }
 
 // Policy represents limits on when a booking can be made
@@ -119,7 +122,7 @@ type Fulfil struct {
 
 // Slot represents a bookable
 type Slot struct {
-	Resource *resource.Resource
+	Resource *Resource
 	// we might later put some info here as to where to get the item .... but for MVP, it is going to be local, using go.
 }
 
@@ -153,7 +156,7 @@ func (s *Store) Request(rID uuid.UUID, when Interval) (uuid.NullUUID, error) {
 
 	if r, ok := s.Resources[rID]; ok {
 
-		u, err := r.Request(interval.Interval{
+		u, err := r.Request(Interval{
 			Start: when.Start,
 			End:   when.End,
 		})
@@ -213,4 +216,3 @@ func (s *Store) GetBookings(rID uuid.UUID) ([]Booking, error) {
 	return bookings, errNotFound
 
 }
-*/

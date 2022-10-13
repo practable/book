@@ -1,7 +1,6 @@
-package resource
+package interval
 
 import (
-	"interval/internal/interval"
 	"testing"
 	"time"
 
@@ -10,19 +9,19 @@ import (
 
 var w = time.Now()
 
-var a = interval.Interval{
+var a = Interval{
 	Start: w,
 	End:   w.Add(5 * time.Second),
 }
 
 // does not overlap a
-var b = interval.Interval{
+var b = Interval{
 	Start: w.Add(10 * time.Second),
 	End:   w.Add(20 * time.Second),
 }
 
 // overlaps a
-var c = interval.Interval{
+var c = Interval{
 	Start: w.Add(3 * time.Second),
 	End:   w.Add(12 * time.Second),
 }
