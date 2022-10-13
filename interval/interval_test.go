@@ -91,3 +91,70 @@ func TestSort(t *testing.T) {
 	assert.Equal(t, intervals[3], d)
 
 }
+
+func TestInvert(t *testing.T) {
+
+	now := time.Now()
+
+	a := Interval{Start: now, End: now.Add(2 * time.Second)}
+	b := Interval{Start: now.Add(3 * time.Second), End: now.Add(4 * time.Second)}
+	c := Interval{Start: now.Add(5 * time.Second), End: now.Add(6 * time.Second)}
+	d := Interval{Start: now.Add(7 * time.Second), End: now.Add(8 * time.Second)}
+
+	intervals := []Interval{c, a, d, b}
+
+	// check intervals are out of order to start with
+	assert.Equal(t, intervals[0], c)
+	assert.Equal(t, intervals[1], a)
+	assert.Equal(t, intervals[2], d)
+	assert.Equal(t, intervals[3], b)
+
+	inverted := Invert(intervals)
+
+	// check order is now correct, with inverted intervals
+
+	expected := []Interval{
+		Interval{Start: ZeroTime, End: a.Start},
+		Interval{Start: a.End, End: b.Start},
+		Interval{Start: b.End, End: c.Start},
+		Interval{Start: c.End, End: d.Start},
+		Interval{Start: d.End, End: Infinity},
+	}
+
+	assert.Equal(t, inverted, expected)
+
+}
+
+func TestInvertOverlapping(t *testing.T) {
+
+	now := time.Now()
+
+	// c overlaps b
+	a := Interval{Start: now, End: now.Add(2 * time.Second)}
+	b := Interval{Start: now.Add(3 * time.Second), End: now.Add(5 * time.Second)}
+	c := Interval{Start: now.Add(4 * time.Second), End: now.Add(6 * time.Second)}
+	d := Interval{Start: now.Add(7 * time.Second), End: now.Add(9 * time.Second)}
+
+	intervals := []Interval{c, a, d, b}
+
+	// check intervals are out of order to start with
+	assert.Equal(t, intervals[0], c)
+	assert.Equal(t, intervals[1], a)
+	assert.Equal(t, intervals[2], d)
+	assert.Equal(t, intervals[3], b)
+
+	inverted := Invert(intervals)
+
+	// check order is now correct, with inverted intervals
+
+	expected := []Interval{
+		Interval{Start: ZeroTime, End: a.Start},
+		Interval{Start: a.End, End: b.Start},
+		//skip b.End, c.Start because within overlapped allow intervals
+		Interval{Start: c.End, End: d.Start},
+		Interval{Start: d.End, End: Infinity},
+	}
+
+	assert.Equal(t, inverted, expected)
+
+}
