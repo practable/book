@@ -1,27 +1,28 @@
-package interval
+package filter
 
 import (
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/timdrysdale/interval/interval"
 )
 
 var w = time.Now()
 
-var a = Interval{
+var a = interval.Interval{
 	Start: w,
 	End:   w.Add(5 * time.Second),
 }
 
 // does not overlap a
-var b = Interval{
+var b = interval.Interval{
 	Start: w.Add(10 * time.Second),
 	End:   w.Add(20 * time.Second),
 }
 
 // overlaps a
-var c = Interval{
+var c = interval.Interval{
 	Start: w.Add(3 * time.Second),
 	End:   w.Add(12 * time.Second),
 }

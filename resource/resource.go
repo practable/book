@@ -1,5 +1,5 @@
 // package resource holds non-overlapping bookings with arbitrary durations
-package interval
+package resource
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/timdrysdale/interval/interval"
 )
 
 // Resource represents the bookings of a resources
@@ -16,14 +17,14 @@ type Resource struct {
 
 // Booking represents a booking
 type Booking struct {
-	When Interval
+	When interval.Interval
 	ID   uuid.UUID
 }
 
 // New creates a new resource with no bookings
 func New() *Resource {
 	return &Resource{
-		bookings: avl.NewWith(Comparator),
+		bookings: avl.NewWith(interval.Comparator),
 	}
 }
 
@@ -45,7 +46,7 @@ func (r *Resource) Delete(delete uuid.UUID) error {
 }
 
 // Request returns a booking, if it can be made
-func (r *Resource) Request(when Interval) (uuid.UUID, error) {
+func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
 
 	u := uuid.New()
 
@@ -79,7 +80,7 @@ func (r *Resource) GetBookings() ([]Booking, error) {
 
 	for idx, when := range slots {
 		b = append(b, Booking{
-			When: when.(Interval),
+			When: when.(interval.Interval),
 			ID:   (IDs[idx]).(uuid.UUID),
 		})
 	}
@@ -94,7 +95,7 @@ func (r *Resource) ClearBefore(t time.Time) {
 	slots := r.bookings.Keys() //these are given in order
 
 	for _, when := range slots {
-		if when.(Interval).End.Before(t) {
+		if when.(interval.Interval).End.Before(t) {
 			r.bookings.Remove(when)
 		}
 	}

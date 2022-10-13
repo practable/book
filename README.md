@@ -1,6 +1,62 @@
 # interval
 This package implements bookings with arbitrary durations
 
+
+The Store manages policies about when a booking can be made.
+The Resource ensures only that it accepts no overlapping bookings.
+
+If we are sharing resources between groups, then we need to have a way of blocking a slot, based on another slot.
+
+This implies some kind of separate specification for each set of users.
+
+These interact - e.g. if we offer exclusive access to one set of users, for short periods, it would be a lot easier to just say for another user - "at any time but when others with a higher priority are using it"
+
+
+Ok ... so what about an AVL tree that takes intervals with IDs and priority numbers?
+
+OR ... how is a policy different to just booking a kit out???
+
+E.g. set up the kit ... book the slots for a class ...
+
+How to reassign those bookings??? Is there a 
+
+
+```yaml
+
+times:
+  - id: c3-w5-7
+    intervals:
+	   - nbf:  
+	     exp: 
+	   - nbf:
+	     exp:
+	
+groups:
+  controls3:
+    slots:
+	- id:  spinner-v2-weight-00:
+	  allow: 
+	  - c3-wk5-7
+	  deny: 
+	  - ed1-week1
+	  
+	- id:  spinner-v2-weight-01
+	  when: c3-wk5-7
+  engineeringdesign1:
+    slots:
+	- id: spinner-v2-weight-00
+	  allow: ed1-week1
+	- id: spinner-v2-weight-01
+	  allow: ed1-week1
+	  
+
+
+```
+
+
+
+
+
 Intervals are specified as
 
 ```

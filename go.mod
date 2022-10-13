@@ -23,4 +23,3 @@ replace internal/containers => ./internal/containers
 
 replace internal/utils => ./internal/utils
 
-replace internal/resource => ./internal/resource

@@ -1,6 +1,7 @@
 // package store holds bookings with arbitrary durations
 package interval
 
+/*
 import (
 	"errors"
 	"net/url"
@@ -48,8 +49,11 @@ type Slot struct {
 	*sync.Mutex `json:"-"`
 	ID          uuid.UUID
 	Resource    *Resource
-	TimePolicy  *TimePolicy //usually points to to the DefaultTimePolicy
+	TimePolicy  *TimePolicy // usually points to to the DefaultTimePolicy
+	Pool        string      // the pool name to get the activity from
+	Available   *Resource   // the window set by the time policy
 
+	Blocked []*Interval // any times when the slot cannot be offered
 }
 
 // Booking represents additional information about a booking
@@ -76,6 +80,8 @@ type TimePolicy struct {
 	MaxDuration      time.Duration `json:"max_duration"`
 	NotBefore        time.Time     `json:"nbf"`
 }
+
+// meh, time policy needs intervals ...
 
 // BookingPolicy represents a limit of the max number of live bookings
 type BookingPolicy struct {
@@ -123,6 +129,7 @@ type Fulfil struct {
 // Slot represents a bookable
 type Slot struct {
 	Resource *Resource
+	Policies []*TimePolicy
 	// we might later put some info here as to where to get the item .... but for MVP, it is going to be local, using go.
 }
 
@@ -216,3 +223,4 @@ func (s *Store) GetBookings(rID uuid.UUID) ([]Booking, error) {
 	return bookings, errNotFound
 
 }
+*/
