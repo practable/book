@@ -3,29 +3,33 @@ package resource
 
 import (
 	"errors"
-	avl "interval/internal/trees/avltree"
+	avl "internal/trees/avltree"
 	"time"
 
-	"interval/internal/interval"
+	"internal/interval"
 
 	"github.com/google/uuid"
 )
 
+// Resource represents the bookings of a resources
 type Resource struct {
 	bookings *avl.Tree
 }
 
+// Booking represents a booking
 type Booking struct {
 	When interval.Interval
 	ID   uuid.UUID
 }
 
+// New creates a new resource with no bookings
 func New() *Resource {
 	return &Resource{
 		bookings: avl.NewWith(interval.Comparator),
 	}
 }
 
+// Delete removes a booking, if it exists
 func (r *Resource) Delete(delete uuid.UUID) error {
 
 	slots := r.bookings.Keys() //these are given in order
@@ -42,6 +46,7 @@ func (r *Resource) Delete(delete uuid.UUID) error {
 
 }
 
+// Request returns a booking, if it can be made
 func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
 
 	u := uuid.New()
@@ -57,10 +62,12 @@ func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
 
 }
 
+// GetCount returns the number of live bookings
 func (r *Resource) GetCount() int {
 	return r.bookings.Size()
 }
 
+// GetBookings returns all bookings
 func (r *Resource) GetBookings() ([]Booking, error) {
 
 	b := []Booking{}
@@ -83,6 +90,7 @@ func (r *Resource) GetBookings() ([]Booking, error) {
 
 }
 
+// ClearBefore removes all old bookings
 func (r *Resource) ClearBefore(t time.Time) {
 
 	slots := r.bookings.Keys() //these are given in order

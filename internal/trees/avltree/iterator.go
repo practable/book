@@ -4,7 +4,7 @@
 
 package avltree
 
-import "interval/internal/containers"
+import "internal/containers"
 
 // Iterator holding the iterator's state
 type Iterator struct {

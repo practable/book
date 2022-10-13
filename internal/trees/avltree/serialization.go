@@ -6,7 +6,7 @@ package avltree
 
 import (
 	"encoding/json"
-	"interval/internal/utils"
+	"internal/utils"
 )
 
 // ToJSON outputs the JSON representation of the tree.

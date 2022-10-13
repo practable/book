@@ -13,7 +13,7 @@
 // Serialization provides serializers (marshalers) and deserializers (unmarshalers).
 package containers
 
-import "interval/internal/utils"
+import "internal/utils"
 
 // Container is base interface that all data structures implement.
 type Container interface {

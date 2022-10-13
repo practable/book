@@ -13,7 +13,7 @@ import (
 	"errors"
 	"fmt"
 
-	"interval/internal/utils"
+	"internal/utils"
 )
 
 // Tree holds elements of the AVL tree.

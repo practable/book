@@ -1,40 +1,21 @@
 // package store holds bookings with arbitrary durations
-package store
+package interval
 
 import (
 	"errors"
-	"net/url"
-	"sync"
-	"time"
-
-	"interval/internal/resource"
-
-	"interval/internal/interval"
-
-	"github.com/google/uuid"
-
-	bc "github.com/timdrysdale/relay/pkg/bc/client"
 )
 
 var errNotFound = errors.New("resource not found")
 
-// it would be helpful if people were warned about non-redundant equipment
-// e.g. messaging them when equipment is known to be offline and unavailable for their booking
-// or alerting them to a status page.
-
-// Granularity of booking, and display of booking slots.
-// we can let the user interface invert bookings information to show availability.
-// If we assume "bookable unless booked", then graphically, put the background colour
-// to the "free" colour, and overlay bookings in "booked" colour. Save processing it.
-
+/*
 //UserCommands represents commands that users will send to the system
 var UserCommands = []string{
-	"cancelBooking",  //cancel an existing booking. Fails if booking has been collected already.
-	"collectBooking", //get access to the experiment (may trigger some checks on video/data)
-	"requestBooking", // make a new booking, only completes if within allowable number of booked slots, and slot is free
-	"swapBooking",    // atomic action to cancel an existing booking and replace with a new one, only completes if new booking succesful
-	"getBookings",    // return my current bookings
-	"listBookings",   // return bookings for a given slot, in a particular interval.
+       "cancelBooking",  //cancel an existing booking. Fails if booking has been collected already.
+       "collectBooking", //get access to the experiment (may trigger some checks on video/data)
+       "requestBooking", // make a new booking, only completes if within allowable number of booked slots, and slot is free
+       "swapBooking",    // atomic action to cancel an existing booking and replace with a new one, only completes if new booking succesful
+       "getBookings",    // return my current bookings
+       "listBookings",   // return bookings for a given slot, in a particular interval.
 
 }
 
@@ -42,83 +23,82 @@ var UserCommands = []string{
 // Notes ... do we separate configuration from user commands in the transaction history (probably no, for testing reasons)
 //
 var AdminCommands = []string{
-	"importTransactions",
-	"addSlot",
-	"deleteSlot",
+       "importTransactions",
+       "addSlot",
+       "deleteSlot",
 }
 
+// Action represents a booking action, including the time it was taken
+// so as to allow history-replay to rebuild the booking status based on
+// a record of past actions. This may also help with testing?
 type Action struct {
-	At        Time
+	IssuedAt  time.Time
 	Do        string
-	When      Interval
+	When      interval.Interval
 	SlotID    uuid.UUID
 	BookingID uuid.UUID
 	UserID    uuid.UUID
 }
-
-type Interval struct {
-	Start time.Time
-	End   time.Time
-}
-
+*/
+/*
 type Slot struct {
 	*sync.Mutex `json:"-"`
 	ID          uuid.UUID
-	Bookings    *resource.Resource
-	Experiment  *bc.Bc
+	Resource    *resource.Resource
+	TimePolicy  *TimePolicy //usually points to to the DefaultTimePolicy
+
 }
 
 // Booking represents additional information about a booking
 // The resource only holds a UUID, so we use a map to find
 // information for a given booking
 type Booking struct {
-	User    uuid.UUID
-	When    Interval
+	ID      uuid.UUID
+	SlotID  uuid.UUID
 	Started bool
+	UserID  uuid.UUID
+	When    interval.Interval
 }
 
-// Duration represents a duration
-// defined so we can (un)marshal
-// https://stackoverflow.com/questions/48050945/how-to-unmarshal-json-into-durations
-type Duration struct {
-	time.Duration
-}
-
-// Duration represents a datetime
-// defined so we can (un)marshal
-// https://ukiahsmith.com/blog/go-marshal-and-unmarshal-json-with-time-and-url-data/
-type Time struct {
-	time.Time
-}
-
-// Policy represents limits on what a user can book
-// Window: how far in advance a booking can end
+// Policy represents limits on when a booking can be made
+// EnforceInAdvance: set to True to limit how far in advance bookings can be made
 // Expiry: the latest possible datetime that a booking can end
-// MaxBookings: the maximum number of bookings that can be made
-type Policy struct {
-	Window      Duration `json:"duration"`
-	Expiry      Time
-	MaxBookings int
+// InAdvance: how far in advance
+// MaxDuration: longest individual booking
+// NotBefore: the earliest possible datetime that a booking can start
+type TimePolicy struct {
+	EnforceInAdvance bool          `json:"enforce_in_advance"`
+	Expiry           time.Time     `json:"exp"`
+	InAdvance        time.Duration `json:"in_advance"`
+	MaxDuration      time.Duration `json:"max_duration"`
+	NotBefore        time.Time     `json:"nbf"`
 }
 
+// BookingPolicy represents a limit of the max number of live bookings
+type BookingPolicy struct {
+	Enforce     bool `json:"enforce"`
+	MaxBookings `json:"max_bookings"`
+}
+
+// what's this do??
 type Diary struct {
 	*sync.Mutex `json:"-"`
 	Bookings    []Booking
 }
 
-type UserID struct {
-	uuid.UUID
-}
-
-type SlotID struct {
-	uuid.UUID
-}
-
 type Store struct {
-	Slots         map[SlotID]*Slot
-	Sessions      map[UserID]*Diary
-	Policies      map[UserID]*Policy
-	DefaultPolicy Policy
+	*sync.RWMutex `json:"-" yaml:"-"`
+
+	Slots map[uuid.UUID]*Slot `json:"slots"`
+
+	DefaultTimePolicy TimePolicy `json:"default_time_policy"`
+
+	UserBookingPolicy BookingPolicy `json:"user_booking_policy"`
+
+	AdminBookingPolicy BookingPolicy `json:"admin_booking_policy"`
+
+	// Now is a function for getting the time - useful for mocking in test
+	Now func() time.Time `json:"-" yaml:"-"`
 }
 
 // Note - we probably want to rename resources as slots.
@@ -137,10 +117,10 @@ type Fulfil struct {
 	// how do you request the experiment?
 }
 
-// Slot represents a bookable slot
+// Slot represents a bookable
 type Slot struct {
 	Resource *resource.Resource
-	BC       *booking.Client
+	// we might later put some info here as to where to get the item .... but for MVP, it is going to be local, using go.
 }
 
 func New() *Store {
@@ -233,3 +213,4 @@ func (s *Store) GetBookings(rID uuid.UUID) ([]Booking, error) {
 	return bookings, errNotFound
 
 }
+*/
