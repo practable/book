@@ -2,7 +2,10 @@
 
 package interval
 
-import "time"
+import (
+	"sort"
+	"time"
+)
 
 type Interval struct {
 	Start time.Time
@@ -24,4 +27,26 @@ func Comparator(a, b interface{}) int {
 	default:
 		return 0 //this implies some degree of overlap
 	}
+}
+
+// https://gobyexample.com/sorting-by-functions
+
+type byInterval []Interval
+
+func (s byInterval) Len() int {
+	return len(s)
+}
+
+func (s byInterval) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s byInterval) Less(i, j int) bool {
+	return s[i].Start.Before(s[j].Start)
+}
+
+func Sort(intervals *[]Interval) {
+
+	sort.Sort(byInterval(*intervals))
+
 }

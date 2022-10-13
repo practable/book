@@ -64,3 +64,30 @@ func TestAVL(t *testing.T) {
 	assert.Equal(t, 1, at.Size())
 
 }
+
+func TestSort(t *testing.T) {
+
+	now := time.Now()
+
+	a := Interval{Start: now, End: now.Add(2 * time.Second)}
+	b := Interval{Start: now.Add(3 * time.Second), End: now.Add(4 * time.Second)}
+	c := Interval{Start: now.Add(5 * time.Second), End: now.Add(6 * time.Second)}
+	d := Interval{Start: now.Add(7 * time.Second), End: now.Add(8 * time.Second)}
+
+	intervals := []Interval{c, a, d, b}
+
+	// check intervals are out of order to start with
+	assert.Equal(t, intervals[0], c)
+	assert.Equal(t, intervals[1], a)
+	assert.Equal(t, intervals[2], d)
+	assert.Equal(t, intervals[3], b)
+
+	Sort(&intervals)
+
+	// check order is now correct
+	assert.Equal(t, intervals[0], a)
+	assert.Equal(t, intervals[1], b)
+	assert.Equal(t, intervals[2], c)
+	assert.Equal(t, intervals[3], d)
+
+}
