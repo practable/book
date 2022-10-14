@@ -27,7 +27,7 @@ var c = interval.Interval{
 	End:   w.Add(12 * time.Second),
 }
 
-func TestResource(t *testing.T) {
+func TestFilter(t *testing.T) {
 
 	r := New()
 

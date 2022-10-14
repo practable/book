@@ -13,7 +13,7 @@ import (
 	"errors"
 	"fmt"
 
-	"internal/utils"
+	"github.com/timdrysdale/interval/internal/utils"
 )
 
 // Tree holds elements of the AVL tree.
@@ -49,9 +49,16 @@ func NewWithStringComparator() *Tree {
 
 // Put inserts node into the tree.
 // Key should adhere to the comparator's type assertion, otherwise method panics.
-// return error rather and reject the Put operation if the comparator returns equal
+// return error and reject the Put operation if the comparator returns equal
 func (t *Tree) Put(key interface{}, value interface{}) (bool, error) {
 	return t.put(key, value, nil, &t.Root)
+}
+
+// CouldPut checks if a node could be inserted into the tree.
+// Key should adhere to the comparator's type assertion, otherwise method panics.
+// return error if the comparator returns equal (i.e. conflict, could not put)
+func (t *Tree) CouldPut(key interface{}, value interface{}) (bool, error) {
+	return t.couldput(key, value, nil, &t.Root)
 }
 
 // Get searches the node in the tree by key and returns its value or nil if key is not found in tree.
@@ -196,6 +203,37 @@ func (t *Tree) String() string {
 
 func (n *Node) String() string {
 	return fmt.Sprintf("%v", n.Key)
+}
+
+func (t *Tree) couldput(key interface{}, value interface{}, p *Node, qp **Node) (bool, error) {
+
+	//empty
+	q := *qp
+	if q == nil {
+		return true, nil
+	}
+
+	c := t.Comparator(key, q.Key)
+	if c == 0 {
+		return false, errors.New("conflict with existing")
+	}
+
+	if c < 0 {
+		c = -1
+	} else {
+		c = 1
+	}
+	a := (c + 1) / 2
+
+	_, err := t.couldput(key, value, q, &q.Children[a])
+
+	if err != nil {
+		return false, err
+	}
+	// no need to call equivalent to putfix because it cannot fail
+
+	// so no conflict, could add
+	return false, nil
 }
 
 func (t *Tree) put(key interface{}, value interface{}, p *Node, qp **Node) (bool, error) {

@@ -1,56 +1,86 @@
-// package resource holds non-overlapping bookings with arbitrary durations
+// package filter represents intervals that are allowed, and denied
+// so an interval can be checked for
+// (a) falling completely within an allowed interval AND
+// (b) also not even partially overlapping a denied interval
+// Note that our avl trees best supports finding clashing intervals
+// so turn our allow list into something we can search for clashes against
+// i.e. invert it to make denied periods between allowed periods
+// and take note of the left most and right most periods allowed to complete the
+// check without using tree functions (to avoid setting  arbitrary zero and infinite time)
+// additional check
+// but not finding intervals that fall completely within other intervals
+//
 package filter
 
 import (
-	"errors"
-	avl "internal/trees/avltree"
-	"time"
+	avl "interval/internal/trees/avltree"
 
 	"github.com/google/uuid"
 	"github.com/timdrysdale/interval/interval"
 )
 
-// Resource represents the bookings of a resources
-type Resource struct {
-	bookings *avl.Tree
+// Filter represents an allowed interval, with a list of denied sub-intervals
+type Filter struct {
+	notAllowed *avl.tree // a deny list calculated by inverting the allow list
+	denied     *avl.Tree // the deny list
 }
 
-// Booking represents a booking
-type Booking struct {
-	When interval.Interval
-	ID   uuid.UUID
-}
-
-// New creates a new resource with no bookings
-func New() *Resource {
+// New creates a new filter with an empty deny list and no allowed interval
+func New() *Filter {
 	return &Resource{
-		bookings: avl.NewWith(interval.Comparator),
+		notAllowed: avl.NewWith(interval.Comparator),
+		denied:     avl.NewWith(interval.Comparator),
 	}
 }
 
-// Delete removes a booking, if it exists
-func (r *Resource) Delete(delete uuid.UUID) error {
+// SetAllowed adds the allowed intervals to the `allowed list`
+func (f *Filter) SetAllowed(allowed []interval.Interval) error {
 
-	slots := r.bookings.Keys() //these are given in order
-	IDs := r.bookings.Values()
+	// invert the intervals to become notAllowed intervals
+	notAllowed := interval.Invert(allowed)
 
-	for idx, ID := range IDs {
-		if delete == ID {
-			r.bookings.Remove(slots[idx])
-			return nil
+	for _, na := range notAllowed {
+
+		u := uuid.New()
+
+		_, err := r.notAllowed.Put(when, u)
+
+		if err != nil {
+			return err
 		}
+
 	}
 
-	return errors.New("ID not found")
+	return nil
+}
+
+// SetDenied adds an interval to the `denied list`
+func (r *Resource) SetDenied(denied []interval.Interval) error {
+
+	for _, d := range denied {
+
+		u := uuid.New()
+
+		_, err := r.denied.Put(when, u)
+
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
 
 }
 
-// Request returns a booking, if it can be made
-func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
+// Allowed returns true if the interval is allowed, which means
+// it falls completely within an allowed interval
+// does not intersect even partially with a denied interval
+func (r *Resource) Allowed(when interval.Interval) bool {
 
 	u := uuid.New()
 
-	_, err := r.bookings.Put(when, u)
+	_, err := r.notAllowed.Put(when, u)
 
 	if err != nil {
 		//return a zero-value UUID if there is an error
@@ -59,44 +89,4 @@ func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
 
 	return u, err
 
-}
-
-// GetCount returns the number of live bookings
-func (r *Resource) GetCount() int {
-	return r.bookings.Size()
-}
-
-// GetBookings returns all bookings
-func (r *Resource) GetBookings() ([]Booking, error) {
-
-	b := []Booking{}
-
-	slots := r.bookings.Keys() //these are given in order
-	IDs := r.bookings.Values()
-
-	if len(slots) != len(IDs) {
-		return b, errors.New("number of slots and IDs are not the same")
-	}
-
-	for idx, when := range slots {
-		b = append(b, Booking{
-			When: when.(interval.Interval),
-			ID:   (IDs[idx]).(uuid.UUID),
-		})
-	}
-
-	return b, nil
-
-}
-
-// ClearBefore removes all old bookings
-func (r *Resource) ClearBefore(t time.Time) {
-
-	slots := r.bookings.Keys() //these are given in order
-
-	for _, when := range slots {
-		if when.(interval.Interval).End.Before(t) {
-			r.bookings.Remove(when)
-		}
-	}
 }

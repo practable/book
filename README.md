@@ -1,6 +1,12 @@
 # interval
 This package implements bookings with arbitrary durations
 
+## Gotchas
+
+[time](https://pkg.go.dev/time#Time)
+"Representations of a Time value saved by the GobEncode, MarshalBinary, MarshalJSON, and MarshalText methods store the Time.Location's offset, but not the location name. They therefore lose information about Daylight Saving Time."
+
+## Introduction
 
 The Store manages policies about when a booking can be made.
 The Resource ensures only that it accepts no overlapping bookings.
@@ -23,31 +29,53 @@ How to reassign those bookings??? Is there a
 
 ```yaml
 
-times:
-  - id: c3-w5-7
-    intervals:
-	   - nbf:  
-	     exp: 
-	   - nbf:
-	     exp:
+filters:
+  - id: c3-wk5-wk7
+    nbf: 2023-02-01T09:00:00Z
+    exp: 2023-04-30T09:00:00Z
+	allowed:
+	  - nbf: 2023-02-01T09:00:00Z
+        exp: 2023-04-30T09:00:00Z
+	denied:
+	  - nbf: 2023-03-04T14:00:00Z
+	    exp: 2023-03-04T15:00:00Z
+	  - nbf: 2023-03-05T14:00:00Z
+	    exp: 2023-03-05T15:00:00Z 
+	  - nbf: 2023-03-06T14:00:00Z
+	    exp: 2023-03-06T15:00:00Z
+  - id: ed1
+    allowed:
+	  - nbf: 2023-03-04T14:00:00Z
+	    exp: 2023-03-04T15:00:00Z
+	  - nbf: 2023-03-05T14:00:00Z
+	    exp: 2023-03-05T15:00:00Z 
+	  - nbf: 2023-03-06T14:00:00Z
+	    exp: 2023-03-06T15:00:00Z	
 	
 groups:
   controls3:
     slots:
 	- id:  spinner-v2-weight-00:
-	  allow: 
-	  - c3-wk5-7
-	  deny: 
-	  - ed1-week1
+      filters: 
+	    - c3-wk5-wk7 
 	  
 	- id:  spinner-v2-weight-01
-	  when: c3-wk5-7
+	  filters: 
+	    - c3-wk5-wk7
+		
   engineeringdesign1:
     slots:
 	- id: spinner-v2-weight-00
-	  allow: ed1-week1
+	  filters: 
+	    - ed1-wk5-s1
+		- ed1-wk5-s2
+		- ed1-wk5-s3
 	- id: spinner-v2-weight-01
-	  allow: ed1-week1
+	  filters:
+		- ed1-wk5-s1
+		- ed1-wk5-s2
+		- ed1-wk5-s3
+
 	  
 
 

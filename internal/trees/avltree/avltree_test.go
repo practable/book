@@ -59,6 +59,84 @@ func TestAVLTreePut(t *testing.T) {
 	}
 }
 
+func TestAVLTreeCouldPut(t *testing.T) {
+
+	tree := NewWithIntComparator()
+
+	_, err := tree.CouldPut(5, "e")
+	assert.NoError(t, err)
+	_, err = tree.Put(5, "e")
+	assert.NoError(t, err)
+
+	_, err = tree.CouldPut(6, "f")
+	assert.NoError(t, err)
+	_, err = tree.Put(6, "f")
+	assert.NoError(t, err)
+
+	_, err = tree.CouldPut(7, "g")
+	assert.NoError(t, err)
+	_, err = tree.Put(7, "g")
+	assert.NoError(t, err)
+
+	_, err = tree.CouldPut(3, "c")
+	assert.NoError(t, err)
+	_, err = tree.Put(3, "c")
+	assert.NoError(t, err)
+
+	_, err = tree.CouldPut(4, "d")
+	assert.NoError(t, err)
+	_, err = tree.Put(4, "d")
+	assert.NoError(t, err)
+
+	_, err = tree.CouldPut(1, "x")
+	assert.NoError(t, err)
+	_, err = tree.Put(1, "x")
+	assert.NoError(t, err)
+
+	_, err = tree.CouldPut(2, "b")
+	assert.NoError(t, err)
+	_, err = tree.Put(2, "b")
+	assert.NoError(t, err)
+
+	_, err = tree.CouldPut(1, "a") //should conflict
+	assert.Error(t, err)
+	_, err = tree.Put(1, "a") //do not overwrite
+	assert.Error(t, err)
+
+	_, err = tree.CouldPut(11, "z")
+	assert.NoError(t, err)
+
+	// check that CouldPut has not modified the tree
+	if actualValue := tree.Size(); actualValue != 7 {
+		t.Errorf("Got %v expected %v", actualValue, 7)
+	}
+	if actualValue, expectedValue := fmt.Sprintf("%d%d%d%d%d%d%d", tree.Keys()...), "1234567"; actualValue != expectedValue {
+		t.Errorf("Got %v expected %v", actualValue, expectedValue)
+	}
+	if actualValue, expectedValue := fmt.Sprintf("%s%s%s%s%s%s%s", tree.Values()...), "xbcdefg"; actualValue != expectedValue {
+		t.Errorf("Got %v expected %v", actualValue, expectedValue)
+	}
+
+	tests1 := [][]interface{}{
+		{1, "x", true},
+		{2, "b", true},
+		{3, "c", true},
+		{4, "d", true},
+		{5, "e", true},
+		{6, "f", true},
+		{7, "g", true},
+		{8, nil, false},
+	}
+
+	for _, test := range tests1 {
+		// retrievals
+		actualValue, actualFound := tree.Get(test[0])
+		if actualValue != test[1] || actualFound != test[2] {
+			t.Errorf("Got %v expected %v", actualValue, test[1])
+		}
+	}
+}
+
 func TestAVLTreeRemove(t *testing.T) {
 	tree := NewWithIntComparator()
 	_, err := tree.Put(5, "e")
