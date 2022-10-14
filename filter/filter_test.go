@@ -10,82 +10,142 @@ import (
 
 var w = time.Now()
 
-var a = interval.Interval{
-	Start: w,
-	End:   w.Add(5 * time.Second),
+//               20                      50                            120                          180
+//               |-------a0------------|                               |-----------a2---------------|
+//                             |-------------a1------|
+//                            40	                  60
+//	5	  10                35    42                       80      90             150       160             200       220
+//  |--d0-|                 |--d2-|                        |---d3--|              |---d4----|               |---d5----|
+//          |--d1----|
+//          15      30
+//
+//1    8     18   22     34     43  44     55  56       80              125  130       155      161            201  205   230     240
+//|-s0-|     |-s1-|      |--s2---|  |--s4--|   |---s5---|               |-s7-|         |---s8---|              |-s9-|     |--s10--|
+//
+//                       34 38                              82    86
+//                       |s3|                               |--s6-|
+//
+
+var a0 = interval.Interval{
+	Start: w.Add(20 * time.Second),
+	End:   w.Add(50 * time.Second),
 }
 
-// does not overlap a
-var b = interval.Interval{
-	Start: w.Add(10 * time.Second),
-	End:   w.Add(20 * time.Second),
+var a1 = interval.Interval{
+	Start: w.Add(40 * time.Second),
+	End:   w.Add(60 * time.Second),
 }
 
-// overlaps a
-var c = interval.Interval{
-	Start: w.Add(3 * time.Second),
-	End:   w.Add(12 * time.Second),
+var a2 = interval.Interval{
+	Start: w.Add(120 * time.Second),
+	End:   w.Add(180 * time.Second),
+}
+
+var d0 = interval.Interval{
+	Start: w.Add(5 * time.Second),
+	End:   w.Add(10 * time.Second),
+}
+
+var d1 = interval.Interval{
+	Start: w.Add(15 * time.Second),
+	End:   w.Add(30 * time.Second),
+}
+
+var d2 = interval.Interval{
+	Start: w.Add(35 * time.Second),
+	End:   w.Add(42 * time.Second),
+}
+
+var d3 = interval.Interval{
+	Start: w.Add(80 * time.Second),
+	End:   w.Add(90 * time.Second),
+}
+
+var d4 = interval.Interval{
+	Start: w.Add(150 * time.Second),
+	End:   w.Add(160 * time.Second),
+}
+
+var d5 = interval.Interval{
+	Start: w.Add(200 * time.Second),
+	End:   w.Add(220 * time.Second),
+}
+
+var s0 = interval.Interval{
+	Start: w.Add(1 * time.Second),
+	End:   w.Add(8 * time.Second),
+}
+
+var s1 = interval.Interval{
+	Start: w.Add(18 * time.Second),
+	End:   w.Add(22 * time.Second),
+}
+
+var s2 = interval.Interval{
+	Start: w.Add(34 * time.Second),
+	End:   w.Add(43 * time.Second),
+}
+
+var s3 = interval.Interval{
+	Start: w.Add(34 * time.Second),
+	End:   w.Add(38 * time.Second),
+}
+
+var s4 = interval.Interval{
+	Start: w.Add(44 * time.Second),
+	End:   w.Add(55 * time.Second),
+}
+
+var s5 = interval.Interval{
+	Start: w.Add(56 * time.Second),
+	End:   w.Add(90 * time.Second),
+}
+
+var s6 = interval.Interval{
+	Start: w.Add(82 * time.Second),
+	End:   w.Add(86 * time.Second),
+}
+
+var s7 = interval.Interval{
+	Start: w.Add(125 * time.Second),
+	End:   w.Add(130 * time.Second),
+}
+
+var s8 = interval.Interval{
+	Start: w.Add(155 * time.Second),
+	End:   w.Add(161 * time.Second),
+}
+
+var s9 = interval.Interval{
+	Start: w.Add(201 * time.Second),
+	End:   w.Add(205 * time.Second),
+}
+
+var s10 = interval.Interval{
+	Start: w.Add(230 * time.Second),
+	End:   w.Add(240 * time.Second),
 }
 
 func TestFilter(t *testing.T) {
 
-	r := New()
+	f := New()
 
-	// request first interval - must succeed
-	ua, err := r.Request(a)
+	err := f.SetAllowed([]interval.Interval{a0, a1, a2})
 	assert.NoError(t, err)
-	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", ua.String())
 
-	// repeat request - must fail
-	u, err := r.Request(a)
-	assert.Error(t, err)
-	assert.Equal(t, "00000000-0000-0000-0000-000000000000", u.String())
+	err = f.SetDenied([]interval.Interval{d0, d1, d2, d3, d4, d5})
+	assert.NoError(t, err)
 
-	// request a different non-overlapping interval - must succeed
-	ub, err := r.Request(b)
-	assert.NoError(t, err)
-	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", ub.String())
-
-	// request a partly overlapping interval with a - must fail
-	u, err = r.Request(c)
-	assert.Error(t, err)
-	assert.Equal(t, "00000000-0000-0000-0000-000000000000", u.String())
-
-	// Get current bookings
-	bookings, err := r.GetBookings()
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(bookings))
-	assert.Equal(t, bookings[0].When.Start, a.Start)
-	assert.Equal(t, bookings[0].ID, ua)
-	assert.Equal(t, bookings[1].When.Start, b.Start)
-	assert.Equal(t, bookings[1].ID, ub)
-
-	// Delete a booking
-	assert.Equal(t, 2, r.GetCount())
-	err = r.Delete(ua)
-	assert.NoError(t, err)
-	assert.NoError(t, err)
-	assert.Equal(t, 1, r.GetCount())
-	bookings, err = r.GetBookings()
-	assert.NoError(t, err)
-	assert.Equal(t, bookings[0].When.Start, b.Start)
-	assert.Equal(t, bookings[0].ID, ub)
-
-	// add another booking back for testing clear before
-	_, err = r.Request(a)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, r.GetCount())
-	// clear from before a time in the middle of a booking - must keep that booking
-	r.ClearBefore(w.Add(3 * time.Second))
-	assert.NoError(t, err)
-	assert.Equal(t, 2, r.GetCount())
-	// clear the first booking only
-	r.ClearBefore(w.Add(6 * time.Second))
-	assert.NoError(t, err)
-	assert.Equal(t, 1, r.GetCount())
-	bookings, err = r.GetBookings()
-	assert.NoError(t, err)
-	assert.Equal(t, bookings[0].When.Start, b.Start)
-	assert.Equal(t, bookings[0].ID, ub)
+	assert.False(t, f.Allowed(s0))
+	assert.False(t, f.Allowed(s1))
+	assert.False(t, f.Allowed(s2))
+	assert.False(t, f.Allowed(s3))
+	assert.True(t, f.Allowed(s4))
+	assert.False(t, f.Allowed(s5))
+	assert.False(t, f.Allowed(s6))
+	assert.True(t, f.Allowed(s7))
+	assert.False(t, f.Allowed(s8))
+	assert.False(t, f.Allowed(s9))
+	assert.False(t, f.Allowed(s10))
 
 }

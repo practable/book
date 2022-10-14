@@ -13,7 +13,7 @@
 package filter
 
 import (
-	avl "interval/internal/trees/avltree"
+	avl "github.com/timdrysdale/interval/internal/trees/avltree"
 
 	"github.com/google/uuid"
 	"github.com/timdrysdale/interval/interval"
@@ -21,13 +21,13 @@ import (
 
 // Filter represents an allowed interval, with a list of denied sub-intervals
 type Filter struct {
-	notAllowed *avl.tree // a deny list calculated by inverting the allow list
+	notAllowed *avl.Tree // a deny list calculated by inverting the allow list
 	denied     *avl.Tree // the deny list
 }
 
 // New creates a new filter with an empty deny list and no allowed interval
 func New() *Filter {
-	return &Resource{
+	return &Filter{
 		notAllowed: avl.NewWith(interval.Comparator),
 		denied:     avl.NewWith(interval.Comparator),
 	}
@@ -43,7 +43,7 @@ func (f *Filter) SetAllowed(allowed []interval.Interval) error {
 
 		u := uuid.New()
 
-		_, err := r.notAllowed.Put(when, u)
+		_, err := f.notAllowed.Put(na, u)
 
 		if err != nil {
 			return err
@@ -55,13 +55,13 @@ func (f *Filter) SetAllowed(allowed []interval.Interval) error {
 }
 
 // SetDenied adds an interval to the `denied list`
-func (r *Resource) SetDenied(denied []interval.Interval) error {
+func (f *Filter) SetDenied(denied []interval.Interval) error {
 
 	for _, d := range denied {
 
 		u := uuid.New()
 
-		_, err := r.denied.Put(when, u)
+		_, err := f.denied.Put(d, u)
 
 		if err != nil {
 			return err
@@ -73,20 +73,25 @@ func (r *Resource) SetDenied(denied []interval.Interval) error {
 
 }
 
-// Allowed returns true if the interval is allowed, which means
-// it falls completely within an allowed interval
-// does not intersect even partially with a denied interval
-func (r *Resource) Allowed(when interval.Interval) bool {
+// Allowed returns true if the interval is allowed
+// It must  not conflict with notAllowed
+// It must not conflict with denied
+func (f *Filter) Allowed(when interval.Interval) bool {
 
 	u := uuid.New()
 
-	_, err := r.notAllowed.Put(when, u)
+	_, err := f.notAllowed.CouldPut(when, u)
 
 	if err != nil {
-		//return a zero-value UUID if there is an error
-		return [16]byte{}, err
+		return false
 	}
 
-	return u, err
+	_, err = f.denied.CouldPut(when, u)
+
+	if err != nil {
+		return false
+	}
+
+	return true
 
 }
