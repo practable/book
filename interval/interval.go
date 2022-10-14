@@ -37,25 +37,32 @@ func Comparator(a, b interface{}) int {
 
 type byInterval []Interval
 
+// Len finds the length of the slice - needed for sort
 func (s byInterval) Len() int {
 	return len(s)
 }
 
+// Swap swaps two elements of a slice - needed for sort
 func (s byInterval) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
+// Less finds the earliest start time, or if starts are the same, the earliest end time
+// needed for sort
 func (s byInterval) Less(i, j int) bool {
+	if s[i].Start.Equal(s[j].Start) {
+		return s[i].End.Before(s[j].End)
+	}
 	return s[i].Start.Before(s[j].Start)
 }
 
+// Sort orders intervals by start time (and then by end time to split a tie on start time)
 func Sort(intervals *[]Interval) {
-
 	sort.Sort(byInterval(*intervals))
-
 }
 
-func Invert(intervals []Interval) []Interval {
+// Merge combines any overlapping intervals
+func Merge(intervals []Interval) []Interval {
 
 	if len(intervals) < 1 {
 		return []Interval{}
@@ -63,28 +70,44 @@ func Invert(intervals []Interval) []Interval {
 
 	Sort(&intervals)
 
-	inverted := []Interval{}
+	merged := []Interval{intervals[0]}
+
+	//merge any overlaps
+	for _, next := range intervals[1:] {
+
+		last := &merged[len(merged)-1]
+
+		if next.Start.After(last.End) { // normal case
+			merged = append(merged, next)
+
+		} else { // overlapping, so extend last interval
+			last.End = next.End
+		}
+	}
+	return merged
+}
+
+// Invert sorts, merges and then inverts the given intervals
+func Invert(intervals []Interval) []Interval {
+
+	if len(intervals) < 1 {
+		return []Interval{}
+	}
+
+	merged := Merge(intervals)
 
 	// set the start of the first deny interval to zero time
-	inverted = append(inverted, Interval{Start: ZeroTime})
+	inverted := []Interval{Interval{Start: ZeroTime}}
 
-	for _, a := range intervals {
+	for _, next := range merged {
 
-		d := &inverted[len(inverted)-1]
+		last := &inverted[len(inverted)-1]
 
-		if d.Start.Before(a.Start) { // normal case
+		// set the end of the last deny interval
+		last.End = next.Start
 
-			// set the end of the last deny interval
-			d.End = a.Start
-
-			// set the start time of the next deny interval
-			inverted = append(inverted, Interval{Start: a.End})
-
-		} else { // overlapping allow periods
-
-			// delay start time of deny interval until end of allow interval
-			d.Start = a.End
-		}
+		// set the start time of the next deny interval
+		inverted = append(inverted, Interval{Start: next.End})
 
 	}
 

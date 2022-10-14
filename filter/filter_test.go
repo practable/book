@@ -8,23 +8,29 @@ import (
 	"github.com/timdrysdale/interval/interval"
 )
 
-var w = time.Now()
-
-//               20                      50                            120                          180
-//               |-------a0------------|                               |-----------a2---------------|
-//                             |-------------a1------|
-//                            40	                  60
-//	5	  10                35    42                       80      90             150       160             200       220
-//  |--d0-|                 |--d2-|                        |---d3--|              |---d4----|               |---d5----|
-//          |--d1----|
-//          15      30
+// Graphical representation of the intervals used in this test (a = allowed, d = denied, s = session to try)
 //
-//1    8     18   22     34     43  44     55  56       80              125  130       155      161            201  205   230     240
+//               20                      50                            120                          180
+//               |-------a0------------|                               |-----------a2------------------|
+//                             |-------------a1------|                 |-------------a3---------|
+//                            40	                  60              120                      161
+//                                                                     |---------a4-----|
+//                                                                    120             150  //force a same-time slot at least once
+//
+//
+//	5	  10                35    42                       80      90             150       161             200       220
+//  |--d0-|                 |--d2-|                        |---d3--|              |---d4----|               |---d5----|
+//          |--d1----|                                                            |---d6--|                 |----d7------|
+//          15      30                                                                    159                           230
+//
+//1    8     18   22     34     43  44     55  56       80              125  130       160      162            201  205   230     240
 //|-s0-|     |-s1-|      |--s2---|  |--s4--|   |---s5---|               |-s7-|         |---s8---|              |-s9-|     |--s10--|
 //
-//                       34 38                              82    86
-//                       |s3|                               |--s6-|
+//                       34 38                              82    86                           163     168
+//                       |s3|                               |--s6-|                            |--s11--|
 //
+
+var w = time.Now()
 
 var a0 = interval.Interval{
 	Start: w.Add(20 * time.Second),
@@ -39,6 +45,16 @@ var a1 = interval.Interval{
 var a2 = interval.Interval{
 	Start: w.Add(120 * time.Second),
 	End:   w.Add(180 * time.Second),
+}
+
+var a3 = interval.Interval{
+	Start: w.Add(120 * time.Second),
+	End:   w.Add(161 * time.Second),
+}
+
+var a4 = interval.Interval{
+	Start: w.Add(120 * time.Second),
+	End:   w.Add(150 * time.Second),
 }
 
 var d0 = interval.Interval{
@@ -63,10 +79,19 @@ var d3 = interval.Interval{
 
 var d4 = interval.Interval{
 	Start: w.Add(150 * time.Second),
-	End:   w.Add(160 * time.Second),
+	End:   w.Add(161 * time.Second),
 }
 
 var d5 = interval.Interval{
+	Start: w.Add(200 * time.Second),
+	End:   w.Add(230 * time.Second),
+}
+var d6 = interval.Interval{
+	Start: w.Add(150 * time.Second),
+	End:   w.Add(159 * time.Second),
+}
+
+var d7 = interval.Interval{
 	Start: w.Add(200 * time.Second),
 	End:   w.Add(220 * time.Second),
 }
@@ -112,8 +137,8 @@ var s7 = interval.Interval{
 }
 
 var s8 = interval.Interval{
-	Start: w.Add(155 * time.Second),
-	End:   w.Add(161 * time.Second),
+	Start: w.Add(160 * time.Second),
+	End:   w.Add(162 * time.Second),
 }
 
 var s9 = interval.Interval{
@@ -125,15 +150,19 @@ var s10 = interval.Interval{
 	Start: w.Add(230 * time.Second),
 	End:   w.Add(240 * time.Second),
 }
+var s11 = interval.Interval{
+	Start: w.Add(163 * time.Second),
+	End:   w.Add(168 * time.Second),
+}
 
 func TestFilter(t *testing.T) {
 
 	f := New()
 
-	err := f.SetAllowed([]interval.Interval{a0, a1, a2})
+	err := f.SetAllowed([]interval.Interval{a0, a1, a2, a3, a4})
 	assert.NoError(t, err)
 
-	err = f.SetDenied([]interval.Interval{d0, d1, d2, d3, d4, d5})
+	err = f.SetDenied([]interval.Interval{d0, d1, d2, d3, d4, d5, d6, d7})
 	assert.NoError(t, err)
 
 	assert.False(t, f.Allowed(s0))
@@ -147,5 +176,5 @@ func TestFilter(t *testing.T) {
 	assert.False(t, f.Allowed(s8))
 	assert.False(t, f.Allowed(s9))
 	assert.False(t, f.Allowed(s10))
-
+	assert.True(t, f.Allowed(s11))
 }

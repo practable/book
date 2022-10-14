@@ -57,6 +57,8 @@ func (f *Filter) SetAllowed(allowed []interval.Interval) error {
 // SetDenied adds an interval to the `denied list`
 func (f *Filter) SetDenied(denied []interval.Interval) error {
 
+	denied = interval.Merge(denied)
+
 	for _, d := range denied {
 
 		u := uuid.New()

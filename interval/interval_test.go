@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	avl "internal/trees/avltree"
+	avl "github.com/timdrysdale/interval/internal/trees/avltree"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -91,6 +91,32 @@ func TestSort(t *testing.T) {
 	assert.Equal(t, intervals[3], d)
 
 }
+func TestSortSameStart(t *testing.T) {
+
+	now := time.Now()
+
+	a := Interval{Start: now, End: now.Add(2 * time.Second)}
+	b := Interval{Start: now.Add(3 * time.Second), End: now.Add(4 * time.Second)}
+	c := Interval{Start: now.Add(3 * time.Second), End: now.Add(8 * time.Second)}
+	d := Interval{Start: now.Add(7 * time.Second), End: now.Add(8 * time.Second)}
+
+	intervals := []Interval{c, a, d, b}
+
+	// check intervals are out of order to start with
+	assert.Equal(t, intervals[0], c)
+	assert.Equal(t, intervals[1], a)
+	assert.Equal(t, intervals[2], d)
+	assert.Equal(t, intervals[3], b)
+
+	Sort(&intervals)
+
+	// check order is now correct
+	assert.Equal(t, intervals[0], a)
+	assert.Equal(t, intervals[1], b)
+	assert.Equal(t, intervals[2], c)
+	assert.Equal(t, intervals[3], d)
+
+}
 
 func TestInvert(t *testing.T) {
 
@@ -157,4 +183,102 @@ func TestInvertOverlapping(t *testing.T) {
 
 	assert.Equal(t, inverted, expected)
 
+}
+
+func TestMergeNone(t *testing.T) {
+
+	now := time.Now()
+
+	a := Interval{Start: now, End: now.Add(2 * time.Second)}
+	b := Interval{Start: now.Add(3 * time.Second), End: now.Add(4 * time.Second)}
+
+	intervals := []Interval{a, b}
+
+	merged := Merge(intervals)
+
+	// check order is now correct, with inverted intervals
+
+	expected := []Interval{
+		Interval{Start: now, End: now.Add(2 * time.Second)},
+		Interval{Start: now.Add(3 * time.Second), End: now.Add(4 * time.Second)},
+	}
+
+	assert.Equal(t, expected, merged)
+}
+
+func TestMergeSimple(t *testing.T) {
+
+	now := time.Now()
+
+	a := Interval{Start: now, End: now.Add(2 * time.Second)}
+	b := Interval{Start: now.Add(1 * time.Second), End: now.Add(4 * time.Second)}
+
+	intervals := []Interval{a, b}
+
+	merged := Merge(intervals)
+
+	// check order is now correct, with inverted intervals
+
+	expected := []Interval{
+		Interval{Start: now, End: now.Add(4 * time.Second)},
+	}
+
+	assert.Equal(t, expected, merged)
+}
+
+func TestMergeOverlapping(t *testing.T) {
+
+	now := time.Now()
+
+	// c overlaps b
+	a := Interval{Start: now, End: now.Add(2 * time.Second)}
+	b := Interval{Start: now.Add(3 * time.Second), End: now.Add(5 * time.Second)}
+	c := Interval{Start: now.Add(4 * time.Second), End: now.Add(6 * time.Second)}
+	d := Interval{Start: now.Add(7 * time.Second), End: now.Add(9 * time.Second)}
+
+	intervals := []Interval{c, a, d, b}
+
+	// check intervals are out of order to start with
+	assert.Equal(t, intervals[0], c)
+	assert.Equal(t, intervals[1], a)
+	assert.Equal(t, intervals[2], d)
+	assert.Equal(t, intervals[3], b)
+
+	merged := Merge(intervals)
+
+	// check order is now correct, with inverted intervals
+
+	expected := []Interval{
+		Interval{Start: now, End: now.Add(2 * time.Second)},
+		Interval{Start: now.Add(3 * time.Second), End: now.Add(6 * time.Second)},
+		Interval{Start: now.Add(7 * time.Second), End: now.Add(9 * time.Second)},
+	}
+
+	assert.Equal(t, expected, merged)
+}
+
+func TestMergeSameStart(t *testing.T) {
+
+	now := time.Now()
+
+	// c overlaps b
+	a := Interval{Start: now, End: now.Add(2 * time.Second)}
+	b := Interval{Start: now.Add(2 * time.Second), End: now.Add(9 * time.Second)}
+	c := Interval{Start: now.Add(2 * time.Second), End: now.Add(6 * time.Second)}
+	d := Interval{Start: now.Add(2 * time.Second), End: now.Add(5 * time.Second)}
+	// ensure no cheating by just finding smallest and largest times - this interval is non-contiguous so must be retained as separate interval
+	e := Interval{Start: now.Add(11 * time.Second), End: now.Add(12 * time.Second)}
+
+	intervals := []Interval{a, b, c, d, e}
+
+	merged := Merge(intervals)
+
+	// check order is now correct, with inverted intervals
+
+	expected := []Interval{
+		Interval{Start: now, End: now.Add(9 * time.Second)},
+		Interval{Start: now.Add(11 * time.Second), End: now.Add(12 * time.Second)},
+	}
+
+	assert.Equal(t, merged, expected)
 }
