@@ -13,6 +13,8 @@
 package filter
 
 import (
+	"sync"
+
 	avl "github.com/timdrysdale/interval/internal/trees/avltree"
 
 	"github.com/google/uuid"
@@ -21,21 +23,24 @@ import (
 
 // Filter represents an allowed interval, with a list of denied sub-intervals
 type Filter struct {
-	notAllowed *avl.Tree // a deny list calculated by inverting the allow list
-	denied     *avl.Tree // the deny list
+	*sync.RWMutex `json:"-"`
+	notAllowed    *avl.Tree // a deny list calculated by inverting the allow list
+	denied        *avl.Tree // the deny list
 }
 
 // New creates a new filter with an empty deny list and no allowed interval
 func New() *Filter {
 	return &Filter{
-		notAllowed: avl.NewWith(interval.Comparator),
-		denied:     avl.NewWith(interval.Comparator),
+		&sync.RWMutex{},
+		avl.NewWith(interval.Comparator),
+		avl.NewWith(interval.Comparator),
 	}
 }
 
 // SetAllowed adds the allowed intervals to the `allowed list`
 func (f *Filter) SetAllowed(allowed []interval.Interval) error {
-
+	f.Lock()
+	defer f.Unlock()
 	// invert the intervals to become notAllowed intervals
 	notAllowed := interval.Invert(allowed)
 
@@ -56,6 +61,8 @@ func (f *Filter) SetAllowed(allowed []interval.Interval) error {
 
 // SetDenied adds an interval to the `denied list`
 func (f *Filter) SetDenied(denied []interval.Interval) error {
+	f.Lock()
+	defer f.Unlock()
 
 	denied = interval.Merge(denied)
 
@@ -78,7 +85,11 @@ func (f *Filter) SetDenied(denied []interval.Interval) error {
 // Allowed returns true if the interval is allowed
 // It must  not conflict with notAllowed
 // It must not conflict with denied
+// This does not write to the filter so only needs
+// a read lock
 func (f *Filter) Allowed(when interval.Interval) bool {
+	f.RLock()
+	defer f.RUnlock()
 
 	u := uuid.New()
 
