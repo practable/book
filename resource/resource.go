@@ -3,8 +3,9 @@ package resource
 
 import (
 	"errors"
-	avl "internal/trees/avltree"
 	"time"
+
+	avl "github.com/timdrysdale/interval/internal/trees/avltree"
 
 	"github.com/google/uuid"
 	"github.com/timdrysdale/interval/interval"
