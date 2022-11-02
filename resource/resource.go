@@ -15,6 +15,7 @@ import (
 // Resource represents the bookings of a resources
 type Resource struct {
 	*sync.RWMutex `json:"-"`
+	Name          string // unique, persistant name
 	bookings      *avl.Tree
 	available     bool   // must be true to be booked - we don't know when it might be available again
 	status        string // optional status message, to explain lack of availability
@@ -29,9 +30,10 @@ type Booking struct {
 }
 
 // New creates a new resource with no bookings
-func New() *Resource {
+func New(name string) *Resource {
 	return &Resource{
 		&sync.RWMutex{},
+		name,
 		avl.NewWith(interval.Comparator),
 		true,
 		"",

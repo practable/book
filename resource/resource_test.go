@@ -29,7 +29,7 @@ var c = interval.Interval{
 
 func TestIsAvailable(t *testing.T) {
 
-	r := New()
+	r := New("test")
 
 	ok, msg := r.IsAvailable()
 
@@ -58,7 +58,7 @@ func TestIsAvailable(t *testing.T) {
 
 func TestBooking(t *testing.T) {
 
-	r := New()
+	r := New("test")
 
 	// request first interval - must succeed
 	ua, err := r.Request(a)
@@ -121,7 +121,7 @@ func TestBooking(t *testing.T) {
 
 func TestValidateBooking(t *testing.T) {
 
-	r := New()
+	r := New("test")
 
 	ok, msg := r.IsAvailable()
 
@@ -172,4 +172,9 @@ func TestValidateBooking(t *testing.T) {
 	assert.False(t, ok)
 	assert.Equal(t, err.Error(), "Unavailable (Offline)")
 
+}
+
+func TestName(t *testing.T) {
+	r := New("test")
+	assert.Equal(t, r.Name, "test")
 }
