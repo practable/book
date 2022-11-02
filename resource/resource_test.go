@@ -27,7 +27,36 @@ var c = interval.Interval{
 	End:   w.Add(12 * time.Second),
 }
 
-func TestResource(t *testing.T) {
+func TestIsAvailable(t *testing.T) {
+
+	r := New()
+
+	ok, msg := r.IsAvailable()
+
+	assert.True(t, ok)
+	assert.Equal(t, msg, "")
+
+	// request first interval - must succeed
+	ua, err := r.Request(a)
+	assert.NoError(t, err)
+	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", ua.String())
+
+	r.SetUnavailable("Offline")
+
+	// request a different non-overlapping interval
+	// would succeed if available but must fail because unavailable
+	ub, err := r.Request(b)
+	assert.Error(t, err)
+	assert.Equal(t, "00000000-0000-0000-0000-000000000000", ub.String())
+
+	ok, msg = r.IsAvailable()
+
+	assert.False(t, ok)
+	assert.Equal(t, msg, "Unavailable (Offline)")
+
+}
+
+func TestBooking(t *testing.T) {
 
 	r := New()
 
@@ -87,5 +116,60 @@ func TestResource(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, bookings[0].When.Start, b.Start)
 	assert.Equal(t, bookings[0].ID, ub)
+
+}
+
+func TestValidateBooking(t *testing.T) {
+
+	r := New()
+
+	ok, msg := r.IsAvailable()
+
+	assert.True(t, ok)
+	assert.Equal(t, msg, "")
+
+	// request first interval - must succeed
+	ua, err := r.Request(a)
+	assert.NoError(t, err)
+	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", ua.String())
+
+	// Booking is valid
+	ok, err = r.ValidateBooking(Booking{
+		When: a,
+		ID:   ua,
+	})
+
+	assert.True(t, ok)
+	assert.Equal(t, nil, err)
+
+	// Check invalid if interval is not present
+	ok, err = r.ValidateBooking(Booking{
+		When: b, //this interval not present
+		ID:   ua,
+	})
+	assert.False(t, ok)
+	assert.Equal(t, "Not Found", err.Error())
+
+	// Check invalid if ID and interval from different bookings
+	// add a second booking to do this check
+	ub, err := r.Request(b)
+	assert.NoError(t, err)
+	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", ub.String())
+
+	ok, err = r.ValidateBooking(Booking{
+		When: a,  //this interval from first booking
+		ID:   ub, //this id from second booking
+	})
+
+	// Make booking invalid by setting machine unavailable
+	r.SetUnavailable("Offline")
+
+	ok, err = r.ValidateBooking(Booking{
+		When: a,
+		ID:   ua,
+	})
+
+	assert.False(t, ok)
+	assert.Equal(t, err.Error(), "Unavailable (Offline)")
 
 }

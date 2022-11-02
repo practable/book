@@ -16,10 +16,13 @@ import (
 type Resource struct {
 	*sync.RWMutex `json:"-"`
 	bookings      *avl.Tree
+	available     bool   // must be true to be booked - we don't know when it might be available again
+	status        string // optional status message, to explain lack of availability
 }
 
 // Booking represents a booking. This is not used internally, it's just for
-// returning booking info from GetBookings()
+// returning booking info from GetBookings() and
+// validating bookings with ValidateBooking()
 type Booking struct {
 	When interval.Interval
 	ID   uuid.UUID
@@ -30,6 +33,8 @@ func New() *Resource {
 	return &Resource{
 		&sync.RWMutex{},
 		avl.NewWith(interval.Comparator),
+		true,
+		"",
 	}
 }
 
@@ -53,10 +58,24 @@ func (r *Resource) Delete(delete uuid.UUID) error {
 
 }
 
+func (r *Resource) SetUnavailable(reason string) {
+	r.available = false
+	r.status = reason
+}
+
+func (r *Resource) SetAvailable(reason string) {
+	r.available = true
+	r.status = reason
+}
+
 // Request returns a booking, if it can be made
 func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
 	r.Lock()
 	defer r.Unlock()
+
+	if ok, msg := r.IsAvailable(); !ok {
+		return [16]byte{}, errors.New(msg)
+	}
 
 	u := uuid.New()
 
@@ -99,6 +118,45 @@ func (r *Resource) GetBookings() ([]Booking, error) {
 	}
 
 	return b, nil
+
+}
+
+func (r *Resource) IsAvailable() (bool, string) {
+
+	if r.available {
+		return true, r.status
+	}
+
+	msg := "Unavailable"
+
+	if r.status != "" {
+		msg += " (" + r.status + ")"
+	}
+
+	return false, msg
+}
+
+// ValidateBooking checks if a given booking matches an existing booking
+// Returns false if the resource is not available so that it can be
+// used as a check on whether to supply connection info to user
+// (don't if resource if not available)
+func (r *Resource) ValidateBooking(b Booking) (bool, error) {
+
+	id, found := r.bookings.Get(b.When)
+
+	if !found {
+		return false, errors.New("Not Found")
+	}
+
+	if ok, msg := r.IsAvailable(); !ok {
+		return false, errors.New(msg)
+	}
+
+	if id != b.ID {
+		return false, errors.New("ID mismatch")
+	}
+
+	return true, nil
 
 }
 
