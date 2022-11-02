@@ -1,6 +1,106 @@
 # interval
 This package implements bookings with arbitrary durations
 
+## Features
+
+- Advance bookings 
+- Arbitrary intervals for bookings
+- Guarantee exclusive bookings
+- Different UIs for different users
+- Different limits on number of current/future bookings for different users
+- Different usage limits for different users
+- Resource status tracking (e.g. if offline for maintenance or failing tests)
+
+## Limitations
+- Redundancy is not supported - it's doable, but too complicated to reason about hiearahical groupings of kit at this stage where some people book a type of experiment and others book specific examples.
+- Unlimited access to simulations (unlimited, anytime, no need for booking?) - relative simple, but out of scope for now (simple mod for later).
+- What if kit doesn't work - how to get another? If cannot cancel ...?! For now - when taking up booking, it returns, equipment not available. More advanced options can be added later (e.g. admin edits bookings to substitute another piece of kit instead, when taking an experiment offline).
+
+## Implementation overview
+
+### Definitions
+
+A `resource` represents a single bookable entity which is a real, physical piece of equipment. The entity can be booked for any arbitrary interval, so long as it does not overlap with any other booking. Booking exclusivity is guaranteed at the resource level. A resource has an availability (bool) and a status message (e.g. "Test failed on (date)", or "Test passed on (date)")
+
+A `filter` represents a collection of `allowed` and `denied` periods, allowing for the implementation of policies about when a booking can be made.
+
+A `slot` represents access to one resource, where the access is restricted by a `filter`. There are potentially many slots for one resource, and slots may overlap, resulted in shared access (but the first to book a resource gets exclusive use of it, it's just the opportunity to book it that is shared). 
+
+A `user` represents an entity that can book `slots` according to zero or more `policy` instances.
+
+A `policy` represents the maximum usage permitted for a list of one or more slots, the minimum or maximum length of bookable interval, the maximum number of current/future bookings, and the user interfaces that can be used.
+
+#### What happened to pools?
+
+Now that we are booking in advance, the concept of redundancy as it applies to different hierarchies of groupings of equipment is complex, and so pools and redundancy is left for future work. Instead for now, if a user books something, and it becomes unavailable, then they can rebook on something else. It may be upsetting to a user to have a session cancelled due to kit failure, and having to sort a replacement session themselves, but better we reduce frustration overall for many users by offering some form of booking.
+
+#### Why is the filter in the slot, not the policy?
+
+Some resources may be shared between two courses, other between three or four courses, and some exclusive users may only need a subset of the equipment of that type, so blanket filtering of access to a set of resources is not sufficient. Slots with individually-defined access times to specific resources can be added to a policy to express this, for example half the slots for the other class will be available any time, the other half only when not being used by the exclusive user. In other words, the slots in a policy may have different filters in them.  This does require editing all slots related to a resource to establish a new exclusive user, but that can be avoided later by using a rule-based system inspired by or based on Ory Keto / Google Zanzibar.
+
+### Example Process Flow 
+
+A course organiser and practable administrator agree a `policy` for use by the students in a class, including the times of access to equipment which is set by the slots assigned to the policy. Optionally additional policies for course staff and tutors/demonstrators could be agreed, e.g. with access to other user interfaces.
+
+The policy sets user-specific aspects such as total usage, booking duration and live booking count. The slots contain any limitatations on when the equipment is available to a class. Thus, the policy, once agreed need not be changed, however, the definition of the slots it refers to, may change e.g. if another class needs the equipment exclusively for an hour, then that hour would be denied in the slots assigned to other classes. Such changes would happen behind the scenes, and not be explicitly shown in the policy.
+
+A policy exists as a JWT token on a server. A user is provided with a link to a booking system with the policy-code as a URL param, as we currently do for setting groups.
+
+A booking agent (client-side javascript, usually) checks to see if it is has already used the service before, by looking in its cache for pseudo-id. If no pseudo-id is found, it asks the user for their exam code, and checks/validates the format of the exam-code.
+
+The user will see any bookings they have made under any other other policy, but can only book under the policy they currently have - they have to go to the link for the other course to book for that course. In this way, we can refresh the policy as needed, rather than having old policy codes hanging around or storing them in the booking system?  Simpler to test if we don't remember codes? Or store policy codes with expiration date? Get the policy fresh everytime anyway .... What if a code is shared widely? We can just change the link. So easier if we don't save old policies, because then we do not have to tell the booking system to invalidate old policies stored with users - unless we can auto-remove them if they are found to be expired?  These complexities can be better handled when we have the Ory version up and running, so don't get bogged down in it for now - just go with the live-only/non-stored policies for simplicity.
+
+The policy is submitted along with any requests for availability or bookings, as the authorisation.
+
+If a user has spare bookings available then can make a new booking. They can see availability, before cancelling their current booking(s), to make new ones. Don't offer a booking swap at this stage?
+
+Cancel bookings is an option.
+
+Store booking against the pseudo-id so it can be retrieved on future visits.
+
+When a booking becomes due, submit the booking to the server for streaming stuff, same as before.
+
+In this first version, don't allow session cancellation / i.e. can't cancel booking after launching it, to save having to re-do the user interfaces at this stage.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Example
+
+Why not have filters on `slots` AND `policies`?  In order to provide access to an experiment, there must be available resources. Forcing all knowledge about availability of resources into a single place (slot definitions) simplifies testing/reporting, at the cost of having more `slots`. 
+
+Class E requires Exclusive access to a Experiement A. Class H will be heavy users of Experiment A. The General Public will also use Experiment A, but only when it is not in high-demand for Class H (e.g. before/after class H use it, and during anti-social hours).
+
+Three slots are prepared for each kit instance of Experiment A, representing (1) the exclusive access periods for Class E, (2) the allowable access periods for Class H, (3) and the allowable access periods for General Public.
+
+To see whether a resource is in exclusive or shared use at any given time, plot the allowable access periods for each resource, and annotate with the slot names.
+
+
+
+
+
+
+
+
+
 ## Gotchas
 
 [time](https://pkg.go.dev/time#Time)
@@ -109,8 +209,19 @@ AVL trees are used to ensure good average look-up performance.
 // to the "free" colour, and overlay bookings in "booked" colour. Save processing it.
 
 
+## Gitops
+
+In the last booking system, updates could be made on the manifest by mutating it, but this was never used in practice, because the manifest was deleted and reloaded every time we made a change. So we can reduce a lot of unused code if we do away with the live mutation of the manifest, and take a more gitops approach. 
+
+We could host the manifest in a repo, and simply point the booking system at that repo, and have it notice when it has changed (and reload).
+
+Bookings, if saved to disk, could be reloaded. A time-stamped transaction log would do - then any thing that could be re-booked could be flagged during the replay process, e.g. if the slot count is reduced. A user could be alerted by putting that booking into the cancelled bookings list ...  with a flag that the admin cancelled it. 
+
+
 
 ### Frontend to the existing immediate use booking system
+
+This section is deprecated.
 
 Rather than try to manage all the equipment, this system is simply about assigning users to slots, which are promises of access to kit. Since the kit cannot be accesed through any other gatekeeper, this booking system simply waits for pre-booked slots to start, then obtains a token from the underlying instant use booking system. The system is reliant on the exclusive connection to the underlying system:
 
@@ -158,6 +269,33 @@ We will use this feature for testing. A couple of additional points:
 ### Cancellation
 
 With JWT token authorisation, and no revocation, meaningful cancellation is not possible (a user might cancel then use their browser history to return to the session, interfering with the next user taking over from them).  However, sessions booked in advance, and not yet taken up, have not had their JWT token released, so can be safely cancelled.
+
+in the old `pools/activity.go`:
+```go
+	return permission.Token{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience: jwt.ClaimStrings{*mp.Audience},
+		},
+		ConnectionType: *mp.ConnectionType,
+		Scopes:         mp.Scopes,
+		Topic:          *mp.Topic,
+	}
+```
+
+We could shift to using a `jti` field for each token, so that every time you want to reconnect, you need to get a token from the booking system .... 
+
+edge case - did you get rejected because of no connection, or because the token was invalid?
+What load does it put on the booking system?
+
+But - it would help us manage cancellation, potentially. Because we just kill all connections with a certain booking id, then don't make any more tokens for it. Then no existing token can be re-used, so long as the jti list remains intact.
+
+We could also deny-list cancelled bid.
+
+There would be a smaller list to search if we just closed existing connections and deny-listed cancelled bid. We also would not need to revise the current UI because the bid would be in the token.
+
+Better as an explicit claim of `bid` rather than mis-use `jti`
+
+
 
 ### Identity
 
