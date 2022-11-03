@@ -24,11 +24,11 @@ A `resource` represents a single bookable entity which is a real, physical piece
 
 A `filter` represents a collection of `allowed` and `denied` periods, allowing for the implementation of policies about when a booking can be made.
 
-A `slot` represents access to one resource, where the access is restricted by a `filter`. There are potentially many slots for one resource, and slots may overlap, resulted in shared access (but the first to book a resource gets exclusive use of it, it's just the opportunity to book it that is shared). 
+A `slot` represents access to one resource, where the access is restricted by a `filter`. There are potentially many slots for one resource, and slots may overlap, resulted in shared access (but the first to book a resource gets exclusive use of it, it's just the opportunity to book it that is shared). The slot lists the user interface set that can be used with the hardware.
 
 A `user` represents an entity that can book `slots` according to zero or more `policy` instances.
 
-A `policy` represents the maximum usage permitted for a list of one or more slots, the minimum or maximum length of bookable interval, the maximum number of current/future bookings, and the user interfaces that can be used.
+A `policy` represents the maximum usage permitted for a list of one or more slots, the minimum or maximum length of bookable interval, the maximum number of current/future bookings.
 
 #### What happened to pools?
 

@@ -1,5 +1,5 @@
 // package resource holds non-overlapping bookings with arbitrary durations
-package resource
+package diary
 
 import (
 	"errors"
@@ -12,8 +12,8 @@ import (
 	"github.com/timdrysdale/interval/interval"
 )
 
-// Resource represents the bookings of a resources
-type Resource struct {
+// Diary represents the bookings of a resources
+type Diary struct {
 	*sync.RWMutex `json:"-"`
 	Name          string // unique, persistant name
 	bookings      *avl.Tree
@@ -30,8 +30,8 @@ type Booking struct {
 }
 
 // New creates a new resource with no bookings
-func New(name string) *Resource {
-	return &Resource{
+func New(name string) *Diary {
+	return &Diary{
 		&sync.RWMutex{},
 		name,
 		avl.NewWith(interval.Comparator),
@@ -41,17 +41,17 @@ func New(name string) *Resource {
 }
 
 // Delete removes a booking, if it exists
-func (r *Resource) Delete(delete uuid.UUID) error {
+func (d *Diary) Delete(delete uuid.UUID) error {
 
-	r.Lock()
-	defer r.Unlock()
+	d.Lock()
+	defer d.Unlock()
 
-	slots := r.bookings.Keys() //these are given in order
-	IDs := r.bookings.Values()
+	slots := d.bookings.Keys() //these are given in order
+	IDs := d.bookings.Values()
 
 	for idx, ID := range IDs {
 		if delete == ID {
-			r.bookings.Remove(slots[idx])
+			d.bookings.Remove(slots[idx])
 			return nil
 		}
 	}
@@ -60,28 +60,28 @@ func (r *Resource) Delete(delete uuid.UUID) error {
 
 }
 
-func (r *Resource) SetUnavailable(reason string) {
-	r.available = false
-	r.status = reason
+func (d *Diary) SetUnavailable(reason string) {
+	d.available = false
+	d.status = reason
 }
 
-func (r *Resource) SetAvailable(reason string) {
-	r.available = true
-	r.status = reason
+func (d *Diary) SetAvailable(reason string) {
+	d.available = true
+	d.status = reason
 }
 
 // Request returns a booking, if it can be made
-func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
-	r.Lock()
-	defer r.Unlock()
+func (d *Diary) Request(when interval.Interval) (uuid.UUID, error) {
+	d.Lock()
+	defer d.Unlock()
 
-	if ok, msg := r.IsAvailable(); !ok {
+	if ok, msg := d.IsAvailable(); !ok {
 		return [16]byte{}, errors.New(msg)
 	}
 
 	u := uuid.New()
 
-	_, err := r.bookings.Put(when, u)
+	_, err := d.bookings.Put(when, u)
 
 	if err != nil {
 		//return a zero-value UUID if there is an error
@@ -93,20 +93,20 @@ func (r *Resource) Request(when interval.Interval) (uuid.UUID, error) {
 }
 
 // GetCount returns the number of live bookings
-func (r *Resource) GetCount() int {
-	r.RLock()
-	defer r.RUnlock()
-	return r.bookings.Size()
+func (d *Diary) GetCount() int {
+	d.RLock()
+	defer d.RUnlock()
+	return d.bookings.Size()
 }
 
 // GetBookings returns all bookings
-func (r *Resource) GetBookings() ([]Booking, error) {
-	r.RLock()
-	defer r.RUnlock()
+func (d *Diary) GetBookings() ([]Booking, error) {
+	d.RLock()
+	defer d.RUnlock()
 	b := []Booking{}
 
-	slots := r.bookings.Keys() //these are given in order
-	IDs := r.bookings.Values()
+	slots := d.bookings.Keys() //these are given in order
+	IDs := d.bookings.Values()
 
 	if len(slots) != len(IDs) {
 		return b, errors.New("number of slots and IDs are not the same")
@@ -123,16 +123,16 @@ func (r *Resource) GetBookings() ([]Booking, error) {
 
 }
 
-func (r *Resource) IsAvailable() (bool, string) {
+func (d *Diary) IsAvailable() (bool, string) {
 
-	if r.available {
-		return true, r.status
+	if d.available {
+		return true, d.status
 	}
 
 	msg := "Unavailable"
 
-	if r.status != "" {
-		msg += " (" + r.status + ")"
+	if d.status != "" {
+		msg += " (" + d.status + ")"
 	}
 
 	return false, msg
@@ -142,15 +142,15 @@ func (r *Resource) IsAvailable() (bool, string) {
 // Returns false if the resource is not available so that it can be
 // used as a check on whether to supply connection info to user
 // (don't if resource if not available)
-func (r *Resource) ValidateBooking(b Booking) (bool, error) {
+func (d *Diary) ValidateBooking(b Booking) (bool, error) {
 
-	id, found := r.bookings.Get(b.When)
+	id, found := d.bookings.Get(b.When)
 
 	if !found {
 		return false, errors.New("Not Found")
 	}
 
-	if ok, msg := r.IsAvailable(); !ok {
+	if ok, msg := d.IsAvailable(); !ok {
 		return false, errors.New(msg)
 	}
 
@@ -163,14 +163,14 @@ func (r *Resource) ValidateBooking(b Booking) (bool, error) {
 }
 
 // ClearBefore removes all old bookings
-func (r *Resource) ClearBefore(t time.Time) {
-	r.Lock()
-	defer r.Unlock()
-	slots := r.bookings.Keys() //these are given in order
+func (d *Diary) ClearBefore(t time.Time) {
+	d.Lock()
+	defer d.Unlock()
+	slots := d.bookings.Keys() //these are given in order
 
 	for _, when := range slots {
 		if when.(interval.Interval).End.Before(t) {
-			r.bookings.Remove(when)
+			d.bookings.Remove(when)
 		}
 	}
 }
