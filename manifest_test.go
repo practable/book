@@ -24,6 +24,8 @@ func TestCheckDescriptions(t *testing.T) {
 		Name: "a",
 	}
 
+	e := Description{}
+
 	items := []Description{a, b, c}
 
 	err, msg := CheckDescriptions(items)
@@ -37,6 +39,14 @@ func TestCheckDescriptions(t *testing.T) {
 	assert.Error(t, err)
 
 	assert.Equal(t, msg, []string{"Duplicate description definition #3: a"})
+
+	items = []Description{a, e, b, c}
+
+	err, msg = CheckDescriptions(items)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, msg, []string{"Unnamed description #1"})
 
 }
 
@@ -58,6 +68,8 @@ func TestCheckPolicies(t *testing.T) {
 		Name: "a",
 	}
 
+	e := Policy{}
+
 	items := []Policy{a, b, c}
 
 	err, msg := CheckPolicies(items)
@@ -71,6 +83,14 @@ func TestCheckPolicies(t *testing.T) {
 	assert.Error(t, err)
 
 	assert.Equal(t, msg, []string{"Duplicate policy definition #3: a"})
+
+	items = []Policy{a, e, b, c}
+
+	err, msg = CheckPolicies(items)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, msg, []string{"Unnamed policy #1"})
 
 }
 
@@ -92,6 +112,8 @@ func TestCheckResources(t *testing.T) {
 		Name: "a",
 	}
 
+	e := Resource{}
+
 	items := []Resource{a, b, c}
 
 	err, msg := CheckResources(items)
@@ -105,6 +127,14 @@ func TestCheckResources(t *testing.T) {
 	assert.Error(t, err)
 
 	assert.Equal(t, msg, []string{"Duplicate resource definition #3: a"})
+
+	items = []Resource{a, e, b, c}
+
+	err, msg = CheckResources(items)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, msg, []string{"Unnamed resource #1"})
 
 }
 
@@ -126,6 +156,8 @@ func TestCheckStreams(t *testing.T) {
 		Name: "a",
 	}
 
+	e := Stream{}
+
 	items := []Stream{a, b, c}
 
 	err, msg := CheckStreams(items)
@@ -139,6 +171,14 @@ func TestCheckStreams(t *testing.T) {
 	assert.Error(t, err)
 
 	assert.Equal(t, msg, []string{"Duplicate stream definition #3: a"})
+
+	items = []Stream{a, e, b, c}
+
+	err, msg = CheckStreams(items)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, msg, []string{"Unnamed stream #1"})
 
 }
 
@@ -160,6 +200,8 @@ func TestCheckSlots(t *testing.T) {
 		Name: "a",
 	}
 
+	e := Slot{}
+
 	items := []Slot{a, b, c}
 
 	err, msg := CheckSlots(items)
@@ -173,6 +215,14 @@ func TestCheckSlots(t *testing.T) {
 	assert.Error(t, err)
 
 	assert.Equal(t, msg, []string{"Duplicate slot definition #3: a"})
+
+	items = []Slot{a, e, b, c}
+
+	err, msg = CheckSlots(items)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, msg, []string{"Unnamed slot #1"})
 
 }
 
@@ -194,6 +244,8 @@ func TestCheckUIs(t *testing.T) {
 		Name: "a",
 	}
 
+	e := UI{}
+
 	items := []UI{a, b, c}
 
 	err, msg := CheckUIs(items)
@@ -208,6 +260,13 @@ func TestCheckUIs(t *testing.T) {
 
 	assert.Equal(t, msg, []string{"Duplicate UI definition #3: a"})
 
+	items = []UI{a, e, b, c}
+
+	err, msg = CheckUIs(items)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, msg, []string{"Unnamed UI #1"})
 }
 
 func TestCheckUISets(t *testing.T) {
@@ -228,6 +287,8 @@ func TestCheckUISets(t *testing.T) {
 		Name: "a",
 	}
 
+	e := UISet{}
+
 	items := []UISet{a, b, c}
 
 	err, msg := CheckUISets(items)
@@ -242,4 +303,11 @@ func TestCheckUISets(t *testing.T) {
 
 	assert.Equal(t, msg, []string{"Duplicate UISet definition #3: a"})
 
+	items = []UISet{a, e, b, c}
+
+	err, msg = CheckUISets(items)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, msg, []string{"Unnamed UISet #1"})
 }
