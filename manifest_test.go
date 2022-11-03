@@ -6,6 +6,79 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var OKManifest = Manifest{
+	Descriptions: []Description{
+		Description{Name: "d-p-a"},
+		Description{Name: "d-p-b"},
+		Description{Name: "d-r-a"},
+		Description{Name: "d-r-b"},
+		Description{Name: "d-sl-a"},
+		Description{Name: "d-sl-b"},
+		Description{Name: "d-ui-a"},
+		Description{Name: "d-ui-b"},
+	},
+	Policies: []Policy{
+		Policy{
+			Name:        "p-a",
+			Description: "d-p-a",
+		},
+		Policy{
+			Name:        "p-b",
+			Description: "d-p-b",
+		},
+	},
+	Resources: []Resource{
+		Resource{
+			Name:        "r-a",
+			Description: "d-r-a",
+		},
+		Resource{
+			Name:        "r-b",
+			Description: "d-r-b",
+		},
+	},
+	Slots: []Slot{
+		Slot{
+			Name:        "sl-a",
+			Description: "d-sl-a",
+			Policy:      "p-a",
+			Resource:    "r-a",
+			UISet:       "us-a",
+		},
+		Slot{
+			Name:        "sl-b",
+			Description: "d-sl-b",
+			Policy:      "p-b",
+			Resource:    "r-b",
+			UISet:       "us-b",
+		},
+	},
+	Streams: []Stream{
+		Stream{Name: "st-a"},
+		Stream{Name: "st-b"},
+	},
+	UIs: []UI{
+		UI{
+			Name:        "ui-a",
+			Description: "d-ui-a",
+		},
+		UI{
+			Name:        "ui-b",
+			Description: "d-ui-b",
+		},
+	},
+	UISets: []UISet{
+		UISet{
+			Name: "us-a",
+			UIs:  []string{"ui-a"},
+		},
+		UISet{
+			Name: "us-b",
+			UIs:  []string{"ui-a", "ui-b"},
+		},
+	},
+}
+
 func TestCheckDescriptions(t *testing.T) {
 
 	a := Description{
@@ -37,7 +110,7 @@ func TestCheckDescriptions(t *testing.T) {
 	err, msg = CheckDescriptions(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Duplicate description definition #3: a"})
 
 	items = []Description{a, e, b, c}
@@ -45,7 +118,7 @@ func TestCheckDescriptions(t *testing.T) {
 	err, msg = CheckDescriptions(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Unnamed description #1"})
 
 }
@@ -81,7 +154,7 @@ func TestCheckPolicies(t *testing.T) {
 	err, msg = CheckPolicies(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Duplicate policy definition #3: a"})
 
 	items = []Policy{a, e, b, c}
@@ -89,7 +162,7 @@ func TestCheckPolicies(t *testing.T) {
 	err, msg = CheckPolicies(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Unnamed policy #1"})
 
 }
@@ -125,7 +198,7 @@ func TestCheckResources(t *testing.T) {
 	err, msg = CheckResources(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Duplicate resource definition #3: a"})
 
 	items = []Resource{a, e, b, c}
@@ -133,7 +206,7 @@ func TestCheckResources(t *testing.T) {
 	err, msg = CheckResources(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Unnamed resource #1"})
 
 }
@@ -169,7 +242,7 @@ func TestCheckStreams(t *testing.T) {
 	err, msg = CheckStreams(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Duplicate stream definition #3: a"})
 
 	items = []Stream{a, e, b, c}
@@ -177,7 +250,7 @@ func TestCheckStreams(t *testing.T) {
 	err, msg = CheckStreams(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Unnamed stream #1"})
 
 }
@@ -213,7 +286,7 @@ func TestCheckSlots(t *testing.T) {
 	err, msg = CheckSlots(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Duplicate slot definition #3: a"})
 
 	items = []Slot{a, e, b, c}
@@ -221,7 +294,7 @@ func TestCheckSlots(t *testing.T) {
 	err, msg = CheckSlots(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Unnamed slot #1"})
 
 }
@@ -257,7 +330,7 @@ func TestCheckUIs(t *testing.T) {
 	err, msg = CheckUIs(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Duplicate UI definition #3: a"})
 
 	items = []UI{a, e, b, c}
@@ -265,7 +338,7 @@ func TestCheckUIs(t *testing.T) {
 	err, msg = CheckUIs(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Unnamed UI #1"})
 }
 
@@ -300,7 +373,7 @@ func TestCheckUISets(t *testing.T) {
 	err, msg = CheckUISets(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Duplicate UISet definition #3: a"})
 
 	items = []UISet{a, e, b, c}
@@ -308,6 +381,28 @@ func TestCheckUISets(t *testing.T) {
 	err, msg = CheckUISets(items)
 
 	assert.Error(t, err)
-
+	assert.Equal(t, err.Error(), "duplicate or missing name")
 	assert.Equal(t, msg, []string{"Unnamed UISet #1"})
+}
+
+func TestCheckOKManifest(t *testing.T) {
+
+	err, msg := CheckManifest(OKManifest)
+
+	assert.NoError(t, err)
+	assert.Equal(t, []string{}, msg)
+}
+
+func TestCheckManifestCatchMissingUI(t *testing.T) {
+
+	m := OKManifest
+
+	us := m.UISets
+	us[1].UIs[1] = "ui-c" //does not exist
+	m.UISets = us
+
+	err, msg := CheckManifest(m)
+
+	assert.Error(t, err)
+	assert.Equal(t, []string{"UISet us-b references non-existent UI: ui-c"}, msg)
 }

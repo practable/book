@@ -77,6 +77,19 @@ type Resource struct {
 	Streams []string `json:"streams"`
 }
 
+// use separate description from resource, because UISet
+// All of the strings, except Name, are references to other entries
+// but we can do our own consistency checking rather
+// than having to replace the yaml unmarshal process
+// if we used pointers and big structs as before
+type Slot struct {
+	Description string
+	Name        string
+	Policy      string
+	Resource    string
+	UISet       string
+}
+
 // Stream represents a prototype for a type of stream from a relay
 // Streams will typically be either data, video, or logging.
 // If multiple relay access servers r1, r2 etc are used,just define separate prototypes for
@@ -111,19 +124,6 @@ type Stream struct {
 
 	// Verb is the HTTP method, typically post
 	Verb string `json:"verb,omitempty"`
-}
-
-// use separate description from resource, because UISet
-// All of the strings, except Name, are references to other entries
-// but we can do our own consistency checking rather
-// than having to replace the yaml unmarshal process
-// if we used pointers and big structs as before
-type Slot struct {
-	Description string
-	Name        string
-	Policy      string
-	Resource    string
-	UISet       string
 }
 
 // There is no need for a description in the resource, because the slot holds the description, so
@@ -176,12 +176,18 @@ type User struct {
 	Usage       map[string]time.Duration //map by policy for checking usage
 }
 
+// UI represents a UI that can be used with a resource, for a given slot
 type UI struct {
-	Name string
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	// URL with moustache {{key}} templating for stream connections
+	URL             string   `json:"url"`
+	StreamsRequired []string `json:"streamsRequired"`
 }
 
 type UISet struct {
 	Name string
+	UIs  []string
 }
 
 // New returns an empty store
