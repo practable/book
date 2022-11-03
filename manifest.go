@@ -61,6 +61,168 @@ func CheckDescriptions(items []Description) (error, []string) {
 
 }
 
+func CheckPolicies(items []Policy) (error, []string) {
+
+	msg := []string{}
+
+	n := make(map[string]bool)
+
+	for idx, item := range items {
+
+		if item.Name == "" {
+			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+		}
+
+		if _, ok := n[item.Name]; ok {
+			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+		} else {
+			n[item.Name] = true
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("Issues found"), msg
+	}
+
+	return nil, []string{}
+
+}
+
+func CheckResources(items []Resource) (error, []string) {
+
+	msg := []string{}
+
+	n := make(map[string]bool)
+
+	for idx, item := range items {
+
+		if item.Name == "" {
+			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+		}
+
+		if _, ok := n[item.Name]; ok {
+			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+		} else {
+			n[item.Name] = true
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("Issues found"), msg
+	}
+
+	return nil, []string{}
+
+}
+
+func CheckSlots(items []Slot) (error, []string) {
+
+	msg := []string{}
+
+	n := make(map[string]bool)
+
+	for idx, item := range items {
+
+		if item.Name == "" {
+			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+		}
+
+		if _, ok := n[item.Name]; ok {
+			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+		} else {
+			n[item.Name] = true
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("Issues found"), msg
+	}
+
+	return nil, []string{}
+
+}
+
+func CheckStreams(items []Stream) (error, []string) {
+
+	msg := []string{}
+
+	n := make(map[string]bool)
+
+	for idx, item := range items {
+
+		if item.Name == "" {
+			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+		}
+
+		if _, ok := n[item.Name]; ok {
+			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+		} else {
+			n[item.Name] = true
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("Issues found"), msg
+	}
+
+	return nil, []string{}
+
+}
+
+func CheckUIs(items []UI) (error, []string) {
+
+	msg := []string{}
+
+	n := make(map[string]bool)
+
+	for idx, item := range items {
+
+		if item.Name == "" {
+			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+		}
+
+		if _, ok := n[item.Name]; ok {
+			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+		} else {
+			n[item.Name] = true
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("Issues found"), msg
+	}
+
+	return nil, []string{}
+
+}
+
+func CheckUISets(items []UISet) (error, []string) {
+
+	msg := []string{}
+
+	n := make(map[string]bool)
+
+	for idx, item := range items {
+
+		if item.Name == "" {
+			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+		}
+
+		if _, ok := n[item.Name]; ok {
+			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+		} else {
+			n[item.Name] = true
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("Issues found"), msg
+	}
+
+	return nil, []string{}
+
+}
+
 /*
 // CheckManifest checks for internal consistency, throwing an error
 // if there are any unresolved references by name

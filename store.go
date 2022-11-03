@@ -86,6 +86,9 @@ type Resource struct {
 // Streams are typically accessed via POST with bearer token to an access API
 type Stream struct {
 
+	// Name is unique reference to the stream prototype
+	Name string
+
 	// Audience is the URL of the relay server e.g. https://relay-access.practable.io
 	Audience string `json:"audience"`
 
@@ -174,9 +177,11 @@ type User struct {
 }
 
 type UI struct {
+	Name string
 }
 
 type UISet struct {
+	Name string
 }
 
 // New returns an empty store
