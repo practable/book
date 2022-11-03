@@ -36,7 +36,7 @@ func TestCheckDescriptions(t *testing.T) {
 
 	assert.Error(t, err)
 
-	assert.Equal(t, msg, []string{"Duplicate named member #3: a"})
+	assert.Equal(t, msg, []string{"Duplicate description definition #3: a"})
 
 }
 
@@ -70,7 +70,7 @@ func TestCheckPolicies(t *testing.T) {
 
 	assert.Error(t, err)
 
-	assert.Equal(t, msg, []string{"Duplicate named member #3: a"})
+	assert.Equal(t, msg, []string{"Duplicate policy definition #3: a"})
 
 }
 
@@ -104,7 +104,7 @@ func TestCheckResources(t *testing.T) {
 
 	assert.Error(t, err)
 
-	assert.Equal(t, msg, []string{"Duplicate named member #3: a"})
+	assert.Equal(t, msg, []string{"Duplicate resource definition #3: a"})
 
 }
 
@@ -138,7 +138,7 @@ func TestCheckStreams(t *testing.T) {
 
 	assert.Error(t, err)
 
-	assert.Equal(t, msg, []string{"Duplicate named member #3: a"})
+	assert.Equal(t, msg, []string{"Duplicate stream definition #3: a"})
 
 }
 
@@ -172,7 +172,7 @@ func TestCheckSlots(t *testing.T) {
 
 	assert.Error(t, err)
 
-	assert.Equal(t, msg, []string{"Duplicate named member #3: a"})
+	assert.Equal(t, msg, []string{"Duplicate slot definition #3: a"})
 
 }
 
@@ -206,7 +206,7 @@ func TestCheckUIs(t *testing.T) {
 
 	assert.Error(t, err)
 
-	assert.Equal(t, msg, []string{"Duplicate named member #3: a"})
+	assert.Equal(t, msg, []string{"Duplicate UI definition #3: a"})
 
 }
 
@@ -240,6 +240,6 @@ func TestCheckUISets(t *testing.T) {
 
 	assert.Error(t, err)
 
-	assert.Equal(t, msg, []string{"Duplicate named member #3: a"})
+	assert.Equal(t, msg, []string{"Duplicate UISet definition #3: a"})
 
 }

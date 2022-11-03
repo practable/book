@@ -43,11 +43,11 @@ func CheckDescriptions(items []Description) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+			msg = append(msg, "Unnamed description #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "Duplicate description definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -70,11 +70,11 @@ func CheckPolicies(items []Policy) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+			msg = append(msg, "Unnamed policy #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "Duplicate policy definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -97,11 +97,11 @@ func CheckResources(items []Resource) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+			msg = append(msg, "Unnamed resource #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "Duplicate resource definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -124,11 +124,11 @@ func CheckSlots(items []Slot) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+			msg = append(msg, "Unnamed slot #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "Duplicate slot definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -151,11 +151,11 @@ func CheckStreams(items []Stream) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+			msg = append(msg, "Unnamed stream #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "Duplicate stream definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -178,11 +178,11 @@ func CheckUIs(items []UI) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+			msg = append(msg, "Unnamed UI #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "Duplicate UI definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -205,11 +205,11 @@ func CheckUISets(items []UISet) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed member #"+strconv.Itoa(idx))
+			msg = append(msg, "Unnamed UISet #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate named member #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "Duplicate UISet definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -223,47 +223,14 @@ func CheckUISets(items []UISet) (error, []string) {
 
 }
 
-/*
 // CheckManifest checks for internal consistency, throwing an error
 // if there are any unresolved references by name
 func CheckManifest(m Manifest) (error, []string) {
 	// check if any elements have duplicate names
-	msg := []string{}
 
-	dn := make(map[string]bool)
+	return errors.New("not implemented"), []string{}
 
-	for idx, d := range m.Descriptions {
-
-		if d.Name == "" {
-			msg = append(msg, "Unnamed description #" + +strconv.Itoa(idx))
-		}
-
-		if val, ok := dn[d.Name]; ok {
-			msg = append(msg, "Duplicate description #" + strconv.Itoa(idx) + " " + d.Name)
-		} else {
-			dn[d.Name] = true
-		}
-	}
-
-	pn := make(map[string]bool)
-
-	for idx, p := range m.Polices {
-
-		if p.Name == "" {
-			msg.append("Unnamed policy #" + +strconv.Itoa(idx))
-		}
-
-		if val, ok := pn[p.Name]; ok {
-			msg.append("Duplicate policy #" + strconv.Itoa(idx) + " " + p.Name)
-		} else {
-			pn[p.Name] = true
-		}
-	}
-
-	for _, s := range m.Slots {
-
-	}
-}*/
+}
 
 /*
 
