@@ -1,80 +1,94 @@
 package interval
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-var OKManifest = Manifest{
-	Descriptions: []Description{
-		Description{Name: "d-p-a"},
-		Description{Name: "d-p-b"},
-		Description{Name: "d-r-a"},
-		Description{Name: "d-r-b"},
-		Description{Name: "d-sl-a"},
-		Description{Name: "d-sl-b"},
-		Description{Name: "d-ui-a"},
-		Description{Name: "d-ui-b"},
-	},
-	Policies: []Policy{
-		Policy{
-			Name:        "p-a",
-			Description: "d-p-a",
+// Note that slices are shallow copied so changes are visible
+// to other tests. Since tests may eventually run in parallel, add a mutex
+// All tests must restore any changes they make to the manifest
+type MutexManifest struct {
+	*sync.Mutex
+	Manifest Manifest
+}
+
+var testManifest = MutexManifest{
+	&sync.Mutex{},
+	Manifest{
+		Descriptions: []Description{
+			Description{Name: "d-p-a"},
+			Description{Name: "d-p-b"},
+			Description{Name: "d-r-a"},
+			Description{Name: "d-r-b"},
+			Description{Name: "d-sl-a"},
+			Description{Name: "d-sl-b"},
+			Description{Name: "d-ui-a"},
+			Description{Name: "d-ui-b"},
 		},
-		Policy{
-			Name:        "p-b",
-			Description: "d-p-b",
+		Policies: []Policy{
+			Policy{
+				Name:        "p-a",
+				Description: "d-p-a",
+			},
+			Policy{
+				Name:        "p-b",
+				Description: "d-p-b",
+			},
 		},
-	},
-	Resources: []Resource{
-		Resource{
-			Name:        "r-a",
-			Description: "d-r-a",
+		Resources: []Resource{
+			Resource{
+				Name:        "r-a",
+				Description: "d-r-a",
+			},
+			Resource{
+				Name:        "r-b",
+				Description: "d-r-b",
+			},
 		},
-		Resource{
-			Name:        "r-b",
-			Description: "d-r-b",
+		Slots: []Slot{
+			Slot{
+				Name:        "sl-a",
+				Description: "d-sl-a",
+				Policy:      "p-a",
+				Resource:    "r-a",
+				UISet:       "us-a",
+			},
+			Slot{
+				Name:        "sl-b",
+				Description: "d-sl-b",
+				Policy:      "p-b",
+				Resource:    "r-b",
+				UISet:       "us-b",
+			},
 		},
-	},
-	Slots: []Slot{
-		Slot{
-			Name:        "sl-a",
-			Description: "d-sl-a",
-			Policy:      "p-a",
-			Resource:    "r-a",
-			UISet:       "us-a",
+		Streams: []Stream{
+			Stream{Name: "st-a"},
+			Stream{Name: "st-b"},
 		},
-		Slot{
-			Name:        "sl-b",
-			Description: "d-sl-b",
-			Policy:      "p-b",
-			Resource:    "r-b",
-			UISet:       "us-b",
+		UIs: []UI{
+			UI{
+				Name:            "ui-a",
+				Description:     "d-ui-a",
+				StreamsRequired: []string{"st-a", "st-b"},
+			},
+			UI{
+				Name:            "ui-b",
+				Description:     "d-ui-b",
+				StreamsRequired: []string{"st-a", "st-b"},
+			},
 		},
-	},
-	Streams: []Stream{
-		Stream{Name: "st-a"},
-		Stream{Name: "st-b"},
-	},
-	UIs: []UI{
-		UI{
-			Name:        "ui-a",
-			Description: "d-ui-a",
-		},
-		UI{
-			Name:        "ui-b",
-			Description: "d-ui-b",
-		},
-	},
-	UISets: []UISet{
-		UISet{
-			Name: "us-a",
-			UIs:  []string{"ui-a"},
-		},
-		UISet{
-			Name: "us-b",
-			UIs:  []string{"ui-a", "ui-b"},
+		UISets: []UISet{
+			UISet{
+				Name: "us-a",
+				UIs:  []string{"ui-a"},
+			},
+			UISet{
+				Name: "us-b",
+				UIs:  []string{"ui-a", "ui-b"},
+			},
 		},
 	},
 }
@@ -387,7 +401,7 @@ func TestCheckUISets(t *testing.T) {
 
 func TestCheckOKManifest(t *testing.T) {
 
-	err, msg := CheckManifest(OKManifest)
+	err, msg := CheckManifest(testManifest.Manifest)
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{}, msg)
@@ -395,7 +409,9 @@ func TestCheckOKManifest(t *testing.T) {
 
 func TestCheckManifestCatchMissingUI(t *testing.T) {
 
-	m := OKManifest
+	testManifest.Lock()
+	defer testManifest.Unlock()
+	m := testManifest.Manifest
 
 	us := m.UISets
 	us[1].UIs[1] = "ui-c" //does not exist
@@ -405,4 +421,72 @@ func TestCheckManifestCatchMissingUI(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"UISet us-b references non-existent UI: ui-c"}, msg)
+
+	us[1].UIs[1] = "ui-b" //fix manifest for other tests
+	m.UISets = us
+	err, _ = CheckManifest(m)
+	assert.NoError(t, err)
 }
+
+func TestCheckManifestCatchMissingResource(t *testing.T) {
+
+	testManifest.Lock()
+	defer testManifest.Unlock()
+
+	r := testManifest.Manifest.Resources
+	r[1].Name = "r-c" //makes r-b not exist
+	testManifest.Manifest.Resources = r
+
+	err, msg := CheckManifest(testManifest.Manifest)
+
+	assert.Error(t, err)
+	assert.Equal(t, []string{"Slot sl-b references non-existent resource: r-b"}, msg)
+
+	r[1].Name = "r-b" //fix manifest for other tests
+	testManifest.Manifest.Resources = r
+	err, _ = CheckManifest(testManifest.Manifest)
+	assert.NoError(t, err)
+}
+
+func TestCheckManifestCatchMissingDescriptions(t *testing.T) {
+
+	testManifest.Lock()
+	defer testManifest.Unlock()
+
+	d := testManifest.Manifest.Descriptions
+	d[4].Name = "foo" //makes d-sl-a not exist
+	testManifest.Manifest.Descriptions = d
+
+	err, msg := CheckManifest(testManifest.Manifest)
+
+	assert.Error(t, err)
+	assert.Equal(t, []string{"Slot sl-a references non-existent description: d-sl-a"}, msg)
+
+	d[4].Name = "d-sl-a" //fix manifest for other tests
+	testManifest.Manifest.Descriptions = d
+	err, _ = CheckManifest(testManifest.Manifest)
+	assert.NoError(t, err)
+
+}
+
+func TestCheckManifestCatchMissingStream(t *testing.T) {
+
+	testManifest.Lock()
+	defer testManifest.Unlock()
+
+	s := testManifest.Manifest.UIs[1].StreamsRequired
+	testManifest.Manifest.UIs[1].StreamsRequired = []string{"st-c"} // st-c not exist
+
+	err, msg := CheckManifest(testManifest.Manifest)
+
+	assert.Error(t, err)
+	assert.Equal(t, []string{"UI ui-b references non-existent stream: st-c"}, msg)
+
+	testManifest.Manifest.UIs[1].StreamsRequired = s //fix manifest for other tests
+
+	err, _ = CheckManifest(testManifest.Manifest)
+	assert.NoError(t, err)
+
+}
+
+//TODO add extra checks if this by-name reference approach works out

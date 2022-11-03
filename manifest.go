@@ -363,7 +363,7 @@ func CheckManifest(m Manifest) (error, []string) {
 		// this check still applies, even though it relates in part to the templating process
 		for _, s := range v.StreamsRequired {
 			if _, ok := stm[s]; !ok {
-				m := "UI " + k + " references non-existent stream: " + v.Description
+				m := "UI " + k + " references non-existent stream: " + s
 				msg = append(msg, m)
 			}
 		}
