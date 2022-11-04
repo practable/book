@@ -15,13 +15,14 @@ type Named struct {
 // Manifest represents all the available equipment and how to access it
 // Slots are the primary entities, so reference checking starts with them
 type Manifest struct {
-	Descriptions []Description
-	Policies     []Policy
-	Resources    []Resource
-	Slots        []Slot
-	Streams      []Stream
-	UIs          []UI
-	UISets       []UISet
+	Descriptions []Description `json:"descriptions" yaml:"descriptions"`
+	Policies     []Policy      `json:"policies" yaml:"policies"`
+	Resources    []Resource    `json:"resources" yaml:"resources"`
+	Slots        []Slot        `json:"slots" yaml:"slots"`
+	Streams      []Stream      `json:"streams" yaml:"streams"`
+	UIs          []UI          `json:"uis" yaml:"uis"`
+	UISets       []UISet       `json:"ui_sets" yaml:"ui_sets"`
+	Windows      []Window      `json:"windows" yaml:"windows"`
 }
 
 /*
@@ -43,11 +44,11 @@ func CheckDescriptions(items []Description) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed description #"+strconv.Itoa(idx))
+			msg = append(msg, "unnamed description #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate description definition #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "duplicate description definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -55,6 +56,19 @@ func CheckDescriptions(items []Description) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("duplicate or missing name"), msg
+	}
+
+	for idx, item := range items {
+		if item.Type == "" {
+			msg = append(msg, "missing type field in description #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.Short == "" {
+			msg = append(msg, "missing short field in description #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
 	}
 
 	return nil, []string{}
@@ -70,11 +84,11 @@ func CheckPolicies(items []Policy) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed policy #"+strconv.Itoa(idx))
+			msg = append(msg, "unnamed policy #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate policy definition #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "duplicate policy definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -82,6 +96,16 @@ func CheckPolicies(items []Policy) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("duplicate or missing name"), msg
+	}
+
+	for idx, item := range items {
+		if item.Description == "" {
+			msg = append(msg, "missing description field in policy #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
 	}
 
 	return nil, []string{}
@@ -97,11 +121,11 @@ func CheckResources(items []Resource) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed resource #"+strconv.Itoa(idx))
+			msg = append(msg, "unnamed resource #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate resource definition #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "duplicate resource definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -109,6 +133,20 @@ func CheckResources(items []Resource) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("duplicate or missing name"), msg
+	}
+
+	for idx, item := range items {
+		// ConfigURL is optional
+		if item.Description == "" {
+			msg = append(msg, "missing description field in resource #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.Streams == nil {
+			msg = append(msg, "missing streams field in resource #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
 	}
 
 	return nil, []string{}
@@ -124,11 +162,11 @@ func CheckSlots(items []Slot) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed slot #"+strconv.Itoa(idx))
+			msg = append(msg, "unnamed slot #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate slot definition #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "duplicate slot definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -136,6 +174,29 @@ func CheckSlots(items []Slot) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("duplicate or missing name"), msg
+	}
+
+	for idx, item := range items {
+		if item.Description == "" {
+			msg = append(msg, "missing description field in slot #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.Policy == "" {
+			msg = append(msg, "missing policy field in slot #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.Resource == "" {
+			msg = append(msg, "missing resource field in slot #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.UISet == "" {
+			msg = append(msg, "missing ui_set field in slot #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.Window == "" {
+			msg = append(msg, "missing window field in slot #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
 	}
 
 	return nil, []string{}
@@ -151,11 +212,11 @@ func CheckStreams(items []Stream) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed stream #"+strconv.Itoa(idx))
+			msg = append(msg, "unnamed stream #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate stream definition #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "duplicate stream definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -163,6 +224,31 @@ func CheckStreams(items []Stream) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("duplicate or missing name"), msg
+	}
+
+	for idx, item := range items {
+		if item.Audience == "" {
+			msg = append(msg, "missing audience field in stream #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.ConnectionType == "" {
+			msg = append(msg, "missing ct field in stream #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.For == "" {
+			msg = append(msg, "missing for field in stream #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.Scopes == nil {
+			msg = append(msg, "missing scopes field in stream #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.Topic == "" {
+			msg = append(msg, "missing topic field in stream #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+		if item.URL == "" {
+			msg = append(msg, "missing url field in stream #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
 	}
 
 	return nil, []string{}
@@ -178,11 +264,12 @@ func CheckUIs(items []UI) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed UI #"+strconv.Itoa(idx))
+			// lowercase capitalisation of ui to match json, yaml
+			msg = append(msg, "unnamed ui #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate UI definition #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "duplicate ui definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -190,6 +277,15 @@ func CheckUIs(items []UI) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("duplicate or missing name"), msg
+	}
+	for idx, item := range items {
+		if item.URL == "" {
+			msg = append(msg, "missing url field in ui #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
 	}
 
 	return nil, []string{}
@@ -205,11 +301,12 @@ func CheckUISets(items []UISet) (error, []string) {
 	for idx, item := range items {
 
 		if item.Name == "" {
-			msg = append(msg, "Unnamed UISet #"+strconv.Itoa(idx))
+			// lowercase capitalisation of ui_set to match json, yaml
+			msg = append(msg, "unnamed ui_set #"+strconv.Itoa(idx))
 		}
 
 		if _, ok := n[item.Name]; ok {
-			msg = append(msg, "Duplicate UISet definition #"+strconv.Itoa(idx)+": "+item.Name)
+			msg = append(msg, "duplicate ui_set definition #"+strconv.Itoa(idx)+": "+item.Name)
 		} else {
 			n[item.Name] = true
 		}
@@ -217,6 +314,45 @@ func CheckUISets(items []UISet) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("duplicate or missing name"), msg
+	}
+
+	return nil, []string{}
+
+}
+
+func CheckWindows(items []Window) (error, []string) {
+
+	msg := []string{}
+
+	n := make(map[string]bool)
+
+	for idx, item := range items {
+
+		if item.Name == "" {
+			msg = append(msg, "unnamed window #"+strconv.Itoa(idx))
+		}
+
+		if _, ok := n[item.Name]; ok {
+			msg = append(msg, "duplicate window definition #"+strconv.Itoa(idx)+": "+item.Name)
+		} else {
+			n[item.Name] = true
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("duplicate or missing name"), msg
+	}
+
+	for idx, item := range items {
+		// a window has to have at least one allowed period to be valid
+		// a slot should be deleted rather than have a window with no allowed periods
+		if item.Allowed == nil {
+			msg = append(msg, "missing allowed field in window #"+strconv.Itoa(idx)+": "+item.Name)
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
 	}
 
 	return nil, []string{}
@@ -252,17 +388,26 @@ func CheckManifest(m Manifest) (error, []string) {
 	if err != nil {
 		return err, msg
 	}
+
 	err, msg = CheckSlots(m.Slots)
 
 	if err != nil {
 		return err, msg
 	}
+
 	err, msg = CheckUIs(m.UIs)
 
 	if err != nil {
 		return err, msg
 	}
+
 	err, msg = CheckUISets(m.UISets)
+
+	if err != nil {
+		return err, msg
+	}
+
+	err, msg = CheckWindows(m.Windows)
 
 	if err != nil {
 		return err, msg
@@ -276,6 +421,7 @@ func CheckManifest(m Manifest) (error, []string) {
 	stm := make(map[string]*Stream)
 	uim := make(map[string]*UI)
 	usm := make(map[string]*UISet)
+	wm := make(map[string]*Window)
 
 	for idx, d := range m.Descriptions {
 		dm[d.Name] = &m.Descriptions[idx]
@@ -305,6 +451,10 @@ func CheckManifest(m Manifest) (error, []string) {
 		usm[u.Name] = &m.UISets[idx]
 	}
 
+	for idx, w := range m.Windows {
+		wm[w.Name] = &m.Windows[idx]
+	}
+
 	// Check that all references are present
 
 	// Description -> N/A
@@ -312,7 +462,7 @@ func CheckManifest(m Manifest) (error, []string) {
 	// Policy -> Description
 	for k, v := range pm {
 		if _, ok := dm[v.Description]; !ok {
-			m := "Policy " + k + " references non-existent description: " + v.Description
+			m := "policy " + k + " references non-existent description: " + v.Description
 			msg = append(msg, m)
 		}
 	}
@@ -320,50 +470,54 @@ func CheckManifest(m Manifest) (error, []string) {
 	// Resource ->  Description, Stream
 	for k, v := range rm {
 		if _, ok := dm[v.Description]; !ok {
-			m := "Resource " + k + " references non-existent description: " + v.Description
+			m := "resource " + k + " references non-existent description: " + v.Description
 			msg = append(msg, m)
 		}
 		for _, s := range v.Streams {
 			if _, ok := stm[s]; !ok {
-				m := "Resource " + k + " references non-existent stream: " + v.Description
+				m := "resource " + k + " references non-existent stream: " + s
 				msg = append(msg, m)
 			}
 		}
 	}
 
-	// Slot -> Description, Policy, Resource, UISet
+	// Slot -> Description, Policy, Resource, UISet, Window
 	for k, v := range slm {
 		if _, ok := dm[v.Description]; !ok {
-			m := "Slot " + k + " references non-existent description: " + v.Description
+			m := "slot " + k + " references non-existent description: " + v.Description
 			msg = append(msg, m)
 		}
 		if _, ok := pm[v.Policy]; !ok {
-			m := "Slot " + k + " references non-existent policy: " + v.Policy
+			m := "slot " + k + " references non-existent policy: " + v.Policy
 			msg = append(msg, m)
 		}
 		if _, ok := rm[v.Resource]; !ok {
-			m := "Slot " + k + " references non-existent resource: " + v.Resource
+			m := "slot " + k + " references non-existent resource: " + v.Resource
 			msg = append(msg, m)
 		}
 		if _, ok := usm[v.UISet]; !ok {
-			m := "Slot " + k + " references non-existent UISet: " + v.UISet
+			m := "slot " + k + " references non-existent ui_set: " + v.UISet
+			msg = append(msg, m)
+		}
+		if _, ok := wm[v.Window]; !ok {
+			m := "slot " + k + " references non-existent window: " + v.Window
 			msg = append(msg, m)
 		}
 	}
 
 	// Stream -> N/A
 
-	// UI -> Description, Stream
+	// UI -> Description, StreamsRequired
 
 	for k, v := range uim {
 		if _, ok := dm[v.Description]; !ok {
-			m := "UI " + k + " references non-existent description: " + v.Description
+			m := "ui " + k + " references non-existent description: " + v.Description
 			msg = append(msg, m)
 		}
 		// this check still applies, even though it relates in part to the templating process
 		for _, s := range v.StreamsRequired {
 			if _, ok := stm[s]; !ok {
-				m := "UI " + k + " references non-existent stream: " + s
+				m := "ui " + k + " references non-existent stream: " + s
 				msg = append(msg, m)
 			}
 		}
@@ -373,7 +527,7 @@ func CheckManifest(m Manifest) (error, []string) {
 	for k, v := range usm {
 		for _, u := range v.UIs {
 			if _, ok := uim[u]; !ok {
-				m := "UISet " + k + " references non-existent UI: " + u
+				m := "ui_set " + k + " references non-existent ui: " + u
 				msg = append(msg, m)
 			}
 		}
@@ -386,21 +540,3 @@ func CheckManifest(m Manifest) (error, []string) {
 	return nil, []string{}
 
 }
-
-/*
-
-// CheckSlot checks for internal consistency of a slot
-func CheckSlot(s Slot) (error, []string) {
-	msg := []string{}
-
-	if s.Name == "" {
-		msg.append("Unnamed slot")
-	}
-
-	if len(msg) > 0 {
-		return errors.New("Error"), msg
-	}
-
-	return nil, []string{}
-}
-*/

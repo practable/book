@@ -30,7 +30,7 @@ type Booking struct {
 type Description struct {
 	Name    string `json:"name"`
 	Type    string `json:"type"`
-	Short   string `json:"short,omitempty"`
+	Short   string `json:"short"`
 	Long    string `json:"long,omitempty"`
 	Further string `json:"further,omitempty"`
 	Thumb   string `json:"thumb,omitempty"`
@@ -40,17 +40,16 @@ type Description struct {
 // Policy represents what a user can book, and any limits on bookings/usage
 // Unmarshaling of time.Duration works in yaml.v3, https://play.golang.org/p/-6y0zq96gVz"
 type Policy struct {
-	Description        string
-	EnforceMaxBookings bool
-	EnforceMaxDuration bool
-	EnforceMinDuration bool
-	EnforceMaxUsage    bool
-	Filter             filter.Filter
-	MaxBookings        int64
-	MaxDuration        time.Duration
-	MinDuration        time.Duration
-	Name               string
-	MaxUsage           time.Duration
+	Description        string        `json:"description"  yaml:"description"`
+	EnforceMaxBookings bool          `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
+	EnforceMaxDuration bool          `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
+	EnforceMinDuration bool          `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
+	EnforceMaxUsage    bool          `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
+	MaxBookings        int64         `json:"max_bookings"  yaml:"max_bookings"`
+	MaxDuration        time.Duration `json:"max_duration"  yaml:"max_duration"`
+	MinDuration        time.Duration `json:"min_duration"  yaml:"min_duration"`
+	Name               string        `json:"name"  yaml:"name"`
+	MaxUsage           time.Duration `json:"max_usage"  yaml:"max_usage"`
 }
 
 // Resource represents a physical entity that can be booked
@@ -58,23 +57,25 @@ type Resource struct {
 
 	// ConfigURL represents a hardware configuration file URL
 	// that may be useful to a UI
-	ConfigURL string `json:"config_url"`
+	ConfigURL string `json:"config_url,omitempty"  yaml:"config_url,omitempty"`
 
 	// Description is a reference to a named description of the resource
-	// We may choose not to use this because the slot descriptions are what will
-	// get shown to users, most likely
-	Description string `json:"description,omitempty"`
+	// that will probably only be shown on admin dashboards (not to students)
+	Description string `json:"description"  yaml:"description"`
 
 	// Diary is held in memory, not in the manifest, so don't unmarshall it.
-	Diary diary.Diary `json:"-"`
+	Diary diary.Diary `json:"-"  yaml:"-"`
 
 	// Name is the resource's unique name
-	Name string
+	Name string `json:"name"  yaml:"name"`
 
 	// Streams is a list of stream types used by this resource, e.g. data, video, logging
 	// We autogenerate the full stream details needed by the UI  when making a live activity,
 	// using a rule to generate the topic and filling in the other details from the stream prototype
-	Streams []string `json:"streams"`
+	// Streams are required because sims would still use logging, and if not
+	// just add a dummy stream called null so that we have a check on streams
+	// being included for the main use case.
+	Streams []string `json:"streams"  yaml:"streams"`
 }
 
 // use separate description from resource, because UISet
@@ -83,11 +84,12 @@ type Resource struct {
 // than having to replace the yaml unmarshal process
 // if we used pointers and big structs as before
 type Slot struct {
-	Description string
-	Name        string
-	Policy      string
-	Resource    string
-	UISet       string
+	Description string `json:"description"  yaml:"description"`
+	Name        string `json:"name"  yaml:"name"`
+	Policy      string `json:"policy"  yaml:"policy"`
+	Resource    string `json:"resource"  yaml:"resource"`
+	UISet       string `json:"ui_set"  yaml:"ui_set"`
+	Window      string `json:"window"  yaml:"window"`
 }
 
 // Stream represents a prototype for a type of stream from a relay
@@ -100,30 +102,27 @@ type Slot struct {
 type Stream struct {
 
 	// Name is unique reference to the stream prototype
-	Name string
+	Name string `json:"name"  yaml:"name"`
 
 	// Audience is the URL of the relay server e.g. https://relay-access.practable.io
-	Audience string `json:"audience"`
+	Audience string `json:"audience"  yaml:"audience"`
 
 	// ConnectionType is whether for session or shell e.g. session
-	ConnectionType string `json:"ct"`
+	ConnectionType string `json:"ct"  yaml:"ct"`
 
 	// For is the key in the UI's URL in which the client puts
 	// the relay (wss) address and code after getting them
 	// from the relay, e.g. data
-	For string `json:"for,omitempty"`
+	For string `json:"for"  yaml:"for"`
 
 	// Scopes represent what the client can do e.g. read, write
-	Scopes []string `json:"scopes"`
+	Scopes []string `json:"scopes"  yaml:"scopes"`
 
 	// Topic is the relay topic, usually <resource name>-<for>. e.g. pend03-data
-	Topic string `json:"topic"`
+	Topic string `json:"topic"  yaml:"topic"`
 
 	// URL of the relay access point for this stream
-	URL string `json:"url"`
-
-	// Verb is the HTTP method, typically post
-	Verb string `json:"verb,omitempty"`
+	URL string `json:"url"  yaml:"url"`
 }
 
 // There is no need for a description in the resource, because the slot holds the description, so
@@ -138,6 +137,9 @@ type Store struct {
 
 	// Descriptions represents all the descriptions of various entities, indexed by description name
 	Descriptions map[string]*Description
+
+	// Filters are how the windows are checked, mapped by window name (populated after loading window info from manifest)
+	Filters map[string]*filter.Filter
 
 	// Now is a function for getting the time - useful for mocking in test
 	Now func() time.Time `json:"-" yaml:"-"`
@@ -165,29 +167,42 @@ type Store struct {
 
 	// UsagePolicies represents all the UsagePolicy(ies) in use
 	Users map[string]*User
+
+	// Window represents allowed and denied time periods for slots
+	Windows map[string]*Window
 }
 
 // User represents bookings and usage information associated with a single user
+// remembering policies allows us to direct a user to link to a policy for a course just once, and then have that remembered
+// at least until a system restart -> should be logged as a transaction
 type User struct {
 	Name        string
 	Bookings    map[string]*Booking      //map by id for retrieval
 	OldBookings map[string]*Booking      //map by id, for admin dashboards
-	Policies    map[string]bool          //map of policies that apply to the user (for remembering multiple policies that may apply)
+	Policies    map[string]bool          //map of policies that apply to the user
 	Usage       map[string]time.Duration //map by policy for checking usage
 }
 
 // UI represents a UI that can be used with a resource, for a given slot
 type UI struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string `json:"name"  yaml:"name"`
+	Description string `json:"description"  yaml:"description"`
 	// URL with moustache {{key}} templating for stream connections
-	URL             string   `json:"url"`
-	StreamsRequired []string `json:"streamsRequired"`
+	URL             string   `json:"url"  yaml:"url"`
+	StreamsRequired []string `json:"streams_required"  yaml:"streams_required"`
 }
 
+// UISet represents UIs that can be used with a slot
 type UISet struct {
 	Name string
 	UIs  []string
+}
+
+// Window represents allowed and denied periods for slots
+type Window struct {
+	Name    string              `json:"name"  yaml:"name"`
+	Allowed []interval.Interval `json:"allowed"  yaml:"allowed"`
+	Denied  []interval.Interval `json:"denied"  yaml:"denied"`
 }
 
 // New returns an empty store
@@ -196,6 +211,7 @@ func New() *Store {
 		&sync.RWMutex{},
 		make(map[string]*Booking),
 		make(map[string]*Description),
+		make(map[string]*filter.Filter),
 		func() time.Time { return time.Now() },
 		make(map[string]*Booking),
 		make(map[string]*Policy),
@@ -205,6 +221,7 @@ func New() *Store {
 		make(map[string]*UI),
 		make(map[string]*UISet),
 		make(map[string]*User),
+		make(map[string]*Window),
 	}
 }
 
