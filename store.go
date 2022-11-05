@@ -279,6 +279,10 @@ func (s *Store) PruneUserBookings(user string) {
 // of the entities, if required - not much point doing it here because the openAPI generator will create its own
 // types anyway.
 
+func HumaniseDuration(t time.Duration) string {
+	return t.Round(time.Second).String()
+}
+
 // GetDescription returns a description if found
 func (s *Store) GetDescription(name string) (Description, error) {
 
@@ -571,7 +575,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 	if p.EnforceBookAhead {
 		if when.End.After(s.Now().Add(p.BookAhead)) {
 			return Booking{}, errors.New("bookings cannot be made more than " +
-				p.BookAhead.String() +
+				HumaniseDuration(p.BookAhead) +
 				" ahead of the current time")
 		}
 	}
@@ -599,25 +603,25 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 	if p.EnforceMaxUsage && (newUsage > p.MaxUsage) {
 		remaining := p.MaxUsage - currentUsage
 		return Booking{}, errors.New("requested duration of " +
-			duration.String() +
+			HumaniseDuration(duration) +
 			" exceeds remaining usage limit of " +
-			remaining.String())
+			HumaniseDuration(remaining))
 	}
 
 	// Check minimum duration is ok
 	if p.EnforceMinDuration && (duration < p.MinDuration) {
 		return Booking{}, errors.New("requested duration of " +
-			duration.String() +
+			HumaniseDuration(duration) +
 			" shorter than minimum permitted duration of " +
-			p.MinDuration.String())
+			HumaniseDuration(p.MinDuration))
 	}
 
 	// check maximum duration is ok
 	if p.EnforceMaxDuration && (duration > p.MaxDuration) {
 		return Booking{}, errors.New("requested duration of " +
-			duration.String() +
+			HumaniseDuration(duration) +
 			" longer than maximum permitted duration of " +
-			p.MaxDuration.String())
+			HumaniseDuration(p.MaxDuration))
 	}
 
 	// see if the booking can be made ....

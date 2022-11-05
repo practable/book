@@ -603,5 +603,23 @@ func TestPolicyChecks(t *testing.T) {
 	}
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.Error(t, err)
-	assert.Equal(t, "requested duration of 9m59.999999999s exceeds remaining usage limit of 2ns", err.Error())
+	assert.Equal(t, "requested duration of 10m0s exceeds remaining usage limit of 0s", err.Error())
+
+	// another user can book (check usage is applied per user)
+	user = "bar"
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 3, 30, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 3, 36, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	// user books too short a duration
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 3, 37, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 3, 38, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.Error(t, err)
+	assert.Equal(t, "requested duration of 1m0s shorter than minimum permitted duration of 5m0s", err.Error())
 }
