@@ -3,9 +3,11 @@ package interval
 
 import (
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/timdrysdale/interval/diary"
 	"github.com/timdrysdale/interval/filter"
 	"github.com/timdrysdale/interval/interval"
@@ -15,9 +17,9 @@ import (
 // provided by the pool referenced in the resource of the slot
 type Booking struct {
 	Cancelled   bool
-	ID          string // booking uid
-	Policy      string // reference to policy it was booked under
-	Slot        string // slot name
+	ID          uuid.UUID // booking uid
+	Policy      string    // reference to policy it was booked under
+	Slot        string    // slot name
 	Started     bool
 	Unfulfilled bool   //when the resource was unavailable
 	User        string // user pseudo id
@@ -124,7 +126,7 @@ type Store struct {
 	*sync.RWMutex `json:"-"`
 
 	// Bookings represents all the live bookings, indexed by booking id
-	Bookings map[string]*Booking
+	Bookings map[uuid.UUID]*Booking
 
 	// Descriptions represents all the descriptions of various entities, indexed by description name
 	Descriptions map[string]Description
@@ -137,7 +139,7 @@ type Store struct {
 
 	//useful for admin dashboard - don't need to also parse logs if keep old bookings
 	// Old Bookings represents the
-	OldBookings map[string]*Booking
+	OldBookings map[uuid.UUID]*Booking
 
 	// TimePolicies represents all the TimePolicy(ies) in use
 	Policies map[string]Policy
@@ -167,10 +169,10 @@ type Store struct {
 // remembering policies allows us to direct a user to link to a policy for a course just once, and then have that remembered
 // at least until a system restart -> should be logged as a transaction
 type User struct {
-	Bookings    map[string]*Booking      //map by id for retrieval
-	OldBookings map[string]*Booking      //map by id, for admin dashboards
-	Policies    map[string]bool          //map of policies that apply to the user
-	Usage       map[string]time.Duration //map by policy for checking usage
+	Bookings    map[string]*Booking       //map by id for retrieval
+	OldBookings map[string]*Booking       //map by id, for admin dashboards
+	Policies    map[string]bool           //map of policies that apply to the user
+	Usage       map[string]*time.Duration //map by policy for checking usage
 }
 
 // UI represents a UI that can be used with a resource, for a given slot
@@ -196,11 +198,11 @@ type Window struct {
 func New() *Store {
 	return &Store{
 		&sync.RWMutex{},
-		make(map[string]*Booking),
+		make(map[uuid.UUID]*Booking),
 		make(map[string]Description),
 		make(map[string]*filter.Filter),
 		func() time.Time { return time.Now() },
-		make(map[string]*Booking),
+		make(map[uuid.UUID]*Booking),
 		make(map[string]Policy),
 		make(map[string]Resource),
 		make(map[string]Slot),
@@ -225,7 +227,7 @@ func (s *Store) PruneDiaries() {
 // the map of current bookings to the map of old bookings
 func (s *Store) PruneBookings() {
 
-	stale := make(map[string]*Booking)
+	stale := make(map[uuid.UUID]*Booking)
 
 	for k, v := range s.Bookings {
 		if v.When.End.After(s.Now()) {
@@ -335,16 +337,16 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 		return []interval.Interval{}, errors.New("policy " + policy + " not found")
 	}
 
-	_, ok = s.Slots[slot]
-
-	if !ok {
-		return []interval.Interval{}, errors.New("slot " + slot + " not found")
-	}
-
 	_, ok = p.SlotMap[slot]
 
 	if !ok {
 		return []interval.Interval{}, errors.New("slot " + slot + " not in policy " + policy)
+	}
+
+	_, ok = s.Slots[slot]
+
+	if !ok {
+		return []interval.Interval{}, errors.New("slot " + slot + " not found")
 	}
 
 	bk, err := s.GetSlotBookings(slot)
@@ -457,34 +459,158 @@ func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error) {
 
 }
 
-/*
-// RequestSlotBooking
-// Note that we must ensure we book on the actual resource, not a copy of it
-// consider refactor to maps of pointers if there are issues here
-func (s *Store) Request(r string, when interval.Interval) (uuid.NullUUID, error) {
-
-	nu := uuid.NullUUID{}
-
-		if r, ok := s.Resources[rID]; ok {
-
-			u, err := r.Request(Interval{
-				Start: when.Start,
-				End:   when.End,
-			})
-
-			if err != nil {
-				return nu, err
-			}
-
-			nu.UUID = u
-			nu.Valid = true
-			return nu, nil
-
-		}
-
-	return nu, errNotFound
+func NewUser() *User {
+	return &User{
+		make(map[string]*Booking),
+		make(map[string]*Booking),
+		make(map[string]bool),
+		make(map[string]*time.Duration),
+	}
 }
 
+// MakeBooking makes bookings for users, according to the policy
+// If a user does not exist, one is created.
+func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error) {
+
+	p, ok := s.Policies[policy]
+
+	if !ok {
+		return Booking{}, errors.New("policy " + policy + " not found")
+	}
+
+	_, ok = p.SlotMap[slot]
+
+	if !ok {
+		return Booking{}, errors.New("slot " + slot + " not in policy " + policy)
+	}
+
+	sl, ok := s.Slots[slot]
+
+	if !ok {
+		return Booking{}, errors.New("slot " + slot + " not found")
+	}
+
+	r, ok := s.Resources[sl.Resource]
+
+	if !ok {
+		return Booking{}, errors.New("resource " + sl.Resource + " not found")
+	}
+
+	u, ok := s.Users[user]
+
+	if !ok { //not found, create new user
+		u = NewUser()
+		s.Users[user] = u
+	}
+
+	// (re-)add policy to user's list
+	u.Policies[policy] = true
+
+	// check if too many bookings already
+	if p.EnforceMaxBookings {
+		// first check how many bookings under this policy already
+		cb := []string{}
+
+		for k, v := range u.Bookings {
+			if v.Policy == policy {
+				cb = append(cb, k)
+			}
+		}
+		currentBookings := int64(len(cb))
+
+		if currentBookings >= p.MaxBookings {
+			return Booking{}, errors.New("you currently have " +
+				strconv.FormatInt(currentBookings, 10) +
+				" current/future bookings which is at or exceeds the limit of " +
+				strconv.FormatInt(p.MaxBookings, 10) +
+				" for policy " +
+				policy)
+		}
+
+	}
+
+	// check if booking is within bookahead window
+	if p.EnforceBookAhead {
+		if when.End.After(s.Now().Add(p.BookAhead)) {
+			return Booking{}, errors.New("bookings cannot be made more than " +
+				p.BookAhead.String() +
+				" ahead of the current time")
+		}
+	}
+
+	// check for existing usage tracker for this policy?
+	_, ok = u.Usage[policy]
+
+	if !ok { //create usage tracker (always track usage, even if not limited)
+		ut, err := time.ParseDuration("0s")
+		if err != nil {
+			return Booking{}, errors.New("could not initialise user tracker for user " +
+				user +
+				" because " +
+				err.Error())
+		}
+		u.Usage[policy] = &ut
+	}
+
+	duration := when.End.Sub(when.Start)
+
+	currentUsage := *u.Usage[policy]
+	newUsage := currentUsage + duration
+
+	// Check if usage allowance sufficient
+	if p.EnforceMaxUsage && (newUsage > p.MaxUsage) {
+		remaining := p.MaxUsage - currentUsage
+		return Booking{}, errors.New("requested duration of " +
+			duration.String() +
+			" exceeds remaining usage limit of " +
+			remaining.String())
+	}
+
+	// Check minimum duration is ok
+	if p.EnforceMinDuration && (duration < p.MinDuration) {
+		return Booking{}, errors.New("requested duration of " +
+			duration.String() +
+			" shorter than minimum permitted duration of " +
+			p.MinDuration.String())
+	}
+
+	// check maximum duration is ok
+	if p.EnforceMaxDuration && (duration > p.MaxDuration) {
+		return Booking{}, errors.New("requested duration of " +
+			duration.String() +
+			" longer than maximum permitted duration of " +
+			p.MaxDuration.String())
+	}
+
+	// see if the booking can be made ....
+
+	bid, err := r.Diary.Request(when)
+
+	if err != nil {
+		return Booking{}, err
+	}
+
+	// successful, so update usage tracker with value we calculated earlier
+	u.Usage[policy] = &newUsage
+
+	booking := Booking{
+		Cancelled:   false,
+		ID:          bid,
+		Policy:      policy,
+		Slot:        slot,
+		Started:     false,
+		Unfulfilled: false,
+		User:        user,
+		When:        when,
+	}
+
+	s.Bookings[bid] = &booking
+
+	return booking, nil
+
+}
+
+/*
 func (s *Store) Cancel(rID uuid.UUID, bID uuid.UUID) error {
 
 	if r, ok := s.Resources[rID]; ok {
@@ -494,37 +620,6 @@ func (s *Store) Cancel(rID uuid.UUID, bID uuid.UUID) error {
 	}
 
 	return errNotFound
-
-}
-
-func (s *Store) GetBookings(rID uuid.UUID) ([]Booking, error) {
-
-	bookings := []Booking{}
-
-	if r, ok := s.Resources[rID]; ok {
-
-		bb, err := r.GetBookings()
-
-		if err != nil {
-			return bookings, err
-		}
-
-		for _, b := range bb {
-			bookings = append(bookings,
-				Booking{
-					When: Interval{
-						Start: b.When.Start,
-						End:   b.When.End,
-					},
-					ID: b.ID,
-				})
-		}
-
-		return bookings, nil
-
-	}
-
-	return bookings, errNotFoundfde3db
 
 }
 */
