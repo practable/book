@@ -87,14 +87,14 @@ policies:
     book_ahead: 2h0m0s
     description: d-p-b
     enforce_book_ahead: true
-    enforce_max_bookings: false
-    enforce_max_duration: false
-    enforce_min_duration: false
-    enforce_max_usage: false
-    max_bookings: 0
-    max_duration: 0s
-    min_duration: 0s
-    max_usage: 0s
+    enforce_max_bookings: true
+    enforce_max_duration: true
+    enforce_min_duration: true
+    enforce_max_usage: true
+    max_bookings: 2
+    max_duration: 10m0s
+    min_duration: 5m0s
+    max_usage: 30m0s
     slots:
     - sl-b
 resources:
@@ -164,13 +164,13 @@ ui_sets:
 windows:
   w-a:
     allowed:
-    - start: 2022-11-04T00:00:00Z 
-      end:   2022-11-06T00:00:00Z
+    - start: 2022-11-04T00:00:00Z
+      end: 2022-11-06T00:00:00Z
     denied: []
   w-b:
     allowed:
-    - start: 2022-11-04T00:00:00Z 
-      end:   2022-11-06T00:00:00Z
+    - start: 2022-11-04T00:00:00Z
+      end: 2022-11-06T00:00:00Z
     denied: []`)
 
 func TestReplaceManifest(t *testing.T) {
@@ -440,5 +440,91 @@ func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {
 	a, err = s.GetAvailability("p-b", "sl-a")
 	assert.Error(t, err)
 	assert.Equal(t, "slot sl-a not in policy p-b", err.Error())
+
+}
+
+func TestMakeBooking(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	policy := "p-b"
+	slot := "sl-b"
+	user := "test" //does not yet exist in store
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", b.ID.String()) //non null ID
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
+}
+
+func TestPolicyChecks(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	// Check denied outside slot's window
+	policy := "p-a"
+	slot := "sl-a"
+	user := "test" //does not yet exist in store
+
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 20, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 20, 2, 10, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+
+	assert.Error(t, err)
+	assert.Equal(t, "bookings cannot be made outside the window for the slot", err.Error())
+
+	// Check denied outside bookahed window
+	policy = "p-b"
+	slot = "sl-b"
+	user = "test" //does not yet exist in store
+
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 12, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 12, 10, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+
+	assert.Error(t, err)
+	assert.Equal(t, "bookings cannot be made more than 2h0m0s ahead of the current time", err.Error())
 
 }

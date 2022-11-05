@@ -529,6 +529,17 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 
 	}
 
+	// check if booking is within slot window
+	fp, ok := s.Filters[sl.Window]
+
+	if !ok {
+		return Booking{}, errors.New("window filter " + sl.Window + " not found")
+	}
+
+	if !fp.Allowed(when) {
+		return Booking{}, errors.New("bookings cannot be made outside the window for the slot")
+	}
+
 	// check if booking is within bookahead window
 	if p.EnforceBookAhead {
 		if when.End.After(s.Now().Add(p.BookAhead)) {
