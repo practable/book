@@ -52,7 +52,7 @@ func TestIsAvailable(t *testing.T) {
 	ok, msg = d.IsAvailable()
 
 	assert.False(t, ok)
-	assert.Equal(t, msg, "Unavailable (Offline)")
+	assert.Equal(t, msg, "unavailable because Offline")
 
 }
 
@@ -148,7 +148,7 @@ func TestValidateBooking(t *testing.T) {
 		ID:   ua,
 	})
 	assert.False(t, ok)
-	assert.Equal(t, "Not Found", err.Error())
+	assert.Equal(t, "not found", err.Error())
 
 	// Check invalid if ID and interval from different bookings
 	// add a second booking to do this check
@@ -162,7 +162,7 @@ func TestValidateBooking(t *testing.T) {
 	})
 
 	// Make booking invalid by setting machine unavailable
-	d.SetUnavailable("Offline")
+	d.SetUnavailable("offline")
 
 	ok, err = d.ValidateBooking(Booking{
 		When: a,
@@ -170,7 +170,7 @@ func TestValidateBooking(t *testing.T) {
 	})
 
 	assert.False(t, ok)
-	assert.Equal(t, err.Error(), "Unavailable (Offline)")
+	assert.Equal(t, err.Error(), "unavailable because offline")
 
 }
 

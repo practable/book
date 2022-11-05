@@ -129,10 +129,10 @@ func (d *Diary) IsAvailable() (bool, string) {
 		return true, d.status
 	}
 
-	msg := "Unavailable"
+	msg := "unavailable"
 
 	if d.status != "" {
-		msg += " (" + d.status + ")"
+		msg += " because " + d.status
 	}
 
 	return false, msg
@@ -147,7 +147,7 @@ func (d *Diary) ValidateBooking(b Booking) (bool, error) {
 	id, found := d.bookings.Get(b.When)
 
 	if !found {
-		return false, errors.New("Not Found")
+		return false, errors.New("not found")
 	}
 
 	if ok, msg := d.IsAvailable(); !ok {
