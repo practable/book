@@ -66,7 +66,7 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 	s.UISets = m.UISets
 	s.Windows = m.Windows
 
-	status := "Loaded at " + time.Now().Format(time.RFC3339)
+	status := "Loaded at " + s.Now().Format(time.RFC3339)
 
 	for k := range s.Resources {
 		r := s.Resources[k]
