@@ -266,9 +266,8 @@ func TestAvailability(t *testing.T) {
 
 }
 
-// TestBooking checks whether using the exact same time as the edge of an existing booking
-// is ok for making a new booking ....?! Technically it overlaps ....
-// fix ... adjust availability edges by 1ns
+// TestBooking checks whether the availability calculations result in bookable
+// sessions that do not overlap the existing booked sessions.
 func TestAvailabilityTimeBoundaries(t *testing.T) {
 
 	start := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
