@@ -13,6 +13,16 @@ import (
 	"github.com/timdrysdale/interval/interval"
 )
 
+// Activity represents connection details for a live booking
+type Activity struct {
+	Description Description       `json:"description" yaml:"description"`
+	ConfigURL   string            `json:"config_url,omitempty"  yaml:"config_url,omitempty"`
+	Streams     map[string]Stream `json:"streams" yaml:"streams"`
+	UIs         []UIDescribed     `json:"ui" yaml:"ui"`
+	NotBefore   time.Time         `json:"nbf" yaml:"nbf"`
+	ExpiresAt   time.Time         `json:"exp" yaml:"exp"`
+}
+
 // Booking represents a promise to access an equipment that
 // provided by the pool referenced in the resource of the slot
 type Booking struct {
@@ -76,6 +86,9 @@ type Resource struct {
 	// just add a dummy stream called null so that we have a check on streams
 	// being included for the main use case.
 	Streams []string `json:"streams"  yaml:"streams"`
+
+	//TopicStub is the name that should be used to make the topic <TopicStub>-<for>
+	TopicStub string `json:"topic_stub" yaml:"topic_stub"`
 }
 
 // use separate description from resource, because UISet
@@ -154,7 +167,7 @@ type Store struct {
 	Streams map[string]Stream
 
 	// UIs represents all the user interfaces that are available
-	UIs map[string]UI
+	UIs map[string]UIDescribed
 
 	// UISets represents the lists of user interfaces for particular slots
 	UISets map[string]UISet
@@ -184,6 +197,15 @@ type UI struct {
 	StreamsRequired []string `json:"streams_required"  yaml:"streams_required"`
 }
 
+// UIDescribed represents a UI that can be used with a resource, for a given slot
+// with a description - for sending to users
+type UIDescribed struct {
+	Description Description `json:"description"  yaml:"description"`
+	// URL with moustache {{key}} templating for stream connections
+	URL             string   `json:"url"  yaml:"url"`
+	StreamsRequired []string `json:"streams_required"  yaml:"streams_required"`
+}
+
 // UISet represents UIs that can be used with a slot
 type UISet struct {
 	UIs []string
@@ -208,7 +230,7 @@ func New() *Store {
 		make(map[string]Resource),
 		make(map[string]Slot),
 		make(map[string]Stream),
-		make(map[string]UI),
+		make(map[string]UIDescribed),
 		make(map[string]UISet),
 		make(map[string]*User),
 		make(map[string]Window),
@@ -509,6 +531,44 @@ func (s *Store) CancelBooking(booking Booking) error {
 		return errors.New("could not verify booking details")
 	}
 
+	// compare the externally relevant fields of the booking (ignore internal boolean fields)
+	if b.ID != booking.ID {
+		return errors.New("could not verify booking details - ID does not match")
+	}
+
+	if b.Policy != booking.Policy {
+		return errors.New("could not verify booking details - policy does not match [" + b.Policy + "!=" + booking.Policy + "]")
+	}
+	if b.Slot != booking.Slot {
+		return errors.New("could not verify booking details - slot does not match")
+	}
+	if b.User != booking.User {
+		return errors.New("could not verify booking details - user does not match")
+	}
+	if b.When != booking.When {
+		return errors.New("could not verify booking details - when does not match")
+	}
+	/*
+
+		t1 := Booking{
+			ID:     b.ID,
+			Policy: b.Policy,
+			Slot:   b.Slot,
+			User:   b.User,
+			When:   b.When,
+		}
+		t2 := Booking{
+			ID:     booking.ID,
+			Policy: booking.Policy,
+			Slot:   booking.Slot,
+			User:   booking.User,
+			When:   booking.When,
+		}
+
+		if t1 != t2 { //spam submission with non-matching details
+			return errors.New("could not verify booking details")
+		}*/
+
 	if b.When.End.Before(s.Now()) {
 		return errors.New("cannot cancel booking that has already ended")
 	}
@@ -702,4 +762,151 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 
 	return booking, nil
 
+}
+
+func (s *Store) ValidateBooking(booking Booking) error {
+
+	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
+	b, ok := s.Bookings[booking.ID]
+
+	if !ok {
+		return errors.New("not found")
+	}
+
+	// compare the externally relevant fields of the booking (ignore internal boolean fields)
+	/*	t1 := Booking{
+			ID:     b.ID,
+			Policy: b.Policy,
+			Slot:   b.Slot,
+			User:   b.User,
+			When:   b.When,
+		}
+		t2 := Booking{
+			ID:     booking.ID,
+			Policy: booking.Policy,
+			Slot:   booking.Slot,
+			User:   booking.User,
+			When:   booking.When,
+		}
+
+	*/
+	if b.ID != booking.ID {
+		return errors.New("could not verify booking details - ID does not match")
+	}
+
+	if b.Policy != booking.Policy {
+		return errors.New("could not verify booking details - policy does not match [" + b.Policy + "!=" + booking.Policy + "]")
+	}
+	if b.Slot != booking.Slot {
+		return errors.New("could not verify booking details - slot does not match")
+	}
+	if b.User != booking.User {
+		return errors.New("could not verify booking details - user does not match")
+	}
+	if b.When != booking.When {
+		return errors.New("could not verify booking details - when does not match")
+	}
+
+	/*if t1 != t2 { //spam submission with non-matching details
+		return errors.New("could not verify booking details")
+	}*/
+
+	if b.When.Start.After(s.Now()) {
+		return errors.New("too early")
+	}
+
+	if b.When.End.Before(s.Now()) {
+		return errors.New("too late")
+	}
+
+	if b.Cancelled {
+		return errors.New("cancelled")
+	}
+
+	// check availability
+	ok, reason, err := s.GetSlotIsAvailable(b.Slot)
+
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return errors.New(reason)
+	}
+
+	return nil
+
+}
+
+func (s *Store) GetActivity(booking Booking) (Activity, error) {
+
+	err := s.ValidateBooking(booking)
+
+	if err != nil {
+		return Activity{}, err
+	}
+
+	b, ok := s.Bookings[booking.ID]
+	if !ok {
+		return Activity{}, errors.New("not found")
+	}
+
+	b.Started = true
+
+	s.Bookings[booking.ID] = b
+
+	sl, ok := s.Slots[b.Slot]
+
+	if !ok {
+		return Activity{}, errors.New("slot " + b.Slot + " not found")
+	}
+
+	d, ok := s.Descriptions[sl.Description]
+
+	if !ok {
+		return Activity{}, errors.New("description " + sl.Description + " not found")
+	}
+
+	r, ok := s.Resources[sl.Resource]
+
+	if !ok {
+		return Activity{}, errors.New("resource " + sl.Resource + " not found")
+	}
+
+	a := Activity{
+		Description: d,
+		ConfigURL:   r.ConfigURL,
+		NotBefore:   b.When.Start,
+		ExpiresAt:   b.When.End,
+		Streams:     make(map[string]Stream),
+		UIs:         []UIDescribed{},
+	}
+
+	// streams
+	for _, k := range r.Streams {
+		st, ok := s.Streams[k]
+		if !ok {
+			return Activity{}, errors.New("stream " + k + " not found")
+		}
+		//Streams are prototypes, so make the specific topic
+		st.Topic = r.TopicStub + "-" + k
+		a.Streams[k] = st
+	}
+
+	//UIs
+	uis, ok := s.UISets[sl.UISet]
+	if !ok {
+		return Activity{}, errors.New("ui_set" + sl.UISet + " not found")
+	}
+
+	for _, k := range uis.UIs {
+		ui, ok := s.UIs[k]
+		if !ok {
+			return Activity{}, errors.New("ui" + k + " not found")
+		}
+
+		a.UIs = append(a.UIs, ui)
+	}
+
+	return a, nil
 }

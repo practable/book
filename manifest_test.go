@@ -49,7 +49,7 @@ var testManifest = MutexManifest{
 				Short: "a",
 			},
 			"d-sl-b": Description{
-				Name:  "slot-a",
+				Name:  "slot-b",
 				Type:  "slot",
 				Short: "b",
 			},
@@ -59,7 +59,7 @@ var testManifest = MutexManifest{
 				Short: "a",
 			},
 			"d-ui-b": Description{
-				Name:  "ui-a",
+				Name:  "ui-b",
 				Type:  "ui",
 				Short: "b",
 			},
@@ -88,10 +88,12 @@ var testManifest = MutexManifest{
 			"r-a": Resource{
 				Description: "d-r-a",
 				Streams:     []string{"st-a", "st-b"},
+				TopicStub:   "aaaa00",
 			},
 			"r-b": Resource{
 				Description: "d-r-b",
 				Streams:     []string{"st-a", "st-b"},
+				TopicStub:   "bbbb00",
 			},
 		},
 		Slots: map[string]Slot{

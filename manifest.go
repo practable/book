@@ -62,7 +62,6 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 	s.Resources = m.Resources
 	s.Slots = m.Slots
 	s.Streams = m.Streams
-	s.UIs = m.UIs
 	s.UISets = m.UISets
 	s.Windows = m.Windows
 
@@ -83,6 +82,25 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 		s.Resources[k] = r
 		// default to available because unavailable kit is the exception
 		s.Resources[k].Diary.SetAvailable(status)
+	}
+
+	// populate UIs with descriptions now to save doing it repetively later
+	s.UIs = make(map[string]UIDescribed)
+
+	for k, v := range m.UIs {
+
+		d, err := s.GetDescription(v.Description)
+
+		if err != nil {
+			return err
+		}
+
+		uid := UIDescribed{
+			Description:     d,
+			URL:             m.UIs[k].URL,
+			StreamsRequired: m.UIs[k].StreamsRequired,
+		}
+		s.UIs[k] = uid
 	}
 
 	return nil
@@ -145,6 +163,9 @@ func CheckResources(items map[string]Resource) (error, []string) {
 		}
 		if item.Streams == nil {
 			msg = append(msg, "missing streams field in resource "+k)
+		}
+		if item.TopicStub == "" {
+			msg = append(msg, "missing topic_stub field in resource "+k)
 		}
 	}
 

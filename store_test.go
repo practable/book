@@ -33,7 +33,7 @@ var manifestYAML = []byte(`descriptions:
     type: slot
     short: a
   d-sl-b:
-    name: slot-a
+    name: slot-b
     type: slot
     short: b
   d-ui-a:
@@ -41,7 +41,7 @@ var manifestYAML = []byte(`descriptions:
     type: ui
     short: a
   d-ui-b:
-    name: ui-a
+    name: ui-b
     type: ui
     short: b
 policies:
@@ -79,11 +79,13 @@ resources:
     streams:
     - st-a
     - st-b
+    topic_stub: aaaa00
   r-b:
     description: d-r-b
     streams:
     - st-a
     - st-b
+    topic_stub: bbbb00
 slots:
   sl-a:
     description: d-sl-a
@@ -634,7 +636,8 @@ func TestPolicyChecks(t *testing.T) {
 	assert.Equal(t, "requested duration of 10m0s exceeds remaining usage limit of 4m0s", err.Error())
 
 	// free up some allocation and try again, must succeed
-	s.CancelBooking(bc)
+	err = s.CancelBooking(bc)
+	assert.NoError(t, err)
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.NoError(t, err)
 
@@ -650,5 +653,157 @@ func TestPolicyChecks(t *testing.T) {
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.Error(t, err)
 	assert.Equal(t, "requested duration of 10m0s exceeds remaining usage limit of 4m0s", err.Error())
+
+	// make a booking then try to cancel it with incomplete information, must fail
+	user = "test1"
+	b, err := s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	fake := Booking{
+		ID: b.ID,
+	}
+	err = s.CancelBooking(fake)
+	assert.Error(t, err)
+	assert.Equal(t, "could not verify booking details", err.Error())
+
+}
+
+func TestGetActivity(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	policy := "p-b"
+	slot := "sl-b"
+	user := "test" //does not yet exist in store
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", b.ID.String()) //non null ID
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
+
+	// advance time, but still before booking is live
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 59, 0, 0, time.UTC) }
+
+	_, err = s.GetActivity(b)
+	assert.Error(t, err)
+	assert.Equal(t, "too early", err.Error())
+
+	// advance time, but after booking is finished (edge case where booking not pruned yet)
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 11, 0, 0, time.UTC) }
+
+	_, err = s.GetActivity(b)
+	assert.Error(t, err)
+	assert.Equal(t, "too late", err.Error())
+
+	// incomplete booking
+	badb := Booking{
+		ID: b.ID,
+	}
+	_, err = s.GetActivity(badb)
+	assert.Error(t, err)
+	assert.Equal(t, "could not verify booking details", err.Error())
+
+	// shift to time within booking, but make resource unavailable.
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 02, 0, 0, time.UTC) }
+	s.SetSlotIsAvailable("sl-b", false, "test")
+
+	_, err = s.GetActivity(b)
+	assert.Error(t, err)
+	assert.Equal(t, "unavailable because test", err.Error())
+
+	// now make resource available, must get activity now
+	s.SetSlotIsAvailable("sl-b", true, "test")
+
+	// check our b is valid here, and can cancel - temporary!
+	//err = s.CancelBooking(b)
+	//assert.NoError(t, err)
+
+	_, err = s.GetActivity(b)
+	/*
+		assert.NoError(t, err)
+		exp := Activity{
+			Description: Description{
+				Name:    "slot-b",
+				Type:    "slot",
+				Short:   "b",
+				Long:    "",
+				Further: "",
+				Thumb:   "",
+				Image:   ""},
+			ConfigURL: "",
+			Streams: map[string]Stream{
+				"st-a": Stream{
+					Audience:       "a",
+					ConnectionType: "a",
+					For:            "a",
+					Scopes:         []string{"r", "w"},
+					Topic:          "bbbb00-st-a",
+					URL:            "a"},
+				"st-b": Stream{
+					Audience:       "b",
+					ConnectionType: "b",
+					For:            "b",
+					Scopes:         []string{"r", "w"},
+					Topic:          "bbbb00-st-b",
+					URL:            "b"}},
+			UIs: []UIDescribed{
+				UIDescribed{
+					Description: Description{
+						Name:    "ui-a",
+						Type:    "ui",
+						Short:   "a",
+						Long:    "",
+						Further: "",
+						Thumb:   "",
+						Image:   ""},
+					URL:             "a",
+					StreamsRequired: []string{"st-a", "st-b"},
+				},
+				UIDescribed{
+					Description: Description{
+						Name:    "ui-b",
+						Type:    "ui",
+						Short:   "b",
+						Long:    "",
+						Further: "",
+						Thumb:   "",
+						Image:   ""},
+					URL:             "b",
+					StreamsRequired: []string{"st-a", "st-b"}}},
+			NotBefore: time.Date(2022, time.November, 5, 2, 0, 0, 0, time.UTC),
+			ExpiresAt: time.Date(2022, time.November, 5, 2, 10, 0, 0, time.UTC),
+		}
+
+		assert.Equal(t, exp, a)
+	*/
+
+	// must not cancel started activity
+	err = s.CancelBooking(b)
+	assert.Error(t, err)
+	assert.Equal(t, "", err.Error())
 
 }
