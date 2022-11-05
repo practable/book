@@ -3,6 +3,10 @@ package interval
 import (
 	"errors"
 	"strconv"
+	"time"
+
+	"github.com/timdrysdale/interval/diary"
+	"github.com/timdrysdale/interval/filter"
 )
 
 // Named represents a reduced form of our other structs that have a name
@@ -25,15 +29,88 @@ type Manifest struct {
 	Windows      []Window      `json:"windows" yaml:"windows"`
 }
 
-/*
-// Populate assumes an empty store i.e. does not retain existing elements
-// from any previous manifests, but it does retain bookings.
-func (s *Store) Populate(m Manifest) {
-	for _, d := range m.Descriptions {
-		s.Descriptions[d.Name] = d
+// ReplaceManifest overwrites the existing manifest with a new one i.e. does not retain existing elements from any previous manifests
+// but it does retain non-Manifest elements such as bookings.
+func (s *Store) ReplaceManifest(m Manifest) error {
+
+	err, _ := CheckManifest(m)
+
+	if err != nil {
+		return err //user can call CheckDescriptions some other way if they want the manifest error details
 	}
+
+	// we can get errors making filters, so do that before doing anything destructive
+	// even though we checked it with CheckManifest, we have to handle the errors
+	fm := make(map[string]*filter.Filter)
+	wm := make(map[string]*Window)
+
+	for idx, w := range m.Windows {
+
+		f := filter.New()
+		err = f.SetAllowed(w.Allowed)
+		if err != nil {
+			return errors.New("failed to create allowed intervals for window #" + strconv.Itoa(idx) + " (" + w.Name + "):" + err.Error())
+		}
+		err := f.SetDenied(w.Denied)
+		if err != nil {
+			return errors.New("failed to create denied intervals for window #" + strconv.Itoa(idx) + " (" + w.Name + "):" + err.Error())
+		}
+
+		fm[w.Name] = f
+		wm[w.Name] = &m.Windows[idx]
+	}
+
+	// we're going to do the replacement now, goodbye old manifest data.
+	s.Lock()
+	defer s.Unlock()
+
+	s.Filters = fm
+	s.Windows = wm
+
+	// Make new maps for our new entities
+	s.Descriptions = make(map[string]*Description)
+	s.Policies = make(map[string]*Policy)
+	s.Resources = make(map[string]*Resource)
+	s.Slots = make(map[string]*Slot)
+	s.Streams = make(map[string]*Stream)
+	s.UIs = make(map[string]*UI)
+	s.UISets = make(map[string]*UISet)
+
+	for idx, d := range m.Descriptions {
+		s.Descriptions[d.Name] = &m.Descriptions[idx]
+	}
+
+	for idx, p := range m.Policies {
+		s.Policies[p.Name] = &m.Policies[idx]
+	}
+
+	status := "Loaded at " + time.Now().Format(time.RFC3339)
+	for idx, r := range m.Resources {
+		m.Resources[idx].Diary = diary.New(r.Name)
+		// default to available because unavailable kit is the exception
+		m.Resources[idx].Diary.SetAvailable(status)
+		s.Resources[r.Name] = &m.Resources[idx]
+	}
+
+	for idx, sl := range m.Slots {
+		s.Slots[sl.Name] = &m.Slots[idx]
+	}
+
+	for idx, st := range m.Streams {
+		s.Streams[st.Name] = &m.Streams[idx]
+	}
+
+	for idx, u := range m.UIs {
+		s.UIs[u.Name] = &m.UIs[idx]
+	}
+
+	for idx, u := range m.UISets {
+		s.UISets[u.Name] = &m.UISets[idx]
+	}
+
+	return nil
+
 }
-*/
 
 func CheckDescriptions(items []Description) (error, []string) {
 
@@ -353,6 +430,26 @@ func CheckWindows(items []Window) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("missing field"), msg
+	}
+
+	// we can get errors making filters, so check that
+
+	for idx, w := range items {
+
+		f := filter.New()
+		err := f.SetAllowed(w.Allowed)
+		if err != nil {
+			msg = append(msg, "failed to create allowed intervals for window #"+strconv.Itoa(idx)+" ("+w.Name+"):"+err.Error())
+		}
+		err = f.SetDenied(w.Denied)
+		if err != nil {
+			msg = append(msg, "failed to create denied intervals for window #"+strconv.Itoa(idx)+" ("+w.Name+"):"+err.Error())
+		}
+
+	}
+
+	if len(msg) > 0 {
+		return errors.New("failed creating filter"), msg
 	}
 
 	return nil, []string{}

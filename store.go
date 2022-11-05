@@ -64,7 +64,7 @@ type Resource struct {
 	Description string `json:"description"  yaml:"description"`
 
 	// Diary is held in memory, not in the manifest, so don't unmarshall it.
-	Diary diary.Diary `json:"-"  yaml:"-"`
+	Diary *diary.Diary `json:"-"  yaml:"-"`
 
 	// Name is the resource's unique name
 	Name string `json:"name"  yaml:"name"`
