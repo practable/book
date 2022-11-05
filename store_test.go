@@ -8,159 +8,163 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var manifest = []byte{`descriptions:
-- name: d-p-a
-  type: policy
-  short: a
-  long: ""
-  further: ""
-  thumb: ""
-  image: ""
-- name: d-p-b
-  type: policy
-  short: b
-  long: ""
-  further: ""
-  thumb: ""
-  image: ""
-- name: d-r-a
-  type: resource
-  short: a
-  long: ""
-  further: ""
-  thumb: ""
-  image: ""
-- name: d-r-b
-  type: resource
-  short: b
-  long: ""
-  further: ""
-  thumb: ""
-  image: ""
-- name: d-sl-a
-  type: slot
-  short: a
-  long: ""
-  further: ""
-  thumb: ""
-  image: ""
-- name: d-sl-b
-  type: slot
-  short: b
-  long: ""
-  further: ""
-  thumb: ""
-  image: ""
-- name: d-ui-a
-  type: ui
-  short: a
-  long: ""
-  further: ""
-  thumb: ""
-  image: ""
-- name: d-ui-b
-  type: ui
-  short: b
-  long: ""
-  further: ""
-  thumb: ""
-  image: ""
+var manifestYAML = `descriptions:
+  d-p-a:
+    type: policy
+    short: a
+    long: ""
+    further: ""
+    thumb: ""
+    image: ""
+  d-p-b:
+    type: policy
+    short: b
+    long: ""
+    further: ""
+    thumb: ""
+    image: ""
+  d-r-a:
+    type: resource
+    short: a
+    long: ""
+    further: ""
+    thumb: ""
+    image: ""
+  d-r-b:
+    type: resource
+    short: b
+    long: ""
+    further: ""
+    thumb: ""
+    image: ""
+  d-sl-a:
+    type: slot
+    short: a
+    long: ""
+    further: ""
+    thumb: ""
+    image: ""
+  d-sl-b:
+    type: slot
+    short: b
+    long: ""
+    further: ""
+    thumb: ""
+    image: ""
+  d-ui-a:
+    type: ui
+    short: a
+    long: ""
+    further: ""
+    thumb: ""
+    image: ""
+  d-ui-b:
+    type: ui
+    short: b
+    long: ""
+    further: ""
+    thumb: ""
+    image: ""
 policies:
-- description: d-p-a
-  enforce_max_bookings: false
-  enforce_max_duration: false
-  enforce_min_duration: false
-  enforce_max_usage: false
-  max_bookings: 0
-  max_duration: 0s
-  min_duration: 0s
-  name: p-a
-  max_usage: 0s
-- description: d-p-b
-  enforce_max_bookings: false
-  enforce_max_duration: false
-  enforce_min_duration: false
-  enforce_max_usage: false
-  max_bookings: 0
-  max_duration: 0s
-  min_duration: 0s
-  name: p-b
-  max_usage: 0s
+  p-a:
+    description: d-p-a
+    enforce_max_bookings: false
+    enforce_max_duration: false
+    enforce_min_duration: false
+    enforce_max_usage: false
+    max_bookings: 0
+    max_duration: 0s
+    min_duration: 0s
+    max_usage: 0s
+    slots:
+    - sl-a
+  p-b:
+    description: d-p-b
+    enforce_max_bookings: false
+    enforce_max_duration: false
+    enforce_min_duration: false
+    enforce_max_usage: false
+    max_bookings: 0
+    max_duration: 0s
+    min_duration: 0s
+    max_usage: 0s
+    slots:
+    - sl-b
 resources:
-- description: d-r-a
-  name: r-a
-  streams:
-  - st-a
-  - st-b
-- description: d-r-b
-  name: r-b
-  streams:
-  - st-a
-  - st-b
+  r-a:
+    description: d-r-a
+    streams:
+    - st-a
+    - st-b
+  r-b:
+    description: d-r-b
+    streams:
+    - st-a
+    - st-b
 slots:
-- description: d-sl-a
-  name: sl-a
-  policy: p-a
-  resource: r-a
-  ui_set: us-a
-  window: w-a
-- description: d-sl-b
-  name: sl-b
-  policy: p-b
-  resource: r-b
-  ui_set: us-b
-  window: w-b
+  sl-a:
+    description: d-sl-a
+    policy: p-a
+    resource: r-a
+    ui_set: us-a
+    window: w-a
+  sl-b:
+    description: d-sl-b
+    policy: p-b
+    resource: r-b
+    ui_set: us-b
+    window: w-b
 streams:
-- name: st-a
-  audience: a
-  ct: a
-  for: a
-  scopes:
-  - r
-  - w
-  topic: a
-  url: a
-- name: st-b
-  audience: b
-  ct: b
-  for: b
-  scopes:
-  - r
-  - w
-  topic: b
-  url: b
+  st-a:
+    audience: a
+    ct: a
+    for: a
+    scopes:
+    - r
+    - w
+    topic: a
+    url: a
+  st-b:
+    audience: b
+    ct: b
+    for: b
+    scopes:
+    - r
+    - w
+    topic: b
+    url: b
 uis:
-- name: ui-a
-  description: d-ui-a
-  url: a
-  streams_required:
-  - st-a
-  - st-b
-- name: ui-b
-  description: d-ui-b
-  url: b
-  streams_required:
-  - st-a
-  - st-b
+  ui-a:
+    description: d-ui-a
+    url: a
+    streams_required:
+    - st-a
+    - st-b
+  ui-b:
+    description: d-ui-b
+    url: b
+    streams_required:
+    - st-a
+    - st-b
 ui_sets:
-- name: us-a
-  uis:
-  - ui-a
-- name: us-b
-  uis:
-  - ui-a
-  - ui-b
+  us-a:
+    uis:
+    - ui-a
+  us-b:
+    uis:
+    - ui-a
+    - ui-b
 windows:
-- name: w-a
-  allowed:
-  - start: 2022-11-05T00:18:02.215634079Z
-    end: 2022-11-05T01:18:02.215634346Z
-  denied: []
-- name: w-b
-  allowed:
-  - start: 2022-11-05T00:18:02.215634977Z
-    end: 2022-11-05T01:18:02.215635182Z
-  denied: []`}
+  w-a:
+    allowed:
+    - start: 2022-11-05T01:32:11.495346472Z
+      end: 2022-11-05T02:32:11.495346777Z
+    denied: []
+  w-b:
+    allowed:
+    - start: 2022-11-05T01:32:11.495348376Z
+      end: 2022-11-05T02:32:11.495348578Z
+    denied: []`
 
 func TestReplaceManifest(t *testing.T) {
 
@@ -191,7 +195,7 @@ func TestReplaceManifest(t *testing.T) {
 }
 
 // rename as Test... if required to update the yaml file for testing manifest ingest
-func TestCreateManifestYAML(t *testing.T) {
+func testCreateManifestYAML(t *testing.T) {
 
 	d, err := yaml.Marshal(&testManifest.Manifest)
 	if err != nil {

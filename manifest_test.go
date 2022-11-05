@@ -22,81 +22,69 @@ type MutexManifest struct {
 var testManifest = MutexManifest{
 	&sync.Mutex{},
 	Manifest{
-		Descriptions: []Description{
-			Description{
-				Name:  "d-p-a",
+		Descriptions: map[string]Description{
+			"d-p-a": Description{
 				Type:  "policy",
 				Short: "a",
 			},
-			Description{
-				Name:  "d-p-b",
+			"d-p-b": Description{
 				Type:  "policy",
 				Short: "b",
 			},
-			Description{
-				Name:  "d-r-a",
+			"d-r-a": Description{
 				Type:  "resource",
 				Short: "a",
 			},
-			Description{
-				Name:  "d-r-b",
+			"d-r-b": Description{
 				Type:  "resource",
 				Short: "b",
 			},
-			Description{
-				Name:  "d-sl-a",
+			"d-sl-a": Description{
 				Type:  "slot",
 				Short: "a",
 			},
-			Description{
-				Name:  "d-sl-b",
+			"d-sl-b": Description{
 				Type:  "slot",
 				Short: "b",
 			},
-			Description{
-				Name:  "d-ui-a",
+			"d-ui-a": Description{
 				Type:  "ui",
 				Short: "a",
 			},
-			Description{
-				Name:  "d-ui-b",
+			"d-ui-b": Description{
 				Type:  "ui",
 				Short: "b",
 			},
 		},
-		Policies: []Policy{
-			Policy{
-				Name:        "p-a",
+		Policies: map[string]Policy{
+			"p-a": Policy{
 				Description: "d-p-a",
+				Slots:       []string{"sl-a"},
 			},
-			Policy{
-				Name:        "p-b",
+			"p-b": Policy{
 				Description: "d-p-b",
+				Slots:       []string{"sl-b"},
 			},
 		},
-		Resources: []Resource{
-			Resource{
-				Name:        "r-a",
+		Resources: map[string]Resource{
+			"r-a": Resource{
 				Description: "d-r-a",
 				Streams:     []string{"st-a", "st-b"},
 			},
-			Resource{
-				Name:        "r-b",
+			"r-b": Resource{
 				Description: "d-r-b",
 				Streams:     []string{"st-a", "st-b"},
 			},
 		},
-		Slots: []Slot{
-			Slot{
-				Name:        "sl-a",
+		Slots: map[string]Slot{
+			"sl-a": Slot{
 				Description: "d-sl-a",
 				Policy:      "p-a",
 				Resource:    "r-a",
 				UISet:       "us-a",
 				Window:      "w-a",
 			},
-			Slot{
-				Name:        "sl-b",
+			"sl-b": Slot{
 				Description: "d-sl-b",
 				Policy:      "p-b",
 				Resource:    "r-b",
@@ -104,9 +92,8 @@ var testManifest = MutexManifest{
 				Window:      "w-b",
 			},
 		},
-		Streams: []Stream{
-			Stream{
-				Name:           "st-a",
+		Streams: map[string]Stream{
+			"st-a": Stream{
 				Audience:       "a",
 				ConnectionType: "a",
 				For:            "a",
@@ -114,8 +101,7 @@ var testManifest = MutexManifest{
 				Topic:          "a",
 				URL:            "a",
 			},
-			Stream{
-				Name:           "st-b",
+			"st-b": Stream{
 				Audience:       "b",
 				ConnectionType: "b",
 				For:            "b",
@@ -124,33 +110,28 @@ var testManifest = MutexManifest{
 				URL:            "b",
 			},
 		},
-		UIs: []UI{
-			UI{
-				Name:            "ui-a",
+		UIs: map[string]UI{
+			"ui-a": UI{
 				Description:     "d-ui-a",
 				StreamsRequired: []string{"st-a", "st-b"},
 				URL:             "a",
 			},
-			UI{
-				Name:            "ui-b",
+			"ui-b": UI{
 				Description:     "d-ui-b",
 				StreamsRequired: []string{"st-a", "st-b"},
 				URL:             "b",
 			},
 		},
-		UISets: []UISet{
-			UISet{
-				Name: "us-a",
-				UIs:  []string{"ui-a"},
+		UISets: map[string]UISet{
+			"us-a": UISet{
+				UIs: []string{"ui-a"},
 			},
-			UISet{
-				Name: "us-b",
-				UIs:  []string{"ui-a", "ui-b"},
+			"us-b": UISet{
+				UIs: []string{"ui-a", "ui-b"},
 			},
 		},
-		Windows: []Window{
-			Window{
-				Name: "w-a",
+		Windows: map[string]Window{
+			"w-a": Window{
 				Allowed: []interval.Interval{
 					interval.Interval{
 						Start: time.Now(),
@@ -158,8 +139,7 @@ var testManifest = MutexManifest{
 					},
 				},
 			},
-			Window{
-				Name: "w-b",
+			"w-b": Window{
 				Allowed: []interval.Interval{
 					interval.Interval{
 						Start: time.Now(),
@@ -169,407 +149,6 @@ var testManifest = MutexManifest{
 			},
 		},
 	},
-}
-
-func TestCheckDescriptions(t *testing.T) {
-
-	a := Description{
-		Name:  "a",
-		Type:  "test",
-		Short: "a",
-	}
-
-	b := Description{
-		Name:  "b",
-		Type:  "test",
-		Short: "b",
-	}
-
-	c := Description{
-		Name:  "c",
-		Type:  "test",
-		Short: "c",
-	}
-
-	d := Description{
-		Name:  "a",
-		Type:  "test",
-		Short: "duplicate a",
-	}
-
-	e := Description{}
-
-	items := []Description{a, b, c}
-
-	err, msg := CheckDescriptions(items)
-
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Log(msg)
-	}
-
-	items = []Description{a, b, c, d}
-
-	err, msg = CheckDescriptions(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"duplicate description definition #3: a"}, msg)
-
-	items = []Description{a, e, b, c}
-
-	err, msg = CheckDescriptions(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"unnamed description #1"}, msg)
-
-}
-
-func TestCheckPolicies(t *testing.T) {
-
-	a := Policy{
-		Name:        "a",
-		Description: "d-p-a",
-	}
-
-	b := Policy{
-		Name:        "b",
-		Description: "d-p-b",
-	}
-
-	c := Policy{
-		Name:        "c",
-		Description: "d-p-c",
-	}
-
-	d := Policy{
-		Name:        "a",
-		Description: "d-p-a",
-	}
-
-	e := Policy{}
-
-	items := []Policy{a, b, c}
-
-	err, msg := CheckPolicies(items)
-
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Log(msg)
-	}
-
-	items = []Policy{a, b, c, d}
-
-	err, msg = CheckPolicies(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"duplicate policy definition #3: a"}, msg)
-
-	items = []Policy{a, e, b, c}
-
-	err, msg = CheckPolicies(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"unnamed policy #1"}, msg)
-
-}
-
-func TestCheckResources(t *testing.T) {
-
-	a := Resource{
-		Name:        "a",
-		Description: "d-r-a",
-		Streams:     []string{"a", "b"},
-	}
-
-	b := Resource{
-		Name:        "b",
-		Description: "d-r-b",
-		Streams:     []string{"a", "b"},
-	}
-
-	c := Resource{
-		Name:        "c",
-		Description: "d-r-c",
-		Streams:     []string{"a", "b"},
-	}
-
-	d := Resource{
-		Name:        "a",
-		Description: "d-r-a",
-		Streams:     []string{"a", "b"},
-	}
-
-	e := Resource{}
-
-	items := []Resource{a, b, c}
-
-	err, msg := CheckResources(items)
-
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Log(msg)
-	}
-
-	items = []Resource{a, b, c, d}
-
-	err, msg = CheckResources(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"duplicate resource definition #3: a"}, msg)
-
-	items = []Resource{a, e, b, c}
-
-	err, msg = CheckResources(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"unnamed resource #1"}, msg)
-
-}
-
-func TestCheckSlots(t *testing.T) {
-
-	a := Slot{
-		Name:        "a",
-		Description: "d-sl-a",
-		Policy:      "p-a",
-		Resource:    "r-a",
-		UISet:       "us-a",
-		Window:      "w-a",
-	}
-
-	b := Slot{
-		Name:        "b",
-		Description: "d-sl-b",
-		Policy:      "p-b",
-		Resource:    "r-b",
-		UISet:       "us-b",
-		Window:      "w-b",
-	}
-
-	c := Slot{
-		Name:        "c",
-		Description: "d-sl-c",
-		Policy:      "p-c",
-		Resource:    "r-c",
-		UISet:       "us-c",
-		Window:      "w-c",
-	}
-
-	d := Slot{
-		Name:        "a",
-		Description: "d-sl-a",
-		Policy:      "p-a",
-		Resource:    "r-a",
-		UISet:       "us-a",
-		Window:      "w-a",
-	}
-
-	e := Slot{}
-
-	items := []Slot{a, b, c}
-
-	err, msg := CheckSlots(items)
-
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Log(msg)
-	}
-
-	items = []Slot{a, b, c, d}
-
-	err, msg = CheckSlots(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"duplicate slot definition #3: a"}, msg)
-
-	items = []Slot{a, e, b, c}
-
-	err, msg = CheckSlots(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"unnamed slot #1"}, msg)
-
-}
-
-func TestCheckStreams(t *testing.T) {
-
-	a := Stream{
-		Name:           "a",
-		Audience:       "a",
-		ConnectionType: "a",
-		For:            "a",
-		Scopes:         []string{"r", "w"},
-		Topic:          "a",
-		URL:            "a",
-	}
-
-	b := Stream{
-		Name:           "b",
-		Audience:       "a",
-		ConnectionType: "a",
-		For:            "a",
-		Scopes:         []string{"r", "w"},
-		Topic:          "a",
-		URL:            "a",
-	}
-	c := Stream{
-		Name:           "c",
-		Audience:       "a",
-		ConnectionType: "a",
-		For:            "a",
-		Scopes:         []string{"r", "w"},
-		Topic:          "a",
-		URL:            "a",
-	}
-
-	d := Stream{
-		Name:           "a",
-		Audience:       "a",
-		ConnectionType: "a",
-		For:            "a",
-		Scopes:         []string{"r", "w"},
-		Topic:          "a",
-		URL:            "a",
-	}
-
-	e := Stream{}
-
-	items := []Stream{a, b, c}
-
-	err, msg := CheckStreams(items)
-
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Log(msg)
-	}
-
-	items = []Stream{a, b, c, d}
-
-	err, msg = CheckStreams(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"duplicate stream definition #3: a"}, msg)
-
-	items = []Stream{a, e, b, c}
-
-	err, msg = CheckStreams(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"unnamed stream #1"}, msg)
-
-}
-
-func TestCheckUIs(t *testing.T) {
-
-	a := UI{
-		Name: "a",
-		URL:  "a",
-	}
-
-	b := UI{
-		Name: "b",
-		URL:  "a",
-	}
-
-	c := UI{
-		Name: "c",
-		URL:  "a",
-	}
-
-	d := UI{
-		Name: "a",
-		URL:  "a",
-	}
-
-	e := UI{}
-
-	items := []UI{a, b, c}
-
-	err, msg := CheckUIs(items)
-
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Log(msg)
-	}
-
-	items = []UI{a, b, c, d}
-
-	err, msg = CheckUIs(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, msg, []string{"duplicate ui definition #3: a"})
-
-	items = []UI{a, e, b, c}
-
-	err, msg = CheckUIs(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, msg, []string{"unnamed ui #1"})
-}
-
-func TestCheckUISets(t *testing.T) {
-
-	a := UISet{
-		Name: "a",
-	}
-
-	b := UISet{
-		Name: "b",
-	}
-
-	c := UISet{
-		Name: "c",
-	}
-
-	d := UISet{
-		Name: "a",
-	}
-
-	e := UISet{}
-
-	items := []UISet{a, b, c}
-
-	err, msg := CheckUISets(items)
-
-	assert.NoError(t, err)
-
-	if err != nil {
-		t.Log(msg)
-	}
-
-	items = []UISet{a, b, c, d}
-
-	err, msg = CheckUISets(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"duplicate ui_set definition #3: a"}, msg)
-
-	items = []UISet{a, e, b, c}
-
-	err, msg = CheckUISets(items)
-
-	assert.Error(t, err)
-	assert.Equal(t, "duplicate or missing name", err.Error())
-	assert.Equal(t, []string{"unnamed ui_set #1"}, msg)
 }
 
 func TestCheckOKManifest(t *testing.T) {
@@ -586,17 +165,16 @@ func TestCheckManifestCatchMissingUI(t *testing.T) {
 	defer testManifest.Unlock()
 	m := testManifest.Manifest
 
-	us := m.UISets
-	us[1].UIs[1] = "ui-c" //does not exist
-	m.UISets = us
+	m.UISets["us-b"].UIs[1] = "ui-c" //ui-c does not exist
 
 	err, msg := CheckManifest(m)
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"ui_set us-b references non-existent ui: ui-c"}, msg)
 
-	us[1].UIs[1] = "ui-b" //fix manifest for other tests
-	m.UISets = us
+	//fix manifest for other tests
+	m.UISets["us-b"].UIs[1] = "ui-b"
+
 	err, _ = CheckManifest(m)
 	assert.NoError(t, err)
 }
@@ -606,17 +184,18 @@ func TestCheckManifestCatchMissingResource(t *testing.T) {
 	testManifest.Lock()
 	defer testManifest.Unlock()
 
-	r := testManifest.Manifest.Resources
-	r[1].Name = "r-c" //makes r-b not exist
-	testManifest.Manifest.Resources = r
+	testManifest.Manifest.Resources["r-c"] = testManifest.Manifest.Resources["r-b"]
+	delete(testManifest.Manifest.Resources, "r-b")
 
 	err, msg := CheckManifest(testManifest.Manifest)
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"slot sl-b references non-existent resource: r-b"}, msg)
 
-	r[1].Name = "r-b" //fix manifest for other tests
-	testManifest.Manifest.Resources = r
+	// fix manifest
+	testManifest.Manifest.Resources["r-b"] = testManifest.Manifest.Resources["r-c"]
+	delete(testManifest.Manifest.Resources, "r-c")
+
 	err, _ = CheckManifest(testManifest.Manifest)
 	assert.NoError(t, err)
 }
@@ -626,17 +205,16 @@ func TestCheckManifestCatchMissingDescriptions(t *testing.T) {
 	testManifest.Lock()
 	defer testManifest.Unlock()
 
-	d := testManifest.Manifest.Descriptions
-	d[4].Name = "foo" //makes d-sl-a not exist
-	testManifest.Manifest.Descriptions = d
+	dsla := testManifest.Manifest.Descriptions["d-sl-a"]
+	delete(testManifest.Manifest.Descriptions, "d-sl-a")
 
 	err, msg := CheckManifest(testManifest.Manifest)
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"slot sl-a references non-existent description: d-sl-a"}, msg)
 
-	d[4].Name = "d-sl-a" //fix manifest for other tests
-	testManifest.Manifest.Descriptions = d
+	//fix manifest for other tests
+	testManifest.Manifest.Descriptions["d-sl-a"] = dsla
 	err, _ = CheckManifest(testManifest.Manifest)
 	assert.NoError(t, err)
 
@@ -647,19 +225,22 @@ func TestCheckManifestCatchMissingStream(t *testing.T) {
 	testManifest.Lock()
 	defer testManifest.Unlock()
 
-	s := testManifest.Manifest.UIs[1].StreamsRequired
-	testManifest.Manifest.UIs[1].StreamsRequired = []string{"st-c"} // st-c not exist
+	u := testManifest.Manifest.UIs["ui-b"]
+	s := u.StreamsRequired
+	u.StreamsRequired = []string{"st-c"}
+	testManifest.Manifest.UIs["ui-b"] = u
 
 	err, msg := CheckManifest(testManifest.Manifest)
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"ui ui-b references non-existent stream: st-c"}, msg)
 
-	testManifest.Manifest.UIs[1].StreamsRequired = s //fix manifest for other tests
-
+	//fix manifest for other tests
+	u.StreamsRequired = s
+	testManifest.Manifest.UIs["ui-b"] = u
 	err, _ = CheckManifest(testManifest.Manifest)
 	assert.NoError(t, err)
 
 }
 
-//TODO add extra checks if this by-name reference approach works out
+//TODO increase test coverage to include all the checks we do on manifest

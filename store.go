@@ -28,7 +28,6 @@ type Booking struct {
 
 // Description represents information to display to a user about an entity
 type Description struct {
-	Name    string `json:"name"`
 	Type    string `json:"type"`
 	Short   string `json:"short"`
 	Long    string `json:"long,omitempty"`
@@ -48,8 +47,8 @@ type Policy struct {
 	MaxBookings        int64         `json:"max_bookings"  yaml:"max_bookings"`
 	MaxDuration        time.Duration `json:"max_duration"  yaml:"max_duration"`
 	MinDuration        time.Duration `json:"min_duration"  yaml:"min_duration"`
-	Name               string        `json:"name"  yaml:"name"`
 	MaxUsage           time.Duration `json:"max_usage"  yaml:"max_usage"`
+	Slots              []string      `json:"slots" yaml:"slots"`
 }
 
 // Resource represents a physical entity that can be booked
@@ -65,9 +64,6 @@ type Resource struct {
 
 	// Diary is held in memory, not in the manifest, so don't unmarshall it.
 	Diary *diary.Diary `json:"-"  yaml:"-"`
-
-	// Name is the resource's unique name
-	Name string `json:"name"  yaml:"name"`
 
 	// Streams is a list of stream types used by this resource, e.g. data, video, logging
 	// We autogenerate the full stream details needed by the UI  when making a live activity,
@@ -85,7 +81,6 @@ type Resource struct {
 // if we used pointers and big structs as before
 type Slot struct {
 	Description string `json:"description"  yaml:"description"`
-	Name        string `json:"name"  yaml:"name"`
 	Policy      string `json:"policy"  yaml:"policy"`
 	Resource    string `json:"resource"  yaml:"resource"`
 	UISet       string `json:"ui_set"  yaml:"ui_set"`
@@ -100,9 +95,6 @@ type Slot struct {
 // are multiple access points that this would be needed.
 // Streams are typically accessed via POST with bearer token to an access API
 type Stream struct {
-
-	// Name is unique reference to the stream prototype
-	Name string `json:"name"  yaml:"name"`
 
 	// Audience is the URL of the relay server e.g. https://relay-access.practable.io
 	Audience string `json:"audience"  yaml:"audience"`
@@ -136,7 +128,7 @@ type Store struct {
 	Bookings map[string]*Booking
 
 	// Descriptions represents all the descriptions of various entities, indexed by description name
-	Descriptions map[string]*Description
+	Descriptions map[string]Description
 
 	// Filters are how the windows are checked, mapped by window name (populated after loading window info from manifest)
 	Filters map[string]*filter.Filter
@@ -149,34 +141,33 @@ type Store struct {
 	OldBookings map[string]*Booking
 
 	// TimePolicies represents all the TimePolicy(ies) in use
-	Policies map[string]*Policy
+	Policies map[string]Policy
 
 	// Resources represent all the actual physical experiments, indexed by name
-	Resources map[string]*Resource
+	Resources map[string]Resource
 
 	// Slots represent the combinations of virtual equipments and booking policies that apply to them
-	Slots map[string]*Slot
+	Slots map[string]Slot
 
-	Streams map[string]*Stream
+	Streams map[string]Stream
 
 	// UIs represents all the user interfaces that are available
-	UIs map[string]*UI
+	UIs map[string]UI
 
 	// UISets represents the lists of user interfaces for particular slots
-	UISets map[string]*UISet
+	UISets map[string]UISet
 
 	// UsagePolicies represents all the UsagePolicy(ies) in use
 	Users map[string]*User
 
 	// Window represents allowed and denied time periods for slots
-	Windows map[string]*Window
+	Windows map[string]Window
 }
 
 // User represents bookings and usage information associated with a single user
 // remembering policies allows us to direct a user to link to a policy for a course just once, and then have that remembered
 // at least until a system restart -> should be logged as a transaction
 type User struct {
-	Name        string
 	Bookings    map[string]*Booking      //map by id for retrieval
 	OldBookings map[string]*Booking      //map by id, for admin dashboards
 	Policies    map[string]bool          //map of policies that apply to the user
@@ -185,7 +176,6 @@ type User struct {
 
 // UI represents a UI that can be used with a resource, for a given slot
 type UI struct {
-	Name        string `json:"name"  yaml:"name"`
 	Description string `json:"description"  yaml:"description"`
 	// URL with moustache {{key}} templating for stream connections
 	URL             string   `json:"url"  yaml:"url"`
@@ -194,13 +184,11 @@ type UI struct {
 
 // UISet represents UIs that can be used with a slot
 type UISet struct {
-	Name string
-	UIs  []string
+	UIs []string
 }
 
 // Window represents allowed and denied periods for slots
 type Window struct {
-	Name    string              `json:"name"  yaml:"name"`
 	Allowed []interval.Interval `json:"allowed"  yaml:"allowed"`
 	Denied  []interval.Interval `json:"denied"  yaml:"denied"`
 }
@@ -210,18 +198,18 @@ func New() *Store {
 	return &Store{
 		&sync.RWMutex{},
 		make(map[string]*Booking),
-		make(map[string]*Description),
+		make(map[string]Description),
 		make(map[string]*filter.Filter),
 		func() time.Time { return time.Now() },
 		make(map[string]*Booking),
-		make(map[string]*Policy),
-		make(map[string]*Resource),
-		make(map[string]*Slot),
-		make(map[string]*Stream),
-		make(map[string]*UI),
-		make(map[string]*UISet),
+		make(map[string]Policy),
+		make(map[string]Resource),
+		make(map[string]Slot),
+		make(map[string]Stream),
+		make(map[string]UI),
+		make(map[string]UISet),
 		make(map[string]*User),
-		make(map[string]*Window),
+		make(map[string]Window),
 	}
 }
 
