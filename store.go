@@ -230,7 +230,7 @@ func (s *Store) PruneBookings() {
 	stale := make(map[uuid.UUID]*Booking)
 
 	for k, v := range s.Bookings {
-		if v.When.End.After(s.Now()) {
+		if s.Now().After(v.When.End) {
 			stale[k] = v
 		}
 	}
@@ -238,6 +238,29 @@ func (s *Store) PruneBookings() {
 	for k, v := range stale {
 		s.OldBookings[k] = v
 		delete(s.Bookings, k)
+	}
+
+}
+
+func (s *Store) PruneUserBookings(user string) {
+
+	u, ok := s.Users[user]
+
+	if !ok {
+		return //do nothing
+	}
+
+	stale := make(map[uuid.UUID]*Booking)
+
+	for k, v := range u.Bookings {
+		if s.Now().After(v.When.End) {
+			stale[k] = v
+		}
+	}
+
+	for k, v := range stale {
+		u.OldBookings[k] = v
+		delete(u.Bookings, k)
 	}
 
 }
@@ -508,6 +531,10 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 
 	// check if too many bookings already
 	if p.EnforceMaxBookings {
+
+		// remove stale entries from user's list of current bookings
+		s.PruneUserBookings(user)
+
 		// first check how many bookings under this policy already
 		cb := []uuid.UUID{}
 

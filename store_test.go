@@ -585,4 +585,23 @@ func TestPolicyChecks(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, "you currently have 2 current/future bookings which is at or exceeds the limit of 2 for policy p-b", err.Error())
 
+	// advance time to after both previous bookings
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 3, 0, 0, 0, time.UTC) }
+
+	// a further booking must now succeed
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 3, 10, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 3, 20, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	// we now exceed the available usage, so should be denied
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 3, 30, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 3, 40, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.Error(t, err)
+	assert.Equal(t, "requested duration of 9m59.999999999s exceeds remaining usage limit of 2ns", err.Error())
 }
