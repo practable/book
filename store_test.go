@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var manifestYAML = `descriptions:
+var manifestYAML = []byte(`descriptions:
   d-p-a:
     type: policy
     short: a
@@ -164,7 +164,7 @@ windows:
     allowed:
     - start: 2022-11-05T01:32:11.495348376Z
       end: 2022-11-05T02:32:11.495348578Z
-    denied: []`
+    denied: []`)
 
 func TestReplaceManifest(t *testing.T) {
 
@@ -202,4 +202,13 @@ func testCreateManifestYAML(t *testing.T) {
 		t.Fatalf("error: %v", err)
 	}
 	fmt.Printf("\n%s\n", string(d))
+}
+
+func TestReplaceManifestFromYAML(t *testing.T) {
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+	s := New()
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
 }

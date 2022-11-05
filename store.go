@@ -39,7 +39,9 @@ type Description struct {
 // Policy represents what a user can book, and any limits on bookings/usage
 // Unmarshaling of time.Duration works in yaml.v3, https://play.golang.org/p/-6y0zq96gVz"
 type Policy struct {
+	BookAhead          time.Duration `json:"book_ahead"  yaml:"book_ahead"`
 	Description        string        `json:"description"  yaml:"description"`
+	EnforceBookAhead   bool          `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
 	EnforceMaxBookings bool          `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
 	EnforceMaxDuration bool          `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
 	EnforceMinDuration bool          `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
@@ -213,45 +215,235 @@ func New() *Store {
 	}
 }
 
-/* TODO change to name indexed format
-func (s *Store) Add() uuid.UUID {
-
-	u := uuid.New()
-
-	r := resource.New()
-
-	s.Resources[u] = r
-
-	return u
-}
-
-func (s *Store) ClearBeforeAll(t time.Time) {
-
+// PruneDiaries is a maintenance operation to prune old bookings from diaries
+// to make booking decisions faster. There is an overhead to pruning trees
+// because they are rebalanced, so don't do too frequently.
+func (s *Store) PruneDiaries() {
 	for _, r := range s.Resources {
-		r.ClearBefore(t)
+		r.Diary.ClearBefore(s.Now())
 	}
 }
 
-func (s *Store) Request(rID uuid.UUID, when Interval) (uuid.NullUUID, error) {
+// PruneDiaries is maintenance operation that moves expired bookings from
+// the map of current bookings to the map of old bookings
+func (s *Store) PruneBookings() {
+
+	stale := make(map[string]*Booking)
+
+	for k, v := range s.Bookings {
+		if v.When.End.After(s.Now()) {
+			stale[k] = v
+		}
+	}
+
+	for k, v := range stale {
+		s.OldBookings[k] = v
+		delete(s.Bookings, k)
+	}
+
+}
+
+// Operations required by users
+// Get information on a policy
+// Get information on the availability of a resource in a slot within an interval
+// Book a particular slot for a particular time
+
+// Optional extensions
+// Find all slots that are free for a particular period?
+// Find a random slot that can fulfil a particular request
+// Present an aggregate availability for a set of slots
+
+// Let consumer of this package, e.g. the API, define some types that contain both the description and the contents
+// of the entities, if required - not much point doing it here because the openAPI generator will create its own
+// types anyway.
+
+// GetDescription returns a description if found
+func (s *Store) GetDescription(name string) (Description, error) {
+
+	d, ok := s.Descriptions[name]
+
+	if !ok {
+		return Description{}, errors.New("not found")
+	}
+
+	return d, nil
+}
+
+// GetPolicy returns a policy if found
+func (s *Store) GetPolicy(name string) (Policy, error) {
+
+	p, ok := s.Policies[name]
+
+	if !ok {
+		return Policy{}, errors.New("not found")
+	}
+
+	return p, nil
+}
+
+// Availability returns a slice of available intervals between start and end, given a set of bookings
+func Availability(bk []diary.Booking, start, end time.Time) []interval.Interval {
+
+	// strip the intervals from the bookings
+	bi := []interval.Interval{}
+
+	for _, b := range bk {
+		bi = append(bi, b.When)
+	}
+
+	// interval.Invert merges and sort intervals
+	// so we don't need to check for overlaps and ordering
+	a := interval.Invert(bi)
+
+	// The inverted list will start at zero time and end at infinity
+	// so make a filtered list with no values before start or after end
+	fa := []interval.Interval{}
+
+	for _, i := range a {
+
+		//ignore availability intervals that end before our start
+		if i.End.Before(start) {
+			continue
+		}
+		//ignore availability intervals that start after our end
+		if i.Start.After(end) {
+			continue
+		}
+
+		//trim an interval if it overlaps start
+		if i.Start.Before(start) {
+			fa = append(fa, interval.Interval{
+				Start: start,
+				End:   i.End,
+			})
+		}
+
+		//trim an interval if it overlaps end
+		if i.End.After(end) {
+			fa = append(fa, interval.Interval{
+				Start: i.Start,
+				End:   end,
+			})
+		}
+
+	}
+
+	return fa
+
+}
+
+func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error) {
+
+	p, ok := s.Policies[policy]
+
+	if !ok {
+		return []interval.Interval{}, errors.New("policy " + policy + " not found")
+	}
+
+	_, ok = s.Slots[slot]
+
+	if !ok {
+		return []interval.Interval{}, errors.New("slot " + slot + " not found")
+	}
+
+	bk, err := s.GetSlotBookings(slot)
+
+	if err != nil {
+		return []interval.Interval{}, err
+	}
+
+	start := s.Now()
+	end := interval.Infinity
+
+	if p.EnforceBookAhead {
+		end = start.Add(p.BookAhead)
+	}
+
+	fa := Availability(bk, start, end)
+
+	return fa, nil
+
+}
+
+// GetSlotIsAvailable checks the underlying resource's availability
+func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
+
+	sl, ok := s.Slots[slot]
+
+	if !ok {
+		return false, "", errors.New("slot " + slot + " not found")
+	}
+
+	r, ok := s.Resources[sl.Resource]
+
+	if !ok {
+		return false, "", errors.New("resource " + sl.Resource + " not found")
+	}
+
+	ok, reason := r.Diary.IsAvailable()
+
+	return ok, reason, nil
+
+}
+
+// GetSlotBookings gets bookings as far as ahead as the policy will let you book ahead
+// It's up to the consumer to handle any pagination
+func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error) {
+
+	sl, ok := s.Slots[slot]
+
+	if !ok {
+		return []diary.Booking{}, errors.New("slot " + slot + " not found")
+	}
+
+	r, ok := s.Resources[sl.Resource]
+
+	if !ok {
+		return []diary.Booking{}, errors.New("resource " + sl.Resource + " not found")
+	}
+
+	b, err := r.Diary.GetBookings()
+
+	if err != nil {
+		return []diary.Booking{}, err
+	}
+
+	// if unavailable, return bookings with error to indicate requests will be unsuccessful
+	ok, reason := r.Diary.IsAvailable()
+
+	if !ok {
+		return b, errors.New("not available because " + reason)
+	}
+
+	// available, return bookings
+	return b, nil
+
+}
+
+/*
+// RequestSlotBooking
+// Note that we must ensure we book on the actual resource, not a copy of it
+// consider refactor to maps of pointers if there are issues here
+func (s *Store) Request(r string, when interval.Interval) (uuid.NullUUID, error) {
 
 	nu := uuid.NullUUID{}
 
-	if r, ok := s.Resources[rID]; ok {
+		if r, ok := s.Resources[rID]; ok {
 
-		u, err := r.Request(Interval{
-			Start: when.Start,
-			End:   when.End,
-		})
+			u, err := r.Request(Interval{
+				Start: when.Start,
+				End:   when.End,
+			})
 
-		if err != nil {
-			return nu, err
+			if err != nil {
+				return nu, err
+			}
+
+			nu.UUID = u
+			nu.Valid = true
+			return nu, nil
+
 		}
-
-		nu.UUID = u
-		nu.Valid = true
-		return nu, nil
-
-	}
 
 	return nu, errNotFound
 }
