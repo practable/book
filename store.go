@@ -495,6 +495,56 @@ func NewUser() *User {
 	}
 }
 
+func (s *Store) CancelBooking(booking Booking) error {
+
+	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
+	b, ok := s.Bookings[booking.ID]
+
+	if !ok {
+		return errors.New("not found")
+	}
+
+	if *b != booking { //spam submission with non-matching details
+		return errors.New("could not verify booking details")
+	}
+
+	if b.When.End.Before(s.Now()) {
+		return errors.New("cannot cancel booking that has already ended")
+	}
+
+	if b.Started { //TODO - allow cancelling started bookings by deny-listing the stream tokens
+		return errors.New("cannot cancel booking that has already been used")
+	}
+
+	delete(s.Bookings, b.ID)
+
+	b.Cancelled = true
+
+	s.OldBookings[b.ID] = b
+
+	// adjust usage for user
+
+	refund := b.When.End.Sub(b.When.Start)
+
+	if b.When.Start.Before(s.Now()) {
+		refund = b.When.End.Sub(s.Now()) //only refund portion after cancellation
+	}
+
+	u, ok := s.Users[b.User]
+
+	if !ok { //might happen if server is restarted, old booking restored but user has not made any new bookings yet
+		// could be a prompt to create users for restored bookings ....
+		return errors.New("cancelled but could not refund usage to unknown user " + b.User)
+	}
+
+	*u.Usage[b.Policy] = *u.Usage[b.Policy] - refund //refund reduces usage
+
+	s.Users[b.User] = u
+
+	return nil
+
+}
+
 // MakeBooking makes bookings for users, according to the policy
 // If a user does not exist, one is created.
 func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error) {
@@ -652,17 +702,3 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 	return booking, nil
 
 }
-
-/*
-func (s *Store) Cancel(rID uuid.UUID, bID uuid.UUID) error {
-
-	if r, ok := s.Resources[rID]; ok {
-
-		return r.Delete(bID)
-
-	}
-
-	return errNotFound
-
-}
-*/

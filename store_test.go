@@ -622,4 +622,57 @@ func TestPolicyChecks(t *testing.T) {
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.Error(t, err)
 	assert.Equal(t, "requested duration of 1m0s shorter than minimum permitted duration of 5m0s", err.Error())
+
+	// user books too long a duration
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 3, 40, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 3, 55, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.Error(t, err)
+	assert.Equal(t, "requested duration of 15m0s longer than maximum permitted duration of 10m0s", err.Error())
+
+	// user books ok, using up usage allowance
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 3, 40, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 3, 50, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 4, 0, 0, 0, time.UTC) }
+
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 4, 10, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 4, 20, 0, 0, time.UTC),
+	}
+	bc, err := s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 4, 30, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 4, 40, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.Error(t, err)
+	assert.Equal(t, "requested duration of 10m0s exceeds remaining usage limit of 4m0s", err.Error())
+
+	// free up some allocation and try again, must succeed
+	s.CancelBooking(bc)
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	// indirect check on remaining usage, to ensure cancellation refund was accurate amount
+	// move forward in time to avoid limit on current/future bookings
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC) }
+
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 6, 45, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 6, 55, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.Error(t, err)
+	assert.Equal(t, "requested duration of 10m0s exceeds remaining usage limit of 4m0s", err.Error())
+
 }
