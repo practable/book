@@ -742,68 +742,67 @@ func TestGetActivity(t *testing.T) {
 	//err = s.CancelBooking(b)
 	//assert.NoError(t, err)
 
-	_, err = s.GetActivity(b)
-	/*
-		assert.NoError(t, err)
-		exp := Activity{
-			Description: Description{
-				Name:    "slot-b",
-				Type:    "slot",
-				Short:   "b",
-				Long:    "",
-				Further: "",
-				Thumb:   "",
-				Image:   ""},
-			ConfigURL: "",
-			Streams: map[string]Stream{
-				"st-a": Stream{
-					Audience:       "a",
-					ConnectionType: "a",
-					For:            "a",
-					Scopes:         []string{"r", "w"},
-					Topic:          "bbbb00-st-a",
-					URL:            "a"},
-				"st-b": Stream{
-					Audience:       "b",
-					ConnectionType: "b",
-					For:            "b",
-					Scopes:         []string{"r", "w"},
-					Topic:          "bbbb00-st-b",
-					URL:            "b"}},
-			UIs: []UIDescribed{
-				UIDescribed{
-					Description: Description{
-						Name:    "ui-a",
-						Type:    "ui",
-						Short:   "a",
-						Long:    "",
-						Further: "",
-						Thumb:   "",
-						Image:   ""},
-					URL:             "a",
-					StreamsRequired: []string{"st-a", "st-b"},
-				},
-				UIDescribed{
-					Description: Description{
-						Name:    "ui-b",
-						Type:    "ui",
-						Short:   "b",
-						Long:    "",
-						Further: "",
-						Thumb:   "",
-						Image:   ""},
-					URL:             "b",
-					StreamsRequired: []string{"st-a", "st-b"}}},
-			NotBefore: time.Date(2022, time.November, 5, 2, 0, 0, 0, time.UTC),
-			ExpiresAt: time.Date(2022, time.November, 5, 2, 10, 0, 0, time.UTC),
-		}
+	a, err := s.GetActivity(b)
 
-		assert.Equal(t, exp, a)
-	*/
+	assert.NoError(t, err)
+	exp := Activity{
+		Description: Description{
+			Name:    "slot-b",
+			Type:    "slot",
+			Short:   "b",
+			Long:    "",
+			Further: "",
+			Thumb:   "",
+			Image:   ""},
+		ConfigURL: "",
+		Streams: map[string]Stream{
+			"st-a": Stream{
+				Audience:       "a",
+				ConnectionType: "a",
+				For:            "a",
+				Scopes:         []string{"r", "w"},
+				Topic:          "bbbb00-st-a",
+				URL:            "a"},
+			"st-b": Stream{
+				Audience:       "b",
+				ConnectionType: "b",
+				For:            "b",
+				Scopes:         []string{"r", "w"},
+				Topic:          "bbbb00-st-b",
+				URL:            "b"}},
+		UIs: []UIDescribed{
+			UIDescribed{
+				Description: Description{
+					Name:    "ui-a",
+					Type:    "ui",
+					Short:   "a",
+					Long:    "",
+					Further: "",
+					Thumb:   "",
+					Image:   ""},
+				URL:             "a",
+				StreamsRequired: []string{"st-a", "st-b"},
+			},
+			UIDescribed{
+				Description: Description{
+					Name:    "ui-b",
+					Type:    "ui",
+					Short:   "b",
+					Long:    "",
+					Further: "",
+					Thumb:   "",
+					Image:   ""},
+				URL:             "b",
+				StreamsRequired: []string{"st-a", "st-b"}}},
+		NotBefore: time.Date(2022, time.November, 5, 2, 0, 0, 0, time.UTC),
+		ExpiresAt: time.Date(2022, time.November, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	assert.Equal(t, exp, a)
 
 	// must not cancel started activity
 	err = s.CancelBooking(b)
 	assert.Error(t, err)
-	assert.Equal(t, "", err.Error())
+	assert.Equal(t, "cannot cancel booking that has already been used", err.Error())
 
 }

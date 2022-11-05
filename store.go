@@ -527,47 +527,27 @@ func (s *Store) CancelBooking(booking Booking) error {
 		return errors.New("not found")
 	}
 
-	if *b != booking { //spam submission with non-matching details
+	// compare the externally relevant fields of the booking (ignore internal boolean fields
+	// to prevent status changes in the booking preventing cancellation
+
+	t1 := Booking{
+		ID:     b.ID,
+		Policy: b.Policy,
+		Slot:   b.Slot,
+		User:   b.User,
+		When:   b.When,
+	}
+	t2 := Booking{
+		ID:     booking.ID,
+		Policy: booking.Policy,
+		Slot:   booking.Slot,
+		User:   booking.User,
+		When:   booking.When,
+	}
+
+	if t1 != t2 { //spam submission with non-matching details
 		return errors.New("could not verify booking details")
 	}
-
-	// compare the externally relevant fields of the booking (ignore internal boolean fields)
-	if b.ID != booking.ID {
-		return errors.New("could not verify booking details - ID does not match")
-	}
-
-	if b.Policy != booking.Policy {
-		return errors.New("could not verify booking details - policy does not match [" + b.Policy + "!=" + booking.Policy + "]")
-	}
-	if b.Slot != booking.Slot {
-		return errors.New("could not verify booking details - slot does not match")
-	}
-	if b.User != booking.User {
-		return errors.New("could not verify booking details - user does not match")
-	}
-	if b.When != booking.When {
-		return errors.New("could not verify booking details - when does not match")
-	}
-	/*
-
-		t1 := Booking{
-			ID:     b.ID,
-			Policy: b.Policy,
-			Slot:   b.Slot,
-			User:   b.User,
-			When:   b.When,
-		}
-		t2 := Booking{
-			ID:     booking.ID,
-			Policy: booking.Policy,
-			Slot:   booking.Slot,
-			User:   booking.User,
-			When:   booking.When,
-		}
-
-		if t1 != t2 { //spam submission with non-matching details
-			return errors.New("could not verify booking details")
-		}*/
 
 	if b.When.End.Before(s.Now()) {
 		return errors.New("cannot cancel booking that has already ended")
@@ -774,42 +754,24 @@ func (s *Store) ValidateBooking(booking Booking) error {
 	}
 
 	// compare the externally relevant fields of the booking (ignore internal boolean fields)
-	/*	t1 := Booking{
-			ID:     b.ID,
-			Policy: b.Policy,
-			Slot:   b.Slot,
-			User:   b.User,
-			When:   b.When,
-		}
-		t2 := Booking{
-			ID:     booking.ID,
-			Policy: booking.Policy,
-			Slot:   booking.Slot,
-			User:   booking.User,
-			When:   booking.When,
-		}
-
-	*/
-	if b.ID != booking.ID {
-		return errors.New("could not verify booking details - ID does not match")
+	t1 := Booking{
+		ID:     b.ID,
+		Policy: b.Policy,
+		Slot:   b.Slot,
+		User:   b.User,
+		When:   b.When,
+	}
+	t2 := Booking{
+		ID:     booking.ID,
+		Policy: booking.Policy,
+		Slot:   booking.Slot,
+		User:   booking.User,
+		When:   booking.When,
 	}
 
-	if b.Policy != booking.Policy {
-		return errors.New("could not verify booking details - policy does not match [" + b.Policy + "!=" + booking.Policy + "]")
-	}
-	if b.Slot != booking.Slot {
-		return errors.New("could not verify booking details - slot does not match")
-	}
-	if b.User != booking.User {
-		return errors.New("could not verify booking details - user does not match")
-	}
-	if b.When != booking.When {
-		return errors.New("could not verify booking details - when does not match")
-	}
-
-	/*if t1 != t2 { //spam submission with non-matching details
+	if t1 != t2 { //spam submission with non-matching details
 		return errors.New("could not verify booking details")
-	}*/
+	}
 
 	if b.When.Start.After(s.Now()) {
 		return errors.New("too early")
