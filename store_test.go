@@ -481,6 +481,39 @@ func TestMakeBooking(t *testing.T) {
 	assert.False(t, b.Unfulfilled)
 }
 
+func TestDenyBookingOfUnavailable(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.SetSlotIsAvailable("sl-b", false, "foo")
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	policy := "p-b"
+	slot := "sl-b"
+	user := "test" //does not yet exist in store
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+
+	assert.Error(t, err)
+	assert.Equal(t, "unavailable because foo", err.Error())
+
+}
+
 func TestPolicyChecks(t *testing.T) {
 
 	s := New()
@@ -526,5 +559,30 @@ func TestPolicyChecks(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, "bookings cannot be made more than 2h0m0s ahead of the current time", err.Error())
+
+	// Too many bookings (ignoring attempted bookings)
+
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 10, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 20, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 20, 0, 1, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 30, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.Error(t, err)
+	assert.Equal(t, "you currently have 2 current/future bookings which is at or exceeds the limit of 2 for policy p-b", err.Error())
 
 }

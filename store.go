@@ -169,8 +169,8 @@ type Store struct {
 // remembering policies allows us to direct a user to link to a policy for a course just once, and then have that remembered
 // at least until a system restart -> should be logged as a transaction
 type User struct {
-	Bookings    map[string]*Booking       //map by id for retrieval
-	OldBookings map[string]*Booking       //map by id, for admin dashboards
+	Bookings    map[uuid.UUID]*Booking    //map by id for retrieval
+	OldBookings map[uuid.UUID]*Booking    //map by id, for admin dashboards
 	Policies    map[string]bool           //map of policies that apply to the user
 	Usage       map[string]*time.Duration //map by policy for checking usage
 }
@@ -461,8 +461,8 @@ func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error) {
 
 func NewUser() *User {
 	return &User{
-		make(map[string]*Booking),
-		make(map[string]*Booking),
+		make(map[uuid.UUID]*Booking),
+		make(map[uuid.UUID]*Booking),
 		make(map[string]bool),
 		make(map[string]*time.Duration),
 	}
@@ -509,7 +509,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 	// check if too many bookings already
 	if p.EnforceMaxBookings {
 		// first check how many bookings under this policy already
-		cb := []string{}
+		cb := []uuid.UUID{}
 
 		for k, v := range u.Bookings {
 			if v.Policy == policy {
@@ -616,6 +616,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 	}
 
 	s.Bookings[bid] = &booking
+	s.Users[user].Bookings[bid] = &booking
 
 	return booking, nil
 
