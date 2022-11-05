@@ -148,6 +148,12 @@ type Store struct {
 	// Filters are how the windows are checked, mapped by window name (populated after loading window info from manifest)
 	Filters map[string]*filter.Filter
 
+	// Locked is true when we want to stop making bookings or getting info while we do uploads/maintenance
+	Locked bool
+
+	// Message represents our message of the day, to send to users (e.g. to explain system is locked)
+	Message string
+
 	// Now is a function for getting the time - useful for mocking in test
 	Now func() time.Time `json:"-" yaml:"-"`
 
@@ -189,6 +195,13 @@ type User struct {
 	Usage       map[string]*time.Duration //map by policy for checking usage
 }
 
+type UserExternal struct {
+	Bookings    []uuid.UUID
+	OldBookings []uuid.UUID
+	Policies    []string
+	Usage       map[string]time.Duration //map by policy for checking usage
+}
+
 // UI represents a UI that can be used with a resource, for a given slot
 type UI struct {
 	Description string `json:"description"  yaml:"description"`
@@ -224,6 +237,8 @@ func New() *Store {
 		make(map[uuid.UUID]*Booking),
 		make(map[string]Description),
 		make(map[string]*filter.Filter),
+		false,
+		"Welcome to the interval booking store",
 		func() time.Time { return time.Now() },
 		make(map[uuid.UUID]*Booking),
 		make(map[string]Policy),
@@ -381,6 +396,10 @@ func Availability(bk []diary.Booking, start, end time.Time) []interval.Interval 
 
 func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error) {
 
+	if s.Locked {
+		return []interval.Interval{}, errors.New("locked")
+	}
+
 	p, ok := s.Policies[policy]
 
 	if !ok {
@@ -432,6 +451,10 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 // GetSlotIsAvailable checks the underlying resource's availability
 func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
 
+	if s.Locked {
+		return false, "", errors.New("locked")
+	}
+
 	sl, ok := s.Slots[slot]
 
 	if !ok {
@@ -452,6 +475,10 @@ func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
 
 // GetSlotIsAvailable checks the underlying resource's availability
 func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error {
+
+	if s.Locked {
+		return errors.New("locked")
+	}
 
 	sl, ok := s.Slots[slot]
 
@@ -519,6 +546,10 @@ func NewUser() *User {
 }
 
 func (s *Store) CancelBooking(booking Booking) error {
+
+	if s.Locked {
+		return errors.New("locked")
+	}
 
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 	b, ok := s.Bookings[booking.ID]
@@ -589,6 +620,10 @@ func (s *Store) CancelBooking(booking Booking) error {
 // MakeBooking makes bookings for users, according to the policy
 // If a user does not exist, one is created.
 func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error) {
+
+	if s.Locked {
+		return Booking{}, errors.New("locked")
+	}
 
 	p, ok := s.Policies[policy]
 
@@ -746,6 +781,10 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 
 func (s *Store) ValidateBooking(booking Booking) error {
 
+	if s.Locked {
+		return errors.New("locked")
+	}
+
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 	b, ok := s.Bookings[booking.ID]
 
@@ -801,6 +840,10 @@ func (s *Store) ValidateBooking(booking Booking) error {
 }
 
 func (s *Store) GetActivity(booking Booking) (Activity, error) {
+
+	if s.Locked {
+		return Activity{}, errors.New("locked")
+	}
 
 	err := s.ValidateBooking(booking)
 
