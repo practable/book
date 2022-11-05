@@ -37,18 +37,19 @@ type Description struct {
 // Policy represents what a user can book, and any limits on bookings/usage
 // Unmarshaling of time.Duration works in yaml.v3, https://play.golang.org/p/-6y0zq96gVz"
 type Policy struct {
-	BookAhead          time.Duration `json:"book_ahead"  yaml:"book_ahead"`
-	Description        string        `json:"description"  yaml:"description"`
-	EnforceBookAhead   bool          `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
-	EnforceMaxBookings bool          `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
-	EnforceMaxDuration bool          `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
-	EnforceMinDuration bool          `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
-	EnforceMaxUsage    bool          `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
-	MaxBookings        int64         `json:"max_bookings"  yaml:"max_bookings"`
-	MaxDuration        time.Duration `json:"max_duration"  yaml:"max_duration"`
-	MinDuration        time.Duration `json:"min_duration"  yaml:"min_duration"`
-	MaxUsage           time.Duration `json:"max_usage"  yaml:"max_usage"`
-	Slots              []string      `json:"slots" yaml:"slots"`
+	BookAhead          time.Duration   `json:"book_ahead"  yaml:"book_ahead"`
+	Description        string          `json:"description"  yaml:"description"`
+	EnforceBookAhead   bool            `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
+	EnforceMaxBookings bool            `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
+	EnforceMaxDuration bool            `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
+	EnforceMinDuration bool            `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
+	EnforceMaxUsage    bool            `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
+	MaxBookings        int64           `json:"max_bookings"  yaml:"max_bookings"`
+	MaxDuration        time.Duration   `json:"max_duration"  yaml:"max_duration"`
+	MinDuration        time.Duration   `json:"min_duration"  yaml:"min_duration"`
+	MaxUsage           time.Duration   `json:"max_usage"  yaml:"max_usage"`
+	Slots              []string        `json:"slots" yaml:"slots"`
+	SlotMap            map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
 }
 
 // Resource represents a physical entity that can be booked
@@ -340,6 +341,12 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 		return []interval.Interval{}, errors.New("slot " + slot + " not found")
 	}
 
+	_, ok = p.SlotMap[slot]
+
+	if !ok {
+		return []interval.Interval{}, errors.New("slot " + slot + " not in policy " + policy)
+	}
+
 	bk, err := s.GetSlotBookings(slot)
 
 	if err != nil {
@@ -351,6 +358,17 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 
 	if p.EnforceBookAhead {
 		end = start.Add(p.BookAhead)
+	}
+
+	if len(bk) == 0 { // no bookings
+		a := []interval.Interval{
+			interval.Interval{
+				Start: start,
+				End:   end,
+			},
+		}
+
+		return a, nil
 	}
 
 	fa := Availability(bk, start, end)
@@ -377,6 +395,31 @@ func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
 	ok, reason := r.Diary.IsAvailable()
 
 	return ok, reason, nil
+
+}
+
+// GetSlotIsAvailable checks the underlying resource's availability
+func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error {
+
+	sl, ok := s.Slots[slot]
+
+	if !ok {
+		return errors.New("slot " + slot + " not found")
+	}
+
+	r, ok := s.Resources[sl.Resource]
+
+	if !ok {
+		return errors.New("resource " + sl.Resource + " not found")
+	}
+
+	if available {
+		r.Diary.SetAvailable(reason)
+	} else {
+		r.Diary.SetUnavailable(reason)
+	}
+
+	return nil
 
 }
 

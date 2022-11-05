@@ -136,16 +136,16 @@ var testManifest = MutexManifest{
 			"w-a": Window{
 				Allowed: []interval.Interval{
 					interval.Interval{
-						Start: time.Now(),
-						End:   time.Now().Add(time.Hour),
+						Start: time.Date(2022, 11, 4, 0, 0, 0, 0, time.UTC),
+						End:   time.Date(2022, 11, 6, 0, 0, 0, 0, time.UTC),
 					},
 				},
 			},
 			"w-b": Window{
 				Allowed: []interval.Interval{
 					interval.Interval{
-						Start: time.Now(),
-						End:   time.Now().Add(time.Hour),
+						Start: time.Date(2022, 11, 4, 0, 0, 0, 0, time.UTC),
+						End:   time.Date(2022, 11, 6, 0, 0, 0, 0, time.UTC),
 					},
 				},
 			},

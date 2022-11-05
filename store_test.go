@@ -70,7 +70,7 @@ var manifestYAML = []byte(`descriptions:
     image: ""
 policies:
   p-a:
-    bookahead: 0s
+    book_ahead: 0s
     description: d-p-a
     enforce_book_ahead: false
     enforce_max_bookings: false
@@ -84,7 +84,7 @@ policies:
     slots:
     - sl-a
   p-b:
-    bookahead: 2h0m0s
+    book_ahead: 2h0m0s
     description: d-p-b
     enforce_book_ahead: true
     enforce_max_bookings: false
@@ -164,13 +164,13 @@ ui_sets:
 windows:
   w-a:
     allowed:
-    - start: 2022-11-05T01:32:11.495346472Z
-      end: 2022-11-05T02:32:11.495346777Z
+    - start: 2022-11-04T00:00:00Z 
+      end:   2022-11-06T00:00:00Z
     denied: []
   w-b:
     allowed:
-    - start: 2022-11-05T01:32:11.495348376Z
-      end: 2022-11-05T02:32:11.495348578Z
+    - start: 2022-11-04T00:00:00Z 
+      end:   2022-11-06T00:00:00Z
     denied: []`)
 
 func TestReplaceManifest(t *testing.T) {
@@ -184,6 +184,7 @@ func TestReplaceManifest(t *testing.T) {
 	assert.Equal(t, []string{}, msg)
 
 	s := New()
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
 
 	err = s.ReplaceManifest(testManifest.Manifest)
 
@@ -199,10 +200,36 @@ func TestReplaceManifest(t *testing.T) {
 	assert.Equal(t, 2, len(s.UISets))
 	assert.Equal(t, 2, len(s.Windows))
 
+	// check Diaries
+	for _, v := range s.Resources {
+		ok, reason := v.Diary.IsAvailable()
+		assert.True(t, ok)
+		assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
+	}
+
+	// check Filters
+	for _, v := range s.Filters {
+		assert.NotEqual(t, nil, v)
+	}
+
+	// check SlotMaps
+	sml := make(map[string]int)
+	for k, v := range s.Policies {
+		sml[k] = len(v.SlotMap)
+	}
+	exp := map[string]int{
+		"p-a": 1,
+		"p-b": 1,
+	}
+	assert.Equal(t, exp, sml)
+
 }
 
 // rename as Test... if required to update the yaml file for testing manifest ingest
 func testCreateManifestYAML(t *testing.T) {
+
+	testManifest.Lock()
+	defer testManifest.Unlock()
 
 	d, err := yaml.Marshal(&testManifest.Manifest)
 	if err != nil {
@@ -305,4 +332,113 @@ func TestAvailabilityTimeBoundaries(t *testing.T) {
 	// request the whole middle interval that is available
 	_, err = d.Request(a[2])
 	assert.NoError(t, err)
+}
+
+func TestGetSlotIsAvailable(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of testing reason string
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	ok, reason, err := s.GetSlotIsAvailable("sl-a")
+
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
+
+}
+
+func TestSetSlotIsAvailable(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of testing reason string
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	ok, reason, err := s.GetSlotIsAvailable("sl-a")
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
+
+	s.SetSlotIsAvailable("sl-a", false, "foo")
+
+	ok, reason, err = s.GetSlotIsAvailable("sl-a")
+
+	assert.NoError(t, err)
+	assert.False(t, ok)
+	assert.Equal(t, "unavailable because foo", reason)
+
+	s.SetSlotIsAvailable("sl-a", true, "bar")
+
+	ok, reason, err = s.GetSlotIsAvailable("sl-a")
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "bar", reason)
+
+}
+
+func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	ok, reason, err := s.GetSlotIsAvailable("sl-a")
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
+
+	// no lookahead limit in policy
+	a, err := s.GetAvailability("p-a", "sl-a")
+	assert.NoError(t, err)
+	exp := []interval.Interval{
+		interval.Interval{
+			Start: s.Now(),
+			End:   interval.Infinity,
+		},
+	}
+	assert.Equal(t, exp, a)
+
+	// 2-hour lookahead limit in policy
+	a, err = s.GetAvailability("p-b", "sl-b")
+	assert.NoError(t, err)
+	exp = []interval.Interval{
+		interval.Interval{
+			Start: s.Now(),
+			End:   s.Now().Add(2 * time.Hour),
+		},
+	}
+	assert.Equal(t, exp, a)
+
+	// slot not part of policy
+	a, err = s.GetAvailability("p-b", "sl-a")
+	assert.Error(t, err)
+	assert.Equal(t, "slot sl-a not in policy p-b", err.Error())
+
 }

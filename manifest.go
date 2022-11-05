@@ -68,6 +68,15 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 
 	status := "Loaded at " + s.Now().Format(time.RFC3339)
 
+	// SlotMap is used for checking if slots are listed in policy
+	for k, v := range s.Policies {
+		v.SlotMap = make(map[string]bool)
+		for _, k := range v.Slots {
+			v.SlotMap[k] = true
+		}
+		s.Policies[k] = v
+	}
+
 	for k := range s.Resources {
 		r := s.Resources[k]
 		r.Diary = diary.New(k)
