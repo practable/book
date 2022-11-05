@@ -738,10 +738,6 @@ func TestGetActivity(t *testing.T) {
 	// now make resource available, must get activity now
 	s.SetSlotIsAvailable("sl-b", true, "test")
 
-	// check our b is valid here, and can cancel - temporary!
-	//err = s.CancelBooking(b)
-	//assert.NoError(t, err)
-
 	a, err := s.GetActivity(b)
 
 	assert.NoError(t, err)
@@ -804,5 +800,7 @@ func TestGetActivity(t *testing.T) {
 	err = s.CancelBooking(b)
 	assert.Error(t, err)
 	assert.Equal(t, "cannot cancel booking that has already been used", err.Error())
+
+	// TODO - set up a user with two short bookings, then try to make third booking that is within total usage allowance, but outside maxBookings, so it must fail. then cancel a booking, and try again. Third booking should suceed now that MaxBookings limit does not prevent it.
 
 }

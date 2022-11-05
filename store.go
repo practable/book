@@ -149,6 +149,9 @@ type Store struct {
 	Filters map[string]*filter.Filter
 
 	// Locked is true when we want to stop making bookings or getting info while we do uploads/maintenance
+	// The API handler has to check this, e.g. if locked, do not make bookings or check availability on
+	// behalf of users. We can't do this automatically in the methods because then we'd need some sort
+	// of admin override, to permit maintenance when locked (which is the whole point of locking the system)
 	Locked bool
 
 	// Message represents our message of the day, to send to users (e.g. to explain system is locked)
@@ -293,6 +296,8 @@ func (s *Store) PruneUserBookings(user string) {
 	for k, v := range u.Bookings {
 		if s.Now().After(v.When.End) {
 			stale[k] = v
+		} else if v.Cancelled { //TODO test we release bookings ok
+			stale[k] = v
 		}
 	}
 
@@ -396,10 +401,6 @@ func Availability(bk []diary.Booking, start, end time.Time) []interval.Interval 
 
 func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error) {
 
-	if s.Locked {
-		return []interval.Interval{}, errors.New("locked")
-	}
-
 	p, ok := s.Policies[policy]
 
 	if !ok {
@@ -451,10 +452,6 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 // GetSlotIsAvailable checks the underlying resource's availability
 func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
 
-	if s.Locked {
-		return false, "", errors.New("locked")
-	}
-
 	sl, ok := s.Slots[slot]
 
 	if !ok {
@@ -475,10 +472,6 @@ func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
 
 // GetSlotIsAvailable checks the underlying resource's availability
 func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error {
-
-	if s.Locked {
-		return errors.New("locked")
-	}
 
 	sl, ok := s.Slots[slot]
 
@@ -546,10 +539,6 @@ func NewUser() *User {
 }
 
 func (s *Store) CancelBooking(booking Booking) error {
-
-	if s.Locked {
-		return errors.New("locked")
-	}
 
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 	b, ok := s.Bookings[booking.ID]
@@ -619,11 +608,19 @@ func (s *Store) CancelBooking(booking Booking) error {
 
 // MakeBooking makes bookings for users, according to the policy
 // If a user does not exist, one is created.
+// APIs for users should call this version
 func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error) {
 
-	if s.Locked {
-		return Booking{}, errors.New("locked")
-	}
+	bid := uuid.New()
+	return s.MakeBookingWithID(policy, slot, user, when, bid)
+
+}
+
+// MakeBookingWithID makes bookings for users, according to the policy
+// If a user does not exist, one is created.
+// The booking ID is set by the caller, so that bookings can be edited/replaced
+// This version should only be called by Admin users
+func (s *Store) MakeBookingWithID(policy, slot, user string, when interval.Interval, bid uuid.UUID) (Booking, error) {
 
 	p, ok := s.Policies[policy]
 
@@ -752,7 +749,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 
 	// see if the booking can be made ....
 
-	bid, err := r.Diary.Request(when)
+	err := r.Diary.RequestWithID(when, bid)
 
 	if err != nil {
 		return Booking{}, err
@@ -780,10 +777,6 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 }
 
 func (s *Store) ValidateBooking(booking Booking) error {
-
-	if s.Locked {
-		return errors.New("locked")
-	}
 
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 	b, ok := s.Bookings[booking.ID]
@@ -840,10 +833,6 @@ func (s *Store) ValidateBooking(booking Booking) error {
 }
 
 func (s *Store) GetActivity(booking Booking) (Activity, error) {
-
-	if s.Locked {
-		return Activity{}, errors.New("locked")
-	}
 
 	err := s.ValidateBooking(booking)
 
