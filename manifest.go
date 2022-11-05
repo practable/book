@@ -94,6 +94,9 @@ func CheckDescriptions(items map[string]Description) (error, []string) {
 	msg := []string{}
 
 	for k, item := range items {
+		if item.Name == "" {
+			msg = append(msg, "missing name field in description "+k)
+		}
 		if item.Type == "" {
 			msg = append(msg, "missing type field in description "+k)
 		}

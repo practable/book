@@ -13,61 +13,37 @@ import (
 
 var manifestYAML = []byte(`descriptions:
   d-p-a:
+    name: policy-a
     type: policy
     short: a
-    long: ""
-    further: ""
-    thumb: ""
-    image: ""
   d-p-b:
+    name: policy-b
     type: policy
     short: b
-    long: ""
-    further: ""
-    thumb: ""
-    image: ""
   d-r-a:
+    name: resource-a
     type: resource
     short: a
-    long: ""
-    further: ""
-    thumb: ""
-    image: ""
   d-r-b:
+    name: resource-b
     type: resource
     short: b
-    long: ""
-    further: ""
-    thumb: ""
-    image: ""
   d-sl-a:
+    name: slot-a
     type: slot
     short: a
-    long: ""
-    further: ""
-    thumb: ""
-    image: ""
   d-sl-b:
+    name: slot-a
     type: slot
     short: b
-    long: ""
-    further: ""
-    thumb: ""
-    image: ""
   d-ui-a:
+    name: ui-a
     type: ui
     short: a
-    long: ""
-    further: ""
-    thumb: ""
-    image: ""
   d-ui-b:
+    name: ui-a
     type: ui
     short: b
-    long: ""
-    further: ""
-    thumb: ""
-    image: ""
 policies:
   p-a:
     book_ahead: 0s
@@ -173,6 +149,19 @@ windows:
       end: 2022-11-06T00:00:00Z
     denied: []`)
 
+// rename as Test... if required to update the yaml file for testing manifest ingest
+func testCreateManifestYAML(t *testing.T) {
+
+	testManifest.Lock()
+	defer testManifest.Unlock()
+
+	d, err := yaml.Marshal(&testManifest.Manifest)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	fmt.Printf("\n%s\n", string(d))
+}
+
 func TestReplaceManifest(t *testing.T) {
 
 	testManifest.Lock()
@@ -223,19 +212,6 @@ func TestReplaceManifest(t *testing.T) {
 	}
 	assert.Equal(t, exp, sml)
 
-}
-
-// rename as Test... if required to update the yaml file for testing manifest ingest
-func testCreateManifestYAML(t *testing.T) {
-
-	testManifest.Lock()
-	defer testManifest.Unlock()
-
-	d, err := yaml.Marshal(&testManifest.Manifest)
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
-	fmt.Printf("\n%s\n", string(d))
 }
 
 func TestReplaceManifestFromYAML(t *testing.T) {

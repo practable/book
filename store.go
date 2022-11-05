@@ -28,12 +28,13 @@ type Booking struct {
 
 // Description represents information to display to a user about an entity
 type Description struct {
-	Type    string `json:"type"`
-	Short   string `json:"short"`
-	Long    string `json:"long,omitempty"`
-	Further string `json:"further,omitempty"`
-	Thumb   string `json:"thumb,omitempty"`
-	Image   string `json:"image,omitempty"`
+	Name    string `json:"name" yaml:"name"`
+	Type    string `json:"type" yaml:"type"`
+	Short   string `json:"short" yaml:"short"`
+	Long    string `json:"long,omitempty" yaml:"long,omitempty"`
+	Further string `json:"further,omitempty" yaml:"further,omitempty"`
+	Thumb   string `json:"thumb,omitempty" yaml:"thumb,omitempty"`
+	Image   string `json:"image,omitempty" yaml:"image,omitempty"`
 }
 
 // Policy represents what a user can book, and any limits on bookings/usage

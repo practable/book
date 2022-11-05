@@ -24,34 +24,42 @@ var testManifest = MutexManifest{
 	Manifest{
 		Descriptions: map[string]Description{
 			"d-p-a": Description{
+				Name:  "policy-a",
 				Type:  "policy",
 				Short: "a",
 			},
 			"d-p-b": Description{
+				Name:  "policy-b",
 				Type:  "policy",
 				Short: "b",
 			},
 			"d-r-a": Description{
+				Name:  "resource-a",
 				Type:  "resource",
 				Short: "a",
 			},
 			"d-r-b": Description{
+				Name:  "resource-b",
 				Type:  "resource",
 				Short: "b",
 			},
 			"d-sl-a": Description{
+				Name:  "slot-a",
 				Type:  "slot",
 				Short: "a",
 			},
 			"d-sl-b": Description{
+				Name:  "slot-a",
 				Type:  "slot",
 				Short: "b",
 			},
 			"d-ui-a": Description{
+				Name:  "ui-a",
 				Type:  "ui",
 				Short: "a",
 			},
 			"d-ui-b": Description{
+				Name:  "ui-a",
 				Type:  "ui",
 				Short: "b",
 			},
