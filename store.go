@@ -11,8 +11,6 @@ import (
 	"github.com/timdrysdale/interval/interval"
 )
 
-var errNotFound = errors.New("resource not found")
-
 // Booking represents a promise to access an equipment that
 // provided by the pool referenced in the resource of the slot
 type Booking struct {
@@ -119,10 +117,8 @@ type Stream struct {
 	URL string `json:"url"  yaml:"url"`
 }
 
-// There is no need for a description in the resource, because the slot holds the description, so
-// we can just use the resource.Resource directly in the store.
-
 // Store represents entities required to make bookings, including resources, slots, descriptions, users, policies, and bookings
+// any maps to values are data that are not mutated except when the manifest is replaced so do not need to be maps to pointers
 type Store struct {
 	*sync.RWMutex `json:"-"`
 
@@ -316,16 +312,14 @@ func Availability(bk []diary.Booking, start, end time.Time) []interval.Interval 
 				Start: start,
 				End:   i.End,
 			})
-		}
-
-		//trim an interval if it overlaps end
-		if i.End.After(end) {
+		} else if i.End.After(end) { //trim an interval if it overlaps end
 			fa = append(fa, interval.Interval{
 				Start: i.Start,
 				End:   end,
 			})
+		} else { // ok interval, append it
+			fa = append(fa, i)
 		}
-
 	}
 
 	return fa

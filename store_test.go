@@ -3,8 +3,11 @@ package interval
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/timdrysdale/interval/diary"
+	"github.com/timdrysdale/interval/interval"
 	"gopkg.in/yaml.v2"
 )
 
@@ -67,7 +70,9 @@ var manifestYAML = []byte(`descriptions:
     image: ""
 policies:
   p-a:
+    bookahead: 0s
     description: d-p-a
+    enforce_book_ahead: false
     enforce_max_bookings: false
     enforce_max_duration: false
     enforce_min_duration: false
@@ -79,7 +84,9 @@ policies:
     slots:
     - sl-a
   p-b:
+    bookahead: 2h0m0s
     description: d-p-b
+    enforce_book_ahead: true
     enforce_max_bookings: false
     enforce_max_duration: false
     enforce_min_duration: false
@@ -210,5 +217,93 @@ func TestReplaceManifestFromYAML(t *testing.T) {
 	assert.NoError(t, err)
 	s := New()
 	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+}
+
+func TestAvailability(t *testing.T) {
+
+	start := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+
+	s1 := start.Add(5 * time.Minute)
+	e1 := start.Add(10 * time.Minute)
+	s2 := start.Add(20 * time.Minute)
+	e2 := start.Add(30 * time.Minute)
+
+	bk := []diary.Booking{
+		diary.Booking{
+			When: interval.Interval{
+				Start: s1,
+				End:   e1,
+			},
+		},
+		diary.Booking{
+			When: interval.Interval{
+				Start: s2,
+				End:   e2,
+			},
+		},
+	}
+
+	exp := []interval.Interval{
+		interval.Interval{
+			Start: start,
+			End:   s1.Add(-time.Nanosecond),
+		},
+		interval.Interval{
+			Start: e1.Add(time.Nanosecond),
+			End:   s2.Add(-time.Nanosecond),
+		},
+		interval.Interval{
+			Start: e2.Add(time.Nanosecond),
+			End:   end,
+		},
+	}
+
+	a := Availability(bk, start, end)
+
+	assert.Equal(t, exp, a)
+
+}
+
+// TestBooking checks whether using the exact same time as the edge of an existing booking
+// is ok for making a new booking ....?! Technically it overlaps ....
+// fix ... adjust availability edges by 1ns
+func TestAvailabilityTimeBoundaries(t *testing.T) {
+
+	start := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+
+	s1 := start.Add(5 * time.Minute)
+	e1 := start.Add(10 * time.Minute)
+	s2 := start.Add(20 * time.Minute)
+	e2 := start.Add(30 * time.Minute)
+
+	bk := []diary.Booking{
+		diary.Booking{
+			When: interval.Interval{
+				Start: s1,
+				End:   e1,
+			},
+		},
+		diary.Booking{
+			When: interval.Interval{
+				Start: s2,
+				End:   e2,
+			},
+		},
+	}
+
+	a := Availability(bk, start, end)
+
+	d := diary.New("test")
+
+	_, err := d.Request(bk[0].When)
+	assert.NoError(t, err)
+	_, err = d.Request(bk[1].When)
+	assert.NoError(t, err)
+
+	// request the whole middle interval that is available
+	_, err = d.Request(a[2])
 	assert.NoError(t, err)
 }

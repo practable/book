@@ -62,8 +62,10 @@ var testManifest = MutexManifest{
 				Slots:       []string{"sl-a"},
 			},
 			"p-b": Policy{
-				Description: "d-p-b",
-				Slots:       []string{"sl-b"},
+				BookAhead:        time.Duration(2 * time.Hour),
+				Description:      "d-p-b",
+				EnforceBookAhead: true,
+				Slots:            []string{"sl-b"},
 			},
 		},
 		Resources: map[string]Resource{

@@ -140,11 +140,11 @@ func TestInvert(t *testing.T) {
 	// check order is now correct, with inverted intervals
 
 	expected := []Interval{
-		Interval{Start: ZeroTime, End: a.Start},
-		Interval{Start: a.End, End: b.Start},
-		Interval{Start: b.End, End: c.Start},
-		Interval{Start: c.End, End: d.Start},
-		Interval{Start: d.End, End: Infinity},
+		Interval{Start: ZeroTime, End: a.Start.Add(-time.Nanosecond)},
+		Interval{Start: a.End.Add(time.Nanosecond), End: b.Start.Add(-time.Nanosecond)},
+		Interval{Start: b.End.Add(time.Nanosecond), End: c.Start.Add(-time.Nanosecond)},
+		Interval{Start: c.End.Add(time.Nanosecond), End: d.Start.Add(-time.Nanosecond)},
+		Interval{Start: d.End.Add(time.Nanosecond), End: Infinity},
 	}
 
 	assert.Equal(t, inverted, expected)
@@ -174,11 +174,11 @@ func TestInvertOverlapping(t *testing.T) {
 	// check order is now correct, with inverted intervals
 
 	expected := []Interval{
-		Interval{Start: ZeroTime, End: a.Start},
-		Interval{Start: a.End, End: b.Start},
+		Interval{Start: ZeroTime, End: a.Start.Add(-time.Nanosecond)},
+		Interval{Start: a.End.Add(time.Nanosecond), End: b.Start.Add(-time.Nanosecond)},
 		//skip b.End, c.Start because within overlapped allow intervals
-		Interval{Start: c.End, End: d.Start},
-		Interval{Start: d.End, End: Infinity},
+		Interval{Start: c.End.Add(time.Nanosecond), End: d.Start.Add(-time.Nanosecond)},
+		Interval{Start: d.End.Add(time.Nanosecond), End: Infinity},
 	}
 
 	assert.Equal(t, inverted, expected)

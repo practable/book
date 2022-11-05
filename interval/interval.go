@@ -103,11 +103,11 @@ func Invert(intervals []Interval) []Interval {
 
 		last := &inverted[len(inverted)-1]
 
-		// set the end of the last deny interval
-		last.End = next.Start
+		// set the end of the last deny interval, minus a nanosecond to prevent overlap
+		last.End = next.Start.Add(-time.Nanosecond)
 
-		// set the start time of the next deny interval
-		inverted = append(inverted, Interval{Start: next.End})
+		// set the start time of the next deny interval, plus a nanosecond to prevent overlap
+		inverted = append(inverted, Interval{Start: next.End.Add(time.Nanosecond)})
 
 	}
 
