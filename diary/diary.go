@@ -72,24 +72,31 @@ func (d *Diary) SetAvailable(reason string) {
 
 // Request returns a booking, if it can be made
 func (d *Diary) Request(when interval.Interval) (uuid.UUID, error) {
+
+	u := uuid.New()
+
+	err := d.RequestWithID(when, u)
+
+	if err != nil {
+		return [16]byte{}, err
+	}
+
+	return u, nil
+}
+
+// Request returns a booking, if it can be made
+// using a given uuid
+func (d *Diary) RequestWithID(when interval.Interval, u uuid.UUID) error {
 	d.Lock()
 	defer d.Unlock()
 
 	if ok, msg := d.IsAvailable(); !ok {
-		return [16]byte{}, errors.New(msg)
+		return errors.New(msg)
 	}
-
-	u := uuid.New()
 
 	_, err := d.bookings.Put(when, u)
 
-	if err != nil {
-		//return a zero-value UUID if there is an error
-		return [16]byte{}, err
-	}
-
-	return u, err
-
+	return err
 }
 
 // GetCount returns the number of live bookings
