@@ -72,18 +72,31 @@ func (d *Diary) SetAvailable(reason string) {
 // Request returns a booking, if it can be made
 // name must be specified
 func (d *Diary) Request(when interval.Interval, name string) error {
-	d.Lock()
-	defer d.Unlock()
 
 	if name == "" {
 		return errors.New("must not have empty name")
+	}
+
+	bs, err := d.GetBookings()
+
+	if err != nil {
+		return err
+	}
+
+	d.Lock()
+	defer d.Unlock()
+
+	for _, b := range bs {
+		if b.Name == name {
+			return errors.New("name already in use")
+		}
 	}
 
 	if ok, msg := d.IsAvailable(); !ok {
 		return errors.New(msg)
 	}
 
-	_, err := d.bookings.Put(when, name)
+	_, err = d.bookings.Put(when, name)
 
 	return err
 }
@@ -104,8 +117,8 @@ func (d *Diary) GetBookings() ([]Booking, error) {
 	slots := d.bookings.Keys() //these are given in order
 	names := d.bookings.Values()
 
-	if len(slots) != len(names) {
-		return b, errors.New("number of slots and names are not the same")
+	if len(slots) != len(names) { //prevent segfault in next step
+		return b, errors.New("diary consistency error")
 	}
 
 	for idx, when := range slots {

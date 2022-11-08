@@ -170,3 +170,18 @@ func TestName(t *testing.T) {
 	d := New("test")
 	assert.Equal(t, d.Name, "test")
 }
+
+func TestDenySameNameBooking(t *testing.T) {
+
+	d := New("test")
+
+	// request first interval - must succeed
+	err := d.Request(a, "test00")
+	assert.NoError(t, err)
+
+	// request different interval with same name - must fail
+	err = d.Request(b, "test00")
+	assert.Error(t, err)
+	assert.Equal(t, "name already in use", err.Error())
+
+}
