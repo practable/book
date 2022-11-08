@@ -8,7 +8,6 @@ import (
 
 	avl "github.com/timdrysdale/interval/internal/trees/avltree"
 
-	"github.com/google/uuid"
 	"github.com/timdrysdale/interval/interval"
 )
 
@@ -26,7 +25,7 @@ type Diary struct {
 // validating bookings with ValidateBooking()
 type Booking struct {
 	When interval.Interval
-	ID   uuid.UUID
+	Name string
 }
 
 // New creates a new resource with no bookings
@@ -36,27 +35,27 @@ func New(name string) *Diary {
 		name,
 		avl.NewWith(interval.Comparator),
 		true,
-		"",
+		"new",
 	}
 }
 
 // Delete removes a booking, if it exists
-func (d *Diary) Delete(delete uuid.UUID) error {
+func (d *Diary) Delete(delete string) error {
 
 	d.Lock()
 	defer d.Unlock()
 
 	slots := d.bookings.Keys() //these are given in order
-	IDs := d.bookings.Values()
+	Names := d.bookings.Values()
 
-	for idx, ID := range IDs {
-		if delete == ID {
+	for idx, Name := range Names {
+		if delete == Name {
 			d.bookings.Remove(slots[idx])
 			return nil
 		}
 	}
 
-	return errors.New("ID not found")
+	return errors.New("not found")
 
 }
 
@@ -71,30 +70,20 @@ func (d *Diary) SetAvailable(reason string) {
 }
 
 // Request returns a booking, if it can be made
-func (d *Diary) Request(when interval.Interval) (uuid.UUID, error) {
-
-	u := uuid.New()
-
-	err := d.RequestWithID(when, u)
-
-	if err != nil {
-		return [16]byte{}, err
-	}
-
-	return u, nil
-}
-
-// Request returns a booking, if it can be made
-// using a given uuid
-func (d *Diary) RequestWithID(when interval.Interval, u uuid.UUID) error {
+// name must be specified
+func (d *Diary) Request(when interval.Interval, name string) error {
 	d.Lock()
 	defer d.Unlock()
+
+	if name == "" {
+		return errors.New("must not have empty name")
+	}
 
 	if ok, msg := d.IsAvailable(); !ok {
 		return errors.New(msg)
 	}
 
-	_, err := d.bookings.Put(when, u)
+	_, err := d.bookings.Put(when, name)
 
 	return err
 }
@@ -113,16 +102,16 @@ func (d *Diary) GetBookings() ([]Booking, error) {
 	b := []Booking{}
 
 	slots := d.bookings.Keys() //these are given in order
-	IDs := d.bookings.Values()
+	names := d.bookings.Values()
 
-	if len(slots) != len(IDs) {
-		return b, errors.New("number of slots and IDs are not the same")
+	if len(slots) != len(names) {
+		return b, errors.New("number of slots and names are not the same")
 	}
 
 	for idx, when := range slots {
 		b = append(b, Booking{
 			When: when.(interval.Interval),
-			ID:   (IDs[idx]).(uuid.UUID),
+			Name: (names[idx]).(string),
 		})
 	}
 
@@ -151,7 +140,7 @@ func (d *Diary) IsAvailable() (bool, string) {
 // (don't if resource if not available)
 func (d *Diary) ValidateBooking(b Booking) (bool, error) {
 
-	id, found := d.bookings.Get(b.When)
+	name, found := d.bookings.Get(b.When)
 
 	if !found {
 		return false, errors.New("not found")
@@ -161,8 +150,8 @@ func (d *Diary) ValidateBooking(b Booking) (bool, error) {
 		return false, errors.New(msg)
 	}
 
-	if id != b.ID {
-		return false, errors.New("ID mismatch")
+	if name != b.Name {
+		return false, errors.New("name mismatch")
 	}
 
 	return true, nil
