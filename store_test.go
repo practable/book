@@ -302,13 +302,13 @@ func TestAvailabilityTimeBoundaries(t *testing.T) {
 
 	d := diary.New("test")
 
-	_, err := d.Request(bk[0].When)
+	err := d.Request(bk[0].When, "test00")
 	assert.NoError(t, err)
-	_, err = d.Request(bk[1].When)
+	err = d.Request(bk[1].When, "test01")
 	assert.NoError(t, err)
 
 	// request the whole middle interval that is available
-	_, err = d.Request(a[2])
+	err = d.Request(a[2], "test02")
 	assert.NoError(t, err)
 }
 
@@ -445,7 +445,7 @@ func TestMakeBooking(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
-	b, err := s.MakeBooking(policy, slot, user, when)
+	b, err := s.MakeBookingWithName(policy, slot, user, when, "test00")
 
 	assert.NoError(t, err)
 
@@ -453,7 +453,7 @@ func TestMakeBooking(t *testing.T) {
 	assert.Equal(t, slot, b.Slot)
 	assert.Equal(t, user, b.User)
 	assert.Equal(t, when, b.When)
-	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", b.ID.String()) //non null ID
+	assert.Equal(t, "test00", b.Name)
 	assert.False(t, b.Cancelled)
 	assert.False(t, b.Started)
 	assert.False(t, b.Unfulfilled)
@@ -660,7 +660,7 @@ func TestPolicyChecks(t *testing.T) {
 	assert.NoError(t, err)
 
 	fake := Booking{
-		ID: b.ID,
+		Name: b.Name,
 	}
 	err = s.CancelBooking(fake)
 	assert.Error(t, err)
@@ -700,7 +700,7 @@ func TestGetActivity(t *testing.T) {
 	assert.Equal(t, slot, b.Slot)
 	assert.Equal(t, user, b.User)
 	assert.Equal(t, when, b.When)
-	assert.NotEqual(t, "00000000-0000-0000-0000-000000000000", b.ID.String()) //non null ID
+	assert.NotEqual(t, "", b.Name) //non null name
 	assert.False(t, b.Cancelled)
 	assert.False(t, b.Started)
 	assert.False(t, b.Unfulfilled)
@@ -721,7 +721,7 @@ func TestGetActivity(t *testing.T) {
 
 	// incomplete booking
 	badb := Booking{
-		ID: b.ID,
+		Name: b.Name,
 	}
 	_, err = s.GetActivity(badb)
 	assert.Error(t, err)

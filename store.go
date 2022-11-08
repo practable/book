@@ -27,9 +27,9 @@ type Activity struct {
 // provided by the pool referenced in the resource of the slot
 type Booking struct {
 	Cancelled   bool
-	ID          uuid.UUID // booking uid
-	Policy      string    // reference to policy it was booked under
-	Slot        string    // slot name
+	Name        string // booking uid
+	Policy      string // reference to policy it was booked under
+	Slot        string // slot name
 	Started     bool
 	Unfulfilled bool   //when the resource was unavailable
 	User        string // user pseudo id
@@ -140,7 +140,7 @@ type Store struct {
 	*sync.RWMutex `json:"-"`
 
 	// Bookings represents all the live bookings, indexed by booking id
-	Bookings map[uuid.UUID]*Booking
+	Bookings map[string]*Booking
 
 	// Descriptions represents all the descriptions of various entities, indexed by description name
 	Descriptions map[string]Description
@@ -162,7 +162,7 @@ type Store struct {
 
 	//useful for admin dashboard - don't need to also parse logs if keep old bookings
 	// Old Bookings represents the
-	OldBookings map[uuid.UUID]*Booking
+	OldBookings map[string]*Booking
 
 	// TimePolicies represents all the TimePolicy(ies) in use
 	Policies map[string]Policy
@@ -192,15 +192,15 @@ type Store struct {
 // remembering policies allows us to direct a user to link to a policy for a course just once, and then have that remembered
 // at least until a system restart -> should be logged as a transaction
 type User struct {
-	Bookings    map[uuid.UUID]*Booking    //map by id for retrieval
-	OldBookings map[uuid.UUID]*Booking    //map by id, for admin dashboards
+	Bookings    map[string]*Booking       //map by id for retrieval
+	OldBookings map[string]*Booking       //map by id, for admin dashboards
 	Policies    map[string]bool           //map of policies that apply to the user
 	Usage       map[string]*time.Duration //map by policy for checking usage
 }
 
 type UserExternal struct {
-	Bookings    []uuid.UUID
-	OldBookings []uuid.UUID
+	Bookings    []string
+	OldBookings []string
 	Policies    []string
 	Usage       map[string]time.Duration //map by policy for checking usage
 }
@@ -237,13 +237,13 @@ type Window struct {
 func New() *Store {
 	return &Store{
 		&sync.RWMutex{},
-		make(map[uuid.UUID]*Booking),
+		make(map[string]*Booking),
 		make(map[string]Description),
 		make(map[string]*filter.Filter),
 		false,
 		"Welcome to the interval booking store",
 		func() time.Time { return time.Now() },
-		make(map[uuid.UUID]*Booking),
+		make(map[string]*Booking),
 		make(map[string]Policy),
 		make(map[string]Resource),
 		make(map[string]Slot),
@@ -268,7 +268,7 @@ func (s *Store) PruneDiaries() {
 // the map of current bookings to the map of old bookings
 func (s *Store) PruneBookings() {
 
-	stale := make(map[uuid.UUID]*Booking)
+	stale := make(map[string]*Booking)
 
 	for k, v := range s.Bookings {
 		if s.Now().After(v.When.End) {
@@ -291,7 +291,7 @@ func (s *Store) PruneUserBookings(user string) {
 		return //do nothing
 	}
 
-	stale := make(map[uuid.UUID]*Booking)
+	stale := make(map[string]*Booking)
 
 	for k, v := range u.Bookings {
 		if s.Now().After(v.When.End) {
@@ -531,8 +531,8 @@ func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error) {
 
 func NewUser() *User {
 	return &User{
-		make(map[uuid.UUID]*Booking),
-		make(map[uuid.UUID]*Booking),
+		make(map[string]*Booking),
+		make(map[string]*Booking),
 		make(map[string]bool),
 		make(map[string]*time.Duration),
 	}
@@ -541,7 +541,7 @@ func NewUser() *User {
 func (s *Store) CancelBooking(booking Booking) error {
 
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
-	b, ok := s.Bookings[booking.ID]
+	b, ok := s.Bookings[booking.Name]
 
 	if !ok {
 		return errors.New("not found")
@@ -551,14 +551,14 @@ func (s *Store) CancelBooking(booking Booking) error {
 	// to prevent status changes in the booking preventing cancellation
 
 	t1 := Booking{
-		ID:     b.ID,
+		Name:   b.Name,
 		Policy: b.Policy,
 		Slot:   b.Slot,
 		User:   b.User,
 		When:   b.When,
 	}
 	t2 := Booking{
-		ID:     booking.ID,
+		Name:   booking.Name,
 		Policy: booking.Policy,
 		Slot:   booking.Slot,
 		User:   booking.User,
@@ -577,11 +577,11 @@ func (s *Store) CancelBooking(booking Booking) error {
 		return errors.New("cannot cancel booking that has already been used")
 	}
 
-	delete(s.Bookings, b.ID)
+	delete(s.Bookings, b.Name)
 
 	b.Cancelled = true
 
-	s.OldBookings[b.ID] = b
+	s.OldBookings[b.Name] = b
 
 	// adjust usage for user
 
@@ -611,8 +611,8 @@ func (s *Store) CancelBooking(booking Booking) error {
 // APIs for users should call this version
 func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error) {
 
-	bid := uuid.New()
-	return s.MakeBookingWithID(policy, slot, user, when, bid)
+	name := uuid.New().String()
+	return s.MakeBookingWithName(policy, slot, user, when, name)
 
 }
 
@@ -620,7 +620,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 // If a user does not exist, one is created.
 // The booking ID is set by the caller, so that bookings can be edited/replaced
 // This version should only be called by Admin users
-func (s *Store) MakeBookingWithID(policy, slot, user string, when interval.Interval, bid uuid.UUID) (Booking, error) {
+func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Interval, name string) (Booking, error) {
 
 	p, ok := s.Policies[policy]
 
@@ -663,7 +663,7 @@ func (s *Store) MakeBookingWithID(policy, slot, user string, when interval.Inter
 		s.PruneUserBookings(user)
 
 		// first check how many bookings under this policy already
-		cb := []uuid.UUID{}
+		cb := []string{}
 
 		for k, v := range u.Bookings {
 			if v.Policy == policy {
@@ -749,7 +749,7 @@ func (s *Store) MakeBookingWithID(policy, slot, user string, when interval.Inter
 
 	// see if the booking can be made ....
 
-	err := r.Diary.RequestWithID(when, bid)
+	err := r.Diary.Request(when, name)
 
 	if err != nil {
 		return Booking{}, err
@@ -760,7 +760,7 @@ func (s *Store) MakeBookingWithID(policy, slot, user string, when interval.Inter
 
 	booking := Booking{
 		Cancelled:   false,
-		ID:          bid,
+		Name:        name,
 		Policy:      policy,
 		Slot:        slot,
 		Started:     false,
@@ -769,8 +769,8 @@ func (s *Store) MakeBookingWithID(policy, slot, user string, when interval.Inter
 		When:        when,
 	}
 
-	s.Bookings[bid] = &booking
-	s.Users[user].Bookings[bid] = &booking
+	s.Bookings[name] = &booking
+	s.Users[user].Bookings[name] = &booking
 
 	return booking, nil
 
@@ -779,7 +779,7 @@ func (s *Store) MakeBookingWithID(policy, slot, user string, when interval.Inter
 func (s *Store) ValidateBooking(booking Booking) error {
 
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
-	b, ok := s.Bookings[booking.ID]
+	b, ok := s.Bookings[booking.Name]
 
 	if !ok {
 		return errors.New("not found")
@@ -787,14 +787,14 @@ func (s *Store) ValidateBooking(booking Booking) error {
 
 	// compare the externally relevant fields of the booking (ignore internal boolean fields)
 	t1 := Booking{
-		ID:     b.ID,
+		Name:   b.Name,
 		Policy: b.Policy,
 		Slot:   b.Slot,
 		User:   b.User,
 		When:   b.When,
 	}
 	t2 := Booking{
-		ID:     booking.ID,
+		Name:   booking.Name,
 		Policy: booking.Policy,
 		Slot:   booking.Slot,
 		User:   booking.User,
@@ -840,14 +840,14 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 		return Activity{}, err
 	}
 
-	b, ok := s.Bookings[booking.ID]
+	b, ok := s.Bookings[booking.Name]
 	if !ok {
 		return Activity{}, errors.New("not found")
 	}
 
 	b.Started = true
 
-	s.Bookings[booking.ID] = b
+	s.Bookings[booking.Name] = b
 
 	sl, ok := s.Slots[b.Slot]
 

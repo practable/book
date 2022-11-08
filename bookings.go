@@ -3,7 +3,6 @@ package interval
 import (
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/timdrysdale/interval/diary"
 	"github.com/timdrysdale/interval/interval"
 )
@@ -17,18 +16,18 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 
 	msg := []string{}
 
-	if b.ID == [16]byte{} {
-		msg = append(msg, "missing ID")
+	if b.Name == "" {
+		msg = append(msg, "missing name")
 	}
 
 	if b.Policy == "" {
-		msg = append(msg, b.ID.String()+" missing policy")
+		msg = append(msg, b.Name+" missing policy")
 	}
 	if b.Slot == "" {
-		msg = append(msg, b.ID.String()+" missing slot")
+		msg = append(msg, b.Name+" missing slot")
 	}
 	if b.User == "" {
-		msg = append(msg, b.ID.String()+" missing user")
+		msg = append(msg, b.Name+" missing user")
 	}
 	if (b.When == interval.Interval{
 		Start: interval.ZeroTime,
@@ -42,13 +41,13 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 	}
 
 	if _, ok := s.Policies[b.Policy]; !ok {
-		msg = append(msg, b.ID.String()+" policy "+b.Policy+" not found")
+		msg = append(msg, b.Name+" policy "+b.Policy+" not found")
 	}
 	if _, ok := s.Slots[b.Slot]; !ok {
-		msg = append(msg, b.ID.String()+" slot "+b.Slot+" not found")
+		msg = append(msg, b.Name+" slot "+b.Slot+" not found")
 	}
 	if _, ok := s.Users[b.User]; !ok {
-		msg = append(msg, b.ID.String()+" user "+b.User+" not found")
+		msg = append(msg, b.Name+" user "+b.User+" not found")
 	}
 
 	if len(msg) > 0 {
@@ -58,12 +57,12 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 	return nil, []string{}
 }
 
-func (s *Store) ExportBookings() map[uuid.UUID]Booking {
+func (s *Store) ExportBookings() map[string]Booking {
 
 	s.Lock()
 	defer s.Unlock()
 
-	bm := make(map[uuid.UUID]Booking)
+	bm := make(map[string]Booking)
 
 	for k, v := range s.Bookings {
 		bm[k] = *v
@@ -76,7 +75,7 @@ func (s *Store) ExportBookings() map[uuid.UUID]Booking {
 // each booking must be valid for the manifest, i.e. all
 // references to other entities must be valid.
 // Note that the manifest should be set first
-func (s *Store) ReplaceBookings(bm map[uuid.UUID]Booking) (error, []string) {
+func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -105,11 +104,11 @@ func (s *Store) ReplaceBookings(bm map[uuid.UUID]Booking) (error, []string) {
 			msg = append(msg,
 				"could not refund user "+
 					v.User+" "+HumaniseDuration(v.When.End.Sub(v.When.Start))+
-					" for replaced booking "+k.String()+" on policy "+v.Policy)
+					" for replaced booking "+k+" on policy "+v.Policy)
 		}
 	}
 	// can't delete bookings as we iterate over map, so just create a fresh map
-	s.Bookings = make(map[uuid.UUID]*Booking)
+	s.Bookings = make(map[string]*Booking)
 
 	for k := range s.Resources {
 		r := s.Resources[k]
@@ -119,10 +118,10 @@ func (s *Store) ReplaceBookings(bm map[uuid.UUID]Booking) (error, []string) {
 
 	// Now make the bookings, respecting policy and usage
 	for _, v := range bm {
-		_, err := s.MakeBookingWithID(v.Policy, v.Slot, v.User, v.When, v.ID)
+		_, err := s.MakeBookingWithName(v.Policy, v.Slot, v.User, v.When, v.Name)
 
 		if err != nil {
-			msg = append(msg, "booking "+v.ID.String()+" failed because "+err.Error())
+			msg = append(msg, "booking "+v.Name+" failed because "+err.Error())
 		}
 
 		// s.Bookings is updated by MakeBookingWithID so we mustn't update it ourselves
@@ -131,11 +130,11 @@ func (s *Store) ReplaceBookings(bm map[uuid.UUID]Booking) (error, []string) {
 	return nil, []string{}
 }
 
-func (s *Store) ExportOldBookings() map[uuid.UUID]Booking {
+func (s *Store) ExportOldBookings() map[string]Booking {
 	s.Lock()
 	defer s.Unlock()
 
-	bm := make(map[uuid.UUID]Booking)
+	bm := make(map[string]Booking)
 
 	for k, v := range s.OldBookings {
 		bm[k] = *v
@@ -144,7 +143,7 @@ func (s *Store) ExportOldBookings() map[uuid.UUID]Booking {
 	return bm
 }
 
-func (s *Store) ReplaceOldBookings(bm map[uuid.UUID]Booking) (error, []string) {
+func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -167,7 +166,7 @@ func (s *Store) ReplaceOldBookings(bm map[uuid.UUID]Booking) (error, []string) {
 	// bookings are ok, so clean house.
 
 	// no need to handle any diaries or cancellations, because these are old bookings
-	s.OldBookings = make(map[uuid.UUID]*Booking)
+	s.OldBookings = make(map[string]*Booking)
 
 	// Map the bookings
 	for k, v := range bm {
