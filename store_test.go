@@ -804,3 +804,52 @@ func TestGetActivity(t *testing.T) {
 	// TODO - set up a user with two short bookings, then try to make third booking that is within total usage allowance, but outside maxBookings, so it must fail. then cancel a booking, and try again. Third booking should suceed now that MaxBookings limit does not prevent it.
 
 }
+
+func TestExportUsers(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00")
+	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01")
+
+	um := s.ExportUsers()
+
+	exp := make(map[string]UserExternal)
+
+	exp["user-a"] = UserExternal{
+		Bookings:    []string{"test00"},
+		OldBookings: []string{},
+		Policies:    []string{"p-a"},
+		Usage: map[string]string{
+			"p-a": "10m0s",
+		},
+	}
+	exp["user-b"] = UserExternal{
+		Bookings:    []string{"test01"},
+		OldBookings: []string{},
+		Policies:    []string{"p-b"},
+		Usage: map[string]string{
+			"p-b": "10m0s",
+		},
+	}
+
+	assert.Equal(t, exp, um)
+
+}

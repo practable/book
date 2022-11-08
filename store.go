@@ -188,23 +188,6 @@ type Store struct {
 	Windows map[string]Window
 }
 
-// User represents bookings and usage information associated with a single user
-// remembering policies allows us to direct a user to link to a policy for a course just once, and then have that remembered
-// at least until a system restart -> should be logged as a transaction
-type User struct {
-	Bookings    map[string]*Booking       //map by id for retrieval
-	OldBookings map[string]*Booking       //map by id, for admin dashboards
-	Policies    map[string]bool           //map of policies that apply to the user
-	Usage       map[string]*time.Duration //map by policy for checking usage
-}
-
-type UserExternal struct {
-	Bookings    []string
-	OldBookings []string
-	Policies    []string
-	Usage       map[string]time.Duration //map by policy for checking usage
-}
-
 // UI represents a UI that can be used with a resource, for a given slot
 type UI struct {
 	Description string `json:"description"  yaml:"description"`
@@ -225,6 +208,23 @@ type UIDescribed struct {
 // UISet represents UIs that can be used with a slot
 type UISet struct {
 	UIs []string
+}
+
+// User represents bookings and usage information associated with a single user
+// remembering policies allows us to direct a user to link to a policy for a course just once, and then have that remembered
+// at least until a system restart -> should be logged as a transaction
+type User struct {
+	Bookings    map[string]*Booking       //map by id for retrieval
+	OldBookings map[string]*Booking       //map by id, for admin dashboards
+	Policies    map[string]bool           //map of policies that apply to the user
+	Usage       map[string]*time.Duration //map by policy for checking usage
+}
+
+type UserExternal struct {
+	Bookings    []string
+	OldBookings []string
+	Policies    []string
+	Usage       map[string]string //map humanised durations by policy name
 }
 
 // Window represents allowed and denied periods for slots
