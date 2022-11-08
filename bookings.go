@@ -181,11 +181,54 @@ func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 
 }
 
+// ExportUsers returns a map of users, listing the names of bookings, old bookings, policies and
+// their usage to date by policy name
 func (s *Store) ExportUsers() map[string]UserExternal {
-	return make(map[string]UserExternal)
+
+	s.Lock()
+	defer s.Unlock()
+
+	um := make(map[string]UserExternal)
+
+	for k, v := range s.Users {
+
+		bs := []string{}
+		obs := []string{}
+		ps := []string{}
+		ds := make(map[string]string)
+
+		for k := range v.Bookings {
+			bs = append(bs, k)
+		}
+
+		for k := range v.OldBookings {
+			obs = append(obs, k)
+		}
+		for k := range v.Policies {
+			ps = append(ps, k)
+		}
+		for k, v := range v.Usage {
+			ds[k] = HumaniseDuration(*v)
+		}
+
+		um[k] = UserExternal{
+			Bookings:    bs,
+			OldBookings: obs,
+			Policies:    ps,
+			Usage:       ds,
+		}
+	}
+
+	return um
 }
 
+// Replace Users is not implemented because it would allow
+// the consistency of the store to be broken (e.g. which users
+// were associated with which bookings). As for usage, the
+// ReplaceBookings method already handles adjustments to usage
+// automatically so there is no need to edit users.
+// If a user needs more usage allowance, then they need a new policy,
+// rather than an adjustment to their old usage value.
 func (s *Store) ReplaceUsers(u map[string]UserExternal) (error, []string) {
-
 	return errors.New("not implemented"), []string{}
 }
