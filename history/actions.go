@@ -1,9 +1,9 @@
-package store
+package history
 
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/timdrysdale/interval/interval"
 )
 
 //UserCommands represents commands that users will send to the system
@@ -30,10 +30,10 @@ var AdminCommands = []string{
 // so as to allow history-replay to rebuild the booking status based on
 // a record of past actions. This may also help with testing?
 type Action struct {
-	IssuedAt  time.Time
-	Do        string
-	When      Interval
-	SlotID    uuid.UUID
-	BookingID uuid.UUID
-	UserID    uuid.UUID
+	IssuedAt time.Time
+	Do       string
+	When     interval.Interval
+	Slot     string
+	Booking  string
+	User     string
 }
