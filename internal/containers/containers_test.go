@@ -7,8 +7,9 @@
 package containers
 
 import (
-	"interval/internal/utils"
 	"testing"
+
+	"github.com/timdrysdale/interval/internal/utils"
 )
 
 // For testing purposes
