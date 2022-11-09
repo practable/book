@@ -940,9 +940,7 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 	if _, ok := s.Slots[b.Slot]; !ok {
 		msg = append(msg, b.Name+" slot "+b.Slot+" not found")
 	}
-	if _, ok := s.Users[b.User]; !ok {
-		msg = append(msg, b.Name+" user "+b.User+" not found")
-	}
+	// User not found is ok, because they will be created when the booking is made
 
 	if len(msg) > 0 {
 		return errors.New("missing references"), msg

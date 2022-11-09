@@ -860,10 +860,9 @@ func TestCheckBooking(t *testing.T){
 	err, msg = s.CheckBooking(b)
 	assert.Error(t,err)
 	assert.Equal(t,[]string{b.Name + " missing user"},msg)
-	b.User = "foo"
-	err, msg = s.CheckBooking(b)
-	assert.Error(t,err)
-	assert.Equal(t,[]string{b.Name + " user foo not found"},msg)
+	// no need to check for user not found - this is ok, as
+	// they are created as needed when bookings are made
+
 	b.User = user
 
 	name := b.Name
@@ -882,21 +881,271 @@ func TestCheckBooking(t *testing.T){
 }
 
 func TestExportBookings(t *testing.T){
-	t.Fatal("test not implemented")
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	policy0 := "p-a"
+	slot0 := "sl-a"
+	user0 := "u-a" //does not yet exist in store
+	when0 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 10, 0, 0, time.UTC),
+	}
+
+	b0, err := s.MakeBooking(policy0, slot0, user0, when0)
+
+	assert.NoError(t, err)
+
+	policy1 := "p-b"
+	slot1 := "sl-b"
+	user1 := "u-b" //does not yet exist in store
+	when1 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 5, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 15, 0, 0, time.UTC),
+	}
+
+	b1, err := s.MakeBooking(policy1, slot1, user1, when1)
+	
+	assert.NoError(t, err)
+
+	bm := s.ExportBookings()
+
+	exp := make(map[string]Booking)
+
+	exp[b0.Name]=b0
+	exp[b1.Name]=b1
+
+	assert.Equal(t,exp,bm)
+
 }
 
 func TestReplaceBookings(t *testing.T){
-	t.Fatal("test not implemented")
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	policy0 := "p-a"
+	slot0 := "sl-a"
+	user0 := "u-a" //does not yet exist in store
+	when0 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 10, 0, 0, time.UTC),
+	}
+
+	b0, err := s.MakeBooking(policy0, slot0, user0, when0)
+
+	assert.NoError(t, err)
+
+	policy1 := "p-b"
+	slot1 := "sl-b"
+	user1 := "u-b" //does not yet exist in store
+	when1 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 5, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 15, 0, 0, time.UTC),
+	}
+
+	b1, err := s.MakeBooking(policy1, slot1, user1, when1)
+
+	assert.NoError(t,err)
+
+	bm := s.ExportBookings()
+
+	exp := make(map[string]Booking)
+
+	exp[b0.Name]=b0
+	exp[b1.Name]=b1
+
+	assert.Equal(t,exp,bm)
+
+	// Now prepare replacement bookings
+
+	policy2 := "p-a"
+	slot2 := "sl-a"
+	user2 := "u-c" //does not yet exist in store
+	when2 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 2, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 12, 0, 0, time.UTC),
+	}
+
+	policy3 := "p-b"
+	slot3 := "sl-b"
+	user3 := "u-d" //does not yet exist in store
+	when3 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 6, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 16, 0, 0, time.UTC),
+	}
+
+	b2 :=Booking{
+		Name: "b2",
+		Policy: policy2,
+		Slot: slot2,
+		User: user2,
+		When: when2,
+	}
+
+
+	b3 :=Booking{
+		Name: "b3",
+		Policy: policy3,
+		Slot: slot3,
+		User: user3,
+		When: when3,
+	}
+	
+	nb := make(map[string]Booking)
+	nb["b2"]=b2
+	nb["b3"]=b3
+	
+	err, msg := s.ReplaceBookings(nb)
+
+	assert.NoError(t,err)
+	assert.Equal(t,[]string{},msg)
+	
+	exp = make(map[string]Booking)
+	exp[b2.Name]=b2
+	exp[b3.Name]=b3
+	
+	
+	bm = s.ExportBookings()
+
+	assert.Equal(t,exp,bm)
+
 }
 
-func TestExportOldBookings(t *testing.T){
-	t.Fatal("test now implemented")
-}
+func TestOldBookings(t *testing.T){
 
-func TestReplaceOldBookings(t *testing.T){
-	t.Fatal("test not implemented")
-}
+		s := New()
 
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	policy0 := "p-a"
+	slot0 := "sl-a"
+	user0 := "u-a" //does not yet exist in store
+	when0 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 10, 0, 0, time.UTC),
+	}
+
+	b0, err := s.MakeBooking(policy0, slot0, user0, when0)
+
+	assert.NoError(t, err)
+
+	policy1 := "p-b"
+	slot1 := "sl-b"
+	user1 := "u-b" //does not yet exist in store
+	when1 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 5, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 15, 0, 0, time.UTC),
+	}
+
+	b1, err := s.MakeBooking(policy1, slot1, user1, when1)
+
+	assert.NoError(t,err)
+
+	bm := s.ExportBookings()
+
+	exp := make(map[string]Booking)
+
+	exp[b0.Name]=b0
+	exp[b1.Name]=b1
+
+	assert.Equal(t,exp,bm)
+
+	// Now move time forward to make these old bookings
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC) }
+
+	s.PruneBookings()
+
+	// check our bookings are now old bookings
+	bm = s.ExportOldBookings()
+	assert.Equal(t,exp,bm)
+
+	// check they are not present in the current bookings anymore
+	bm = s.ExportBookings()
+	exp = make(map[string]Booking)
+	assert.Equal(t,exp,bm)
+
+	// Prepare replacement old bookings
+
+	policy2 := "p-a"
+	slot2 := "sl-a"
+	user2 := "u-c" //does not yet exist in store
+	when2 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 2, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 12, 0, 0, time.UTC),
+	}
+
+	policy3 := "p-b"
+	slot3 := "sl-b"
+	user3 := "u-d" //does not yet exist in store
+	when3 := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 6, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 16, 0, 0, time.UTC),
+	}
+
+	b2 :=Booking{
+		Name: "b2",
+		Policy: policy2,
+		Slot: slot2,
+		User: user2,
+		When: when2,
+	}
+
+
+	b3 :=Booking{
+		Name: "b3",
+		Policy: policy3,
+		Slot: slot3,
+		User: user3,
+		When: when3,
+	}
+	
+	nb := make(map[string]Booking)
+	nb["b2"]=b2
+	nb["b3"]=b3
+	
+	err, msg := s.ReplaceOldBookings(nb)
+
+	assert.NoError(t,err)
+	assert.Equal(t,[]string{},msg)
+	
+	exp = make(map[string]Booking)
+	exp[b2.Name]=b2
+	exp[b3.Name]=b3
+	
+	
+	bm = s.ExportOldBookings()
+
+	assert.Equal(t,exp,bm)
+
+}
 	
 func TestExportUsers(t *testing.T) {
 
