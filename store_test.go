@@ -805,6 +805,99 @@ func TestGetActivity(t *testing.T) {
 
 }
 
+func TestCheckBooking(t *testing.T){
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	policy := "p-b"
+	slot := "sl-b"
+	user := "test" //does not yet exist in store
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 1, 10, 0, 0, time.UTC),
+	}
+
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	assert.NoError(t, err)
+	
+	err, msg := s.CheckBooking(b)
+
+	assert.NoError(t,err)
+	assert.Equal(t,[]string{},msg)
+
+	b.Policy = ""
+	err, msg = s.CheckBooking(b)
+	assert.Error(t,err)
+	assert.Equal(t,[]string{b.Name + " missing policy"},msg)
+	b.Policy = "foo"
+	err, msg = s.CheckBooking(b)
+	assert.Error(t,err)
+	assert.Equal(t,[]string{b.Name + " policy foo not found"},msg)
+	b.Policy = policy
+
+	b.Slot = ""
+	err, msg = s.CheckBooking(b)
+	assert.Error(t,err)
+	assert.Equal(t,[]string{b.Name + " missing slot"},msg)
+	b.Slot = "foo"
+	err, msg = s.CheckBooking(b)
+	assert.Error(t,err)
+	assert.Equal(t,[]string{b.Name + " slot foo not found"},msg)
+	b.Slot = slot
+
+	b.User = ""
+	err, msg = s.CheckBooking(b)
+	assert.Error(t,err)
+	assert.Equal(t,[]string{b.Name + " missing user"},msg)
+	b.User = "foo"
+	err, msg = s.CheckBooking(b)
+	assert.Error(t,err)
+	assert.Equal(t,[]string{b.Name + " user foo not found"},msg)
+	b.User = user
+
+	name := b.Name
+	b.Name = ""
+	err, msg = s.CheckBooking(b)
+	assert.Error(t,err)
+	assert.Equal(t,[]string{"missing name"},msg)
+	b.Name=name
+
+	b.When = interval.Interval{}
+	err, msg = s.CheckBooking(b)
+	assert.Error(t,err)
+	assert.Equal(t,[]string{b.Name + " missing when"},msg)
+	b.When = when
+	
+}
+
+func TestExportBookings(t *testing.T){
+	t.Fatal("test not implemented")
+}
+
+func TestReplaceBookings(t *testing.T){
+	t.Fatal("test not implemented")
+}
+
+func TestExportOldBookings(t *testing.T){
+	t.Fatal("test now implemented")
+}
+
+func TestReplaceOldBookings(t *testing.T){
+	t.Fatal("test not implemented")
+}
+
+	
 func TestExportUsers(t *testing.T) {
 
 	s := New()
