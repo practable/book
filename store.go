@@ -919,11 +919,14 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 	return a, nil
 }
 
+// GetBookingsFor returns a slice of all the current bookings for the given user
 func (s *Store) GetBookingsFor(user string) ([]Booking, error) {
 
 	if _, ok := s.Users[user]; !ok {
 		return []Booking{}, errors.New("user not found")
 	}
+
+	s.PruneUserBookings(user)
 
 	b := []Booking{}
 
@@ -937,11 +940,14 @@ func (s *Store) GetBookingsFor(user string) ([]Booking, error) {
 
 }
 
+// GetOldBookingsFor returns a slice of all the old bookings for the given user
 func (s *Store) GetOldBookingsFor(user string) ([]Booking, error) {
 
 	if _, ok := s.Users[user]; !ok {
 		return []Booking{}, errors.New("user not found")
 	}
+
+	s.PruneUserBookings(user)
 
 	b := []Booking{}
 
@@ -954,6 +960,21 @@ func (s *Store) GetOldBookingsFor(user string) ([]Booking, error) {
 	return b, nil
 }
 
+func (s *Store) GetPoliciesFor(user string) ([]string, error) {
+
+	if _, ok := s.Users[user]; !ok {
+		return []string{}, errors.New("user not found")
+	}
+
+	p := []string{}
+
+	for k := range s.Users[user].Policies {
+		p = append(p, k) //append policy name
+	}
+	return p, nil
+}
+
+// GetPolicyStatusFor returns usage, and counts of current and old bookings
 func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
 
 	if _, ok := s.Users[user]; !ok {

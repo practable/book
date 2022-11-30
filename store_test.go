@@ -1497,3 +1497,38 @@ func TestGetPolicyStatusFor(t *testing.T) {
 	assert.Equal(t, d, ps.Usage)
 
 }
+
+func TestGetPoliciesFor(t *testing.T) {
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+	s := New()
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	// booking details
+	policy := "p-b"
+	slot := "sl-b"
+	user := "u-b" //does not yet exist in store
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	// before we book, user does not exist
+	_, err = s.GetPoliciesFor(user)
+	assert.Error(t, err)
+	assert.Equal(t, "user not found", err.Error())
+
+	// make a booking
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	// check policy now listed for user
+	p, err := s.GetPoliciesFor(user)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"p-b"}, p)
+
+}

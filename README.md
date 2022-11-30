@@ -256,32 +256,43 @@ func (s *Store) GetPolicy(name string) (Policy, error)
 // GetAvailability returns a slice of intervals for which a given slot is available under a given policy, or an error if the slot or policy is not found. The policy contains aspects such as look-ahead which may limit the window of availability.
 func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error)
 
-// GetSlotIsAvailable checks the underlying resource's availability
-func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error)
-
-// GetSlotBookings gets bookings as far as ahead as the policy will let you book ahead
-// It's up to the consumer to handle any pagination
-func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error)
-
-// CancelBooking cancels a booking or returns an error if not found
-func (s *Store) CancelBooking(booking Booking) error
-
 // MakeBooking makes bookings for users, according to the policy
 // If a user does not exist, one is created.
 // APIs for users should call this version
 func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error)
 
+// CancelBooking cancels a booking or returns an error if not found
+func (s *Store) CancelBooking(booking Booking) error
+
+// GetBookingsFor returns a slice of all the current bookings for the given user
+func (s *Store) GetBookingsFor(user string) ([]Booking, error) 
+
 // GetActivity returns an activity associated with a booking, or an error
 // if the booking is invalid in some way 
-func (s *Store) GetActivity(booking Booking) (Activity, error) {
+func (s *Store) GetActivity(booking Booking) (Activity, error) 
+
+// GetOldBookingsFor returns a slice of all the old bookings for the given user
+func (s *Store) GetOldBookingsFor(user string) ([]Booking, error)
+
+// GetPolicyStatusFor returns usage, and counts of current and old bookings
+func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error)
 
 ```
 
 ### Admin commands
 
-```goland
+```golang
+// GetSlotIsAvailable checks the underlying resource's availability
+func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error)
+
+
 // SetSlotIsAvailable sets the underlying resource's availability
 func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error
+
+// GetSlotBookings gets bookings as far as ahead as the policy will let you book ahead
+// It's up to the consumer to handle any pagination
+func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error)
+
 
 // MakeBookingWithID makes bookings for users, according to the policy
 // If a user does not exist, one is created.
@@ -545,136 +556,68 @@ Most of the issues relate to scaling up to multiple locations and multiple types
 
 - lecture demonstrations often come at the start or the end of the lecture, and conference presentations can happen at any time. So you can't shut the lab down for a self check at a fixed time every hour without causing inconvenience. I've previously had to schedule demonstrations around such self-check windows, but do not think organisers of events, or indeed regular users, would tolerate this once it is a mainstream activity.
 
-- multi-location campuses often ofset lecture times to accommodate students travelling from one campus to another, e.g. University of Edinburugh lecture times shift from starting at the top of the hour, to starting at ten minutes past, depending on lecture location, so as to provide a 20-minute travel window to/from the inner city and other campuses. Therefore, aligning a booking session with a scheduled activity is not possible for this campus.
+- multi-location campuses often ofset lecture times to accommodate students travelling from one campus to another, e.g. University of Edinburugh lecture times shift from starting at the top of the hour, to sta# interval
+This package implements bookings with arbitrary durations
 
-- batch jobs can run in a few seconds, while interactive sessions can last for hours. A generic booking system may well be needed to accommodate self checks for a batch job experiment that last about the same as a single batch job, even though the users experiments are handled in a queue system which itself books longer slots on the experiment (on the assumption it cannot book the self-check time). The same booking system may be handling bookings of up to several hours, so choosing a fixed granularity that is efficient for the batch job self check, would be inefficient for the longer sessions (self check does not waste time, but booking a several hour slot by accumulating micro-slots of a few seconds each, would potentially require thousands of elements to be put in a list to represent a slot of just an hour or two).
+## Features
 
-## Proposed solution
+- Advance bookings 
+- Arbitrary intervals for bookings
+- Guarantee exclusive bookings
+- Different UIs for different users
+- Different limits on number of current/future bookings for different users
+- Different usage limits for different users
+- Resource status tracking (e.g. if offline for maintenance or failing tests)
 
-Since a generic booking system may be called upon to handle such disparate intervals of time, an efficient way to handle bookings ranging from a few seconds to a few months or even years would be to record simply the start and end of the interval. Such as data-structure is the [interval tree](https://en.wikipedia.org/wiki/Interval_tree). This is typically used for identfiying roads that fall within a viewport on a map, for online navigation displays. Existing go-lang implementations of interval trees do not support features required for this task, such as 
+## Limitations
+- Redundancy is not supported - it's doable, but too complicated to reason about hiearahical groupings of kit at this stage where some people book a type of experiment and others book specific examples.
+- Unlimited access to simulations (unlimited, anytime, no need for booking?) - relative simple, but out of scope for now (simple mod for later).
+- What if kit doesn't work - how to get another? If cannot cancel ...?! For now - when taking up booking, it returns, equipment not available. More advanced options can be added later (e.g. admin edits bookings to substitute another piece of kit instead, when taking an experiment offline).
 
-- unique segment identifiers (to link to other information about the segment, e.g. via uuid)
-- binary interval state, e.g. available or unavailable (effectively two trees ... there is more to unpack here)
+## Implementation overview
 
-### Existing implementations of interval trees in golang
+### Definitions
 
-#### nickjameswebb/intervaltree-go
+A `resource` represents a single bookable entity which is a real, physical piece of equipment. The entity can be booked for any arbitrary interval, so long as it does not overlap with any other booking. Booking exclusivity is guaranteed at the resource level. A resource has an availability (bool) and a status message (e.g. "Test failed on (date)", or "Test passed on (date)")
 
-[This implementation](https://github.com/nickjameswebb/intervaltree-go) is incomplete, stalled in 2018, although it intended to implement the same interface as [this python library](https://pypi.org/project/intervaltree/). Whether that library handles intervals the way we want would need further checking.
+A `filter` represents a collection of `allowed` and `denied` periods, allowing for the implementation of policies about when a booking can be made.
 
-#### Augmented tree
+A `slot` represents access to one resource, where the access is restricted by a `filter`. There are potentially many slots for one resource, and slots may overlap, resulted in shared access (but the first to book a resource gets exclusive use of it, it's just the opportunity to book it that is shared). The slot lists the user interface set that can be used with the hardware.
 
-[This implementation](https://pkg.go.dev/github.com/golang-collections/go-datastructures@v0.0.0-20150211160725-59788d5eb259/augmentedtree) has no unique segment identifiers, and requires additional features to assist with duplicate range handling.
+A `user` represents an entity that can book `slots` according to zero or more `policy` instances.
 
-#### Interval
+A `policy` represents the maximum usage permitted for a list of one or more slots, the minimum or maximum length of bookable interval, the maximum number of current/future bookings.
 
-[This implementation](https://pkg.go.dev/modernc.org/interval) appears to support a range of number lines and open/closed interval boundaries, so long as intervals are in ordered lists. The function list does not appear to show support for operations such as splitting and healing intervals (as required for adding and removing bookings). Much of the code appears to be based around helper functions relating to different variable types, wrapping simple greater-than or less-than comparison checks which can be trivially reimplemented.
+#### What happened to pools?
 
-#### Rangetree
-[This implementation](https://pkg.go.dev/github.com/golang-collections/go-datastructures/rangetree) is primarily intended for representing Cartesion data in n-dimensions, using not a tree but a sparse n-dimensional list. There is support for adding and deleting entries, although splitting intervals does not appear to be supported directly, and may be easier to implement if the underlying data structures are restricted to a single dimension, rather than relying on the abstraction of nodes as this library does.
+Now that we are booking in advance, the concept of redundancy as it applies to different hierarchies of groupings of equipment is complex, and so pools and redundancy is left for future work. Instead for now, if a user books something, and it becomes unavailable, then they can rebook on something else. It may be upsetting to a user to have a session cancelled due to kit failure, and having to sort a replacement session themselves, but better we reduce frustration overall for many users by offering some form of booking.
 
-#### Go Data Structures
+#### Why is the filter in the slot, not the policy?
 
-[Go Data Structures](https://github.com/psampaz/gods) contains an AVL tree. The value is stored as an interface. Perhaps this can be used to hold an interval in struct?
+Some resources may be shared between two courses, other between three or four courses, and some exclusive users may only need a subset of the equipment of that type, so blanket filtering of access to a set of resources is not sufficient. Slots with individually-defined access times to specific resources can be added to a policy to express this, for example half the slots for the other class will be available any time, the other half only when not being used by the exclusive user. In other words, the slots in a policy may have different filters in them.  This does require editing all slots related to a resource to establish a new exclusive user, but that can be avoided later by using a rule-based system inspired by or based on Ory Keto / Google Zanzibar.
 
+### Example Process Flow 
 
-### Existing implementations in other languages
+A course organiser and practable administrator agree a `policy` for use by the students in a class, including the times of access to equipment which is set by the slots assigned to the policy. Optionally additional policies for course staff and tutors/demonstrators could be agreed, e.g. with access to other user interfaces.
 
-#### C/C++ implemention of BST insert/delete
+The policy sets user-specific aspects such as total usage, booking duration and live booking count. The slots contain any limitatations on when the equipment is available to a class. Thus, the policy, once agreed need not be changed, however, the definition of the slots it refers to, may change e.g. if another class needs the equipment exclusively for an hour, then that hour would be denied in the slots assigned to other classes. Such changes would happen behind the scenes, and not be explicitly shown in the policy.
 
-[This implementation](https://www.geeksforgeeks.org/interval-tree/) is made for a blog post on augmenting BST/AVL with for adding and removing intervals, and provides a possible way to tackle the problem. This article says it is probably better to use an AVL tree rather than BST tree - although this requires every insert and delete operation to rebalance the tree. See e.g. [this description of rebalancing](https://www.geeksforgeeks.org/avl-tree-set-1-insertion/) by using rotations. Hence a Red-Black tree would be better if many insertions and deletions.
+A policy exists as a JWT token on a server. A user is provided with a link to a booking system with the policy-code as a URL param, as we currently do for setting groups.
 
-#### Red-Black tree
+A booking agent (client-side javascript, usually) checks to see if it is has already used the service before, by looking in its cache for pseudo-id. If no pseudo-id is found, it asks the user for their exam code, and checks/validates the format of the exam-code.
 
-[This implementation](https://www.geeksforgeeks.org/red-black-tree-set-1-introduction-2/) is an example of a red-black tree.
+The user will see any bookings they have made under any other other policy, but can only book under the policy they currently have - they have to go to the link for the other course to book for that course. In this way, we can refresh the policy as needed, rather than having old policy codes hanging around or storing them in the booking system?  Simpler to test if we don't remember codes? Or store policy codes with expiration date? Get the policy fresh everytime anyway .... What if a code is shared widely? We can just change the link. So easier if we don't save old policies, because then we do not have to tell the booking system to invalidate old policies stored with users - unless we can auto-remove them if they are found to be expired?  These complexities can be better handled when we have the Ory version up and running, so don't get bogged down in it for now - just go with the live-only/non-stored policies for simplicity.
 
+The policy is submitted along with any requests for availability or bookings, as the authorisation.
 
+If a user has spare bookings available then can make a new booking. They can see availability, before cancelling their current booking(s), to make new ones. Don't offer a booking swap at this stage?
 
-## AVL trees
+Cancel bookings is an option.
 
-The AVL tree offers a better guarantee of lookup time than a BST, because the heights are better balanced. The English translations of the original paper is [here](https://zhjwpku.com/assets/pdf/AED2-10-avl-paper.pdf)
+Store booking against the pseudo-id so it can be retrieved on future visits.
 
-> G. M. Adel'son-Vel'skii and E. M. Landis, "An algorithm for the organization of information," Soviet Mathematics Doklady, 3, 1259-1263, 1962
- 
-A more accessible description of the algorithm is [here](https://en.wikipedia.org/wiki/AVL_tree).
+When a booking becomes due, submit the booking to the server for streaming stuff, same as before.
 
-
-## Troubleshooting
-
-### internal packages not found in goroot?
-
-Let's say we add a new internal package `bar`:
-
-Go to the new internal module `bar` type
-```
-go mod init bar
-```
-
-Then add to the main go.mod
-
-```
-require internal/bar v1.0.0
-replace internal/bar => ./internal/bar
-```
-
-and run `go mod tidy' to fix `go.sum`
-
-See Vlad Bezden's [Post](https://stackoverflow.com/questions/33351387/how-to-use-internal-packages)
+In this first version, don't allow session cancellation / i.e. can't cancel booking after launching it, to save having to re-do the user interfaces at this stage.
 
 
-### Interim example manifest
-
-TODO copy the real-world aspects of this into the example manifest further up
-
-```yaml
-
-filters:
-  - id: c3-wk5-wk7
-    nbf: 2023-02-01T09:00:00Z
-    exp: 2023-04-30T09:00:00Z
-	allowed:
-	  - nbf: 2023-02-01T09:00:00Z
-        exp: 2023-04-30T09:00:00Z
-	denied:
-	  - nbf: 2023-03-04T14:00:00Z
-	    exp: 2023-03-04T15:00:00Z
-	  - nbf: 2023-03-05T14:00:00Z
-	    exp: 2023-03-05T15:00:00Z 
-	  - nbf: 2023-03-06T14:00:00Z
-	    exp: 2023-03-06T15:00:00Z
-  - id: ed1
-    allowed:
-	  - nbf: 2023-03-04T14:00:00Z
-	    exp: 2023-03-04T15:00:00Z
-	  - nbf: 2023-03-05T14:00:00Z
-	    exp: 2023-03-05T15:00:00Z 
-	  - nbf: 2023-03-06T14:00:00Z
-	    exp: 2023-03-06T15:00:00Z	
-	
-groups:
-  controls3:
-    slots:
-	- id:  spinner-v2-weight-00:
-      filters: 
-	    - c3-wk5-wk7 
-	  
-	- id:  spinner-v2-weight-01
-	  filters: 
-	    - c3-wk5-wk7
-		
-  engineeringdesign1:
-    slots:
-	- id: spinner-v2-weight-00
-	  filters: 
-	    - ed1-wk5-s1
-		- ed1-wk5-s2
-		- ed1-wk5-s3
-	- id: spinner-v2-weight-01
-	  filters:
-		- ed1-wk5-s1
-		- ed1-wk5-s2
-		- ed1-wk5-s3
-
-	  
-
-```
