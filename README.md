@@ -62,125 +62,152 @@ When a booking becomes due, submit the booking to the server for streaming stuff
 
 In this first version, don't allow session cancellation / i.e. can't cancel booking after launching it, to save having to re-do the user interfaces at this stage.
 
+## A example manifest
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-### Example
-
-Why not have filters on `slots` AND `policies`?  In order to provide access to an experiment, there must be available resources. Forcing all knowledge about availability of resources into a single place (slot definitions) simplifies testing/reporting, at the cost of having more `slots`. 
-
-Class E requires Exclusive access to a Experiement A. Class H will be heavy users of Experiment A. The General Public will also use Experiment A, but only when it is not in high-demand for Class H (e.g. before/after class H use it, and during anti-social hours).
-
-Three slots are prepared for each kit instance of Experiment A, representing (1) the exclusive access periods for Class E, (2) the allowable access periods for Class H, (3) and the allowable access periods for General Public.
-
-To see whether a resource is in exclusive or shared use at any given time, plot the allowable access periods for each resource, and annotate with the slot names.
-
-
-
-
-
-
-
-
-
-## Gotchas
-
-[time](https://pkg.go.dev/time#Time)
-"Representations of a Time value saved by the GobEncode, MarshalBinary, MarshalJSON, and MarshalText methods store the Time.Location's offset, but not the location name. They therefore lose information about Daylight Saving Time."
-
-## Introduction
-
-The Store manages policies about when a booking can be made.
-The Resource ensures only that it accepts no overlapping bookings.
-
-If we are sharing resources between groups, then we need to have a way of blocking a slot, based on another slot.
-
-This implies some kind of separate specification for each set of users.
-
-These interact - e.g. if we offer exclusive access to one set of users, for short periods, it would be a lot easier to just say for another user - "at any time but when others with a higher priority are using it"
-
-
-Ok ... so what about an AVL tree that takes intervals with IDs and priority numbers?
-
-OR ... how is a policy different to just booking a kit out???
-
-E.g. set up the kit ... book the slots for a class ...
-
-How to reassign those bookings??? Is there a 
-
-
-```yaml
-
-filters:
-  - id: c3-wk5-wk7
-    nbf: 2023-02-01T09:00:00Z
-    exp: 2023-04-30T09:00:00Z
-	allowed:
-	  - nbf: 2023-02-01T09:00:00Z
-        exp: 2023-04-30T09:00:00Z
-	denied:
-	  - nbf: 2023-03-04T14:00:00Z
-	    exp: 2023-03-04T15:00:00Z
-	  - nbf: 2023-03-05T14:00:00Z
-	    exp: 2023-03-05T15:00:00Z 
-	  - nbf: 2023-03-06T14:00:00Z
-	    exp: 2023-03-06T15:00:00Z
-  - id: ed1
-    allowed:
-	  - nbf: 2023-03-04T14:00:00Z
-	    exp: 2023-03-04T15:00:00Z
-	  - nbf: 2023-03-05T14:00:00Z
-	    exp: 2023-03-05T15:00:00Z 
-	  - nbf: 2023-03-06T14:00:00Z
-	    exp: 2023-03-06T15:00:00Z	
-	
-groups:
-  controls3:
-    slots:
-	- id:  spinner-v2-weight-00:
-      filters: 
-	    - c3-wk5-wk7 
-	  
-	- id:  spinner-v2-weight-01
-	  filters: 
-	    - c3-wk5-wk7
-		
-  engineeringdesign1:
-    slots:
-	- id: spinner-v2-weight-00
-	  filters: 
-	    - ed1-wk5-s1
-		- ed1-wk5-s2
-		- ed1-wk5-s3
-	- id: spinner-v2-weight-01
-	  filters:
-		- ed1-wk5-s1
-		- ed1-wk5-s2
-		- ed1-wk5-s3
-
-	  
-
+This is the test manifest, but it has test strings for many fields which do not have the same appearance as the real world data so may be confusing as it is.
+TODO edit strings to represent a real world use case
 
 ```
-
+descriptions:
+  d-p-a:
+    name: policy-a
+    type: policy
+    short: a
+  d-p-b:
+    name: policy-b
+    type: policy
+    short: b
+  d-r-a:
+    name: resource-a
+    type: resource
+    short: a
+  d-r-b:
+    name: resource-b
+    type: resource
+    short: b
+  d-sl-a:
+    name: slot-a
+    type: slot
+    short: a
+  d-sl-b:
+    name: slot-b
+    type: slot
+    short: b
+  d-ui-a:
+    name: ui-a
+    type: ui
+    short: a
+  d-ui-b:
+    name: ui-b
+    type: ui
+    short: b
+policies:
+  p-a:
+    book_ahead: 0s
+    description: d-p-a
+    enforce_book_ahead: false
+    enforce_max_bookings: false
+    enforce_max_duration: false
+    enforce_min_duration: false
+    enforce_max_usage: false
+    max_bookings: 0
+    max_duration: 0s
+    min_duration: 0s
+    max_usage: 0s
+    slots:
+    - sl-a
+  p-b:
+    book_ahead: 2h0m0s
+    description: d-p-b
+    enforce_book_ahead: true
+    enforce_max_bookings: true
+    enforce_max_duration: true
+    enforce_min_duration: true
+    enforce_max_usage: true
+    max_bookings: 2
+    max_duration: 10m0s
+    min_duration: 5m0s
+    max_usage: 30m0s
+    slots:
+    - sl-b
+resources:
+  r-a:
+    description: d-r-a
+    streams:
+    - st-a
+    - st-b
+    topic_stub: aaaa00
+  r-b:
+    description: d-r-b
+    streams:
+    - st-a
+    - st-b
+    topic_stub: bbbb00
+slots:
+  sl-a:
+    description: d-sl-a
+    policy: p-a
+    resource: r-a
+    ui_set: us-a
+    window: w-a
+  sl-b:
+    description: d-sl-b
+    policy: p-b
+    resource: r-b
+    ui_set: us-b
+    window: w-b
+streams:
+  st-a:
+    audience: a
+    ct: a
+    for: a
+    scopes:
+    - r
+    - w
+    topic: a
+    url: a
+  st-b:
+    audience: b
+    ct: b
+    for: b
+    scopes:
+    - r
+    - w
+    topic: b
+    url: b
+uis:
+  ui-a:
+    description: d-ui-a
+    url: a
+    streams_required:
+    - st-a
+    - st-b
+  ui-b:
+    description: d-ui-b
+    url: b
+    streams_required:
+    - st-a
+    - st-b
+ui_sets:
+  us-a:
+    uis:
+    - ui-a
+  us-b:
+    uis:
+    - ui-a
+    - ui-b
+windows:
+  w-a:
+    allowed:
+    - start: 2022-11-04T00:00:00Z
+      end: 2022-11-06T00:00:00Z
+    denied: []
+  w-b:
+    allowed:
+    - start: 2022-11-04T00:00:00Z
+      end: 2022-11-06T00:00:00Z
+    denied: []
+```
 
 
 
@@ -194,6 +221,134 @@ type Interval struct {
 }
 
 ```
+
+
+## Methods
+
+### Maintenance commands
+
+```golang
+// PruneDiaries is a maintenance operation to prune old bookings from diaries
+// to make booking decisions faster. There is an overhead to pruning trees
+// because they are rebalanced, so don't do too frequently.
+func (s *Store) PruneDiaries()
+
+// PruneDiaries is maintenance operation that moves expired bookings from
+// the map of current bookings to the map of old bookings
+func (s *Store) PruneBookings() 
+
+// PruneUserBookings is a maintenace operation to move
+// expired bookings from the map of bookings but only
+// to do so for a given user (e.g. ahead of checking
+// their policy limits on future bookings).
+func (s *Store) PruneUserBookings(user string
+```
+
+### User Commands
+
+```golang
+// GetDescription returns a description if found
+func (s *Store) GetDescription(name string) (Description, error)
+
+// GetPolicy returns a policy if found
+func (s *Store) GetPolicy(name string) (Policy, error) 
+
+// GetAvailability returns a slice of intervals for which a given slot is available under a given policy, or an error if the slot or policy is not found. The policy contains aspects such as look-ahead which may limit the window of availability.
+func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error)
+
+// GetSlotIsAvailable checks the underlying resource's availability
+func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error)
+
+// GetSlotBookings gets bookings as far as ahead as the policy will let you book ahead
+// It's up to the consumer to handle any pagination
+func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error)
+
+// CancelBooking cancels a booking or returns an error if not found
+func (s *Store) CancelBooking(booking Booking) error
+
+// MakeBooking makes bookings for users, according to the policy
+// If a user does not exist, one is created.
+// APIs for users should call this version
+func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error)
+
+// GetActivity returns an activity associated with a booking, or an error
+// if the booking is invalid in some way 
+func (s *Store) GetActivity(booking Booking) (Activity, error) {
+
+```
+
+### Admin commands
+
+```goland
+// SetSlotIsAvailable sets the underlying resource's availability
+func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error
+
+// MakeBookingWithID makes bookings for users, according to the policy
+// If a user does not exist, one is created.
+// The booking ID is set by the caller, so that bookings can be edited/replaced
+// This version should only be called by Admin users
+func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Interval, name string) (Booking, error)
+
+// ReplaceManifest overwrites the existing manifest with a new one i.e. does not retain existing elements from any previous manifests
+// but it does retain non-Manifest elements such as bookings.
+func (s *Store) ReplaceManifest(m Manifest) error
+
+// CheckManifest checks for internal consistency, throwing an error
+// if there are any unresolved references by name
+func CheckManifest(m Manifest) (error, []string)
+
+// ExportBookings returns a map of all current/future bookings
+func (s *Store) ExportBookings() map[string]Booking
+
+// ReplaceBookings will replace all bookings with a new set
+// each booking must be valid for the manifest, i.e. all
+// references to other entities must be valid.
+// Note that the manifest should be set first
+func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string)
+
+// ExportBookings returns a map of all old bookings
+func (s *Store) ExportOldBookings() map[string]Booking
+
+// ReplaceOldBookings will replace the map of old bookings with the supplied list or return an error if the bookings have issues
+func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string)
+
+// ExportUsers returns a map of users, listing the names of bookings, old bookings, policies and
+// their usage to date by policy name
+func (s *Store) ExportUsers() map[string]UserExternal
+
+// There is no ReplaceUsers (not implemented, not planned to implement)
+
+```
+
+## API
+
+
+## Gotchas
+
+[time](https://pkg.go.dev/time#Time)
+"Representations of a Time value saved by the GobEncode, MarshalBinary, MarshalJSON, and MarshalText methods store the Time.Location's offset, but not the location name. They therefore lose information about Daylight Saving Time."
+
+
+
+## Out of date material
+
+The material below here is from early stages of the development, and may not be consistent with the current implementation. 
+
+TODO - edit the below to match current implementation and shift above into main section  where appropriate, or delete otherwise.
+
+
+### A note on filters and redundancy
+
+Why not have filters on `slots` AND `policies`?  In order to provide access to an experiment, there must be available resources. Forcing all knowledge about availability of resources into a single place (slot definitions) simplifies testing/reporting, at the cost of having more `slots`. 
+
+Class E requires Exclusive access to a Experiement A. Class H will be heavy users of Experiment A. The General Public will also use Experiment A, but only when it is not in high-demand for Class H (e.g. before/after class H use it, and during anti-social hours).
+
+Three slots are prepared for each kit instance of Experiment A, representing (1) the exclusive access periods for Class E, (2) the allowable access periods for Class H, (3) and the allowable access periods for General Public.
+
+To see whether a resource is in exclusive or shared use at any given time, plot the allowable access periods for each resource, and annotate with the slot names.
+
+
+
 
 AVL trees are used to ensure good average look-up performance.
 
@@ -465,3 +620,61 @@ replace internal/bar => ./internal/bar
 and run `go mod tidy' to fix `go.sum`
 
 See Vlad Bezden's [Post](https://stackoverflow.com/questions/33351387/how-to-use-internal-packages)
+
+
+### Interim example manifest
+
+TODO copy the real-world aspects of this into the example manifest further up
+
+```yaml
+
+filters:
+  - id: c3-wk5-wk7
+    nbf: 2023-02-01T09:00:00Z
+    exp: 2023-04-30T09:00:00Z
+	allowed:
+	  - nbf: 2023-02-01T09:00:00Z
+        exp: 2023-04-30T09:00:00Z
+	denied:
+	  - nbf: 2023-03-04T14:00:00Z
+	    exp: 2023-03-04T15:00:00Z
+	  - nbf: 2023-03-05T14:00:00Z
+	    exp: 2023-03-05T15:00:00Z 
+	  - nbf: 2023-03-06T14:00:00Z
+	    exp: 2023-03-06T15:00:00Z
+  - id: ed1
+    allowed:
+	  - nbf: 2023-03-04T14:00:00Z
+	    exp: 2023-03-04T15:00:00Z
+	  - nbf: 2023-03-05T14:00:00Z
+	    exp: 2023-03-05T15:00:00Z 
+	  - nbf: 2023-03-06T14:00:00Z
+	    exp: 2023-03-06T15:00:00Z	
+	
+groups:
+  controls3:
+    slots:
+	- id:  spinner-v2-weight-00:
+      filters: 
+	    - c3-wk5-wk7 
+	  
+	- id:  spinner-v2-weight-01
+	  filters: 
+	    - c3-wk5-wk7
+		
+  engineeringdesign1:
+    slots:
+	- id: spinner-v2-weight-00
+	  filters: 
+	    - ed1-wk5-s1
+		- ed1-wk5-s2
+		- ed1-wk5-s3
+	- id: spinner-v2-weight-01
+	  filters:
+		- ed1-wk5-s1
+		- ed1-wk5-s2
+		- ed1-wk5-s3
+
+	  
+
+```

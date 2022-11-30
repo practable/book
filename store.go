@@ -283,6 +283,10 @@ func (s *Store) PruneBookings() {
 
 }
 
+// PruneUserBookings is a maintenace operation to move
+// expired bookings from the map of bookings but only
+// to do so for a given user (e.g. ahead of checking
+// their policy limits on future bookings).
 func (s *Store) PruneUserBookings(user string) {
 
 	u, ok := s.Users[user]
@@ -399,6 +403,7 @@ func Availability(bk []diary.Booking, start, end time.Time) []interval.Interval 
 
 }
 
+// GetAvailability returns a list of intervals for which a given slot is available under a given policy, or an error if the slot or policy is not found. The policy contains aspects such as look-ahead which may limit the window of availability.
 func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error) {
 
 	p, ok := s.Policies[policy]
@@ -470,7 +475,7 @@ func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
 
 }
 
-// GetSlotIsAvailable checks the underlying resource's availability
+// SetSlotIsAvailable sets the underlying resource's availability
 func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error {
 
 	sl, ok := s.Slots[slot]
@@ -538,6 +543,7 @@ func NewUser() *User {
 	}
 }
 
+// CancelBooking cancels a booking or returns an error if not found
 func (s *Store) CancelBooking(booking Booking) error {
 
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
@@ -776,9 +782,9 @@ func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Int
 
 }
 
+// ValidateBooking checks if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 func (s *Store) ValidateBooking(booking Booking) error {
 
-	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 	b, ok := s.Bookings[booking.Name]
 
 	if !ok {
@@ -832,6 +838,8 @@ func (s *Store) ValidateBooking(booking Booking) error {
 
 }
 
+// GetActivity returns an activity associated with a booking, or an error
+// if the booking is invalid in some way
 func (s *Store) GetActivity(booking Booking) (Activity, error) {
 
 	err := s.ValidateBooking(booking)
