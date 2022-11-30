@@ -1038,12 +1038,79 @@ func TestReplaceOldBookings(t *testing.T) {
 	assert.Equal(t, d, ps.Usage)
 }
 
-func TestGetBookingsFor(t *testing.T) {
-	t.Error("not implemented")
-}
+func TestGetBookingsForGetOldBookingsFor(t *testing.T) {
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+	s := New()
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
 
-func TestGetOldBookingsFor(t *testing.T) {
-	t.Error("not implemented")
+	// make a booking
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	policy := "p-a"
+	slot := "sl-a"
+	user := "u-a"
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	policy = "p-b"
+	slot = "sl-b"
+	user = "u-b" //does not yet exist in store
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+	assert.NoError(t, err)
+
+	bm, err := s.GetBookingsFor("u-a")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(bm))
+	assert.Equal(t, "sl-a", bm[0].Slot)
+
+	bm, err = s.GetBookingsFor("u-b")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(bm))
+	assert.Equal(t, "sl-b", bm[0].Slot)
+
+	bm, err = s.GetOldBookingsFor("u-a")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(bm))
+
+	bm, err = s.GetOldBookingsFor("u-b")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(bm))
+
+	// move forward a day to make bookings old
+	s.Now = func() time.Time { return time.Date(2022, 12, 5, 1, 0, 0, 0, time.UTC) }
+	s.PruneBookings()
+
+	bm, err = s.GetBookingsFor("u-a")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(bm))
+
+	bm, err = s.GetBookingsFor("u-b")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(bm))
+
+	bm, err = s.GetOldBookingsFor("u-a")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(bm))
+	assert.Equal(t, "sl-a", bm[0].Slot)
+
+	bm, err = s.GetOldBookingsFor("u-b")
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(bm))
+	assert.Equal(t, "sl-b", bm[0].Slot)
+
 }
 
 func TestGetPolicyStatusFor(t *testing.T) {

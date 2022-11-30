@@ -919,10 +919,10 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 	return a, nil
 }
 
-func (s *Store) GetBookingsFor(user string) (error, []Booking) {
+func (s *Store) GetBookingsFor(user string) ([]Booking, error) {
 
 	if _, ok := s.Users[user]; !ok {
-		return errors.New("user not found"), []Booking{}
+		return []Booking{}, errors.New("user not found")
 	}
 
 	b := []Booking{}
@@ -933,14 +933,14 @@ func (s *Store) GetBookingsFor(user string) (error, []Booking) {
 		}
 	}
 
-	return nil, b
+	return b, nil
 
 }
 
-func (s *Store) GetOldBookingsFor(user string) (error, []Booking) {
+func (s *Store) GetOldBookingsFor(user string) ([]Booking, error) {
 
 	if _, ok := s.Users[user]; !ok {
-		return errors.New("user not found"), []Booking{}
+		return []Booking{}, errors.New("user not found")
 	}
 
 	b := []Booking{}
@@ -951,7 +951,7 @@ func (s *Store) GetOldBookingsFor(user string) (error, []Booking) {
 		}
 	}
 
-	return nil, b
+	return b, nil
 }
 
 func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
@@ -986,7 +986,7 @@ func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
 	bp := []Booking{}
 	obp := []Booking{}
 
-	err, b := s.GetBookingsFor(user)
+	b, err := s.GetBookingsFor(user)
 	if err != nil {
 		return PolicyStatus{}, err
 	}
@@ -997,7 +997,7 @@ func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
 		}
 	}
 
-	err, ob := s.GetOldBookingsFor(user)
+	ob, err := s.GetOldBookingsFor(user)
 	if err != nil {
 		return PolicyStatus{}, err
 	}
