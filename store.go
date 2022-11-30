@@ -1033,11 +1033,9 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 	if b.User == "" {
 		msg = append(msg, b.Name+" missing user")
 	}
-	if (b.When == interval.Interval{
-		Start: interval.ZeroTime,
-		End:   interval.ZeroTime,
-	}) {
-		msg = append(msg, "missing when")
+
+	if (b.When == interval.Interval{}) {
+		msg = append(msg, b.Name+" missing when")
 	}
 
 	if len(msg) > 0 {
@@ -1051,7 +1049,7 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 		msg = append(msg, b.Name+" slot "+b.Slot+" not found")
 	}
 
-	// we don't check whether users exist, because we create them as needed
+	// we don't check whether user exists, because we create them as needed
 
 	if len(msg) > 0 {
 		return errors.New("missing references"), msg
@@ -1079,6 +1077,9 @@ func (s *Store) ExportBookings() map[string]Booking {
 // each booking must be valid for the manifest, i.e. all
 // references to other entities must be valid.
 // Note that the manifest should be set first
+// Diaries need to be cleared by cancelling bookings to refund
+// usage to  users before making the replacement bookings through
+// the standard method
 func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	s.Lock()
 	defer s.Unlock()
@@ -1134,7 +1135,7 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	return nil, []string{}
 }
 
-// ExportBookings returns a map of all old bookings
+// ExportOldBookings returns a map by name of old bookings
 func (s *Store) ExportOldBookings() map[string]Booking {
 	s.Lock()
 	defer s.Unlock()
@@ -1149,7 +1150,6 @@ func (s *Store) ExportOldBookings() map[string]Booking {
 }
 
 // ReplaceOldBookings will replace the map of old bookings with the supplied list or return an error if the bookings have issues. All existing users are deleted, and replaced with users with usages that match the old bookings
-//
 func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 	s.Lock()
 	defer s.Unlock()
@@ -1276,4 +1276,41 @@ func (s *Store) ExportUsers() map[string]UserExternal {
 // rather than an adjustment to their old usage value.
 func (s *Store) ReplaceUsers(u map[string]UserExternal) (error, []string) {
 	return errors.New("not implemented"), []string{}
+}
+
+// ReplaceUsersPolicies allows administrators to add and remove policies from
+// users, e.g. to add or restrict access to experiments
+// A user that does not exist, is created, and the policies added.
+// Policies must exist or an error is thrown
+func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
+
+	s.Lock()
+	defer s.Unlock()
+
+	msg := []string{}
+
+	for k, v := range u {
+		// check all policies exist
+		for _, p := range v {
+			if _, ok := s.Policies[p]; !ok {
+				msg = append(msg, "user "+k+" policy "+p+" does not exist")
+			}
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("policy not found"), msg
+	}
+
+	for k, v := range u {
+		u := s.Users[k]
+		pm := make(map[string]bool)
+		for _, p := range v {
+			pm[p] = true
+		}
+		u.Policies = pm
+
+	}
+
+	return nil, []string{}
 }
