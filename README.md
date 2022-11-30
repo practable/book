@@ -277,6 +277,8 @@ func (s *Store) GetOldBookingsFor(user string) ([]Booking, error)
 // GetPolicyStatusFor returns usage, and counts of current and old bookings
 func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error)
 
+// GetPoliciesFor returns a list of policies that a user has booked with
+func (s *Store) GetPoliciesFor(user string) ([]string, error)
 ```
 
 ### Admin commands
@@ -285,14 +287,12 @@ func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error)
 // GetSlotIsAvailable checks the underlying resource's availability
 func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error)
 
-
 // SetSlotIsAvailable sets the underlying resource's availability
 func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error
 
 // GetSlotBookings gets bookings as far as ahead as the policy will let you book ahead
 // It's up to the consumer to handle any pagination
 func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error)
-
 
 // MakeBookingWithID makes bookings for users, according to the policy
 // If a user does not exist, one is created.
@@ -327,7 +327,7 @@ func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string)
 // their usage to date by policy name
 func (s *Store) ExportUsers() map[string]UserExternal
 
-// There is no ReplaceUsers (not implemented, not planned to implement)
+// There is no ReplaceUsers (not implemented, not planned to implement, because  ReplaceOldBookings deletes and recreates the user list)
 
 ```
 

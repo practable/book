@@ -506,8 +506,8 @@ func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) e
 
 }
 
-// GetSlotBookings gets bookings as far as ahead as the policy will let you book ahead
-// It's up to the consumer to handle any pagination
+// GetSlotBookings gets bookings as far as ahead as the diary holds them
+// It's up to the caller to handle any pagination that might be required
 func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error) {
 
 	sl, ok := s.Slots[slot]
@@ -960,6 +960,7 @@ func (s *Store) GetOldBookingsFor(user string) ([]Booking, error) {
 	return b, nil
 }
 
+// GetPoliciesFor returns a list of policies that a user has booked with
 func (s *Store) GetPoliciesFor(user string) ([]string, error) {
 
 	if _, ok := s.Users[user]; !ok {
