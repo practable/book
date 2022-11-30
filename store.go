@@ -65,6 +65,12 @@ type Policy struct {
 	SlotMap            map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
 }
 
+type PolicyStatus struct {
+	OldBookings     int64         `json:"old_bookings"  yaml:"old_bookings"`
+	CurrentBookings int64         `json:"current_bookings"  yaml:"current_bookings"`
+	Usage           time.Duration `json:"usage"  yaml:"usage"`
+}
+
 // Resource represents a physical entity that can be booked
 type Resource struct {
 
@@ -911,4 +917,363 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 	}
 
 	return a, nil
+}
+
+func (s *Store) GetBookingsFor(user string) (error, []Booking) {
+
+	if _, ok := s.Users[user]; !ok {
+		return errors.New("user not found"), []Booking{}
+	}
+
+	b := []Booking{}
+
+	for _, v := range s.Bookings {
+		if user == v.User {
+			b = append(b, *v)
+		}
+	}
+
+	return nil, b
+
+}
+
+func (s *Store) GetOldBookingsFor(user string) (error, []Booking) {
+
+	if _, ok := s.Users[user]; !ok {
+		return errors.New("user not found"), []Booking{}
+	}
+
+	b := []Booking{}
+
+	for _, v := range s.OldBookings {
+		if user == v.User {
+			b = append(b, *v)
+		}
+	}
+
+	return nil, b
+}
+
+func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
+
+	if _, ok := s.Users[user]; !ok {
+		return PolicyStatus{}, errors.New("user not found")
+	}
+
+	if _, ok := s.Policies[policy]; !ok {
+		return PolicyStatus{}, errors.New("policy not found")
+	}
+
+	if _, ok := s.Users[user].Usage[policy]; !ok { // no usage according to that policy
+		ut, err := time.ParseDuration("0s")
+		if err != nil { // shouldn't get this error because parsing "0s" is known good
+			return PolicyStatus{}, errors.New("no usage found")
+		}
+		// return a successful result with zero usage because every new
+		// user will at some point have zero usage on a new policy and this
+		// makes the display logic easier to handle on the client side
+		// Do NOT add a new tracker to the store because a GET query should not mutate state
+		// For example, it could imply that the user once had permission to book this policy
+		// but that concern is handled in the authorisation middlelayer outside this package,
+		// and it is possible that the middleware implementation might let users check policy
+		// status without having permission to book, because they rightly assume a GET must not
+		// mutate state, so we don't want to create a privilege escalation by creating a usage tracker
+		// that imples permission to book was once held, when perhaps it wasn't.
+		return PolicyStatus{Usage: ut}, nil
+
+	}
+
+	bp := []Booking{}
+	obp := []Booking{}
+
+	err, b := s.GetBookingsFor(user)
+	if err != nil {
+		return PolicyStatus{}, err
+	}
+
+	for _, v := range b {
+		if policy == v.Policy {
+			bp = append(bp, v)
+		}
+	}
+
+	err, ob := s.GetOldBookingsFor(user)
+	if err != nil {
+		return PolicyStatus{}, err
+	}
+	for _, v := range ob {
+		if policy == v.Policy {
+			obp = append(obp, v)
+		}
+	}
+
+	ps := PolicyStatus{
+		CurrentBookings: int64(len(bp)),
+		OldBookings:     int64(len(obp)),
+		Usage:           *(s.Users[user].Usage[policy]),
+	}
+	return ps, nil
+}
+
+// CheckBooking returns nil error if booking is ok, or an error and a slice of messages describing issues
+func (s *Store) CheckBooking(b Booking) (error, []string) {
+
+	msg := []string{}
+
+	if b.Name == "" {
+		msg = append(msg, "missing name")
+	}
+
+	if b.Policy == "" {
+		msg = append(msg, b.Name+" missing policy")
+	}
+	if b.Slot == "" {
+		msg = append(msg, b.Name+" missing slot")
+	}
+	if b.User == "" {
+		msg = append(msg, b.Name+" missing user")
+	}
+	if (b.When == interval.Interval{
+		Start: interval.ZeroTime,
+		End:   interval.ZeroTime,
+	}) {
+		msg = append(msg, "missing when")
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
+	}
+
+	if _, ok := s.Policies[b.Policy]; !ok {
+		msg = append(msg, b.Name+" policy "+b.Policy+" not found")
+	}
+	if _, ok := s.Slots[b.Slot]; !ok {
+		msg = append(msg, b.Name+" slot "+b.Slot+" not found")
+	}
+
+	// we don't check whether users exist, because we create them as needed
+
+	if len(msg) > 0 {
+		return errors.New("missing references"), msg
+	}
+
+	return nil, []string{}
+}
+
+// ExportBookings returns a map of all current/future bookings
+func (s *Store) ExportBookings() map[string]Booking {
+
+	s.Lock()
+	defer s.Unlock()
+
+	bm := make(map[string]Booking)
+
+	for k, v := range s.Bookings {
+		bm[k] = *v
+	}
+
+	return bm
+}
+
+// ReplaceBookings will replace all bookings with a new set
+// each booking must be valid for the manifest, i.e. all
+// references to other entities must be valid.
+// Note that the manifest should be set first
+func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
+	s.Lock()
+	defer s.Unlock()
+
+	// Check bookings are individually sane given our manifest
+	msg := []string{}
+
+	for _, v := range bm {
+		err, ms := s.CheckBooking(v)
+		if err != nil {
+			for _, m := range ms {
+				msg = append(msg, m)
+			}
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("malformed booking"), msg
+	}
+
+	// bookings are ok, so clean house.
+	// we want to refund our users, so go through each booking and cancel
+
+	for k, v := range s.Bookings {
+		err := s.CancelBooking(*v)
+		if err != nil {
+			msg = append(msg,
+				"could not refund user "+
+					v.User+" "+HumaniseDuration(v.When.End.Sub(v.When.Start))+
+					" for replaced booking "+k+" on policy "+v.Policy)
+		}
+	}
+	// can't delete bookings as we iterate over map, so just create a fresh map
+	s.Bookings = make(map[string]*Booking)
+
+	for k := range s.Resources {
+		r := s.Resources[k]
+		r.Diary = diary.New(k)
+		s.Resources[k] = r
+	}
+
+	// Now make the bookings, respecting policy and usage
+	for _, v := range bm {
+		_, err := s.MakeBookingWithName(v.Policy, v.Slot, v.User, v.When, v.Name)
+
+		if err != nil {
+			msg = append(msg, "booking "+v.Name+" failed because "+err.Error())
+		}
+
+		// s.Bookings is updated by MakeBookingWithID so we mustn't update it ourselves
+	}
+
+	return nil, []string{}
+}
+
+// ExportBookings returns a map of all old bookings
+func (s *Store) ExportOldBookings() map[string]Booking {
+	s.Lock()
+	defer s.Unlock()
+
+	bm := make(map[string]Booking)
+
+	for k, v := range s.OldBookings {
+		bm[k] = *v
+	}
+
+	return bm
+}
+
+// ReplaceOldBookings will replace the map of old bookings with the supplied list or return an error if the bookings have issues. All existing users are deleted, and replaced with users with usages that match the old bookings
+//
+func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
+	s.Lock()
+	defer s.Unlock()
+
+	// Check bookings are individually sane given our manifest
+	msg := []string{}
+
+	for _, v := range bm {
+		err, ms := s.CheckBooking(v)
+		if err != nil {
+			for _, m := range ms {
+				msg = append(msg, m)
+			}
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("malformed booking"), msg
+	}
+
+	// bookings are ok, so clean house.
+
+	// no need to handle any diaries or cancellations, because these are old bookings
+	s.OldBookings = make(map[string]*Booking)
+
+	// we don't refund any usages because we are removing all users too (will remake them to match replacemenet old bookings)
+	s.Users = make(map[string]*User)
+
+	// Map the bookings, and create new users and usage trackers to reflect the updated "old bookings"
+	for k, v := range bm {
+
+		ob := v //make local copy so we can get a pointer detached from the loop variable
+
+		s.OldBookings[k] = &ob
+
+		// add new user if does not exist
+		if _, ok := s.Users[ob.User]; !ok {
+			s.Users[ob.User] = NewUser()
+		}
+
+		// get user from map to allow editing of it
+		u := s.Users[ob.User]
+
+		// update user policies to include policy of this booking
+		u.Policies[ob.Policy] = true
+
+		// check for existing usage tracker for this policy?
+		_, ok := u.Usage[ob.Policy]
+
+		if !ok { //create usage tracker (always track usage, even if not limited)
+			ut, err := time.ParseDuration("0s")
+
+			if err != nil { //in practice, will not throw error because we know the string "0s" is `good`
+				return errors.New("could not initialise user tracker"), []string{}
+
+			}
+
+			u.Usage[ob.Policy] = &ut
+		}
+
+		duration := ob.When.End.Sub(ob.When.Start)
+		currentUsage := *u.Usage[ob.Policy]
+		newUsage := currentUsage + duration
+
+		// update usage tracker with duration of this booking
+		u.Usage[ob.Policy] = &newUsage
+
+		// replace edited user in map
+		s.Users[ob.User] = u
+
+	}
+
+	return nil, []string{}
+
+}
+
+// ExportUsers returns a map of users, listing the names of bookings, old bookings, policies and
+// their usage to date by policy name
+func (s *Store) ExportUsers() map[string]UserExternal {
+
+	s.Lock()
+	defer s.Unlock()
+
+	um := make(map[string]UserExternal)
+
+	for k, v := range s.Users {
+
+		bs := []string{}
+		obs := []string{}
+		ps := []string{}
+		ds := make(map[string]string)
+
+		for k := range v.Bookings {
+			bs = append(bs, k)
+		}
+
+		for k := range v.OldBookings {
+			obs = append(obs, k)
+		}
+		for k := range v.Policies {
+			ps = append(ps, k)
+		}
+		for k, v := range v.Usage {
+			ds[k] = HumaniseDuration(*v)
+		}
+
+		um[k] = UserExternal{
+			Bookings:    bs,
+			OldBookings: obs,
+			Policies:    ps,
+			Usage:       ds,
+		}
+	}
+
+	return um
+}
+
+// Replace Users is not implemented because it would allow
+// the consistency of the store to be broken (e.g. which users
+// were associated with which bookings). As for usage, the
+// ReplaceBookings method already handles adjustments to usage
+// automatically so there is no need to edit users.
+// If a user needs more usage allowance, then they need a new policy,
+// rather than an adjustment to their old usage value.
+func (s *Store) ReplaceUsers(u map[string]UserExternal) (error, []string) {
+	return errors.New("not implemented"), []string{}
 }
