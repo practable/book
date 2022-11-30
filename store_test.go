@@ -941,7 +941,101 @@ func TestReplaceBookings(t *testing.T) {
 }
 
 func TestReplaceOldBookings(t *testing.T) {
-	t.Error("not implemented")
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+	s := New()
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	// make a booking
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	policy := "p-b"
+	slot := "sl-b"
+	user := "u-b" //does not yet exist in store
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	assert.NoError(t, err)
+
+	// Check booking is as expected
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "", b.Name) //non null name
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
+
+	// Check user usages
+	um := s.ExportUsers()
+
+	// check test user a does not exist
+	_, ok := um["u-a"]
+	assert.False(t, ok)
+
+	// check test user b exists
+	utb, ok := um["u-b"]
+	assert.True(t, ok)
+
+	// check usage of user b is correct
+	assert.Equal(t, "10m0s", utb.Usage["p-b"])
+
+	// Move one day to the future, to make the booking old
+	s.Now = func() time.Time { return time.Date(2022, 12, 5, 1, 0, 0, 0, time.UTC) }
+
+	s.PruneBookings()
+
+	// modify the booking to belong to user-a
+	bm := s.ExportOldBookings()
+
+	newb := bm[b.Name]
+
+	newb.User = "u-a"
+
+	bm[newb.Name] = newb
+
+	err, msgs := s.ReplaceOldBookings(bm)
+
+	if err != nil {
+		t.Log(msgs)
+	}
+
+	assert.NoError(t, err)
+
+	bm = s.ExportBookings()
+
+	// Check user usages
+	um = s.ExportUsers()
+
+	// check test user a exists
+	uta, ok := um["u-a"]
+	assert.True(t, ok)
+
+	// check usage of user a is correct
+	assert.Equal(t, "10m0s", uta.Usage["p-b"])
+
+	// check test user b now does not exist (unlike replacebookings, users without an oldbooking are deleted during the old bookings replacement process)
+	_, ok = um["u-b"]
+	assert.False(t, ok)
+
+	// check that bookings are indeed old bookings
+	ps, err := s.GetPolicyStatusFor("u-a", policy)
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, int64(0), ps.CurrentBookings)
+	assert.Equal(t, int64(1), ps.OldBookings)
+	d, err := time.ParseDuration("10m0s")
+	assert.NoError(t, err)
+	assert.Equal(t, d, ps.Usage)
 }
 
 func TestGetBookingsFor(t *testing.T) {
