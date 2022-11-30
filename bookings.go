@@ -57,6 +57,7 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 	return nil, []string{}
 }
 
+// ExportBookings returns a map of all current/future bookings
 func (s *Store) ExportBookings() map[string]Booking {
 
 	s.Lock()
@@ -130,6 +131,7 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	return nil, []string{}
 }
 
+// ExportBookings returns a map of all old bookings
 func (s *Store) ExportOldBookings() map[string]Booking {
 	s.Lock()
 	defer s.Unlock()
@@ -143,6 +145,7 @@ func (s *Store) ExportOldBookings() map[string]Booking {
 	return bm
 }
 
+// ReplaceOldBookings will replace the map of old bookings with the supplied list or return an error if the bookings have issues
 func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 	s.Lock()
 	defer s.Unlock()
