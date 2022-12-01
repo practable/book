@@ -418,7 +418,7 @@ paths:
   /login/{user_name}:
     post:
       summary: Request a user access token
-      description: The access token is required to authenticate requests to the rest of the user-facing API. Ideally access to this endpoint should be secured by the identity management system. The access token has a limited lifetime but can be re-requested as needed.
+      description: The access token is required to authenticate requests to the rest of the user-facing API. Ideally access to this endpoint should be secured by the identity management system. The access token has a limited lifetime but can be re-requested as needed. Consider rate-limiting this per-connection.
       tags:
       - users
       - login
