@@ -445,6 +445,95 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+  /policies/{policy_name}/slots/{slot_name}:
+    get:
+      summary: Get availability for the slot under the policy
+      description: TODO pagination
+      tags:
+      - users
+      - slots
+      operationId: GetAvailability
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: policy_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: slot_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Intervals'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+    post:
+      summary: Request a booking
+      description: TODO pagination
+      tags:
+      - users
+      - slots
+      operationId: MakeBooking
+      deprecated: false
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: policy_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: slot_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: user_name
+        in: query
+        required: true
+        type: string
+        description: ''
+      - name: from
+        in: query
+        required: true
+        type: string
+        format: date-time
+      - name: to
+        in: query
+        required: true
+        type: string
+        format: date-time
+      security:
+        - Bearer: []
+      responses:
+        204:
+          description: 'OK - No Content'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        409:
+          description: 'Conflict - unavailable for the requested interval'
+          schema: {}
+        500:
+          $ref: '#/responses/InternalError'
 
           
 definitions:
@@ -554,6 +643,11 @@ definitions:
       end:
         type: string
         format: date-time
+
+  Intervals:
+    type: array
+    items:
+      $ref: '#/definitions/Interval'
 
   Manifest:
     title: manifest
