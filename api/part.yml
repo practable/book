@@ -357,6 +357,32 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+
+  /admin/users:
+    get:
+      summary: Export users
+      description: Export bookings and usage data for each user
+      tags:
+      - admin
+      - users
+      operationId: ExportUsers
+      deprecated: false
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Users'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
           
 definitions:
   Booking:
@@ -713,7 +739,34 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/UI'
-
+      
+  User:
+    type: object
+    properties:
+      bookings:
+        type: array
+        items:
+          type: string
+      old_bookings:
+        type: array
+        items:
+          type: string
+      policies:
+        type: array
+        items:
+          type: string
+      usage:
+        type: object
+        additionalProperties:
+          type: string
+          format: duration
+          
+  Users:
+    title: set of User Interfaces
+    type: array
+    items:
+      $ref: '#/definitions/User'
+      
   Window:
     type: object
     properties:
