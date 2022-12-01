@@ -1532,3 +1532,51 @@ func TestGetPoliciesFor(t *testing.T) {
 	assert.Equal(t, []string{"p-b"}, p)
 
 }
+
+func TestStoreStatusAdminUser(t *testing.T) {
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+	s := New()
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00")
+	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01")
+
+	sa := s.GetStoreStatusAdmin()
+	esa := StoreStatusAdmin{
+		Locked:       false,
+		Message:      "Welcome to the interval booking store",
+		Now:          time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
+		Bookings:     2,
+		Descriptions: 8,
+		Filters:      2,
+		OldBookings:  0,
+		Policies:     2,
+		Resources:    2,
+		Slots:        2,
+		Streams:      2,
+		UIs:          2,
+		UISets:       2,
+		Users:        2,
+		Windows:      2}
+	assert.Equal(t, esa, sa)
+
+	su := s.GetStoreStatusUser()
+	esu := StoreStatusUser{
+		Locked:  false,
+		Message: "Welcome to the interval booking store",
+		Now:     time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
+	}
+	assert.Equal(t, esu, su)
+
+}

@@ -194,6 +194,30 @@ type Store struct {
 	Windows map[string]Window
 }
 
+type StoreStatusAdmin struct {
+	Bookings     int64
+	Descriptions int64
+	Filters      int64
+	Locked       bool
+	Message      string
+	Now          time.Time
+	OldBookings  int64
+	Policies     int64
+	Resources    int64
+	Slots        int64
+	Streams      int64
+	UIs          int64
+	UISets       int64
+	Users        int64
+	Windows      int64
+}
+
+type StoreStatusUser struct {
+	Locked  bool
+	Message string
+	Now     time.Time
+}
+
 // UI represents a UI that can be used with a resource, for a given slot
 type UI struct {
 	Description string `json:"description"  yaml:"description"`
@@ -1335,4 +1359,32 @@ func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
 	}
 
 	return nil, []string{}
+}
+
+func (s *Store) GetStoreStatusAdmin() StoreStatusAdmin {
+	return StoreStatusAdmin{
+		Locked:       s.Locked,
+		Message:      s.Message,
+		Now:          s.Now(),
+		Bookings:     int64(len(s.Bookings)),
+		Descriptions: int64(len(s.Descriptions)),
+		Filters:      int64(len(s.Filters)),
+		OldBookings:  int64(len(s.OldBookings)),
+		Policies:     int64(len(s.Policies)),
+		Resources:    int64(len(s.Resources)),
+		Slots:        int64(len(s.Slots)),
+		Streams:      int64(len(s.Streams)),
+		UIs:          int64(len(s.UIs)),
+		UISets:       int64(len(s.UISets)),
+		Users:        int64(len(s.Users)),
+		Windows:      int64(len(s.Windows)),
+	}
+}
+
+func (s *Store) GetStoreStatusUser() StoreStatusUser {
+	return StoreStatusUser{
+		Locked:  s.Locked,
+		Message: s.Message,
+		Now:     s.Now(),
+	}
 }
