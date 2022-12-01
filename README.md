@@ -16,6 +16,9 @@ This package implements bookings with arbitrary durations
 - Unlimited access to simulations (unlimited, anytime, no need for booking?) - relative simple, but out of scope for now (simple mod for later).
 - What if kit doesn't work - how to get another? If cannot cancel ...?! For now - when taking up booking, it returns, equipment not available. More advanced options can be added later (e.g. admin edits bookings to substitute another piece of kit instead, when taking an experiment offline).
 
+### Implementation limitations
+- booking status e.g. cancelled, unfulfilled, started are ignored in the Replace(Old)Bookings methods
+- we don't record the time an activity is generated for a booking (could find this in the server logs perhaps), i.e. we can't collect stats on when people arrive for their bookings.
 ## Implementation overview
 
 ### Definitions
@@ -332,6 +335,27 @@ func (s *Store) ExportUsers() map[string]UserExternal
 ```
 
 ## API
+
+Definitions needed:
+
+'#/definitions/Activity'
+'#/definitions/Bookings'
+'#/definitions/Description'
+'#/definitions/Interval'
+'#/definitions/Intervals'
+'#/definitions/Manifest'
+'#/definitions/Policy'
+'#/definitions/Policies'
+'#/definitions/PolicyStatus'
+'#/definitions/Resource'
+'#/definitions/Slot'
+'#/definitions/SlotStatus'
+'#/definitions/StoreStatusAdmin'
+'#/definitions/Stream'
+'#/definitions/UI'
+'#/definitions/UISet'
+'#/definitions/Users'
+'#/definitions/Window'
 
 
 ## Gotchas
