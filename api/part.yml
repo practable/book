@@ -230,6 +230,72 @@ paths:
         500:
           $ref: '#/responses/InternalError'
           
+  /admin/slots/{slot_name}:
+    get:
+      description: Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
+      summary: Gets the availability of the slot
+      tags:
+      - admin
+      - slots
+      operationId: GetSlotIsAvailable
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+        - name: slot_name
+          in: path
+          type: string
+          required: true            
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/SlotStatus'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+    put:
+      description: Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
+      summary: Sets the availability of the slot 
+      tags:
+      - admin
+      - slots
+      operationId: SetSlotIsAvailable
+      deprecated: false
+      parameters:
+      - name: slot_name
+        in: path
+        type: string
+        required: true   
+      - name: available
+        in: query
+        type: boolean
+        required: true
+      - name: reason
+        in: query
+        type: string
+        required: true
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        204:
+          description: OK
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
 definitions:
   Booking:
     title: booking
@@ -460,7 +526,18 @@ definitions:
       - resource
       - ui_set
       - window
-
+      
+  SlotStatus:
+    type: object
+    properties:
+      available:
+        type: boolean
+      reason:
+        type: string
+    required:
+      - available
+      - reason
+        
   StoreStatusAdmin:
     type: object
     properties:
