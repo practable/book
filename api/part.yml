@@ -535,6 +535,34 @@ paths:
         500:
           $ref: '#/responses/InternalError'
 
+  /users/status:
+    get:
+      description: Gets the current store status from a user perspective (e.g. is it locked? what is the reason?)
+      summary: Get current store status
+      tags:
+      - user
+      - status
+      operationId: getStoreStatusUser
+      deprecated: false
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/StoreStatusUser'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+
+
           
 definitions:
   Booking:
@@ -833,7 +861,22 @@ definitions:
       - ui_ets
       - users
       - windows
-
+      
+  StoreStatusUser:
+    type: object
+    properties:
+      locked:
+        type: boolean
+      message:
+        type: string
+      now:
+        type: string
+        format: date-time
+    required:
+      - locked
+      - message
+      - now
+      
   Stream:
     title: stream
     description: Represents an assigned, valid booking slot for an individual piece of equipment
