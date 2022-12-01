@@ -1580,3 +1580,34 @@ func TestStoreStatusAdminUser(t *testing.T) {
 	assert.Equal(t, esu, su)
 
 }
+
+func TestExportManifest(t *testing.T) {
+
+	testManifest.Lock()
+	defer testManifest.Unlock()
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	s := New()
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	// make diary pointers nil as expected for exported version
+	rm := make(map[string]Resource)
+	for k, v := range m.Resources {
+		rm[k] = Resource{
+			ConfigURL:   v.ConfigURL,
+			Description: v.Description,
+			Streams:     v.Streams,
+			TopicStub:   v.TopicStub,
+		}
+	}
+
+	m.Resources = rm
+
+	exportedm := s.ExportManifest()
+	assert.Equal(t, m, exportedm)
+
+}

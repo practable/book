@@ -96,15 +96,53 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 		}
 
 		uid := UIDescribed{
-			Description:     d,
-			URL:             m.UIs[k].URL,
-			StreamsRequired: m.UIs[k].StreamsRequired,
+			Description:          d,
+			DescriptionReference: v.Description,
+			URL:                  m.UIs[k].URL,
+			StreamsRequired:      m.UIs[k].StreamsRequired,
 		}
 		s.UIs[k] = uid
 	}
 
 	return nil
 
+}
+
+// ExportManifest returns the manifest from the store
+func (s *Store) ExportManifest() Manifest {
+
+	uis := make(map[string]UI)
+
+	// Manifest only has the name of the description in the UI
+	for k, v := range s.UIs {
+		uis[k] = UI{
+			Description:     v.DescriptionReference,
+			URL:             v.URL,
+			StreamsRequired: v.StreamsRequired,
+		}
+	}
+
+	// Resources have diary pointers which we should nullify by omission for security and readability
+	rm := make(map[string]Resource)
+	for k, v := range s.Resources {
+		rm[k] = Resource{
+			ConfigURL:   v.ConfigURL,
+			Description: v.Description,
+			Streams:     v.Streams,
+			TopicStub:   v.TopicStub,
+		}
+	}
+
+	return Manifest{
+		Descriptions: s.Descriptions,
+		Policies:     s.Policies,
+		Resources:    rm,
+		Slots:        s.Slots,
+		Streams:      s.Streams,
+		UIs:          uis,
+		UISets:       s.UISets,
+		Windows:      s.Windows,
+	}
 }
 
 func CheckDescriptions(items map[string]Description) (error, []string) {

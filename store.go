@@ -230,6 +230,8 @@ type UI struct {
 // with a description - for sending to users
 type UIDescribed struct {
 	Description Description `json:"description"  yaml:"description"`
+	// Keep track of the description's name, needed for ExportManifest
+	DescriptionReference string `json:"-" yaml:"-"`
 	// URL with moustache {{key}} templating for stream connections
 	URL             string   `json:"url"  yaml:"url"`
 	StreamsRequired []string `json:"streams_required"  yaml:"streams_required"`
@@ -937,7 +939,12 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 			return Activity{}, errors.New("ui" + k + " not found")
 		}
 
-		a.UIs = append(a.UIs, ui)
+		// omit the DescriptionReference field
+		a.UIs = append(a.UIs, UIDescribed{
+			Description:     ui.Description,
+			URL:             ui.URL,
+			StreamsRequired: ui.StreamsRequired,
+		})
 	}
 
 	return a, nil
