@@ -94,8 +94,8 @@ type Policy struct {
 }
 
 type PolicyStatus struct {
-	OldBookings     int64         `json:"old_bookings"  yaml:"old_bookings"`
 	CurrentBookings int64         `json:"current_bookings"  yaml:"current_bookings"`
+	OldBookings     int64         `json:"old_bookings"  yaml:"old_bookings"`
 	Usage           time.Duration `json:"usage"  yaml:"usage"`
 }
 
