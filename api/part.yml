@@ -415,6 +415,38 @@ paths:
         500:
           $ref: '#/responses/InternalError'
           
+  /policies/{policy_name}:
+    get:
+      summary: Get policy
+      description: Get policy
+      tags:
+      - policies
+      operationId: GetPolicy
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: policy_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Policy'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+          
 definitions:
   Booking:
     title: booking
