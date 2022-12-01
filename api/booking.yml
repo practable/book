@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   version: '0.2'
-  title: Slot
+  title: AdvanceBooking
   description: User API for booking slots in advance
   contact:
     email: timothy.d.drysdale@gmail.com
@@ -22,13 +22,13 @@ consumes:
 produces:
 - application/json
 - application/yaml
+
 paths:
 
   /admin/bookings:
-       
     get:
+      description: Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.
       summary: Export a copy of all current bookings
-      description: Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list. 
       tags:
       - admin
       - bookings
@@ -37,7 +37,7 @@ paths:
       produces:
       - application/yaml
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -45,12 +45,12 @@ paths:
             $ref: '#/definitions/Bookings'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
-          $ref: '#/responses/InternalError'  
-          
+          $ref: '#/responses/InternalError'
+
     put:
       summary: Replace current bookings 
       description: Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.
@@ -69,7 +69,7 @@ paths:
         schema:
           $ref: '#/definitions/Bookings'
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -77,12 +77,12 @@ paths:
             $ref: '#/definitions/StoreStatusAdmin'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
   /admin/manifest:
     get:
       summary: Export the manifest
@@ -108,7 +108,7 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
     put:
       summary: Replace the manifest
       description: Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed) 
@@ -141,6 +141,7 @@ paths:
         500:
           $ref: '#/responses/InternalError'
 
+  /admin/manifest/check:
     get:
       summary: Check a manifest
       description: Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).
@@ -159,19 +160,19 @@ paths:
         schema:
           $ref: '#/definitions/Manifest'
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         204:
           description: OK
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           description: InternalError
-          schema: 
+          schema:
             $ref: '#/responses/List'
-          
+
   /admin/oldbookings:
     get:
       summary: Export a copy of all old bookings
@@ -184,7 +185,7 @@ paths:
       produces:
       - application/yaml
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -192,7 +193,7 @@ paths:
             $ref: '#/definitions/Bookings'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
@@ -216,7 +217,7 @@ paths:
         schema:
           $ref: '#/definitions/Bookings'
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -224,16 +225,16 @@ paths:
             $ref: '#/definitions/StoreStatusAdmin'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
-   /admin/slots/{slot_name}:
+
+  /admin/slots/{slot_name}:
     get:
       description: Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
-      summary: Gets the availability of the slot 
+      summary: Gets the availability of the slot
       tags:
       - admin
       - slots
@@ -242,7 +243,7 @@ paths:
       produces:
       - application/json
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -250,12 +251,12 @@ paths:
             $ref: '#/definitions/SlotStatus'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
     put:
       description: Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
       summary: Sets the availability of the slot 
@@ -276,19 +277,17 @@ paths:
       produces:
       - application/json
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         204:
           description: OK
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
-          
-          
+
   /admin/status:
     get:
       description: Gets a count of the number of elements in the store, e.g. Bookings, Descriptions etc to facilitate a necessary but not sufficient check that replace manifest and replace bookings have produced the correct results.
@@ -296,12 +295,12 @@ paths:
       tags:
       - admin
       - status
-      operationId: getStoreStatus
+      operationId: getStoreStatusAdmin
       deprecated: false
       produces:
       - application/json
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -309,7 +308,7 @@ paths:
             $ref: '#/definitions/StoreStatusAdmin'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
@@ -345,16 +344,16 @@ paths:
             $ref: '#/definitions/StoreStatusAdmin'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
   /admin/users:
     get:
-      summary: Export users 
-      description: Export bookings and usage data for each user 
+      summary: Export users
+      description: Export bookings and usage data for each user
       tags:
       - admin
       - users
@@ -363,7 +362,7 @@ paths:
       produces:
       - application/json
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -371,13 +370,11 @@ paths:
             $ref: '#/definitions/Users'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
-          $ref: '#/responses/InternalError'           
-          
-
+          $ref: '#/responses/InternalError'
 
   /descriptions/{description_name}:
     get:
@@ -409,7 +406,7 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
   /policies/{policy_name}:
     get:
       summary: Get policy
@@ -427,7 +424,7 @@ paths:
         type: string
         description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -435,7 +432,7 @@ paths:
             $ref: '#/definitions/Policy'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
@@ -444,7 +441,7 @@ paths:
   /policies/{policy_name}/slots/{slot_name}:
     get:
       summary: Get availability for the slot under the policy
-      description: TODO: pagination
+      description: TODO pagination
       tags:
       - users
       - slots
@@ -458,13 +455,13 @@ paths:
         required: true
         type: string
         description: ''
-       - name: slot_name
+      - name: slot_name
         in: path
         required: true
         type: string
-        description: ''       
+        description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: OK
@@ -472,7 +469,7 @@ paths:
             $ref: '#/definitions/Intervals'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
@@ -480,7 +477,7 @@ paths:
 
     post:
       summary: Request a booking
-      description: TODO: pagination
+      description: TODO pagination
       tags:
       - users
       - slots
@@ -515,14 +512,14 @@ paths:
         in: query
         required: true
         type: string
-        format: date-time        
+        format: date-time
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         204:
           description: OK - No Content
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         409:
@@ -530,9 +527,34 @@ paths:
           schema: {}
         500:
           $ref: '#/responses/InternalError'
-          
-          
-  /users/{user_name}/bookings:        
+
+  /users/status:
+    get:
+      description: Gets the current store status from a user perspective (e.g. is it locked? what is the reason?)
+      summary: Get current store status
+      tags:
+      - user
+      - status
+      operationId: getStoreStatusUser
+      deprecated: false
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/StoreStatusUser'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+  /users/{user_name}/bookings:
     get:
       summary: Get all current bookings for the user
       description: Get all current bookings for the user. It's assumed that no pagination will be required due to likely policy limits being a couple of bookings per policy and users typically having only a couple of policies. No pagination may cause issues for admins that book hundreds or thousands slots on behalf of students, although it is likely such bookings would be automated so no need to support rapid update of a GUI, at least for now.
@@ -550,7 +572,7 @@ paths:
         type: string
         description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: 'OK'
@@ -558,7 +580,7 @@ paths:
             $ref: '#/definitions/Bookings'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
@@ -584,17 +606,17 @@ paths:
         in: path
         required: true
         type: string
-        description: '' 
+        description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
     put:
       summary: Request the activity that goes with the booking
       description: Checks if the booking has started or not and if so, returns an activity that can be used to access the booked resource. Since this mutates the state of the booking (from unfulfilled to fulfilled) it is a put not a get.
@@ -614,9 +636,9 @@ paths:
         in: path
         required: true
         type: string
-        description: '' 
+        description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: 'OK'
@@ -624,13 +646,13 @@ paths:
             $ref: '#/definitions/Activity'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
-  /users/{user_name}/oldbookings:        
+
+  /users/{user_name}/oldbookings:
     get:
       summary: Get all old bookings for the user
       description: Get all old bookings for the user. It's assumed that no pagination will be required due to likely policy limits including usage limits and users typically having only a couple of policies, although in practice pagination may be useful for heavy users. 
@@ -648,7 +670,7 @@ paths:
         type: string
         description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: 'OK'
@@ -656,13 +678,13 @@ paths:
             $ref: '#/definitions/Bookings'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
 
-  /users/{user_name}/policies:        
+  /users/{user_name}/policies:
     get:
       summary: Get all current policies for user
       description: Get all current policies for user
@@ -680,7 +702,7 @@ paths:
         type: string
         description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: 'OK'
@@ -688,13 +710,13 @@ paths:
             $ref: '#/definitions/Policies'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
-  /users/{user_name}/policies/{policy_name}:        
+
+  /users/{user_name}/policies/{policy_name}:
     get:
       summary: Get policy status 
       description: Get policy status for the user
@@ -715,9 +737,9 @@ paths:
         in: path
         required: true
         type: string
-        description: ''        
+        description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         200:
           description: 'OK'
@@ -725,12 +747,12 @@ paths:
             $ref: '#/definitions/PolicyStatus'
           headers: {}
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
     post:
       summary: Add policy to user account
       description: Add policy to the list of policies with which this user is allowed to make bookings
@@ -751,20 +773,19 @@ paths:
         in: path
         required: true
         type: string
-        description: '' 
+        description: ''
       security:
-        - Bearer: []  
+        - Bearer: []
       responses:
         204:
           description: 'OK - No Content'
         401:
-          $ref: '#/responses/Unauthorized'  
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-         
- 
+
 # Descriptions of common responses
 responses:
   NotFound:
@@ -779,9 +800,9 @@ responses:
     description: Internal Error
     schema:
       $ref: '#/definitions/Error'
-      
+
 definitions:
-  
+
   Activity:
     title: activity
     description: An activity represents connection details to instances of pre-agreed resource types such as video, data streams and user interfaces.
@@ -818,11 +839,10 @@ definitions:
     - nbf
     - streams
     - uis
-            
+
   Booking:
-    title: booking 
-    description: A booking represents a promise to supply an activity. The booleans are not required because
-    we don't process the booking status when loading old bookings (all old bookings are assumed to have been good bookings)
+    title: booking
+    description: A booking represents a promise to supply an activity. The booleans are not required because we don't process the booking status when loading old bookings (all old bookings are assumed to have been good bookings)
     type: object
     properties:
       cancelled:
@@ -854,7 +874,7 @@ definitions:
     - slot
     - user
     - when
-    
+
   Bookings:
     description: list of bookings
     type: array
@@ -885,7 +905,7 @@ definitions:
       type:
         description: Type of resource being described, e.g. pool, activity, userinterface
         example: userinterface
-        type: string   
+        type: string
       long:
         description: 280 char additional description of the interface in plain text
         type: string
@@ -904,7 +924,7 @@ definitions:
     required:
     - name
     - type
-    
+
   Error:
     type: object
     properties:
@@ -915,7 +935,7 @@ definitions:
     required:
       - code
       - message
-      
+
   Interval:
     type: object
     properties:
@@ -925,12 +945,12 @@ definitions:
       end:
         type: string
         format: date-time
-        
+
   Intervals:
     type: array
     items:
       $ref: '#/definitions/Interval'
-   
+
   Manifest:
     title: manifest
     description: Represents resources that can be booked
@@ -951,7 +971,7 @@ definitions:
       slots:
         type: object
         additionalProperties:
-          $ref: '#definitions/Slot'          
+          $ref: '#definitions/Slot'
       streams:
         type: object
         additionalProperties:
@@ -967,7 +987,7 @@ definitions:
       windows:
         type: object
         additionalProperties:
-          $ref: '#definitions/Window'      
+          $ref: '#definitions/Window'
     required:
     - description
     - policies
@@ -981,7 +1001,7 @@ definitions:
   Policy:
     type: object
     properties:
-      book_ahead: 
+      book_ahead:
         type: string
         format: duration
       description:
@@ -1014,7 +1034,7 @@ definitions:
     required:
       - description
       - slots
-      
+
   Policies:
     type: array
     items:
@@ -1026,7 +1046,7 @@ definitions:
     properties:
       currentbookings:
         type: integer
-      oldbookings: 
+      oldbookings:
         type: integer
       usage:
         type: string
@@ -1055,222 +1075,104 @@ definitions:
       - streams
       - topic_stub
 
-      
   Slot:
     type: object
     properties:
-      description: 
+      description:
         type: string
-      policy:  
+      policy:
         type: string
-      resource:  
+      resource:
         type: string
-      ui_set:  
+      ui_set:
         type: string
-      window:  
+      window:
         type: string
-        type: string           
     required:
       - description
       - policy
       - resource
       - ui_set
       - window
-      
-  SlotStatusAdmin
-      
-  Policyasdf:
-    type: object
-    properties:
-      name: 
-        type: string
-    required:
-      - name
-      
-  id:
-    title: id
-    description: id of a resource
-    example:
-      id: d220c320-eb88-456b-b1dd-b36dae840af2
-    type: object
-    properties:
-      id:
-        description: identification
-        example: d220c320-eb88-456b-b1dd-b36dae840af2
-        type: string
-    required:
-    - id
 
-  id_list:
-    title: ID list
-    description: list of ids (in array)
-    type: array
-    items:
-      type: string
-    
-  permission:
-    title: relay permission
-    description: Represents fields needed in relay permission tokens
+  SlotStatus:
     type: object
     properties:
-      audience:
-        type: string
-      connection_type:
-        type: string
-      scopes:
-        type: array
-        items:
+      available:
+          type: boolean
+      reason:
           type: string
-      topic:
-        type: string      
-    required:
-      - audience
-      - connection_type
-      - scopes
-      - topic
-      
-  pool:
-    title: pool
-    description: Represents a pool
-    type: object
-    properties:
-      description:
-        $ref: '#/definitions/description'
-      min_session:
-        type: number
-        format: int64
-      max_session:
-        type: number
-        format: int64
-    required:
-    - description
-      
-  poolstore:
-    title: Pool Store
-    description: complete status required for failover. Encoded strings used for convenience and seperation of concerns, at cost of performance.
-    type: object
-    properties:
-      pool:
-        type: string
-        description: base64-encoded string representing PoolStore in JSON format
-      booking:
-        type: string
-        description: base64-encoded string representing bookingstore in JSON format
-    required:
-    - pool
-    - booking
+      required:
+        - available
+        - reason
 
-  slot:
-    title: Slot 
-    description: A slot is an interval representing availability of a pool
+  StoreStatusAdmin:
     type: object
     properties:
-      nbf:
-        description: Not before
-        type: number
-        format: unix-timestamp
-      exp:
-        description: Expires At
-        type: number
-        format: unix-timestamp
-      free:
-        description: Number of free kits during this slot 
-        type: number
-        format: int64
-    required:
-      - nbf
-      - exp
-      - free
-
-  slots:
-    title: Slots 
-    description: An array of slots representing available times to book a pool 
-    type: object
-    properties:
-      available:
-        description: how many activities are available in this pool
-        type: number
-        format: int64
-      slots:
-        description: an array of slots
-        type: array
-        items:
-          $ref: '#/definitions/slot'
-      is_truncated:
-        description: whether the array of slots is truncated
-        type: boolean
-      max_slots:
-        description: maximum number of slots returned per page
-        type: number
-        format: int64
-      pool_id:
-        description: pool_id so that can request next page using information in this object
-        type: string
-    required:
-      - available
-      - slots
-      - is_truncated
-      - max_slots
-      - pool_id
-
-        
-  status:
-    title: status
-    description: Status of a pool
-    example:
-      available: 3
-      wait: 0
-      inuse: 5
-    type: object
-    properties:
-      available:
-        description: Number of available kits
-        example: 3
-        type: number
-        format: int
-      later:  
-        description: Kit available later?
-        example: true
-        type: boolean
-      wait:
-        description: Wait time in seconds until first kit available later
-        example: 3200
-        type: number
-        format: int64
-      used:
-        description: Number of kits in use
-        example: 5
-        type: number
-        format: int
-    required:
-    - available
-
-  store_status:
-    title: Store status
-    description: Counts of groups, pools, activities, booked sessions
-    type: object
-    properties:
-      groups:
-        type: number
-        format: int
-      pools:
-        type: number
-        format: int
-      activities:
-        type: number
-        format: int
-      bookings:
-        type: number
-        format: int
-      last_booking_ends:
-        type: number
-        format: unix-timestamp
       locked:
         type: boolean
-      msg:
+      message:
         type: string
-    
-  stream:
+      now:
+        type: string
+        format: date-time
+      bookings:
+        type: integer
+      descriptions:
+        type: integer
+      filters:
+        type: integer
+      old_ookings:
+         type: integer
+      policies:
+        type: integer
+      resources:
+        type: integer
+      slots:
+        type: integer
+      streams:
+        type: integer
+      uis:
+        type: integer
+      ui_ets:
+        type: integer
+      users:
+        type: integer
+      windows:
+        type: integer
+    required:
+      - locked
+      - message
+      - now
+      - bookings
+      - descriptions
+      - filters
+      - old_ookings
+      - policies
+      - resources
+      - slots
+      - streams
+      - uis
+      - ui_ets
+      - users
+      - windows
+
+  StoreStatusUser:
+    type: object
+    properties:
+    locked:
+      type: boolean
+    message:
+      type: string
+    now:
+      type: string
+      format: date-time
+    required:
+      - locked
+      - message
+      - now
+
+  Stream:
     title: stream
     description: Represents an assigned, valid booking slot for an individual piece of equipment
     example:
@@ -1279,39 +1181,41 @@ definitions:
       token: ey....
     type: object
     properties:
+      audience:
+        type: string
+      connection_type:
+        type: string
       for:
         description: Describes the stream, and doubles as template key in the URL
         example: video
+        type: string
+      scopes:
+        type: array
+        items:
+          type: string
+      topic:
         type: string
       url:
         description: URL at which to obtain access to the stream (getting a redirect URL containing a one time code)
         example: https://relay-access.practable.io/session/abc123
         type: string
-      token:
-        description: JWT bearer token for submitting in the header when making the request at the URL
-        type: string
-      verb:
-        description: HTPP verb to use when making request to the URL
-        example: POST
-        type: string
-        default: POST
-      permission:
-        $ref: '#/definitions/permission'
     required:
+    - audience
+    - connection_type
     - for
+    - scopes
+    - topic
     - url
-    - permission
-    
-  userInterface:
-    title: userInterface
-    description: User interface
+
+  UI:
+    title: User Interface
     type: object
     properties:
       url:
-        description: URL of the user interface
+        description: template for the URL for the user interface
         example: https://static.practable.io/ui/penduino-basic.html?video={{video}}&data={{data}}
         type: string
-      streamsRequired:
+      streams_required:
         description: list of names of required streams
         example: ["data","video"]
         type: array
@@ -1320,18 +1224,66 @@ definitions:
           example: video
           description: stream name
       description:
-        $ref: '#/definitions/description'
+        type: string
     required:
     - url
     - description
 
+  UISet:
+    title: set of User Interfaces
+    type: array
+    items:
+      $ref: '#/definitions/UI'
+
+  User:
+    type: object
+    properties:
+      bookings:
+        type: array
+        items:
+          type: string
+      old_bookings:
+        type: array
+        items:
+          type: string
+      policies:
+        type: array
+        items:
+          type: string
+      usage:
+        type: object
+        additionalProperties:
+          type: string
+          format: duration
+  Users:
+    title: set of User Interfaces
+    type: array
+    items:
+      $ref: '#/definitions/User'
+
+  Window:
+    type: object
+    properties:
+      allowed:
+        type: array
+        items:
+          $ref: '#/definitions/Interval'
+      denied:
+        type: array
+        items:
+          $ref: '#/definitions/Interval'
+    required:
+      - allowed
+
 tags:
 - name: admin
-  description: ''
-- name: policies
-  description: ''
+  description: 'for admins only'
 - name: bookings
-  description: ''
-- name: login
-  description: ''
-  
+  description: 'for bookings'
+- name: descriptions
+  description: 'for descriptions'
+- name: policies
+  description: 'for policies'
+- name: users
+  description: 'for users'
+

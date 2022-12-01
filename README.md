@@ -351,12 +351,48 @@ Definitions needed:
 '#/definitions/Slot'
 '#/definitions/SlotStatus'
 '#/definitions/StoreStatusAdmin'
+'#/definitions/StoreStatusUser'
 '#/definitions/Stream'
 '#/definitions/UI'
 '#/definitions/UISet'
+'#/definitions/User'
 '#/definitions/Users'
 '#/definitions/Window'
 
+
+```yaml
+  paginationExample:
+    title: Slots 
+    description: An array of slots representing available times to book a pool 
+    type: object
+    properties:
+      available:
+        description: how many activities are available in this pool
+        type: number
+        format: int64
+      slots:
+        description: an array of slots
+        type: array
+        items:
+          $ref: '#/definitions/slot'
+      is_truncated:
+        description: whether the array of slots is truncated
+        type: boolean
+      max_slots:
+        description: maximum number of slots returned per page
+        type: number
+        format: int64
+      pool_id:
+        description: pool_id so that can request next page using information in this object
+        type: string
+    required:
+      - available
+      - slots
+      - is_truncated
+      - max_slots
+      - pool_id
+
+```
 
 ## Gotchas
 
