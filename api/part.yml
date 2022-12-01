@@ -139,7 +139,97 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+          
+  /admin/manifest/check:
+    get:
+      summary: Check a manifest
+      description: Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).
+      tags:
+      - admin
+      - manifest
+      operationId: CheckManifest
+      deprecated: false
+      consumes:
+      - application/yaml
+      produces:
+      - application/json
+      parameters:
+      - name: manifest
+        in: body
+        schema:
+          $ref: '#/definitions/Manifest'
+      security:
+        - Bearer: []
+      responses:
+        204:
+          description: OK
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          description: InternalError
+          schema:
+            $ref: '#/responses/ErrorList'
+            
+  /admin/oldbookings:
+    get:
+      summary: Export a copy of all old bookings
+      description: Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list. 
+      tags:
+      - admin
+      - bookings
+      operationId: ExportOldBookings
+      deprecated: false
+      produces:
+      - application/yaml
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Bookings'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
 
+    put:
+      summary: Replace old bookings 
+      description: Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.
+      tags:
+      - admin
+      - bookings
+      operationId: ReplaceOldBookings
+      deprecated: false
+      consumes:
+      - application/yaml
+      produces:
+      - application/json
+      parameters:
+      - name: bookings
+        in: body
+        schema:
+          $ref: '#/definitions/Bookings'
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/StoreStatusAdmin'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
 definitions:
   Booking:
     title: booking
@@ -513,6 +603,12 @@ responses:
     description: Internal Error
     schema:
       $ref: '#/definitions/Error'
+  ErrorList:
+    description: list of errors
+    schema:
+      type: array
+      items:
+        type: string
 
 tags:
 - name: admin
