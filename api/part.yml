@@ -592,9 +592,112 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+          
+  /users/{user_name}/bookings/{booking_name}:
+    delete:
+      summary: Cancel the booking
+      description: For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -> ExportBookings() -> edit -> ReplaceBookings()-> Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking.
+      tags:
+      - user
+      operationId: CancelBooking
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: booking_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
 
+    put:
+      summary: Request the activity that goes with the booking
+      description: Checks if the booking has started or not and if so, returns an activity that can be used to access the booked resource. Since this mutates the state of the booking (from unfulfilled to fulfilled) it is a put not a get.
+      tags:
+      - policies
+      operationId: GetActivity
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: booking_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/Activity'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
           
 definitions:
+  
+  Activity:
+    title: activity
+    description: An activity represents connection details to instances of pre-agreed resource types such as video, data streams and user interfaces.
+    type: object
+    properties:
+      config:
+        description: URL at which to GET the configuration object
+        example: https://assets.practable.io/config/experiments/pvna/pvna01-0.0.json
+        type: string
+        format: url
+      description:
+        $ref: '#/definitions/Description'
+      nbf:
+        description: Expires At
+        type: number
+        format: unix-timestamp
+      exp:
+        description: Expires At
+        type: number
+        format: unix-timestamp
+      streams:
+        description: A list of streams
+        type: array
+        items:
+          $ref: '#/definitions/Stream'
+      uis:
+        description: User interfaces
+        type: array
+        items:
+          $ref: '#/definitions/UI'
+    required:
+    - description
+    - exp
+    - nbf
+    - streams
+    - uis
+    
   Booking:
     title: booking
     description: A booking represents a promise to supply an activity. The booleans are not required because we don't process the booking status when loading old bookings (all old bookings are assumed to have been good bookings)
