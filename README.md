@@ -212,6 +212,80 @@ windows:
     denied: []
 ```
 
+```
+'descriptions:
+  d-p-a:
+    name: policy-a
+    type: policy
+    short: a
+  d-r-a:
+    name: resource-a
+    type: resource
+    short: a
+  d-sl-a:
+    name: slot-a
+    type: slot
+    short: a
+  d-ui-a:
+    name: ui-a
+    type: ui
+    short: a
+policies:
+  p-a:
+    book_ahead: 0s
+    description: d-p-a
+    enforce_book_ahead: false
+    enforce_max_bookings: false
+    enforce_max_duration: false
+    enforce_min_duration: false
+    enforce_max_usage: false
+    max_bookings: 0
+    max_duration: 0s
+    min_duration: 0s
+    max_usage: 0s
+    slots:
+    - sl-a
+resources:
+  r-a:
+    description: d-r-a
+    streams:
+    - st-a
+    - st-b
+    topic_stub: aaaa00
+slots:
+  sl-a:
+    description: d-sl-a
+    policy: p-a
+    resource: r-a
+    ui_set: us-a
+    window: w-a
+streams:
+  st-a:
+    audience: a
+    ct: a
+    for: a
+    scopes:
+    - r
+    - w
+    topic: a
+    url: a
+uis:
+  ui-a:
+    description: d-ui-a
+    url: a
+    streams_required:
+    - st-a
+ui_sets:
+  us-a:
+    uis:
+    - ui-a
+windows:
+  w-a:
+    allowed:
+    - start: 2022-11-04T00:00:00Z
+      end: 2022-11-06T00:00:00Z
+    denied: []'
+```
 
 
 

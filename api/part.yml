@@ -50,7 +50,7 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
     put:
       summary: Replace current bookings 
       description: Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.
@@ -82,18 +82,33 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
-tags:
-- name: admin
-  description: 'for admins only'
-- name: bookings
-  description: 'for bookings'
-- name: descriptions
-  description: 'for descriptions'
-- name: policies
-  description: 'for policies'
-- name: users
-  description: 'for users'
+
+  /admin/manifest:
+    get:
+      summary: Export the manifest
+      description: Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users
+      tags:
+      - admin
+      - manifest
+      operationId: ExportManifest
+      deprecated: false
+      produces:
+      - application/yaml
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Manifest'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
 
 definitions:
   Booking:
@@ -130,12 +145,57 @@ definitions:
     - slot
     - user
     - when
-    
+
   Bookings:
     description: list of bookings
     type: array
     items:
       $ref: '#/definitions/Booking'
+
+  Description:
+    title: description
+    description: Description of a resource e.g. policy, slot, user interface
+    example:
+      name: Penduino (basic)
+      type: pool
+      short: Penduino electromagnetic pendulums with pulsed drive and braking
+      long: Some longer description
+      further: https://static.practable.io/descriptions/pools/penduino/index.html
+      thumb: https://assets.practable.io/images/pools/penduino/thumb.png
+      image: https://assets.practable.io/images/pools/penduino/image.png
+    type: object
+    properties:
+      name:
+        description: Display name
+        example: Penduino (basic)
+        type: string
+      short:
+        description: 140 char max description of the interface in plain text
+        example: Interface to the penduino electromagnetic pendulum with variable drive, active braking, short and open circuit loading.
+        type: string
+      type:
+        description: Type of resource being described, e.g. pool, activity, userinterface
+        example: userinterface
+        type: string
+      long:
+        description: 280 char additional description of the interface in plain text
+        type: string
+      further:
+        description: URL for further information
+        example: https://static.practable.io/info/penduino/ui.html
+        type: string
+      thumb:
+        description: URL of thumbnail image (150x150)
+        example: https://assets.practable.io/images/penduino-150x150.png
+        type: string
+      image:
+        description: URL of main image (500x500)
+        example: https://assets.practable.io/images/penduino-500x500.png
+        type: string
+    required:
+    - name
+    - type
+
 
   Error:
     type: object
@@ -157,7 +217,130 @@ definitions:
       end:
         type: string
         format: date-time
-        
+
+  Manifest:
+    title: manifest
+    description: Represents resources that can be booked
+    type: object
+    properties:
+      descriptions:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/Description'
+      policies:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/Policy'
+      resources:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/Resource'
+      slots:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/Slot'
+      streams:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/Stream'
+      uis:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/UI'
+      ui_sets:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/UISet'
+      windows:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/Window'
+    required:
+    - descriptions
+    - policies
+    - resources
+    - slots
+    - streams
+    - uis
+    - ui_sets
+    - windows
+
+  Policy:
+    type: object
+    properties:
+      book_ahead:
+        type: string
+        format: duration
+      description:
+        type: string
+      enforce_book_ahead:
+        type: boolean
+      enforce_max_bookings:
+        type: boolean
+      enforce_max_duration:
+        type: boolean
+      enforce_min_duration:
+        type: boolean
+      enforce_max_usage:
+        type: boolean
+      max_bookings:
+        type: integer
+      max_duration:
+        type: string
+        format: duration
+      min_duration:
+        type: string
+        format: duration
+      max_usage:
+        type: string
+        format: duration
+      slots:
+        type: array
+        items:
+          type: string
+    required:
+      - description
+      - slots
+
+  Resource:
+    type: object
+    properties:
+      config_url: 
+        type: string
+        format: url
+      description:
+        type: string
+      streams:
+        type: array
+        items:
+          type: string
+      topic_stub:
+        type: string
+    required:
+      - description
+      - streams
+      - topic_stub
+
+  Slot:
+    type: object
+    properties:
+      description:
+        type: string
+      policy:
+        type: string
+      resource:
+        type: string
+      ui_set:
+        type: string
+      window:
+        type: string
+    required:
+      - description
+      - policy
+      - resource
+      - ui_set
+      - window
+
   StoreStatusAdmin:
     type: object
     properties:
@@ -208,7 +391,84 @@ definitions:
       - ui_ets
       - users
       - windows
-      
+
+  Stream:
+    title: stream
+    description: Represents an assigned, valid booking slot for an individual piece of equipment
+    example:
+      for: video
+      url: https://relay-access.practable.io/session/abc123
+      token: ey....
+    type: object
+    properties:
+      audience:
+        type: string
+      connection_type:
+        type: string
+      for:
+        description: Describes the stream, and doubles as template key in the URL
+        example: video
+        type: string
+      scopes:
+        type: array
+        items:
+          type: string
+      topic:
+        type: string
+      url:
+        description: URL at which to obtain access to the stream (getting a redirect URL containing a one time code)
+        example: https://relay-access.practable.io/session/abc123
+        type: string
+    required:
+    - audience
+    - connection_type
+    - for
+    - scopes
+    - topic
+    - url
+
+  UI:
+    title: User Interface
+    type: object
+    properties:
+      url:
+        description: template for the URL for the user interface
+        example: https://static.practable.io/ui/penduino-basic.html?video={{video}}&data={{data}}
+        type: string
+      streams_required:
+        description: list of names of required streams
+        example: ["data","video"]
+        type: array
+        items:
+          type: string
+          example: video
+          description: stream name
+      description:
+        type: string
+    required:
+    - url
+    - description
+
+  UISet:
+    title: set of User Interfaces
+    type: array
+    items:
+      $ref: '#/definitions/UI'
+
+  Window:
+    type: object
+    properties:
+      allowed:
+        type: array
+        items:
+          $ref: '#/definitions/Interval'
+      denied:
+        type: array
+        items:
+          $ref: '#/definitions/Interval'
+    required:
+      - allowed
+
 # Descriptions of common responses
 responses:
   NotFound:
@@ -223,3 +483,15 @@ responses:
     description: Internal Error
     schema:
       $ref: '#/definitions/Error'
+
+tags:
+- name: admin
+  description: 'for admins only'
+- name: bookings
+  description: 'for bookings'
+- name: descriptions
+  description: 'for descriptions'
+- name: policies
+  description: 'for policies'
+- name: users
+  description: 'for users'
