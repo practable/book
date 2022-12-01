@@ -108,7 +108,37 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-
+    put:
+      summary: Replace the manifest
+      description: Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed) 
+      tags:
+      - admin
+      - manifest
+      operationId: ReplaceManifest
+      deprecated: false
+      consumes:
+      - application/yaml
+      produces:
+      - application/json
+      parameters:
+      - name: manifest
+        in: body
+        schema:
+          $ref: '#/definitions/Manifest'
+      security:
+        - Bearer: []  
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/StoreStatusAdmin'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'  
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
 
 definitions:
   Booking:
