@@ -691,6 +691,108 @@ paths:
         500:
           $ref: '#/responses/InternalError'
           
+  /users/{user_name}/policies:
+    get:
+      summary: Get all current policies for user
+      description: Get all current policies for user
+      tags:
+      - users
+      - policies
+      operationId: GetPoliciesForUser
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/Policies'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+  /users/{user_name}/policies/{policy_name}:
+    get:
+      summary: Get policy status 
+      description: Get policy status for the user
+      tags:
+      - users
+      - policies
+      operationId: GetPolicyStatusForUser
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: policy_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/PolicyStatus'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+    post:
+      summary: Add policy to user account
+      description: Add policy to the list of policies with which this user is allowed to make bookings
+      tags:
+      - users
+      - policies
+      operationId: AddPolicyForUser
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: policy_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        204:
+          description: 'OK - No Content'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
 definitions:
   
   Activity:
@@ -925,7 +1027,28 @@ definitions:
     required:
       - description
       - slots
+      
+  Policies:
+    type: array
+    items:
+      $ref: '#/definitions/Policy'
 
+
+  PolicyStatus:
+    type: object
+    properties:
+      currentbookings:
+        type: integer
+      oldbookings:
+        type: integer
+      usage:
+        type: string
+        format: duration
+    required:
+      - currentbookings
+      - oldbookings
+      - usage
+      
   Resource:
     type: object
     properties:
