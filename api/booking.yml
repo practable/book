@@ -415,6 +415,36 @@ paths:
         500:
           $ref: '#/responses/InternalError'
           
+  /login/{user_name}:
+    post:
+      summary: Request a user access token
+      description: The access token is required to authenticate requests to the rest of the user-facing API. Ideally access to this endpoint should be secured by the identity management system. The access token has a limited lifetime but can be re-requested as needed.
+      tags:
+      - users
+      - login
+      operationId: GetAccessToken
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      responses:
+        200:
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/AccessToken'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
   /policies/{policy_name}:
     get:
       summary: Get policy
@@ -563,7 +593,7 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-
+         
   /users/{user_name}/bookings:
     get:
       summary: Get all current bookings for the user
@@ -799,6 +829,14 @@ paths:
           $ref: '#/responses/InternalError'
           
 definitions:
+
+  AccessToken:
+    title: access token
+    description: intended use is for users to access the API, and is tied to their user_name.
+    type: object
+    properties:
+      token:
+        type: string
   
   Activity:
     title: activity
