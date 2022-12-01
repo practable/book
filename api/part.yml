@@ -561,7 +561,37 @@ paths:
         500:
           $ref: '#/responses/InternalError'
 
-
+  /users/{user_name}/bookings:
+    get:
+      summary: Get all current bookings for the user
+      description: Get all current bookings for the user. It's assumed that no pagination will be required due to likely policy limits being a couple of bookings per policy and users typically having only a couple of policies. No pagination may cause issues for admins that book hundreds or thousands slots on behalf of students, although it is likely such bookings would be automated so no need to support rapid update of a GUI, at least for now.
+      tags:
+      - users
+      - bookings
+      operationId: GetBookingsForUser
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/Bookings'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
 
           
 definitions:
