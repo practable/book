@@ -233,7 +233,7 @@ paths:
   /admin/slots/{slot_name}:
     get:
       description: Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
-      summary: Gets the availability of the slot
+      summary: Get the availability of the slot
       tags:
       - admin
       - slots
@@ -263,7 +263,7 @@ paths:
 
     put:
       description: Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
-      summary: Sets the availability of the slot 
+      summary: Set the availability of the slot 
       tags:
       - admin
       - slots
@@ -445,6 +445,7 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+          
   /policies/{policy_name}/slots/{slot_name}:
     get:
       summary: Get availability for the slot under the policy
@@ -452,6 +453,7 @@ paths:
       tags:
       - users
       - slots
+      - bookings
       operationId: GetAvailability
       deprecated: false
       produces:
@@ -488,6 +490,7 @@ paths:
       tags:
       - users
       - slots
+      - bookings
       operationId: MakeBooking
       deprecated: false
       consumes:
@@ -540,7 +543,7 @@ paths:
       description: Gets the current store status from a user perspective (e.g. is it locked? what is the reason?)
       summary: Get current store status
       tags:
-      - user
+      - users
       - status
       operationId: getStoreStatusUser
       deprecated: false
@@ -598,7 +601,8 @@ paths:
       summary: Cancel the booking
       description: For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -> ExportBookings() -> edit -> ReplaceBookings()-> Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking.
       tags:
-      - user
+      - users
+      - bookings
       operationId: CancelBooking
       deprecated: false
       produces:
@@ -628,7 +632,8 @@ paths:
       summary: Request the activity that goes with the booking
       description: Checks if the booking has started or not and if so, returns an activity that can be used to access the booked resource. Since this mutates the state of the booking (from unfulfilled to fulfilled) it is a put not a get.
       tags:
-      - policies
+      - users
+      - bookings
       operationId: GetActivity
       deprecated: false
       produces:
@@ -1300,4 +1305,4 @@ tags:
 - name: policies
   description: 'for policies'
 - name: users
-  description: 'for users'
+  description: 'for or about users'
