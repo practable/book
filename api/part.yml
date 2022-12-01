@@ -296,6 +296,68 @@ paths:
         500:
           $ref: '#/responses/InternalError'
           
+  /admin/status:
+    get:
+      description: Gets a count of the number of elements in the store, e.g. Bookings, Descriptions etc to facilitate a necessary but not sufficient check that replace manifest and replace bookings have produced the correct results.
+      summary: Get current store status
+      tags:
+      - admin
+      - status
+      operationId: getStoreStatusAdmin
+      deprecated: false
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/StoreStatusAdmin'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+    put:
+      description: Set whether the booking system is locked for users
+      summary: set/release booking lock
+      tags:
+      - admin
+      - status
+      operationId: setLock
+      deprecated: false
+      parameters:
+      - name: lock
+        in: query
+        required: true
+        type: boolean
+        description: set booking lock
+      - name: msg
+        in: query
+        required: false
+        type: string
+        description: set message of the day (use query so it can be seen in server logs)        
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/StoreStatusAdmin'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
 definitions:
   Booking:
     title: booking
