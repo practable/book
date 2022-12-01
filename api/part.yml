@@ -50,7 +50,39 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-
+          
+    put:
+      summary: Replace current bookings 
+      description: Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.
+      tags:
+      - admin
+      - bookings
+      operationId: ReplaceBookings
+      deprecated: false
+      consumes:
+      - application/yaml
+      produces:
+      - application/json
+      parameters:
+      - name: bookings
+        in: body
+        schema:
+          $ref: '#/definitions/Bookings'
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/StoreStatusAdmin'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
 tags:
 - name: admin
   description: 'for admins only'
@@ -126,6 +158,57 @@ definitions:
         type: string
         format: date-time
         
+  StoreStatusAdmin:
+    type: object
+    properties:
+      locked:
+        type: boolean
+      message:
+        type: string
+      now:
+        type: string
+        format: date-time
+      bookings:
+        type: integer
+      descriptions:
+        type: integer
+      filters:
+        type: integer
+      old_ookings:
+         type: integer
+      policies:
+        type: integer
+      resources:
+        type: integer
+      slots:
+        type: integer
+      streams:
+        type: integer
+      uis:
+        type: integer
+      ui_ets:
+        type: integer
+      users:
+        type: integer
+      windows:
+        type: integer
+    required:
+      - locked
+      - message
+      - now
+      - bookings
+      - descriptions
+      - filters
+      - old_ookings
+      - policies
+      - resources
+      - slots
+      - streams
+      - uis
+      - ui_ets
+      - users
+      - windows
+      
 # Descriptions of common responses
 responses:
   NotFound:
