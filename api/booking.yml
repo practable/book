@@ -268,12 +268,13 @@ paths:
       parameters:
       - name: available
         in: query
-        required: true
         type: boolean
       - name: reason
         in: query
-        required: true
         type: string
+      required:
+        - available
+        - reason
       produces:
       - application/json
       security:
@@ -517,13 +518,13 @@ paths:
         - Bearer: []
       responses:
         204:
-          description: OK - No Content
+          description: 'OK - No Content'
         401:
           $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         409:
-          description: Conflict - unavailable for the requested interval
+          description: 'Conflict - unavailable for the requested interval'
           schema: {}
         500:
           $ref: '#/responses/InternalError'

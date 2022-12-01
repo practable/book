@@ -1,0 +1,142 @@
+swagger: '2.0'
+info:
+  version: '0.2'
+  title: AdvanceBooking
+  description: User API for booking slots in advance
+  contact:
+    email: timothy.d.drysdale@gmail.com
+    name: Tim Drysdale
+    url: https://practable.io
+host: book.practable.io
+basePath: /api/v1
+securityDefinitions:
+  Bearer:
+    type: apiKey
+    name: Authorization
+    in: header 
+schemes:
+  - http
+consumes:
+- application/json
+- application/yaml
+produces:
+- application/json
+- application/yaml
+
+paths:
+
+  /admin/bookings:
+    get:
+      description: Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.
+      summary: Export a copy of all current bookings
+      tags:
+      - admin
+      - bookings
+      operationId: ExportBookings
+      deprecated: false
+      produces:
+      - application/yaml
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Bookings'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+tags:
+- name: admin
+  description: 'for admins only'
+- name: bookings
+  description: 'for bookings'
+- name: descriptions
+  description: 'for descriptions'
+- name: policies
+  description: 'for policies'
+- name: users
+  description: 'for users'
+
+definitions:
+  Booking:
+    title: booking
+    description: A booking represents a promise to supply an activity. The booleans are not required because we don't process the booking status when loading old bookings (all old bookings are assumed to have been good bookings)
+    type: object
+    properties:
+      cancelled:
+        description: Has the booking been cancelled?
+        type: boolean
+      name:
+        description: unique name of the booking
+        type: string
+      policy:
+        description: policy under which the booking was made
+        type: string
+      slot:
+        description: name of the slot that has been booked
+        type: string
+      started:
+        description: has the booking been started by the user?
+        type: boolean
+      unfulfilled:
+        description: was the resource unavailable
+        type: boolean
+      user:
+        description: name of the user who made the booking
+        type: string
+      when:
+        $ref: '#/definitions/Interval'
+    required:
+    - name
+    - policy
+    - slot
+    - user
+    - when
+    
+  Bookings:
+    description: list of bookings
+    type: array
+    items:
+      $ref: '#/definitions/Booking'
+
+  Error:
+    type: object
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    required:
+      - code
+      - message
+
+  Interval:
+    type: object
+    properties:
+      start:
+        type: string
+        format: date-time
+      end:
+        type: string
+        format: date-time
+        
+# Descriptions of common responses
+responses:
+  NotFound:
+    description: The specified resource was not found
+    schema:
+      $ref: '#/definitions/Error'
+  Unauthorized:
+    description: Unauthorized
+    schema:
+      $ref: '#/definitions/Error'
+  InternalError:
+    description: Internal Error
+    schema:
+      $ref: '#/definitions/Error'
