@@ -325,6 +325,39 @@ func NewUser() *User {
 	}
 }
 
+// AddPolicyFor adds a policy to a user so they can book with it
+func (s *Store) AddPolicyFor(user, policy string) error {
+
+	u, ok := s.Users[user]
+
+	if !ok {
+		return errors.New("user " + user + " not found")
+	}
+
+	_, ok = s.Policies[policy]
+
+	if !ok {
+		return errors.New("policy " + policy + " not found")
+	}
+
+	u.Policies[policy] = true
+
+	ut, err := time.ParseDuration("0s")
+	if err != nil { // should not get this error because "0s" is known to parse
+		return errors.New("could not initialise usage tracker " +
+			user +
+			" because " +
+			err.Error())
+	}
+
+	u.Usage[policy] = &ut
+
+	s.Users[user] = u
+
+	return nil
+
+}
+
 // CancelBooking cancels a booking or returns an error if not found
 func (s *Store) CancelBooking(booking Booking) error {
 
@@ -435,6 +468,49 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 	}
 
 	return nil, []string{}
+}
+
+// DeletePolicyFor removes the policy from the user, and deletes any
+// current bookings they have under that policy
+func (s *Store) DeletePolicyFor(user, policy string) error {
+	u, ok := s.Users[user]
+
+	if !ok {
+		return errors.New("user " + user + " not found")
+	}
+
+	_, ok = s.Policies[policy]
+
+	if !ok {
+		return errors.New("policy " + policy + " not found")
+	}
+
+	delete(u.Policies, policy)
+
+	s.Users[user] = u
+
+	// delete any bookings this user has under this policy
+	bm, err := s.GetBookingsFor(user)
+
+	if err != nil {
+		return err
+	}
+
+	for _, v := range bm {
+
+		if policy == v.Policy {
+
+			err = s.CancelBooking(v)
+
+			if err != nil {
+				return err
+			}
+
+		}
+
+	}
+
+	return nil
 }
 
 // ExportBookings returns a map of all current/future bookings

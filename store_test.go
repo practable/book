@@ -1867,4 +1867,77 @@ func TestCheckManifestCatchMissingStream(t *testing.T) {
 
 }
 
-//TODO increase test coverage to include all the checks we do on manifest
+func TestDeletePolicyAddPolicy(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00")
+	assert.NoError(t, err)
+
+	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01")
+	assert.NoError(t, err)
+
+	bm := s.ExportBookings()
+	assert.Equal(t, 2, len(bm))
+
+	// check that deleting an unused policy and does not affect bookings
+	// note that policy is known to store, so no error because delete from
+	// map operation does not care whether item to be deleted existed
+	err = s.DeletePolicyFor("user-a", "p-b")
+	assert.NoError(t, err)
+
+	bm = s.ExportBookings()
+	assert.Equal(t, 2, len(bm))
+
+	// check that deleting a used policy deletes associated booking test00 but keeps test01
+	err = s.DeletePolicyFor("user-a", "p-a")
+	assert.NoError(t, err)
+
+	bm = s.ExportBookings()
+	assert.Equal(t, 1, len(bm))
+	_, ok := bm["test01"]
+	assert.True(t, ok)
+
+	um := s.ExportUsers()
+	assert.Equal(t, []string{"p-b"}, um["user-b"].Policies)
+
+	err = s.AddPolicyFor("user-b", "p-a")
+	assert.NoError(t, err)
+	um = s.ExportUsers()
+	assert.NoError(t, err)
+
+	//make a map of the responses to avoid ordering issues in checking the test
+	epm := make(map[string]bool)
+	epm["p-a"] = true
+	epm["p-b"] = true
+
+	apm := make(map[string]bool)
+	for _, v := range um["user-b"].Policies {
+		apm[v] = true
+	}
+
+	assert.Equal(t, epm, apm)
+
+	// check the usage tracker has been initialised
+	ps, err := s.GetPolicyStatusFor("user-b", "p-a")
+	assert.NoError(t, err)
+	assert.Equal(t, time.Duration(0), ps.Usage)
+
+}
