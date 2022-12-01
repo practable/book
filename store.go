@@ -193,27 +193,27 @@ type Store struct {
 }
 
 type StoreStatusAdmin struct {
-	Bookings     int64
-	Descriptions int64
-	Filters      int64
-	Locked       bool
-	Message      string
-	Now          time.Time
-	OldBookings  int64
-	Policies     int64
-	Resources    int64
-	Slots        int64
-	Streams      int64
-	UIs          int64
-	UISets       int64
-	Users        int64
-	Windows      int64
+	Bookings     int64     `json:"bookings"  yaml:"bookings"`
+	Descriptions int64     `json:"descriptions"  yaml:"descriptions"`
+	Filters      int64     `json:"filters" yaml:"filters"`
+	Locked       bool      `json:"locked" yaml:"locked"`
+	Message      string    `json:"message" yaml:"message"`
+	Now          time.Time `json:"now" yaml:"now"`
+	OldBookings  int64     `json:"old_bookings"  yaml:"old_bookings"`
+	Policies     int64     `json:"policies" yaml:"policies"`
+	Resources    int64     `json:"resources" yaml:"resources"`
+	Slots        int64     `json:"slots" yaml:"slots"`
+	Streams      int64     `json:"streams" yaml:"streams"`
+	UIs          int64     `json:"uis" yaml:"uis"`
+	UISets       int64     `json:"ui_sets" yaml:"ui_sets"`
+	Users        int64     `json:"users" yaml:"users"`
+	Windows      int64     `json:"windows" yaml:"windows"`
 }
 
 type StoreStatusUser struct {
-	Locked  bool
-	Message string
-	Now     time.Time
+	Locked  bool      `json:"locked" yaml:"locked"`
+	Message string    `json:"message" yaml:"message"`
+	Now     time.Time `json:"now" yaml:"now"`
 }
 
 // Stream represents a prototype for a type of stream from a relay
