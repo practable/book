@@ -17,6 +17,7 @@
 package store
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"sync"
@@ -1482,6 +1483,22 @@ func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
 	}
 
 	return nil, []string{}
+}
+
+// Run handles the regular pruning of bookings
+func (s *Store) Run(ctx context.Context, pruneEvery time.Duration) {
+	go func() {
+		for {
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(pruneEvery):
+				s.PruneBookings()
+				s.PruneDiaries()
+			}
+		}
+	}()
 }
 
 // SetSlotIsAvailable sets the underlying resource's availability
