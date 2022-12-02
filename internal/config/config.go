@@ -13,6 +13,6 @@ type ServerConfig struct {
 	Port                int
 	PruneEvery          time.Duration
 	RelaySecret         string
-	StoreSecret         string
+	StoreSecret         []byte
 	Store               *store.Store
 }

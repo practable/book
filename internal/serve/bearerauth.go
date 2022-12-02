@@ -107,7 +107,7 @@ func isBookingAdminOrUser(principal interface{}) (bool, *lit.Token, error) {
 
 // ValidateHeader checks the bearer token.
 // wrap the secret so we can get it at runtime without using global
-func validateHeader(secret, host string) security.TokenAuthentication {
+func validateHeader(secret []byte, host string) security.TokenAuthentication {
 
 	return func(bearerToken string) (interface{}, error) {
 		// For apiKey security syntax see https://swagger.io/docs/specification/2-0/authentication/
@@ -118,7 +118,7 @@ func validateHeader(secret, host string) security.TokenAuthentication {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method was %v", token.Header["alg"])
 			}
-			return []byte(secret), nil
+			return secret, nil
 		})
 
 		if !token.Valid { //checks iat, nbf, exp
