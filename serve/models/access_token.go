@@ -8,8 +8,10 @@ package models
 import (
 	"context"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // AccessToken access token
@@ -19,12 +21,119 @@ import (
 // swagger:model AccessToken
 type AccessToken struct {
 
+	// Audience
+	// Required: true
+	Aud *string `json:"aud"`
+
+	// Expires At
+	// Required: true
+	Exp *float64 `json:"exp"`
+
+	// Issued At
+	Iat float64 `json:"iat,omitempty"`
+
+	// Not before
+	// Required: true
+	Nbf *float64 `json:"nbf"`
+
+	// List of scopes
+	// Required: true
+	Scopes []string `json:"scopes"`
+
+	// Subject
+	// Required: true
+	Sub *string `json:"sub"`
+
 	// token
-	Token string `json:"token,omitempty"`
+	// Required: true
+	Token *string `json:"token"`
 }
 
 // Validate validates this access token
 func (m *AccessToken) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateAud(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateExp(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateNbf(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScopes(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateSub(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateToken(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *AccessToken) validateAud(formats strfmt.Registry) error {
+
+	if err := validate.Required("aud", "body", m.Aud); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *AccessToken) validateExp(formats strfmt.Registry) error {
+
+	if err := validate.Required("exp", "body", m.Exp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *AccessToken) validateNbf(formats strfmt.Registry) error {
+
+	if err := validate.Required("nbf", "body", m.Nbf); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *AccessToken) validateScopes(formats strfmt.Registry) error {
+
+	if err := validate.Required("scopes", "body", m.Scopes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *AccessToken) validateSub(formats strfmt.Registry) error {
+
+	if err := validate.Required("sub", "body", m.Sub); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *AccessToken) validateToken(formats strfmt.Registry) error {
+
+	if err := validate.Required("token", "body", m.Token); err != nil {
+		return err
+	}
+
 	return nil
 }
 

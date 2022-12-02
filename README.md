@@ -410,7 +410,31 @@ func (s *Store) ExportUsers() map[string]UserExternal
 
 ## API
 
-Definitions needed:
+[swagger](https://github.com/go-swagger/go-swagger)
+
+Go to the root of the repo and issue:
+
+```
+$ swagger generate server -t serve -f ./api/booking.yml --exclude-main -A serve
+$ go mod tidy
+```
+If making large changes, then there will be stale files left, so first
+```
+cd ./serve
+rm -rf models
+rm -rf restapi
+```
+
+### Parameters to set by environment variables
+
+```
+USER_NAME_MINIMUM_LENGTH -> getAccessTokenHandler
+BOOKING_DURATION -> getAccessTokenHAndler
+```
+
+### Dev notes
+
+Definitions
 
 '#/definitions/Activity'
 '#/definitions/Bookings'

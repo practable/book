@@ -837,7 +837,38 @@ definitions:
     properties:
       token:
         type: string
-  
+      iat:
+        description: Issued At
+        type: number
+        format: unix-timestamp
+      nbf:
+        description: Not before
+        type: number
+        format: unix-timestamp
+      exp:
+        description: Expires At
+        type: number
+        format: unix-timestamp
+      aud:
+        description: Audience
+        type: string
+      sub:
+        description: Subject
+        type: string
+      scopes:
+        description: List of scopes
+        type: array
+        items:
+          type: string
+          example: user:booking
+    required:
+    - token
+    - nbf
+    - exp
+    - aud
+    - sub
+    - scopes
+        
   Activity:
     title: activity
     description: An activity represents connection details to instances of pre-agreed resource types such as video, data streams and user interfaces.

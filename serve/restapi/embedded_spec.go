@@ -1163,7 +1163,46 @@ func init() {
       "description": "intended use is for users to access the API, and is tied to their user_name.",
       "type": "object",
       "title": "access token",
+      "required": [
+        "token",
+        "nbf",
+        "exp",
+        "aud",
+        "sub",
+        "scopes"
+      ],
       "properties": {
+        "aud": {
+          "description": "Audience",
+          "type": "string"
+        },
+        "exp": {
+          "description": "Expires At",
+          "type": "number",
+          "format": "unix-timestamp"
+        },
+        "iat": {
+          "description": "Issued At",
+          "type": "number",
+          "format": "unix-timestamp"
+        },
+        "nbf": {
+          "description": "Not before",
+          "type": "number",
+          "format": "unix-timestamp"
+        },
+        "scopes": {
+          "description": "List of scopes",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "example": "user:booking"
+          }
+        },
+        "sub": {
+          "description": "Subject",
+          "type": "string"
+        },
         "token": {
           "type": "string"
         }
@@ -3229,7 +3268,46 @@ func init() {
       "description": "intended use is for users to access the API, and is tied to their user_name.",
       "type": "object",
       "title": "access token",
+      "required": [
+        "token",
+        "nbf",
+        "exp",
+        "aud",
+        "sub",
+        "scopes"
+      ],
       "properties": {
+        "aud": {
+          "description": "Audience",
+          "type": "string"
+        },
+        "exp": {
+          "description": "Expires At",
+          "type": "number",
+          "format": "unix-timestamp"
+        },
+        "iat": {
+          "description": "Issued At",
+          "type": "number",
+          "format": "unix-timestamp"
+        },
+        "nbf": {
+          "description": "Not before",
+          "type": "number",
+          "format": "unix-timestamp"
+        },
+        "scopes": {
+          "description": "List of scopes",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "example": "user:booking"
+          }
+        },
+        "sub": {
+          "description": "Subject",
+          "type": "string"
+        },
         "token": {
           "type": "string"
         }
