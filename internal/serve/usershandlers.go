@@ -43,7 +43,7 @@ func getAccessTokenHandler(config config.ServerConfig) func(users.GetAccessToken
 
 		if err != nil {
 			c := "500"
-			m := "could not generate booking token"
+			m := "could not generate booking token because " + err.Error()
 			return users.NewGetAccessTokenInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
