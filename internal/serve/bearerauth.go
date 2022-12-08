@@ -31,8 +31,8 @@ func claimsCheck(principal interface{}) (*lit.Token, error) {
 	return claims, nil
 }
 
-// Function isBookingAdmin does in-handler validation for booking:admin tasks
-func isBookingAdmin(principal interface{}) (*lit.Token, error) {
+// isAdmin returns nil if token has booking:admin scope, otherwise error
+func isAdmin(principal interface{}) (*lit.Token, error) {
 
 	claims, err := claimsCheck(principal)
 
@@ -55,7 +55,8 @@ func isBookingAdmin(principal interface{}) (*lit.Token, error) {
 	return claims, nil
 }
 
-func isBookingUser(principal interface{}) (*lit.Token, error) {
+// isUser returns nil if token has booking:user scope, otherwise error
+func isUser(principal interface{}) (*lit.Token, error) {
 
 	claims, err := claimsCheck(principal)
 

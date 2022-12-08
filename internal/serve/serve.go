@@ -46,7 +46,6 @@ func API(ctx context.Context, config config.ServerConfig) {
 	// set the Handlers
 
 	// *** ADMIN *** //
-	//api.AdminDeletePoolStoreHandler = admin.DeletePoolStoreHandlerFunc(deletePoolStore(ps, l))
 
 	// *** USERS *** //
 	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))
