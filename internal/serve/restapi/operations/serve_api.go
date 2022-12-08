@@ -44,6 +44,7 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		BearerAuthenticator: security.BearerAuth,
 
 		JSONConsumer: runtime.JSONConsumer(),
+		TxtConsumer:  runtime.TextConsumer(),
 
 		JSONProducer: runtime.JSONProducer(),
 
@@ -160,6 +161,9 @@ type ServeAPI struct {
 	// JSONConsumer registers a consumer for the following mime types:
 	//   - application/json
 	JSONConsumer runtime.Consumer
+	// TxtConsumer registers a consumer for the following mime types:
+	//   - text/plain
+	TxtConsumer runtime.Consumer
 
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
@@ -294,6 +298,9 @@ func (o *ServeAPI) Validate() error {
 	if o.JSONConsumer == nil {
 		unregistered = append(unregistered, "JSONConsumer")
 	}
+	if o.TxtConsumer == nil {
+		unregistered = append(unregistered, "TxtConsumer")
+	}
 
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
@@ -418,6 +425,8 @@ func (o *ServeAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer
 		switch mt {
 		case "application/json":
 			result["application/json"] = o.JSONConsumer
+		case "text/plain":
+			result["text/plain"] = o.TxtConsumer
 		}
 
 		if c, ok := o.customConsumers[mt]; ok {

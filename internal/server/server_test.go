@@ -615,7 +615,7 @@ func TestReplaceManifest(t *testing.T) {
 	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Content-Type", "text/plain")
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 

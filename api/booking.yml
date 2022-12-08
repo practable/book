@@ -18,6 +18,7 @@ schemes:
   - http
 consumes:
 - application/json
+- text/plain
 produces:
 - application/json
 
@@ -115,7 +116,7 @@ paths:
       operationId: ReplaceManifest
       deprecated: false
       consumes:
-      - application/json
+      - text/plain
       produces:
       - application/json
       parameters:

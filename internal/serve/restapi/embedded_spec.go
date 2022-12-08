@@ -19,7 +19,8 @@ var (
 func init() {
 	SwaggerJSON = json.RawMessage([]byte(`{
   "consumes": [
-    "application/json"
+    "application/json",
+    "text/plain"
   ],
   "produces": [
     "application/json"
@@ -166,7 +167,7 @@ func init() {
         ],
         "description": "Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)",
         "consumes": [
-          "application/json"
+          "text/plain"
         ],
         "produces": [
           "application/json"
@@ -1922,7 +1923,8 @@ func init() {
 }`))
 	FlatSwaggerJSON = json.RawMessage([]byte(`{
   "consumes": [
-    "application/json"
+    "application/json",
+    "text/plain"
   ],
   "produces": [
     "application/json"
@@ -2096,7 +2098,7 @@ func init() {
         ],
         "description": "Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)",
         "consumes": [
-          "application/json"
+          "text/plain"
         ],
         "produces": [
           "application/json"

@@ -38,6 +38,7 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	// api.UseRedoc()
 
 	api.JSONConsumer = runtime.JSONConsumer()
+	api.TxtConsumer = runtime.TextConsumer()
 
 	api.JSONProducer = runtime.JSONProducer()
 
