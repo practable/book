@@ -48,11 +48,14 @@ func API(ctx context.Context, config config.ServerConfig) {
 
 	// *** ADMIN *** //
 	api.AdminCheckManifestHandler = admin.CheckManifestHandlerFunc(checkManifestHandler(config))
+	api.AdminGetStoreStatusAdminHandler = admin.GetStoreStatusAdminHandlerFunc(getStoreStatusAdminHandler(config))
 	api.AdminExportBookingsHandler = admin.ExportBookingsHandlerFunc(exportBookingsHandler(config))
 	api.AdminExportManifestHandler = admin.ExportManifestHandlerFunc(exportManifestHandler(config))
+	api.AdminExportOldBookingsHandler = admin.ExportOldBookingsHandlerFunc(exportOldBookingsHandler(config))
 	api.AdminExportUsersHandler = admin.ExportUsersHandlerFunc(exportUsersHandler(config))
 	api.AdminReplaceBookingsHandler = admin.ReplaceBookingsHandlerFunc(replaceBookingsHandler(config))
 	api.AdminReplaceManifestHandler = admin.ReplaceManifestHandlerFunc(replaceManifestHandler(config))
+	api.AdminReplaceOldBookingsHandler = admin.ReplaceOldBookingsHandlerFunc(replaceOldBookingsHandler(config))
 
 	// *** USERS *** //
 	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))

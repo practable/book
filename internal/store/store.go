@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 	"github.com/timdrysdale/interval/internal/diary"
 	"github.com/timdrysdale/interval/internal/filter"
 	"github.com/timdrysdale/interval/internal/interval"
@@ -336,6 +337,8 @@ func New() *Store {
 
 // WithNow sets the time function (useful for mocking in tests)
 func (s *Store) WithNow(now func() time.Time) *Store {
+	s.Lock()
+	defer s.Unlock()
 	s.Now = now
 	return s
 }
@@ -352,6 +355,14 @@ func NewUser() *User {
 
 // AddPolicyFor adds a policy to a user so they can book with it
 func (s *Store) AddPolicyFor(user, policy string) error {
+	where := "store.AddPolicyFor"
+	log.Trace(where + " awaiting lock")
+	s.Lock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
 
 	u, ok := s.Users[user]
 
@@ -385,6 +396,14 @@ func (s *Store) AddPolicyFor(user, policy string) error {
 
 // CancelBooking cancels a booking or returns an error if not found
 func (s *Store) CancelBooking(booking Booking) error {
+	where := "store.CancelBooking"
+	log.Trace(where + " awaiting lock")
+	s.Lock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
 
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 	b, ok := s.Bookings[booking.Name]
@@ -453,8 +472,8 @@ func (s *Store) CancelBooking(booking Booking) error {
 }
 
 // CheckBooking returns nil error if booking is ok, or an error and a slice of messages describing issues
+// doesn't need a mutex, as is a support function
 func (s *Store) CheckBooking(b Booking) (error, []string) {
-
 	msg := []string{}
 
 	if b.Name == "" {
@@ -498,6 +517,15 @@ func (s *Store) CheckBooking(b Booking) (error, []string) {
 // DeletePolicyFor removes the policy from the user, and deletes any
 // current bookings they have under that policy
 func (s *Store) DeletePolicyFor(user, policy string) error {
+	where := "store.DeletePolicyFor"
+	log.Trace(where + " awaiting lock")
+	s.Lock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
+
 	u, ok := s.Users[user]
 
 	if !ok {
@@ -540,9 +568,14 @@ func (s *Store) DeletePolicyFor(user, policy string) error {
 
 // ExportBookings returns a map of all current/future bookings
 func (s *Store) ExportBookings() map[string]Booking {
-
+	where := "store.ExportBookings"
+	log.Trace(where + " awaiting Rlock")
 	s.Lock()
-	defer s.Unlock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
 
 	bm := make(map[string]Booking)
 
@@ -555,6 +588,15 @@ func (s *Store) ExportBookings() map[string]Booking {
 
 // ExportManifest returns the manifest from the store
 func (s *Store) ExportManifest() Manifest {
+
+	where := "store.ExportManifest"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
 
 	uis := make(map[string]UI)
 
@@ -592,8 +634,15 @@ func (s *Store) ExportManifest() Manifest {
 
 // ExportOldBookings returns a map by name of old bookings
 func (s *Store) ExportOldBookings() map[string]Booking {
+
+	where := "store.ExportOldBookings"
+	log.Trace(where + " awaiting Rlock")
 	s.Lock()
-	defer s.Unlock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
 
 	bm := make(map[string]Booking)
 
@@ -608,8 +657,14 @@ func (s *Store) ExportOldBookings() map[string]Booking {
 // their usage to date by policy name
 func (s *Store) ExportUsers() map[string]UserExternal {
 
+	where := "store.ExportUsers"
+	log.Trace(where + " awaiting Rlock")
 	s.Lock()
-	defer s.Unlock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
 
 	um := make(map[string]UserExternal)
 
@@ -648,6 +703,15 @@ func (s *Store) ExportUsers() map[string]UserExternal {
 // GetActivity returns an activity associated with a booking, or an error
 // if the booking is invalid in some way
 func (s *Store) GetActivity(booking Booking) (Activity, error) {
+
+	where := "store.GetActivity"
+	log.Trace(where + " awaiting lock")
+	s.Lock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
 
 	err := s.ValidateBooking(booking)
 
@@ -728,6 +792,15 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 // GetAvailability returns a list of intervals for which a given slot is available under a given policy, or an error if the slot or policy is not found. The policy contains aspects such as look-ahead which may limit the window of availability.
 func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error) {
 
+	where := "store.GetAvailability"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
 	p, ok := s.Policies[policy]
 
 	if !ok {
@@ -777,6 +850,7 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 }
 
 // GetBookingsFor returns a slice of all the current bookings for the given user
+// don't use mutex because called from functions that do
 func (s *Store) GetBookingsFor(user string) ([]Booking, error) {
 
 	if _, ok := s.Users[user]; !ok {
@@ -800,6 +874,15 @@ func (s *Store) GetBookingsFor(user string) ([]Booking, error) {
 // GetDescription returns a description if found
 func (s *Store) GetDescription(name string) (Description, error) {
 
+	where := "store.GetDescription"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
 	d, ok := s.Descriptions[name]
 
 	if !ok {
@@ -810,6 +893,7 @@ func (s *Store) GetDescription(name string) (Description, error) {
 }
 
 // GetOldBookingsFor returns a slice of all the old bookings for the given user
+// don't use mutex because called from functions that do
 func (s *Store) GetOldBookingsFor(user string) ([]Booking, error) {
 
 	if _, ok := s.Users[user]; !ok {
@@ -832,6 +916,15 @@ func (s *Store) GetOldBookingsFor(user string) ([]Booking, error) {
 // GetPolicy returns a policy if found
 func (s *Store) GetPolicy(name string) (Policy, error) {
 
+	where := "store.GetPolicy"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
 	p, ok := s.Policies[name]
 
 	if !ok {
@@ -843,6 +936,15 @@ func (s *Store) GetPolicy(name string) (Policy, error) {
 
 // GetPoliciesFor returns a list of policies that a user has booked with
 func (s *Store) GetPoliciesFor(user string) ([]string, error) {
+
+	where := "store.GetPoliciesFor"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
 
 	if _, ok := s.Users[user]; !ok {
 		return []string{}, errors.New("user not found")
@@ -857,7 +959,17 @@ func (s *Store) GetPoliciesFor(user string) ([]string, error) {
 }
 
 // GetPolicyStatusFor returns usage, and counts of current and old bookings
+// Needs a write lock because it prunes
 func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
+
+	where := "store.GetPolicyStatusFor"
+	log.Trace(where + " awaiting lock")
+	s.Lock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
 
 	if _, ok := s.Users[user]; !ok {
 		return PolicyStatus{}, errors.New("user not found")
@@ -922,6 +1034,15 @@ func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
 // It's up to the caller to handle any pagination that might be required
 func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error) {
 
+	where := "store.GetSlotBookings"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
 	sl, ok := s.Slots[slot]
 
 	if !ok {
@@ -954,6 +1075,14 @@ func (s *Store) GetSlotBookings(slot string) ([]diary.Booking, error) {
 
 // GetSlotIsAvailable checks the underlying resource's availability
 func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
+	where := "store.GetSlotIsAvailable"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
 
 	sl, ok := s.Slots[slot]
 
@@ -975,6 +1104,16 @@ func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
 
 // GetStoreStatusAdmin returns the status of the store with entity counts
 func (s *Store) GetStoreStatusAdmin() StoreStatusAdmin {
+
+	where := "store.GetStoreStatusAdmin"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
 	return StoreStatusAdmin{
 		Locked:       s.Locked,
 		Message:      s.Message,
@@ -996,6 +1135,16 @@ func (s *Store) GetStoreStatusAdmin() StoreStatusAdmin {
 
 // GetStoreStatusUser returns the store status without entity counts
 func (s *Store) GetStoreStatusUser() StoreStatusUser {
+
+	where := "store.GetStoreStatusUser"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
 	return StoreStatusUser{
 		Locked:  s.Locked,
 		Message: s.Message,
@@ -1011,8 +1160,8 @@ func HumaniseDuration(t time.Duration) string {
 // MakeBooking makes bookings for users, according to the policy
 // If a user does not exist, one is created.
 // APIs for users should call this version
+// do not use mutex, because it calls function that handles that
 func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error) {
-
 	name := uuid.New().String()
 	return s.MakeBookingWithName(policy, slot, user, when, name)
 
@@ -1023,6 +1172,14 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 // The booking ID is set by the caller, so that bookings can be edited/replaced
 // This version should only be called by Admin users
 func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Interval, name string) (Booking, error) {
+	where := "store.MakeBookingWithName"
+	log.Trace(where + " awaiting lock")
+	s.Lock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
 
 	p, ok := s.Policies[policy]
 
@@ -1180,6 +1337,8 @@ func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Int
 
 // PruneDiaries is maintenance operation that moves expired bookings from
 // the map of current bookings to the map of old bookings
+// because they are rebalanced, so don't do too frequently.
+// don't use mutex because this is called from other functions
 func (s *Store) PruneBookings() {
 
 	stale := make(map[string]*Booking)
@@ -1200,6 +1359,8 @@ func (s *Store) PruneBookings() {
 // PruneDiaries is a maintenance operation to prune old bookings from diaries
 // to make booking decisions faster. There is an overhead to pruning trees
 // because they are rebalanced, so don't do too frequently.
+// don't use mutex because this is called from other functions
+// that already have the mutex
 func (s *Store) PruneDiaries() {
 	for _, r := range s.Resources {
 		r.Diary.ClearBefore(s.Now())
@@ -1210,6 +1371,8 @@ func (s *Store) PruneDiaries() {
 // expired bookings from the map of bookings but only
 // to do so for a given user (e.g. ahead of checking
 // their policy limits on future bookings).
+// don't use mutex because this is called from other functions
+// that already have the mutex
 func (s *Store) PruneUserBookings(user string) {
 
 	u, ok := s.Users[user]
@@ -1243,8 +1406,8 @@ func (s *Store) PruneUserBookings(user string) {
 // usage to  users before making the replacement bookings through
 // the standard method
 func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
-	s.Lock()
-	defer s.Unlock()
+
+	// do not take the lock except where we need it below - because we call on functions that take the lock
 
 	// Check bookings are individually sane given our manifest
 	msg := []string{}
@@ -1274,7 +1437,12 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 					" for replaced booking "+k+" on policy "+v.Policy)
 		}
 	}
-	// can't delete bookings as we iterate over map, so just create a fresh map
+	// can't delete bookings as we iterate over map, so just create a fresh map (take the lock!)
+	where := "store.ReplaceBookings"
+	log.Trace(where + " awaiting lock")
+	s.Lock()
+	log.Trace(where + " has lock")
+
 	s.Bookings = make(map[string]*Booking)
 
 	for k := range s.Resources {
@@ -1282,6 +1450,8 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 		r.Diary = diary.New(k)
 		s.Resources[k] = r
 	}
+	s.Unlock()
+	log.Trace(where + " released lock")
 
 	// Now make the bookings, respecting policy and usage
 	for _, v := range bm {
@@ -1300,6 +1470,8 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 // ReplaceManifest overwrites the existing manifest with a new one i.e. does not retain existing elements from any previous manifests
 // but it does retain non-Manifest elements such as bookings.
 func (s *Store) ReplaceManifest(m Manifest) error {
+
+	// lock is taken after we check whether we need to alter the store (see below)
 
 	err, _ := CheckManifest(m)
 
@@ -1327,9 +1499,10 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 	}
 
 	// we're going to do the replacement now, goodbye old manifest data.
+	where := "store.ReplaceBookings"
+	log.Trace(where + " awaiting lock")
 	s.Lock()
-	defer s.Unlock()
-
+	log.Trace(where + " has lock")
 	s.Filters = fm
 
 	// Make new maps for our new entities
@@ -1362,6 +1535,8 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 
 	// populate UIs with descriptions now to save doing it repetively later
 	s.UIs = make(map[string]UIDescribed)
+	s.Unlock()
+	log.Trace(where + " released lock")
 
 	for k, v := range m.UIs {
 
@@ -1377,7 +1552,12 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 			URL:                  m.UIs[k].URL,
 			StreamsRequired:      m.UIs[k].StreamsRequired,
 		}
+		log.Trace(where + " awaiting lock")
+		s.Lock()
+		log.Trace(where + " has lock")
 		s.UIs[k] = uid
+		s.Unlock()
+		log.Trace(where + " released lock")
 	}
 
 	return nil
@@ -1386,8 +1566,14 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 
 // ReplaceOldBookings will replace the map of old bookings with the supplied list or return an error if the bookings have issues. All existing users are deleted, and replaced with users with usages that match the old bookings
 func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
+	where := "store.ReplaceOldBookings"
+	log.Trace(where + " awaiting lock")
 	s.Lock()
-	defer s.Unlock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
 
 	// Check bookings are individually sane given our manifest
 	msg := []string{}
@@ -1477,9 +1663,14 @@ func (s *Store) ReplaceUsers(u map[string]UserExternal) (error, []string) {
 // A user that does not exist, is created, and the policies added.
 // Policies must exist or an error is thrown
 func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
-
+	where := "store.ReplaceUserPolicies"
+	log.Trace(where + " awaiting lock")
 	s.Lock()
-	defer s.Unlock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
 
 	msg := []string{}
 
@@ -1512,14 +1703,24 @@ func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
 // Run handles the regular pruning of bookings
 func (s *Store) Run(ctx context.Context, pruneEvery time.Duration) {
 	go func() {
+		log.Debug("store will prune bookings & diaries every " + pruneEvery.String())
+		where := "store.Run"
+
 		for {
 
 			select {
 			case <-ctx.Done():
+				log.Trace("store pruning stopped permanently")
 				return
 			case <-time.After(pruneEvery):
+				log.Trace("store pruning bookings & diaries at time " + s.Now().String())
+				log.Trace(where + " awaiting lock")
+				s.Lock()
+				log.Trace(where + " has lock")
 				s.PruneBookings()
 				s.PruneDiaries()
+				s.Unlock()
+				log.Trace(where + " released lock")
 			}
 		}
 	}()
@@ -1527,7 +1728,8 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration) {
 
 // SetSlotIsAvailable sets the underlying resource's availability
 func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error {
-
+	s.Lock()
+	defer s.Unlock()
 	sl, ok := s.Slots[slot]
 
 	if !ok {
@@ -1552,7 +1754,8 @@ func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) e
 
 // ValidateBooking checks if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 func (s *Store) ValidateBooking(booking Booking) error {
-
+	s.RLock()
+	defer s.RUnlock()
 	b, ok := s.Bookings[booking.Name]
 
 	if !ok {

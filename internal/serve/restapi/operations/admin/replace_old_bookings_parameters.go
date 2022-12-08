@@ -6,14 +6,12 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/validate"
-
-	"github.com/timdrysdale/interval/internal/serve/models"
 )
 
 // NewReplaceOldBookingsParams creates a new ReplaceOldBookingsParams object
@@ -34,9 +32,10 @@ type ReplaceOldBookingsParams struct {
 	HTTPRequest *http.Request `json:"-"`
 
 	/*
+	  Required: true
 	  In: body
 	*/
-	Bookings models.Bookings
+	Bookings string
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -50,24 +49,19 @@ func (o *ReplaceOldBookingsParams) BindRequest(r *http.Request, route *middlewar
 
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
-		var body models.Bookings
+		var body string
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
-			res = append(res, errors.NewParseError("bookings", "body", "", err))
+			if err == io.EOF {
+				res = append(res, errors.Required("bookings", "body", ""))
+			} else {
+				res = append(res, errors.NewParseError("bookings", "body", "", err))
+			}
 		} else {
-			// validate body object
-			if err := body.Validate(route.Formats); err != nil {
-				res = append(res, err)
-			}
-
-			ctx := validate.WithOperationRequest(r.Context())
-			if err := body.ContextValidate(ctx, route.Formats); err != nil {
-				res = append(res, err)
-			}
-
-			if len(res) == 0 {
-				o.Bookings = body
-			}
+			// no validation required on inline body
+			o.Bookings = body
 		}
+	} else {
+		res = append(res, errors.Required("bookings", "body", ""))
 	}
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

@@ -266,7 +266,7 @@ func init() {
         ],
         "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "application/json"
+          "text/plain"
         ],
         "tags": [
           "admin",
@@ -278,7 +278,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Bookings"
+              "type": "string"
             }
           },
           "401": {
@@ -300,7 +300,7 @@ func init() {
         ],
         "description": "Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.",
         "consumes": [
-          "application/json"
+          "text/plain"
         ],
         "produces": [
           "application/json"
@@ -315,8 +315,9 @@ func init() {
           {
             "name": "bookings",
             "in": "body",
+            "required": true,
             "schema": {
-              "$ref": "#/definitions/Bookings"
+              "type": "string"
             }
           }
         ],
@@ -1644,7 +1645,7 @@ func init() {
         "bookings",
         "descriptions",
         "filters",
-        "old_ookings",
+        "old_bookings",
         "policies",
         "resources",
         "slots",
@@ -1674,7 +1675,7 @@ func init() {
           "type": "string",
           "format": "date-time"
         },
-        "old_ookings": {
+        "old_bookings": {
           "type": "integer"
         },
         "policies": {
@@ -2220,7 +2221,7 @@ func init() {
         ],
         "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "application/json"
+          "text/plain"
         ],
         "tags": [
           "admin",
@@ -2232,7 +2233,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Bookings"
+              "type": "string"
             }
           },
           "401": {
@@ -2263,7 +2264,7 @@ func init() {
         ],
         "description": "Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.",
         "consumes": [
-          "application/json"
+          "text/plain"
         ],
         "produces": [
           "application/json"
@@ -2278,8 +2279,9 @@ func init() {
           {
             "name": "bookings",
             "in": "body",
+            "required": true,
             "schema": {
-              "$ref": "#/definitions/Bookings"
+              "type": "string"
             }
           }
         ],
@@ -3778,7 +3780,7 @@ func init() {
         "bookings",
         "descriptions",
         "filters",
-        "old_ookings",
+        "old_bookings",
         "policies",
         "resources",
         "slots",
@@ -3808,7 +3810,7 @@ func init() {
           "type": "string",
           "format": "date-time"
         },
-        "old_ookings": {
+        "old_bookings": {
           "type": "integer"
         },
         "policies": {

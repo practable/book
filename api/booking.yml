@@ -184,14 +184,14 @@ paths:
       operationId: ExportOldBookings
       deprecated: false
       produces:
-      - application/json
+      - text/plain
       security:
         - Bearer: []
       responses:
         200:
           description: OK
           schema:
-            $ref: '#/definitions/Bookings'
+            type: string
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -209,14 +209,15 @@ paths:
       operationId: ReplaceOldBookings
       deprecated: false
       consumes:
-      - application/json
+      - text/plain
       produces:
       - application/json
       parameters:
       - name: bookings
         in: body
+        required: true
         schema:
-          $ref: '#/definitions/Bookings'
+          type: string
       security:
         - Bearer: []
       responses:
@@ -1210,7 +1211,7 @@ definitions:
         type: integer
       filters:
         type: integer
-      old_ookings:
+      old_bookings:
          type: integer
       policies:
         type: integer
@@ -1235,7 +1236,7 @@ definitions:
       - bookings
       - descriptions
       - filters
-      - old_ookings
+      - old_bookings
       - policies
       - resources
       - slots

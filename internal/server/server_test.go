@@ -191,6 +191,8 @@ bk-1:
     start: '2022-11-05T00:20:00Z'
     end: '2022-11-05T00:30:00Z'
 `)
+var noBookingsYAML = []byte(`{}`)
+
 var usersYAML = []byte(`---
 u-a:
   bookings:
@@ -209,9 +211,27 @@ u-b:
   usage:
     p-b: 10m0s
 `)
+var oldUsersYAML = []byte(`---
+u-a:
+  bookings: []
+  old_bookings: 
+  - bk-0
+  policies:
+  - p-a
+  usage:
+    p-a: 5m0s
+u-b:
+  bookings: []
+  old_bookings: 
+  - bk-1
+  policies:
+  - p-b
+  usage:
+    p-b: 10m0s
+`)
 
 func init() {
-	debug = false
+	debug = true
 	if debug {
 		log.SetReportCaller(true)
 		log.SetLevel(log.TraceLevel)
@@ -249,8 +269,11 @@ func TestMain(m *testing.M) {
 		AccessTokenLifetime: time.Duration(time.Minute),
 		// we can update the mock time by changing the value pointed to by currentTime
 		Now:        func() time.Time { return *currentTime },
-		PruneEvery: time.Duration(time.Minute),
+		PruneEvery: time.Duration(10 * time.Millisecond), //short so we convert bookings to old bookings quickly in tests
 	}
+
+	// modify the time function used to verify the jwt token
+	jwt.TimeFunc = func() time.Time { return *currentTime }
 
 	go Run(ctx, cfg)
 
@@ -269,7 +292,7 @@ func signedAdminToken() (string, error) {
 	now := (*currentTime).Unix()
 	nbf := now - 1
 	iat := nbf
-	exp := nbf + 10
+	exp := nbf + 86400 //1 day
 	token := login.New(audience, subject, scopes, iat, nbf, exp)
 	return login.Sign(token, string(cfg.StoreSecret))
 }
@@ -325,9 +348,6 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 	// make admin token
 	stoken, err := signedAdminToken()
 	assert.NoError(t, err)
-
-	// modify the time function used to verify the jwt token
-	jwt.TimeFunc = func() time.Time { return *currentTime }
 
 	//check manifest
 	client := &http.Client{}
@@ -439,6 +459,107 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	var expectedUsers, exportedUsers map[string]store.UserExternal
 	err = yaml.Unmarshal(usersYAML, &expectedUsers)
+	err = yaml.Unmarshal(body, &exportedUsers)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedUsers, exportedUsers)
+	resp.Body.Close()
+}
+
+func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
+
+	stoken := loadTestManifest(t)
+
+	// replace bookings
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(bookingsYAML)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	// move time forward
+	ct := time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC)
+	currentTime = &ct
+	time.Sleep(50 * time.Millisecond) //wait for pruning to happen
+
+	// export bookings
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/bookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	t.Log(string(body))
+	var expectedBookings, exportedBookings map[string]store.Booking
+	err = yaml.Unmarshal(noBookingsYAML, &expectedBookings)
+	err = yaml.Unmarshal(body, &exportedBookings)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBookings, exportedBookings)
+	resp.Body.Close()
+
+	// export old bookings
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/oldbookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	t.Log(string(body))
+	err = yaml.Unmarshal(bookingsYAML, &expectedBookings)
+	err = yaml.Unmarshal(body, &exportedBookings)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBookings, exportedBookings)
+	resp.Body.Close()
+
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/status", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	t.Log(string(body))
+	var ssa store.StoreStatusAdmin
+	err = json.Unmarshal(body, &ssa)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	esa := store.StoreStatusAdmin{
+		Locked:       false,
+		Message:      "Welcome to the interval booking store",
+		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
+		Bookings:     0,
+		Descriptions: 8,
+		Filters:      2,
+		OldBookings:  2,
+		Policies:     2,
+		Resources:    2,
+		Slots:        2,
+		Streams:      2,
+		UIs:          2,
+		UISets:       2,
+		Users:        2,
+		Windows:      2}
+	assert.Equal(t, esa, ssa)
+
+	// export users (now there are bookings we will have users)
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/users", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	t.Log(string(body))
+	var expectedUsers, exportedUsers map[string]store.UserExternal
+	err = yaml.Unmarshal(oldUsersYAML, &expectedUsers)
 	err = yaml.Unmarshal(body, &exportedUsers)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedUsers, exportedUsers)

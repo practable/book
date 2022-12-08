@@ -44,9 +44,9 @@ type StoreStatusAdmin struct {
 	// Format: date-time
 	Now *strfmt.DateTime `json:"now"`
 
-	// old ookings
+	// old bookings
 	// Required: true
-	OldOokings *int64 `json:"old_ookings"`
+	OldBookings *int64 `json:"old_bookings"`
 
 	// policies
 	// Required: true
@@ -109,7 +109,7 @@ func (m *StoreStatusAdmin) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateOldOokings(formats); err != nil {
+	if err := m.validateOldBookings(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -209,9 +209,9 @@ func (m *StoreStatusAdmin) validateNow(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *StoreStatusAdmin) validateOldOokings(formats strfmt.Registry) error {
+func (m *StoreStatusAdmin) validateOldBookings(formats strfmt.Registry) error {
 
-	if err := validate.Required("old_ookings", "body", m.OldOokings); err != nil {
+	if err := validate.Required("old_bookings", "body", m.OldBookings); err != nil {
 		return err
 	}
 

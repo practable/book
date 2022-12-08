@@ -86,6 +86,28 @@ func convertManifestToStore(m string) (store.Manifest, error) {
 	return s, err
 }
 
+// getStoreStatusAdminHandler
+func getStoreStatusAdminHandler(config config.ServerConfig) func(admin.GetStoreStatusAdminParams, interface{}) middleware.Responder {
+	return func(params admin.GetStoreStatusAdminParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewGetStoreStatusAdminUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())
+
+		if err != nil {
+			log.Error("could not convert StoreStatusAdmin to model format")
+		}
+
+		return admin.NewGetStoreStatusAdminOK().WithPayload(&s)
+	}
+}
+
 // exportBookingsHandler
 func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookingsParams, interface{}) middleware.Responder {
 	return func(params admin.ExportBookingsParams, principal interface{}) middleware.Responder {
@@ -135,6 +157,32 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 		}
 
 		return admin.NewExportManifestOK().WithPayload(string(b))
+	}
+}
+
+// exportOldBookingsHandler
+func exportOldBookingsHandler(config config.ServerConfig) func(admin.ExportOldBookingsParams, interface{}) middleware.Responder {
+	return func(params admin.ExportOldBookingsParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewExportOldBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		m := config.Store.ExportOldBookings()
+
+		b, err := json.Marshal(m)
+
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewExportOldBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return admin.NewExportOldBookingsOK().WithPayload(string(b))
 	}
 }
 
@@ -245,5 +293,47 @@ func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManife
 		}
 
 		return admin.NewReplaceManifestOK().WithPayload(&s)
+	}
+}
+
+// replaceOldBookingsHandler
+func replaceOldBookingsHandler(config config.ServerConfig) func(admin.ReplaceOldBookingsParams, interface{}) middleware.Responder {
+	return func(params admin.ReplaceOldBookingsParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewReplaceOldBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.Bookings == "" {
+			c := "404"
+			m := "no manifest in body"
+			return admin.NewReplaceOldBookingsNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		sm, err := convertBookingsToStore(params.Bookings)
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewReplaceOldBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		err, msgs := config.Store.ReplaceOldBookings(sm)
+		if err != nil {
+			c := "500"
+			m := err.Error() + " : " + strings.Join(msgs, ",")
+			return admin.NewReplaceOldBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())
+
+		if err != nil {
+			log.Error("could not convert StoreStatusAdmin to model format")
+		}
+
+		return admin.NewReplaceOldBookingsOK().WithPayload(&s)
 	}
 }

@@ -13,6 +13,8 @@ import (
 // Run starts API server and an interval store to support it
 func Run(ctx context.Context, config config.ServerConfig) {
 
+	log.Debug("store will prune bookings & diaries every " + config.PruneEvery.String())
+
 	s := store.New().WithNow(config.Now)
 
 	if config.Now == nil {
