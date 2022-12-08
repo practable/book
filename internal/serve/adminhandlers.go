@@ -50,6 +50,58 @@ func checkManifestHandler(config config.ServerConfig) func(admin.CheckManifestPa
 	}
 }
 
+// convertStoreStatusAdminToModel converts from internal to API type
+func convertStoreStatusAdminToModel(s store.StoreStatusAdmin) (models.StoreStatusAdmin, error) {
+	var m models.StoreStatusAdmin
+
+	y, err := json.Marshal(s)
+
+	if err != nil {
+		return m, err
+	}
+
+	err = json.Unmarshal(y, &m)
+
+	return m, err
+
+}
+
+// convertManifestToStore converts from YAML string to internal type
+func convertManifestToStore(m string) (store.Manifest, error) {
+
+	var s store.Manifest
+
+	err := yaml.Unmarshal([]byte(m), &s)
+
+	return s, err
+}
+
+// exportManifestHandler
+func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifestParams, interface{}) middleware.Responder {
+	return func(params admin.ExportManifestParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewExportManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		m := config.Store.ExportManifest()
+
+		b, err := json.Marshal(m)
+
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewExportManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return admin.NewExportManifestOK().WithPayload(string(b))
+	}
+}
+
 // replaceManifestHandler
 func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManifestParams, interface{}) middleware.Responder {
 	return func(params admin.ReplaceManifestParams, principal interface{}) middleware.Responder {
@@ -90,58 +142,4 @@ func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManife
 
 		return admin.NewReplaceManifestOK().WithPayload(&s)
 	}
-}
-
-// replaceManifestHandler
-func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifestParams, interface{}) middleware.Responder {
-	return func(params admin.ExportManifestParams, principal interface{}) middleware.Responder {
-
-		_, err := isAdmin(principal)
-
-		if err != nil {
-			c := "401"
-			m := err.Error()
-			return admin.NewExportManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		m := config.Store.ExportManifest()
-
-		b, err := json.Marshal(m)
-
-		if err != nil {
-			c := "500"
-			m := err.Error()
-			return admin.NewExportManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		return admin.NewExportManifestOK().WithPayload(string(b))
-	}
-}
-
-func convertStoreStatusAdminToModel(s store.StoreStatusAdmin) (models.StoreStatusAdmin, error) {
-	var m models.StoreStatusAdmin
-
-	y, err := json.Marshal(s)
-
-	if err != nil {
-		return m, err
-	}
-
-	err = json.Unmarshal(y, &m)
-
-	return m, err
-
-}
-
-// convertManifestToStore
-func convertManifestToStore(m string) (store.Manifest, error) {
-
-	// We don't do manifest replacement often, so using yaml as an intermediate format
-	// is not going to be inefficient overall yet reduces maintenance
-
-	var s store.Manifest
-
-	err := yaml.Unmarshal([]byte(m), &s)
-
-	return s, err
 }
