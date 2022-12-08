@@ -103,7 +103,7 @@ slots:
 streams:
   st-a:
     audience: a
-    ct: a
+    connection_type: a
     for: a
     scopes:
     - r
@@ -112,7 +112,7 @@ streams:
     url: a
   st-b:
     audience: b
-    ct: b
+    connection_type: b
     for: b
     scopes:
     - r

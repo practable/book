@@ -19,6 +19,7 @@ import (
 	"github.com/timdrysdale/interval/internal/config"
 	"github.com/timdrysdale/interval/internal/login"
 	"github.com/timdrysdale/interval/internal/serve/models"
+	"github.com/timdrysdale/interval/internal/store"
 	"gopkg.in/yaml.v2"
 )
 
@@ -213,7 +214,96 @@ var manifestJSON = []byte(`{
     }
   }
 }`)
-
+var manifestJSONShort = []byte(`{  
+"descriptions": {"d-p-a": {
+      "name": "policy-a",
+      "type": "policy",
+      "short": "a"
+    },
+    "d-p-b": {
+      "name": "policy-b",
+      "type": "policy",
+      "short": "b"
+    },
+    "d-r-a": {
+      "name": "resource-a",
+      "type": "resource",
+      "short": "a"
+    },
+    "d-r-b": {
+      "name": "resource-b",
+      "type": "resource",
+      "short": "b"
+    },
+    "d-sl-a": {
+      "name": "slot-a",
+      "type": "slot",
+      "short": "a"
+    },
+    "d-sl-b": {
+      "name": "slot-b",
+      "type": "slot",
+      "short": "b"
+    },
+    "d-ui-a": {
+      "name": "ui-a",
+      "type": "ui",
+      "short": "a"
+    },
+    "d-ui-b": {
+      "name": "ui-b",
+      "type": "ui",
+      "short": "b"
+    }
+  },
+"policies":{},
+"slots":{},
+"streams":{
+    "st-a": {
+      "audience": "a",
+      "connection_type": "a",
+      "for": "a",
+      "scopes": [
+        "r",
+        "w"
+      ],
+      "topic": "a",
+      "url": "a"
+    },
+    "st-b": {
+      "audience": "b",
+      "connection_type": "b",
+      "for": "b",
+      "scopes": [
+        "r",
+        "w"
+      ],
+      "topic": "b",
+      "url": "b"
+    }
+  },
+"ui_sets":{},
+"uis":{},
+"windows":{},
+  "resources": {
+    "r-a": {
+      "description": "d-r-a",
+      "streams": [
+        "st-a",
+        "st-b"
+      ],
+      "topic_stub": "aaaa00"
+    },
+    "r-b": {
+      "description": "d-r-b",
+      "streams": [
+        "st-a",
+        "st-b"
+      ],
+      "topic_stub": "bbbb00"
+    }
+  }
+}`)
 var manifestYAML = []byte(`descriptions:
   d-p-a:
     name: policy-a
@@ -456,15 +546,28 @@ func TestReplaceManifest(t *testing.T) {
 		t.Log(err.Error())
 	}
 
+	t.Log(my.Resources["r-a"].TopicStub) //topic_stub is null here!
+
+	var my2 store.Manifest
+	err = yaml.Unmarshal(manifestYAML, &my2)
+	assert.NoError(t, err)
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	t.Log(my2.Resources) //topic_stub is NOT null here!
+
 	mj, err := json.Marshal(my)
 	assert.NoError(t, err)
 	if err != nil {
 		t.Log(err.Error())
 	}
 
+	t.Log(string(mj)) // topic_stub is null here!!
+
 	//replace manifest
 	client := &http.Client{}
-	bodyReader := bytes.NewReader(mj)
+	bodyReader := bytes.NewReader(manifestJSONShort)
 	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
@@ -475,6 +578,30 @@ func TestReplaceManifest(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	t.Log(string(body))
+
+	rb := []byte(`{"description": "d-r-a","streams":["st-a","st-b"],"topic_stub": "aaaa00"}`)
+	var r models.Resource
+	err = json.Unmarshal(rb, &r)
+	assert.NoError(t, err)
+	t.Log(*(r.TopicStub)) //this collects the topic stub ok
+
+	rsb := []byte(`{"resources":{"r-a":{"description": "d-r-a","streams":["st-a","st-b"],"topic_stub": "aaaa00"}}}`)
+	var mm models.Manifest
+	err = json.Unmarshal(rsb, &mm)
+	assert.NoError(t, err)
+	t.Log(*(mm.Resources["r-a"].TopicStub)) //this also collects the topic stub ok
+
+	var mm2 models.Manifest
+	err = json.Unmarshal(manifestJSONShort, &mm2)
+	assert.NoError(t, err)
+	t.Log(*(mm2.Resources["r-a"].TopicStub))
+
+	var sm store.Manifest
+	err = json.Unmarshal(manifestJSONShort, &sm)
+	assert.NoError(t, err)
+	err, msgs := store.CheckManifest(sm)
+	assert.NoError(t, err)
+	t.Log(msgs)
 
 	/* add query params
 	q := req.URL.Query()

@@ -29,21 +29,19 @@ func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManife
 			return admin.NewReplaceManifestNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		/*
-			sm, err := convertManifestToStore(*(params.Manifest))
-			if err != nil {
-				c := "500"
-				m := err.Error()
-				return admin.NewReplaceManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-			}
+		sm, err := convertManifestToStore(*(params.Manifest))
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewReplaceManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
 
-			err = config.Store.ReplaceManifest(sm)
-			if err != nil {
-				c := "500"
-				m := err.Error()
-				return admin.NewReplaceManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-			}
-		*/
+		err = config.Store.ReplaceManifest(sm)
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewReplaceManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
 
 		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())
 

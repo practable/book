@@ -242,7 +242,7 @@ type Stream struct {
 	Audience string `json:"audience"  yaml:"audience"`
 
 	// ConnectionType is whether for session or shell e.g. session
-	ConnectionType string `json:"ct"  yaml:"ct"`
+	ConnectionType string `json:"connection_type"  yaml:"connection_type"`
 
 	// For is the key in the UI's URL in which the client puts
 	// the relay (wss) address and code after getting them
