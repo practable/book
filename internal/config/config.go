@@ -10,6 +10,7 @@ type ServerConfig struct {
 	AccessTokenLifetime time.Duration
 	Host                string
 	MinUserNameLength   int
+	Now                 func() time.Time
 	Port                int
 	PruneEvery          time.Duration
 	RelaySecret         string

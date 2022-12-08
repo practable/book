@@ -328,6 +328,12 @@ func New() *Store {
 	}
 }
 
+// WithNow sets the time function (useful for mocking in tests)
+func (s *Store) WithNow(now func() time.Time) *Store {
+	s.Now = now
+	return s
+}
+
 // NewUser returns a pointer to a new User
 func NewUser() *User {
 	return &User{

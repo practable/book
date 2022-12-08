@@ -10,6 +10,7 @@ import (
 	"github.com/timdrysdale/interval/internal/config"
 	"github.com/timdrysdale/interval/internal/serve/restapi"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations"
+	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
 )
 
@@ -46,6 +47,7 @@ func API(ctx context.Context, config config.ServerConfig) {
 	// set the Handlers
 
 	// *** ADMIN *** //
+	api.AdminReplaceManifestHandler = admin.ReplaceManifestHandlerFunc(replaceManifestHandler(config))
 
 	// *** USERS *** //
 	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))
