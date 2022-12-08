@@ -86,28 +86,6 @@ func convertManifestToStore(m string) (store.Manifest, error) {
 	return s, err
 }
 
-// getStoreStatusAdminHandler
-func getStoreStatusAdminHandler(config config.ServerConfig) func(admin.GetStoreStatusAdminParams, interface{}) middleware.Responder {
-	return func(params admin.GetStoreStatusAdminParams, principal interface{}) middleware.Responder {
-
-		_, err := isAdmin(principal)
-
-		if err != nil {
-			c := "401"
-			m := err.Error()
-			return admin.NewGetStoreStatusAdminUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())
-
-		if err != nil {
-			log.Error("could not convert StoreStatusAdmin to model format")
-		}
-
-		return admin.NewGetStoreStatusAdminOK().WithPayload(&s)
-	}
-}
-
 // exportBookingsHandler
 func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookingsParams, interface{}) middleware.Responder {
 	return func(params admin.ExportBookingsParams, principal interface{}) middleware.Responder {
@@ -209,6 +187,56 @@ func exportUsersHandler(config config.ServerConfig) func(admin.ExportUsersParams
 		}
 
 		return admin.NewExportUsersOK().WithPayload(string(b))
+	}
+}
+
+// getStoreStatusAdminHandler
+func getStoreStatusAdminHandler(config config.ServerConfig) func(admin.GetStoreStatusAdminParams, interface{}) middleware.Responder {
+	return func(params admin.GetStoreStatusAdminParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewGetStoreStatusAdminUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())
+
+		if err != nil {
+			log.Error("could not convert StoreStatusAdmin to model format")
+		}
+
+		return admin.NewGetStoreStatusAdminOK().WithPayload(&s)
+	}
+}
+
+// getSlotIsAvailableHandlerFunc
+func getSlotIsAvailableHandler(config config.ServerConfig) func(admin.GetSlotIsAvailableParams, interface{}) middleware.Responder {
+	return func(params admin.GetSlotIsAvailableParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewGetSlotIsAvailableUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		avail, reason, err := config.Store.GetSlotIsAvailable(params.SlotName)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return admin.NewGetSlotIsAvailableNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		s := models.SlotStatus{
+			Available: &avail,
+			Reason:    &reason,
+		}
+		return admin.NewGetSlotIsAvailableOK().WithPayload(&s)
 	}
 }
 
@@ -363,5 +391,29 @@ func setLockHandler(config config.ServerConfig) func(admin.SetLockParams, interf
 		}
 
 		return admin.NewSetLockOK().WithPayload(&s)
+	}
+}
+
+// setSlotIsAvailableHandlerFunc
+func setSlotIsAvailableHandler(config config.ServerConfig) func(admin.SetSlotIsAvailableParams, interface{}) middleware.Responder {
+	return func(params admin.SetSlotIsAvailableParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewSetSlotIsAvailableUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		err = config.Store.SetSlotIsAvailable(params.SlotName, params.Available, params.Reason)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return admin.NewSetSlotIsAvailableNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return admin.NewSetSlotIsAvailableNoContent()
 	}
 }

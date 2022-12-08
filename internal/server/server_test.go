@@ -652,3 +652,85 @@ func TestSetLock(t *testing.T) {
 	assert.Equal(t, esa, ssa)
 
 }
+
+func TestSetGetSlotIsAvailable(t *testing.T) {
+
+	stoken := loadTestManifest(t)
+
+	// make unavailable slot sl-a
+	client := &http.Client{}
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+
+	// add query params
+	q := req.URL.Query()
+	q.Add("available", "false")
+	q.Add("reason", "failed self-test")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 204, resp.StatusCode) //should be ok!
+	resp.Body.Close()
+
+	// check unavailable slot sl-a
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	var ss models.SlotStatus
+	body, err := ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &ss)
+	assert.Equal(t, false, *(ss.Available))
+	assert.Equal(t, "unavailable because failed self-test", *(ss.Reason))
+	resp.Body.Close()
+
+	// check available slot sl-b
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/slots/sl-b", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &ss)
+	assert.Equal(t, true, *(ss.Available))
+	assert.Equal(t, "Loaded at 2022-11-05T06:00:00Z", *(ss.Reason))
+	resp.Body.Close()
+
+	// make available again slot sl-a
+	client = &http.Client{}
+	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+
+	// add query params
+	q = req.URL.Query()
+	q.Add("available", "true")
+	q.Add("reason", "passed self-test")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 204, resp.StatusCode) //should be ok!
+	resp.Body.Close()
+
+	// check available again
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &ss)
+	assert.Equal(t, true, *(ss.Available))
+	assert.Equal(t, "passed self-test", *(ss.Reason))
+	resp.Body.Close()
+}
