@@ -42,14 +42,19 @@ type Activity struct {
 // Booking represents a promise to access an equipment that
 // provided by the pool referenced in the resource of the slot
 type Booking struct {
-	Cancelled   bool
-	Name        string // booking uid
-	Policy      string // reference to policy it was booked under
-	Slot        string // slot name
-	Started     bool
-	Unfulfilled bool   //when the resource was unavailable
-	User        string // user pseudo id
-	When        interval.Interval
+	Cancelled bool `json:"cancelled" yaml:"cancelled"`
+	// booking unique reference
+	Name string `json:"name" yaml:"name"`
+	// reference to policy it was booked under
+	Policy string `json:"policy" yaml:"policy"`
+	// slot name
+	Slot    string `json:"slot" yaml:"slot"`
+	Started bool   `json:"started" yaml:"started"`
+	//when the resource was unavailable
+	Unfulfilled bool `json:"unfulfilled" yaml:"unfulfilled"`
+	// user pseudo id
+	User string            `json:"user" yaml:"user"`
+	When interval.Interval `json:"when" yaml:"when"`
 }
 
 // Description represents information to display to a user about an entity
@@ -68,9 +73,9 @@ type Description struct {
 // to influence the offerings to students in a way that might better suit their
 // teaching views.
 type DisplayGuide struct {
-	Duration  time.Duration
-	MaxSlots  int
-	BookAhead time.Duration
+	Duration  time.Duration `json:"duration" yaml:"duration"`
+	MaxSlots  int           `json:"max_slots" yaml:"max_slots"`
+	BookAhead time.Duration `json:"book_ahead" yaml:"book_ahead"`
 }
 
 // Manifest represents all the available equipment and how to access it
@@ -280,7 +285,7 @@ type UIDescribed struct {
 
 // UISet represents UIs that can be used with a slot
 type UISet struct {
-	UIs []string
+	UIs []string `json:"uis" yaml:"uis"`
 }
 
 // User represents bookings and usage information associated with a single user
@@ -294,10 +299,11 @@ type User struct {
 }
 
 type UserExternal struct {
-	Bookings    []string
-	OldBookings []string
-	Policies    []string
-	Usage       map[string]string //map humanised durations by policy name
+	Bookings    []string `json:"bookings" yaml:"bookings"`
+	OldBookings []string `json:"old_bookings" yaml:"old_bookings"`
+	Policies    []string `json:"policies" yaml:"policies"`
+	//map humanised durations by policy name
+	Usage map[string]string `json:"usage" yaml:"usage"`
 }
 
 // Window represents allowed and denied periods for slots

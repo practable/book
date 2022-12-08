@@ -12,8 +12,8 @@ var ZeroTime = time.Unix(0, 0)
 var Infinity = time.Unix(1<<63-62135596801, 999999999)
 
 type Interval struct {
-	Start time.Time
-	End   time.Time
+	Start time.Time `json:"start" yaml:"start"`
+	End   time.Time `json:"end" yaml:"end"`
 }
 
 // Comparator function (sort by IDs)

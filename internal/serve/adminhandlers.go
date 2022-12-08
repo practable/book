@@ -92,6 +92,32 @@ func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManife
 	}
 }
 
+// replaceManifestHandler
+func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifestParams, interface{}) middleware.Responder {
+	return func(params admin.ExportManifestParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewExportManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		m := config.Store.ExportManifest()
+
+		b, err := json.Marshal(m)
+
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewExportManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return admin.NewExportManifestOK().WithPayload(string(b))
+	}
+}
+
 func convertStoreStatusAdminToModel(s store.StoreStatusAdmin) (models.StoreStatusAdmin, error) {
 	var m models.StoreStatusAdmin
 
@@ -118,28 +144,4 @@ func convertManifestToStore(m string) (store.Manifest, error) {
 	err := yaml.Unmarshal([]byte(m), &s)
 
 	return s, err
-
-	/*
-		d := make(map[string]store.Description)
-		p := make(map[string]store.Policy)
-		r := make(map[string]store.Resource)
-		sl := make(map[string]store.Slot)
-		st := make(map[string]store.Stream)
-		u := make(map[string]store.UI)
-		us := make(map[string]store.UISet)
-		w := make(map[string]store.Window)
-
-
-
-		return store.Manifest{
-			Descriptions: d,
-			Policies:     p,
-			Resources:    r,
-			Slots:        sl,
-			Streams:      st,
-			UIs:          u,
-			UISets:       us,
-			Windows:      w,
-		}, nil
-	*/
 }

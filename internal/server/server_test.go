@@ -20,6 +20,7 @@ import (
 	"github.com/timdrysdale/interval/internal/login"
 	"github.com/timdrysdale/interval/internal/serve/models"
 	"github.com/timdrysdale/interval/internal/store"
+	"gopkg.in/yaml.v2"
 )
 
 var debug bool
@@ -246,7 +247,7 @@ func TestLogin(t *testing.T) {
 
 }
 
-func TestCheckReplaceManifest(t *testing.T) {
+func TestCheckReplaceExportManifest(t *testing.T) {
 
 	// make admin token
 	audience := cfg.Host
@@ -306,6 +307,21 @@ func TestCheckReplaceManifest(t *testing.T) {
 		Users:        0,
 		Windows:      2}
 	assert.Equal(t, esa, ssa)
+
+	// export manifest
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/manifest", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	body, err = ioutil.ReadAll(resp.Body)
+	var expectedManifest, exportedManifest store.Manifest
+	err = yaml.Unmarshal(manifestYAML, &expectedManifest)
+	assert.NoError(t, err)
+	err = yaml.Unmarshal(body, &exportedManifest)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, expectedManifest, exportedManifest)
 
 	/* add query params
 	q := req.URL.Query()

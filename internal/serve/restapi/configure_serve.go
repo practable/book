@@ -41,6 +41,7 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	api.TxtConsumer = runtime.TextConsumer()
 
 	api.JSONProducer = runtime.JSONProducer()
+	api.TxtProducer = runtime.TextProducer()
 
 	// Applies when the "Authorization" header is set
 	if api.BearerAuth == nil {

@@ -133,7 +133,7 @@ func init() {
         ],
         "description": "Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users",
         "produces": [
-          "application/json"
+          "text/plain"
         ],
         "tags": [
           "admin",
@@ -145,7 +145,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Manifest"
+              "type": "string"
             }
           },
           "401": {
@@ -2056,7 +2056,7 @@ func init() {
         ],
         "description": "Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users",
         "produces": [
-          "application/json"
+          "text/plain"
         ],
         "tags": [
           "admin",
@@ -2068,7 +2068,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Manifest"
+              "type": "string"
             }
           },
           "401": {

@@ -47,6 +47,7 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		TxtConsumer:  runtime.TextConsumer(),
 
 		JSONProducer: runtime.JSONProducer(),
+		TxtProducer:  runtime.TextProducer(),
 
 		UsersAddPolicyForUserHandler: users.AddPolicyForUserHandlerFunc(func(params users.AddPolicyForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.AddPolicyForUser has not yet been implemented")
@@ -168,6 +169,9 @@ type ServeAPI struct {
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
 	JSONProducer runtime.Producer
+	// TxtProducer registers a producer for the following mime types:
+	//   - text/plain
+	TxtProducer runtime.Producer
 
 	// BearerAuth registers a function that takes a token and returns a principal
 	// it performs authentication based on an api key Authorization provided in the header
@@ -304,6 +308,9 @@ func (o *ServeAPI) Validate() error {
 
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
+	}
+	if o.TxtProducer == nil {
+		unregistered = append(unregistered, "TxtProducer")
 	}
 
 	if o.BearerAuth == nil {
@@ -444,6 +451,8 @@ func (o *ServeAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer
 		switch mt {
 		case "application/json":
 			result["application/json"] = o.JSONProducer
+		case "text/plain":
+			result["text/plain"] = o.TxtProducer
 		}
 
 		if p, ok := o.customProducers[mt]; ok {

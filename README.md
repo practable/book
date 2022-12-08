@@ -494,8 +494,14 @@ Definitions
 
 ## Gotchas
 
+### Re-defining the Manifest data structure in swagger
+
+There were unexpected errors when letting the swagger boilerplate parse the manifest as `application/yaml` in the request body, such as missing some of the sub fields like `topic_stub` that were very definitely in the manifest, e.g. for ReplaceManifest. There are no yaml annotations in the boiler plate models. Attempting to parse the manifest as `application/json` instead, which have the annotations, still threw the same errors. Initial fault-finding was not particularly illuminating as to where the issue lay, so the workaround is to avoid the issue entirely and send the manifest as a `plain/text` string and parse within the handler. This is more efficient and easier to maintain because it avoids an unneccesary conversion to `models.Manifest` and then to `store.Manifest` and back again on export.
+
+### Time
 [time](https://pkg.go.dev/time#Time)
 "Representations of a Time value saved by the GobEncode, MarshalBinary, MarshalJSON, and MarshalText methods store the Time.Location's offset, but not the location name. They therefore lose information about Daylight Saving Time."
+
 
 
 

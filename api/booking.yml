@@ -92,14 +92,14 @@ paths:
       operationId: ExportManifest
       deprecated: false
       produces:
-      - application/json
+      - text/plain
       security:
         - Bearer: []
       responses:
         200:
           description: OK
           schema:
-            $ref: '#/definitions/Manifest'
+            type: string
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
