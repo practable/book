@@ -234,7 +234,7 @@ func init() {
 	debug = true
 	if debug {
 		log.SetReportCaller(true)
-		log.SetLevel(log.TraceLevel)
+		log.SetLevel(log.DebugLevel)
 		log.SetFormatter(&log.TextFormatter{FullTimestamp: false, DisableColors: true})
 		defer log.SetOutput(os.Stdout)
 
