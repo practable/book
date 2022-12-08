@@ -337,3 +337,31 @@ func replaceOldBookingsHandler(config config.ServerConfig) func(admin.ReplaceOld
 		return admin.NewReplaceOldBookingsOK().WithPayload(&s)
 	}
 }
+
+// setStoreStatusAdminHandler
+func setLockHandler(config config.ServerConfig) func(admin.SetLockParams, interface{}) middleware.Responder {
+	return func(params admin.SetLockParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewSetLockUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		config.Store.Locked = params.Lock
+
+		if params.Msg != nil {
+			config.Store.Message = *(params.Msg)
+		}
+
+		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())
+
+		if err != nil {
+			log.Error("could not convert StoreStatusAdmin to model format")
+		}
+
+		return admin.NewSetLockOK().WithPayload(&s)
+	}
+}

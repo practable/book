@@ -409,12 +409,6 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 	resp.Body.Close()
 	assert.Equal(t, expectedManifest, exportedManifest)
 
-	/* add query params
-	q := req.URL.Query()
-	q.Add("lock", "true")
-	req.URL.RawQuery = q.Encode()
-	*/
-
 }
 
 func TestReplaceExportBookingsExportUsers(t *testing.T) {
@@ -494,7 +488,6 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
-	t.Log(string(body))
 	var expectedBookings, exportedBookings map[string]store.Booking
 	err = yaml.Unmarshal(noBookingsYAML, &expectedBookings)
 	err = yaml.Unmarshal(body, &exportedBookings)
@@ -511,7 +504,6 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err = ioutil.ReadAll(resp.Body)
-	t.Log(string(body))
 	err = yaml.Unmarshal(bookingsYAML, &expectedBookings)
 	err = yaml.Unmarshal(body, &exportedBookings)
 	assert.NoError(t, err)
@@ -525,7 +517,6 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
-	t.Log(string(body))
 	var ssa store.StoreStatusAdmin
 	err = json.Unmarshal(body, &ssa)
 	assert.NoError(t, err)
@@ -557,11 +548,107 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err = ioutil.ReadAll(resp.Body)
-	t.Log(string(body))
 	var expectedUsers, exportedUsers map[string]store.UserExternal
 	err = yaml.Unmarshal(oldUsersYAML, &expectedUsers)
 	err = yaml.Unmarshal(body, &exportedUsers)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedUsers, exportedUsers)
 	resp.Body.Close()
+}
+
+func TestSetLock(t *testing.T) {
+
+	stoken := loadTestManifest(t)
+
+	// lock the store
+	client := &http.Client{}
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/status", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+
+	// add query params
+	q := req.URL.Query()
+	q.Add("lock", "true")
+	q.Add("msg", "Locked for maintenance")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	// check store is locked
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/status", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	var ssa store.StoreStatusAdmin
+	err = json.Unmarshal(body, &ssa)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	esa := store.StoreStatusAdmin{
+		Locked:       true,
+		Message:      "Locked for maintenance",
+		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
+		Bookings:     0,
+		Descriptions: 8,
+		Filters:      2,
+		OldBookings:  2,
+		Policies:     2,
+		Resources:    2,
+		Slots:        2,
+		Streams:      2,
+		UIs:          2,
+		UISets:       2,
+		Users:        2,
+		Windows:      2}
+	assert.Equal(t, esa, ssa)
+
+	// unlock the store
+	client = &http.Client{}
+	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/status", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+
+	// add query params
+	q = req.URL.Query()
+	q.Add("lock", "false")
+	q.Add("msg", "Open for bookings")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	// check store is unlocked
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/status", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &ssa)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	esa = store.StoreStatusAdmin{
+		Locked:       false,
+		Message:      "Open for bookings",
+		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
+		Bookings:     0,
+		Descriptions: 8,
+		Filters:      2,
+		OldBookings:  2,
+		Policies:     2,
+		Resources:    2,
+		Slots:        2,
+		Streams:      2,
+		UIs:          2,
+		UISets:       2,
+		Users:        2,
+		Windows:      2}
+	assert.Equal(t, esa, ssa)
+
 }
