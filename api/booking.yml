@@ -34,7 +34,7 @@ paths:
       operationId: ExportBookings
       deprecated: false
       produces:
-      - test/plain
+      - text/plain
       security:
         - Bearer: []
       responses:

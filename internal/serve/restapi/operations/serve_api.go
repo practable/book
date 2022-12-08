@@ -7,7 +7,6 @@ package operations
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
@@ -48,10 +47,7 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		TxtConsumer:  runtime.TextConsumer(),
 
 		JSONProducer: runtime.JSONProducer(),
-		TestPlainProducer: runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
-			return errors.NotImplemented("testPlain producer has not yet been implemented")
-		}),
-		TxtProducer: runtime.TextProducer(),
+		TxtProducer:  runtime.TextProducer(),
 
 		UsersAddPolicyForUserHandler: users.AddPolicyForUserHandlerFunc(func(params users.AddPolicyForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.AddPolicyForUser has not yet been implemented")
@@ -173,9 +169,6 @@ type ServeAPI struct {
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
 	JSONProducer runtime.Producer
-	// TestPlainProducer registers a producer for the following mime types:
-	//   - test/plain
-	TestPlainProducer runtime.Producer
 	// TxtProducer registers a producer for the following mime types:
 	//   - text/plain
 	TxtProducer runtime.Producer
@@ -315,9 +308,6 @@ func (o *ServeAPI) Validate() error {
 
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
-	}
-	if o.TestPlainProducer == nil {
-		unregistered = append(unregistered, "TestPlainProducer")
 	}
 	if o.TxtProducer == nil {
 		unregistered = append(unregistered, "TxtProducer")
@@ -461,8 +451,6 @@ func (o *ServeAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer
 		switch mt {
 		case "application/json":
 			result["application/json"] = o.JSONProducer
-		case "test/plain":
-			result["test/plain"] = o.TestPlainProducer
 		case "text/plain":
 			result["text/plain"] = o.TxtProducer
 		}

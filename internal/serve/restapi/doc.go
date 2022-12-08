@@ -16,7 +16,6 @@
 //
 //  Produces:
 //    - application/json
-//    - test/plain
 //    - text/plain
 //
 // swagger:meta

@@ -51,7 +51,7 @@ func init() {
         ],
         "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "test/plain"
+          "text/plain"
         ],
         "tags": [
           "admin",
@@ -1957,7 +1957,7 @@ func init() {
         ],
         "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "test/plain"
+          "text/plain"
         ],
         "tags": [
           "admin",

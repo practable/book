@@ -167,6 +167,31 @@ windows:
       end: 2022-11-06T00:00:00Z
     denied: []`)
 
+var bookingsYAML = []byte(`---
+bk-0:
+  cancelled: false
+  name: bk-0
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-a
+  when:
+    start: '2022-11-05T00:10:00Z'
+    end: '2022-11-05T00:15:00Z'
+bk-1:
+  cancelled: false
+  name: bk-1
+  policy: p-b
+  slot: sl-b
+  started: false
+  unfulfilled: false
+  user: u-b
+  when:
+    start: '2022-11-05T00:20:00Z'
+    end: '2022-11-05T00:25:00Z'
+`)
+
 func init() {
 	debug = false
 	if debug {
@@ -218,6 +243,36 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
+func signedAdminToken() (string, error) {
+
+	audience := cfg.Host
+	subject := "someuser"
+	scopes := []string{"booking:admin"}
+	now := (*currentTime).Unix()
+	nbf := now - 1
+	iat := nbf
+	exp := nbf + 10
+	token := login.New(audience, subject, scopes, iat, nbf, exp)
+	return login.Sign(token, string(cfg.StoreSecret))
+}
+
+func loadTestManifest(t *testing.T) string {
+
+	stoken, err := signedAdminToken()
+	assert.NoError(t, err)
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(manifestYAML)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	resp.Body.Close()
+	return stoken //for use by other commands in test
+}
+
 func TestLogin(t *testing.T) {
 
 	client := &http.Client{}
@@ -250,15 +305,8 @@ func TestLogin(t *testing.T) {
 func TestCheckReplaceExportManifest(t *testing.T) {
 
 	// make admin token
-	audience := cfg.Host
-	subject := "someuser"
-	scopes := []string{"booking:admin"}
-	now := (*currentTime).Unix()
-	nbf := now - 1
-	iat := nbf
-	exp := nbf + 10
-	token := login.New(audience, subject, scopes, iat, nbf, exp)
-	stoken, err := login.Sign(token, string(cfg.StoreSecret))
+	stoken, err := signedAdminToken()
+	assert.NoError(t, err)
 
 	// modify the time function used to verify the jwt token
 	jwt.TimeFunc = func() time.Time { return *currentTime }
@@ -328,5 +376,37 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 	q.Add("lock", "true")
 	req.URL.RawQuery = q.Encode()
 	*/
+
+}
+
+func TestReplaceExportBookings(t *testing.T) {
+
+	stoken := loadTestManifest(t)
+
+	// replace bookings
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(bookingsYAML)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	// export bookings
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/bookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	var expectedBookings, exportedBookings map[string]store.Booking
+	err = yaml.Unmarshal(bookingsYAML, &expectedBookings)
+	err = yaml.Unmarshal(body, &exportedBookings)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedBookings, exportedBookings)
 
 }

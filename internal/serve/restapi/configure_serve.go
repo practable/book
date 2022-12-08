@@ -4,7 +4,6 @@ package restapi
 
 import (
 	"crypto/tls"
-	"io"
 	"net/http"
 
 	"github.com/go-openapi/errors"
@@ -42,9 +41,6 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	api.TxtConsumer = runtime.TextConsumer()
 
 	api.JSONProducer = runtime.JSONProducer()
-	api.TestPlainProducer = runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
-		return errors.NotImplemented("testPlain producer has not yet been implemented")
-	})
 	api.TxtProducer = runtime.TextProducer()
 
 	// Applies when the "Authorization" header is set
