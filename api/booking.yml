@@ -18,10 +18,8 @@ schemes:
   - http
 consumes:
 - application/json
-- application/yaml
 produces:
 - application/json
-- application/yaml
 
 paths:
 
@@ -35,7 +33,7 @@ paths:
       operationId: ExportBookings
       deprecated: false
       produces:
-      - application/yaml
+      - application/json
       security:
         - Bearer: []
       responses:
@@ -60,7 +58,7 @@ paths:
       operationId: ReplaceBookings
       deprecated: false
       consumes:
-      - application/yaml
+      - application/json
       produces:
       - application/json
       parameters:
@@ -93,7 +91,7 @@ paths:
       operationId: ExportManifest
       deprecated: false
       produces:
-      - application/yaml
+      - application/json
       security:
         - Bearer: []
       responses:
@@ -117,7 +115,7 @@ paths:
       operationId: ReplaceManifest
       deprecated: false
       consumes:
-      - application/yaml
+      - application/json
       produces:
       - application/json
       parameters:
@@ -150,7 +148,7 @@ paths:
       operationId: CheckManifest
       deprecated: false
       consumes:
-      - application/yaml
+      - application/json
       produces:
       - application/json
       parameters:
@@ -175,14 +173,14 @@ paths:
   /admin/oldbookings:
     get:
       summary: Export a copy of all old bookings
-      description: Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list. 
+      description: Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list. 
       tags:
       - admin
       - bookings
       operationId: ExportOldBookings
       deprecated: false
       produces:
-      - application/yaml
+      - application/json
       security:
         - Bearer: []
       responses:
@@ -207,7 +205,7 @@ paths:
       operationId: ReplaceOldBookings
       deprecated: false
       consumes:
-      - application/yaml
+      - application/json
       produces:
       - application/json
       parameters:

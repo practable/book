@@ -33,7 +33,7 @@ func NewExportOldBookings(ctx *middleware.Context, handler ExportOldBookingsHand
 
 Export a copy of all old bookings
 
-Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.
+Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
 
 */
 type ExportOldBookings struct {

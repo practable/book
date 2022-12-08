@@ -9,7 +9,6 @@ import (
 	"github.com/timdrysdale/interval/internal/serve/models"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
 	"github.com/timdrysdale/interval/internal/store"
-	"gopkg.in/yaml.v2"
 )
 
 // replaceManifestHandler
@@ -30,19 +29,21 @@ func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManife
 			return admin.NewReplaceManifestNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		sm, err := convertManifestToStore(*(params.Manifest))
-		if err != nil {
-			c := "500"
-			m := err.Error()
-			return admin.NewReplaceManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
+		/*
+			sm, err := convertManifestToStore(*(params.Manifest))
+			if err != nil {
+				c := "500"
+				m := err.Error()
+				return admin.NewReplaceManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
 
-		err = config.Store.ReplaceManifest(sm)
-		if err != nil {
-			c := "500"
-			m := err.Error()
-			return admin.NewReplaceManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
+			err = config.Store.ReplaceManifest(sm)
+			if err != nil {
+				c := "500"
+				m := err.Error()
+				return admin.NewReplaceManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+		*/
 
 		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())
 
@@ -77,12 +78,12 @@ func convertManifestToStore(m models.Manifest) (store.Manifest, error) {
 
 	var s store.Manifest
 
-	y, err := yaml.Marshal(m)
+	y, err := json.Marshal(m)
 	if err != nil {
 		return s, err
 	}
 
-	err = yaml.Unmarshal(y, &s)
+	err = json.Unmarshal(y, &s)
 
 	return s, err
 

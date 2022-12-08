@@ -12,11 +12,9 @@
 //
 //  Consumes:
 //    - application/json
-//    - application/yaml
 //
 //  Produces:
 //    - application/json
-//    - application/yaml
 //
 // swagger:meta
 package restapi

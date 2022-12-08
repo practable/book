@@ -9,7 +9,6 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/runtime/yamlpc"
 
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
@@ -39,10 +38,8 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	// api.UseRedoc()
 
 	api.JSONConsumer = runtime.JSONConsumer()
-	api.YamlConsumer = yamlpc.YAMLConsumer()
 
 	api.JSONProducer = runtime.JSONProducer()
-	api.YamlProducer = yamlpc.YAMLProducer()
 
 	// Applies when the "Authorization" header is set
 	if api.BearerAuth == nil {

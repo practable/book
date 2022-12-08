@@ -19,12 +19,10 @@ var (
 func init() {
 	SwaggerJSON = json.RawMessage([]byte(`{
   "consumes": [
-    "application/json",
-    "application/yaml"
+    "application/json"
   ],
   "produces": [
-    "application/json",
-    "application/yaml"
+    "application/json"
   ],
   "schemes": [
     "http"
@@ -52,7 +50,7 @@ func init() {
         ],
         "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.",
         "produces": [
-          "application/yaml"
+          "application/json"
         ],
         "tags": [
           "admin",
@@ -86,7 +84,7 @@ func init() {
         ],
         "description": "Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.",
         "consumes": [
-          "application/yaml"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -134,7 +132,7 @@ func init() {
         ],
         "description": "Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users",
         "produces": [
-          "application/yaml"
+          "application/json"
         ],
         "tags": [
           "admin",
@@ -168,7 +166,7 @@ func init() {
         ],
         "description": "Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)",
         "consumes": [
-          "application/yaml"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -216,7 +214,7 @@ func init() {
         ],
         "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
         "consumes": [
-          "application/yaml"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -262,9 +260,9 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.",
+        "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "application/yaml"
+          "application/json"
         ],
         "tags": [
           "admin",
@@ -298,7 +296,7 @@ func init() {
         ],
         "description": "Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.",
         "consumes": [
-          "application/yaml"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -1923,12 +1921,10 @@ func init() {
 }`))
 	FlatSwaggerJSON = json.RawMessage([]byte(`{
   "consumes": [
-    "application/json",
-    "application/yaml"
+    "application/json"
   ],
   "produces": [
-    "application/json",
-    "application/yaml"
+    "application/json"
   ],
   "schemes": [
     "http"
@@ -1956,7 +1952,7 @@ func init() {
         ],
         "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.",
         "produces": [
-          "application/yaml"
+          "application/json"
         ],
         "tags": [
           "admin",
@@ -1999,7 +1995,7 @@ func init() {
         ],
         "description": "Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.",
         "consumes": [
-          "application/yaml"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2056,7 +2052,7 @@ func init() {
         ],
         "description": "Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users",
         "produces": [
-          "application/yaml"
+          "application/json"
         ],
         "tags": [
           "admin",
@@ -2099,7 +2095,7 @@ func init() {
         ],
         "description": "Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)",
         "consumes": [
-          "application/yaml"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2156,7 +2152,7 @@ func init() {
         ],
         "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
         "consumes": [
-          "application/yaml"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2214,9 +2210,9 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.",
+        "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "application/yaml"
+          "application/json"
         ],
         "tags": [
           "admin",
@@ -2259,7 +2255,7 @@ func init() {
         ],
         "description": "Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.",
         "consumes": [
-          "application/yaml"
+          "application/json"
         ],
         "produces": [
           "application/json"

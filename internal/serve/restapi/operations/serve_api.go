@@ -15,7 +15,6 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/runtime/security"
-	"github.com/go-openapi/runtime/yamlpc"
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -45,10 +44,8 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		BearerAuthenticator: security.BearerAuth,
 
 		JSONConsumer: runtime.JSONConsumer(),
-		YamlConsumer: yamlpc.YAMLConsumer(),
 
 		JSONProducer: runtime.JSONProducer(),
-		YamlProducer: yamlpc.YAMLProducer(),
 
 		UsersAddPolicyForUserHandler: users.AddPolicyForUserHandlerFunc(func(params users.AddPolicyForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.AddPolicyForUser has not yet been implemented")
@@ -163,16 +160,10 @@ type ServeAPI struct {
 	// JSONConsumer registers a consumer for the following mime types:
 	//   - application/json
 	JSONConsumer runtime.Consumer
-	// YamlConsumer registers a consumer for the following mime types:
-	//   - application/yaml
-	YamlConsumer runtime.Consumer
 
 	// JSONProducer registers a producer for the following mime types:
 	//   - application/json
 	JSONProducer runtime.Producer
-	// YamlProducer registers a producer for the following mime types:
-	//   - application/yaml
-	YamlProducer runtime.Producer
 
 	// BearerAuth registers a function that takes a token and returns a principal
 	// it performs authentication based on an api key Authorization provided in the header
@@ -303,15 +294,9 @@ func (o *ServeAPI) Validate() error {
 	if o.JSONConsumer == nil {
 		unregistered = append(unregistered, "JSONConsumer")
 	}
-	if o.YamlConsumer == nil {
-		unregistered = append(unregistered, "YamlConsumer")
-	}
 
 	if o.JSONProducer == nil {
 		unregistered = append(unregistered, "JSONProducer")
-	}
-	if o.YamlProducer == nil {
-		unregistered = append(unregistered, "YamlProducer")
 	}
 
 	if o.BearerAuth == nil {
@@ -433,8 +418,6 @@ func (o *ServeAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer
 		switch mt {
 		case "application/json":
 			result["application/json"] = o.JSONConsumer
-		case "application/yaml":
-			result["application/yaml"] = o.YamlConsumer
 		}
 
 		if c, ok := o.customConsumers[mt]; ok {
@@ -452,8 +435,6 @@ func (o *ServeAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer
 		switch mt {
 		case "application/json":
 			result["application/json"] = o.JSONProducer
-		case "application/yaml":
-			result["application/yaml"] = o.YamlProducer
 		}
 
 		if p, ok := o.customProducers[mt]; ok {
