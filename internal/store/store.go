@@ -63,6 +63,16 @@ type Description struct {
 	Image   string `json:"image,omitempty" yaml:"image,omitempty"`
 }
 
+// DsiplayGuidance represents guidance to the booking app on what length slots
+// to offer, how many, and how far in the future. This is to allow course staff
+// to influence the offerings to students in a way that might better suit their
+// teaching views.
+type DisplayGuide struct {
+	Duration  time.Duration
+	MaxSlots  int
+	BookAhead time.Duration
+}
+
 // Manifest represents all the available equipment and how to access it
 // Slots are the primary entities, so reference checking starts with them
 type Manifest struct {
@@ -79,19 +89,21 @@ type Manifest struct {
 // Policy represents what a user can book, and any limits on bookings/usage
 // Unmarshaling of time.Duration works in yaml.v3, https://play.golang.org/p/-6y0zq96gVz"
 type Policy struct {
-	BookAhead          time.Duration   `json:"book_ahead"  yaml:"book_ahead"`
-	Description        string          `json:"description"  yaml:"description"`
-	EnforceBookAhead   bool            `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
-	EnforceMaxBookings bool            `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
-	EnforceMaxDuration bool            `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
-	EnforceMinDuration bool            `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
-	EnforceMaxUsage    bool            `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
-	MaxBookings        int64           `json:"max_bookings"  yaml:"max_bookings"`
-	MaxDuration        time.Duration   `json:"max_duration"  yaml:"max_duration"`
-	MinDuration        time.Duration   `json:"min_duration"  yaml:"min_duration"`
-	MaxUsage           time.Duration   `json:"max_usage"  yaml:"max_usage"`
-	Slots              []string        `json:"slots" yaml:"slots"`
-	SlotMap            map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
+	BookAhead          time.Duration           `json:"book_ahead"  yaml:"book_ahead"`
+	Description        string                  `json:"description"  yaml:"description"`
+	DisplayGuides      map[string]DisplayGuide `json:"dsiplay_guide"  yaml:"display_guide"`
+	EnforceBookAhead   bool                    `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
+	EnforceMaxBookings bool                    `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
+	EnforceMaxDuration bool                    `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
+	EnforceMinDuration bool                    `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
+	EnforceMaxUsage    bool                    `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
+	MaxBookings        int64                   `json:"max_bookings"  yaml:"max_bookings"`
+	MaxDuration        time.Duration           `json:"max_duration"  yaml:"max_duration"`
+	MinDuration        time.Duration           `json:"min_duration"  yaml:"min_duration"`
+	MaxUsage           time.Duration           `json:"max_usage"  yaml:"max_usage"`
+	Slots              []string                `json:"slots" yaml:"slots"`
+	SlotMap            map[string]bool         `json:"-" yaml:"-"` // internal usage, do not populate from file
+
 }
 
 type PolicyStatus struct {

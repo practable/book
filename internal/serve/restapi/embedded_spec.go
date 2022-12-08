@@ -1361,6 +1361,27 @@ func init() {
         "type": "pool"
       }
     },
+    "DisplayGuide": {
+      "type": "object",
+      "required": [
+        "book_ahead",
+        "duration",
+        "max_slots"
+      ],
+      "properties": {
+        "book_ahead": {
+          "type": "string",
+          "format": "duration"
+        },
+        "duration": {
+          "type": "string",
+          "format": "duration"
+        },
+        "max_slots": {
+          "type": "integer"
+        }
+      }
+    },
     "Error": {
       "type": "object",
       "required": [
@@ -1479,6 +1500,12 @@ func init() {
         },
         "description": {
           "type": "string"
+        },
+        "display_guides": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DisplayGuide"
+          }
         },
         "enforce_book_ahead": {
           "type": "boolean"
@@ -3466,6 +3493,27 @@ func init() {
         "type": "pool"
       }
     },
+    "DisplayGuide": {
+      "type": "object",
+      "required": [
+        "book_ahead",
+        "duration",
+        "max_slots"
+      ],
+      "properties": {
+        "book_ahead": {
+          "type": "string",
+          "format": "duration"
+        },
+        "duration": {
+          "type": "string",
+          "format": "duration"
+        },
+        "max_slots": {
+          "type": "integer"
+        }
+      }
+    },
     "Error": {
       "type": "object",
       "required": [
@@ -3584,6 +3632,12 @@ func init() {
         },
         "description": {
           "type": "string"
+        },
+        "display_guides": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DisplayGuide"
+          }
         },
         "enforce_book_ahead": {
           "type": "boolean"
