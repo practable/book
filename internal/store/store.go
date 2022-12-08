@@ -676,14 +676,17 @@ func (s *Store) ExportUsers() map[string]UserExternal {
 		ds := make(map[string]string)
 
 		for k := range v.Bookings {
-			bs = append(bs, k)
+			b := k
+			bs = append(bs, b)
 		}
 
 		for k := range v.OldBookings {
-			obs = append(obs, k)
+			ob := k
+			obs = append(obs, ob)
 		}
 		for k := range v.Policies {
-			ps = append(ps, k)
+			p := k
+			ps = append(ps, p)
 		}
 		for k, v := range v.Usage {
 			ds[k] = HumaniseDuration(*v)
@@ -1398,6 +1401,19 @@ func (s *Store) PruneUserBookings(user string) {
 
 }
 
+// Prune all user bookings during regular maintenance
+// don't use mutex because this is called from other functions
+// that already have the mutex
+func (s *Store) PruneUserBookingsAll() {
+
+	u := s.Users
+
+	for k := range u {
+		s.PruneUserBookings(k)
+	}
+
+}
+
 // ReplaceBookings will replace all bookings with a new set
 // each booking must be valid for the manifest, i.e. all
 // references to other entities must be valid.
@@ -1719,6 +1735,7 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration) {
 				log.Trace(where + " has lock")
 				s.PruneBookings()
 				s.PruneDiaries()
+				s.PruneUserBookingsAll()
 				s.Unlock()
 				log.Trace(where + " released lock")
 			}
