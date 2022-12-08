@@ -29,7 +29,7 @@ func NewCancelBooking(ctx *middleware.Context, handler CancelBookingHandler) *Ca
 	return &CancelBooking{Context: ctx, Handler: handler}
 }
 
-/* CancelBooking swagger:route DELETE /users/{user_name}/bookings/{booking_name} users bookings cancelBooking
+/* CancelBooking swagger:route DELETE /users/{user_name}/bookings/{booking_name} users cancelBooking
 
 Cancel the booking
 

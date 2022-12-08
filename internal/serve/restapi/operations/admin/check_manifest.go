@@ -29,7 +29,7 @@ func NewCheckManifest(ctx *middleware.Context, handler CheckManifestHandler) *Ch
 	return &CheckManifest{Context: ctx, Handler: handler}
 }
 
-/* CheckManifest swagger:route GET /admin/manifest/check admin manifest checkManifest
+/* CheckManifest swagger:route GET /admin/manifest/check admin checkManifest
 
 Check a manifest
 

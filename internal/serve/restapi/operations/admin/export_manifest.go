@@ -29,7 +29,7 @@ func NewExportManifest(ctx *middleware.Context, handler ExportManifestHandler) *
 	return &ExportManifest{Context: ctx, Handler: handler}
 }
 
-/* ExportManifest swagger:route GET /admin/manifest admin manifest exportManifest
+/* ExportManifest swagger:route GET /admin/manifest admin exportManifest
 
 Export the manifest
 

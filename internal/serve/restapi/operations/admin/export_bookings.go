@@ -29,7 +29,7 @@ func NewExportBookings(ctx *middleware.Context, handler ExportBookingsHandler) *
 	return &ExportBookings{Context: ctx, Handler: handler}
 }
 
-/* ExportBookings swagger:route GET /admin/bookings admin bookings exportBookings
+/* ExportBookings swagger:route GET /admin/bookings admin exportBookings
 
 Export a copy of all current bookings
 

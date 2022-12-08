@@ -29,7 +29,7 @@ func NewGetActivity(ctx *middleware.Context, handler GetActivityHandler) *GetAct
 	return &GetActivity{Context: ctx, Handler: handler}
 }
 
-/* GetActivity swagger:route PUT /users/{user_name}/bookings/{booking_name} users bookings getActivity
+/* GetActivity swagger:route PUT /users/{user_name}/bookings/{booking_name} users getActivity
 
 Request the activity that goes with the booking
 

@@ -29,7 +29,7 @@ func NewGetStoreStatusUser(ctx *middleware.Context, handler GetStoreStatusUserHa
 	return &GetStoreStatusUser{Context: ctx, Handler: handler}
 }
 
-/* GetStoreStatusUser swagger:route GET /users/status users status getStoreStatusUser
+/* GetStoreStatusUser swagger:route GET /users/status users getStoreStatusUser
 
 Get current store status
 

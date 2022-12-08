@@ -29,7 +29,7 @@ func NewGetStoreStatusAdmin(ctx *middleware.Context, handler GetStoreStatusAdmin
 	return &GetStoreStatusAdmin{Context: ctx, Handler: handler}
 }
 
-/* GetStoreStatusAdmin swagger:route GET /admin/status admin status getStoreStatusAdmin
+/* GetStoreStatusAdmin swagger:route GET /admin/status admin getStoreStatusAdmin
 
 Get current store status
 

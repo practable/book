@@ -54,8 +54,7 @@ func init() {
           "text/plain"
         ],
         "tags": [
-          "admin",
-          "bookings"
+          "admin"
         ],
         "summary": "Export a copy of all current bookings",
         "operationId": "ExportBookings",
@@ -91,8 +90,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "bookings"
+          "admin"
         ],
         "summary": "Replace current bookings",
         "operationId": "ReplaceBookings",
@@ -137,8 +135,7 @@ func init() {
           "text/plain"
         ],
         "tags": [
-          "admin",
-          "manifest"
+          "admin"
         ],
         "summary": "Export the manifest",
         "operationId": "ExportManifest",
@@ -174,8 +171,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "manifest"
+          "admin"
         ],
         "summary": "Replace the manifest",
         "operationId": "ReplaceManifest",
@@ -223,8 +219,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "manifest"
+          "admin"
         ],
         "summary": "Check a manifest",
         "operationId": "CheckManifest",
@@ -269,8 +264,7 @@ func init() {
           "text/plain"
         ],
         "tags": [
-          "admin",
-          "bookings"
+          "admin"
         ],
         "summary": "Export a copy of all old bookings",
         "operationId": "ExportOldBookings",
@@ -306,8 +300,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "bookings"
+          "admin"
         ],
         "summary": "Replace old bookings",
         "operationId": "ReplaceOldBookings",
@@ -352,8 +345,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "slots"
+          "admin"
         ],
         "summary": "Get the availability of the slot",
         "operationId": "GetSlotIsAvailable",
@@ -394,8 +386,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "slots"
+          "admin"
         ],
         "summary": "Set the availability of the slot",
         "operationId": "SetSlotIsAvailable",
@@ -447,8 +438,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "status"
+          "admin"
         ],
         "summary": "Get current store status",
         "operationId": "getStoreStatusAdmin",
@@ -481,8 +471,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "status"
+          "admin"
         ],
         "summary": "set/release booking lock",
         "operationId": "setLock",
@@ -532,8 +521,7 @@ func init() {
           "text/plain"
         ],
         "tags": [
-          "admin",
-          "users"
+          "admin"
         ],
         "summary": "Export users",
         "operationId": "ExportUsers",
@@ -606,8 +594,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "login"
+          "users"
         ],
         "summary": "Request a user access token",
         "operationId": "GetAccessToken",
@@ -693,9 +680,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "slots",
-          "bookings"
+          "policies"
         ],
         "summary": "Get availability for the slot under the policy",
         "operationId": "GetAvailability",
@@ -745,9 +730,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "slots",
-          "bookings"
+          "policies"
         ],
         "summary": "Request a booking",
         "operationId": "MakeBooking",
@@ -817,8 +800,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "status"
+          "users"
         ],
         "summary": "Get current store status",
         "operationId": "getStoreStatusUser",
@@ -853,8 +835,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "bookings"
+          "users"
         ],
         "summary": "Get all current bookings for the user",
         "operationId": "GetBookingsForUser",
@@ -897,8 +878,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "bookings"
+          "users"
         ],
         "summary": "Request the activity that goes with the booking",
         "operationId": "GetActivity",
@@ -945,8 +925,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "bookings"
+          "users"
         ],
         "summary": "Cancel the booking",
         "operationId": "CancelBooking",
@@ -989,8 +968,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "bookings"
+          "users"
         ],
         "summary": "Get all old bookings for the user",
         "operationId": "GetOldBookingsForUser",
@@ -1033,8 +1011,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "policies"
+          "users"
         ],
         "summary": "Get all current policies for user",
         "operationId": "GetPoliciesForUser",
@@ -1077,8 +1054,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "policies"
+          "users"
         ],
         "summary": "Get policy status",
         "operationId": "GetPolicyStatusForUser",
@@ -1125,8 +1101,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "policies"
+          "users"
         ],
         "summary": "Add policy to user account",
         "operationId": "AddPolicyForUser",
@@ -1961,8 +1936,7 @@ func init() {
           "text/plain"
         ],
         "tags": [
-          "admin",
-          "bookings"
+          "admin"
         ],
         "summary": "Export a copy of all current bookings",
         "operationId": "ExportBookings",
@@ -2007,8 +1981,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "bookings"
+          "admin"
         ],
         "summary": "Replace current bookings",
         "operationId": "ReplaceBookings",
@@ -2062,8 +2035,7 @@ func init() {
           "text/plain"
         ],
         "tags": [
-          "admin",
-          "manifest"
+          "admin"
         ],
         "summary": "Export the manifest",
         "operationId": "ExportManifest",
@@ -2108,8 +2080,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "manifest"
+          "admin"
         ],
         "summary": "Replace the manifest",
         "operationId": "ReplaceManifest",
@@ -2166,8 +2137,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "manifest"
+          "admin"
         ],
         "summary": "Check a manifest",
         "operationId": "CheckManifest",
@@ -2224,8 +2194,7 @@ func init() {
           "text/plain"
         ],
         "tags": [
-          "admin",
-          "bookings"
+          "admin"
         ],
         "summary": "Export a copy of all old bookings",
         "operationId": "ExportOldBookings",
@@ -2270,8 +2239,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "bookings"
+          "admin"
         ],
         "summary": "Replace old bookings",
         "operationId": "ReplaceOldBookings",
@@ -2325,8 +2293,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "slots"
+          "admin"
         ],
         "summary": "Get the availability of the slot",
         "operationId": "GetSlotIsAvailable",
@@ -2376,8 +2343,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "slots"
+          "admin"
         ],
         "summary": "Set the availability of the slot",
         "operationId": "SetSlotIsAvailable",
@@ -2438,8 +2404,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "status"
+          "admin"
         ],
         "summary": "Get current store status",
         "operationId": "getStoreStatusAdmin",
@@ -2481,8 +2446,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "admin",
-          "status"
+          "admin"
         ],
         "summary": "set/release booking lock",
         "operationId": "setLock",
@@ -2541,8 +2505,7 @@ func init() {
           "text/plain"
         ],
         "tags": [
-          "admin",
-          "users"
+          "admin"
         ],
         "summary": "Export users",
         "operationId": "ExportUsers",
@@ -2633,8 +2596,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "login"
+          "users"
         ],
         "summary": "Request a user access token",
         "operationId": "GetAccessToken",
@@ -2738,9 +2700,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "slots",
-          "bookings"
+          "policies"
         ],
         "summary": "Get availability for the slot under the policy",
         "operationId": "GetAvailability",
@@ -2799,9 +2759,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "slots",
-          "bookings"
+          "policies"
         ],
         "summary": "Request a booking",
         "operationId": "MakeBooking",
@@ -2880,8 +2838,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "status"
+          "users"
         ],
         "summary": "Get current store status",
         "operationId": "getStoreStatusUser",
@@ -2925,8 +2882,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "bookings"
+          "users"
         ],
         "summary": "Get all current bookings for the user",
         "operationId": "GetBookingsForUser",
@@ -2978,8 +2934,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "bookings"
+          "users"
         ],
         "summary": "Request the activity that goes with the booking",
         "operationId": "GetActivity",
@@ -3035,8 +2990,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "bookings"
+          "users"
         ],
         "summary": "Cancel the booking",
         "operationId": "CancelBooking",
@@ -3088,8 +3042,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "bookings"
+          "users"
         ],
         "summary": "Get all old bookings for the user",
         "operationId": "GetOldBookingsForUser",
@@ -3141,8 +3094,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "policies"
+          "users"
         ],
         "summary": "Get all current policies for user",
         "operationId": "GetPoliciesForUser",
@@ -3194,8 +3146,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "policies"
+          "users"
         ],
         "summary": "Get policy status",
         "operationId": "GetPolicyStatusForUser",
@@ -3251,8 +3202,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "users",
-          "policies"
+          "users"
         ],
         "summary": "Add policy to user account",
         "operationId": "AddPolicyForUser",

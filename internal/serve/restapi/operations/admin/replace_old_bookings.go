@@ -29,7 +29,7 @@ func NewReplaceOldBookings(ctx *middleware.Context, handler ReplaceOldBookingsHa
 	return &ReplaceOldBookings{Context: ctx, Handler: handler}
 }
 
-/* ReplaceOldBookings swagger:route PUT /admin/oldbookings admin bookings replaceOldBookings
+/* ReplaceOldBookings swagger:route PUT /admin/oldbookings admin replaceOldBookings
 
 Replace old bookings
 

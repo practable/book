@@ -29,7 +29,7 @@ func NewGetBookingsForUser(ctx *middleware.Context, handler GetBookingsForUserHa
 	return &GetBookingsForUser{Context: ctx, Handler: handler}
 }
 
-/* GetBookingsForUser swagger:route GET /users/{user_name}/bookings users bookings getBookingsForUser
+/* GetBookingsForUser swagger:route GET /users/{user_name}/bookings users getBookingsForUser
 
 Get all current bookings for the user
 

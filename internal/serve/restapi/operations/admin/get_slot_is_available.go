@@ -29,7 +29,7 @@ func NewGetSlotIsAvailable(ctx *middleware.Context, handler GetSlotIsAvailableHa
 	return &GetSlotIsAvailable{Context: ctx, Handler: handler}
 }
 
-/* GetSlotIsAvailable swagger:route GET /admin/slots/{slot_name} admin slots getSlotIsAvailable
+/* GetSlotIsAvailable swagger:route GET /admin/slots/{slot_name} admin getSlotIsAvailable
 
 Get the availability of the slot
 

@@ -29,7 +29,7 @@ func NewReplaceManifest(ctx *middleware.Context, handler ReplaceManifestHandler)
 	return &ReplaceManifest{Context: ctx, Handler: handler}
 }
 
-/* ReplaceManifest swagger:route PUT /admin/manifest admin manifest replaceManifest
+/* ReplaceManifest swagger:route PUT /admin/manifest admin replaceManifest
 
 Replace the manifest
 

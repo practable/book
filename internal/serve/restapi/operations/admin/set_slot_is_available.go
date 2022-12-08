@@ -29,7 +29,7 @@ func NewSetSlotIsAvailable(ctx *middleware.Context, handler SetSlotIsAvailableHa
 	return &SetSlotIsAvailable{Context: ctx, Handler: handler}
 }
 
-/* SetSlotIsAvailable swagger:route PUT /admin/slots/{slot_name} admin slots setSlotIsAvailable
+/* SetSlotIsAvailable swagger:route PUT /admin/slots/{slot_name} admin setSlotIsAvailable
 
 Set the availability of the slot
 

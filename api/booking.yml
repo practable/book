@@ -30,7 +30,6 @@ paths:
       summary: Export a copy of all current bookings
       tags:
       - admin
-      - bookings
       operationId: ExportBookings
       deprecated: false
       produces:
@@ -55,7 +54,6 @@ paths:
       description: Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.
       tags:
       - admin
-      - bookings
       operationId: ReplaceBookings
       deprecated: false
       consumes:
@@ -89,7 +87,6 @@ paths:
       description: Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users
       tags:
       - admin
-      - manifest
       operationId: ExportManifest
       deprecated: false
       produces:
@@ -113,7 +110,6 @@ paths:
       description: Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed) 
       tags:
       - admin
-      - manifest
       operationId: ReplaceManifest
       deprecated: false
       consumes:
@@ -147,7 +143,6 @@ paths:
       description: Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).
       tags:
       - admin
-      - manifest
       operationId: CheckManifest
       deprecated: false
       consumes:
@@ -180,7 +175,6 @@ paths:
       description: Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list. 
       tags:
       - admin
-      - bookings
       operationId: ExportOldBookings
       deprecated: false
       produces:
@@ -205,7 +199,6 @@ paths:
       description: Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.
       tags:
       - admin
-      - bookings
       operationId: ReplaceOldBookings
       deprecated: false
       consumes:
@@ -239,7 +232,6 @@ paths:
       summary: Get the availability of the slot
       tags:
       - admin
-      - slots
       operationId: GetSlotIsAvailable
       deprecated: false
       produces:
@@ -269,7 +261,6 @@ paths:
       summary: Set the availability of the slot 
       tags:
       - admin
-      - slots
       operationId: SetSlotIsAvailable
       deprecated: false
       parameters:
@@ -305,7 +296,6 @@ paths:
       summary: Get current store status
       tags:
       - admin
-      - status
       operationId: getStoreStatusAdmin
       deprecated: false
       produces:
@@ -330,7 +320,6 @@ paths:
       summary: set/release booking lock
       tags:
       - admin
-      - status
       operationId: setLock
       deprecated: false
       parameters:
@@ -367,7 +356,6 @@ paths:
       description: Export bookings and usage data for each user
       tags:
       - admin
-      - users
       operationId: ExportUsers
       deprecated: false
       produces:
@@ -424,7 +412,6 @@ paths:
       description: The access token is required to authenticate requests to the rest of the user-facing API. Ideally access to this endpoint should be secured by the identity management system. The access token has a limited lifetime but can be re-requested as needed. Consider rate-limiting this per-connection.
       tags:
       - users
-      - login
       operationId: GetAccessToken
       deprecated: false
       produces:
@@ -484,9 +471,7 @@ paths:
       summary: Get availability for the slot under the policy
       description: TODO pagination
       tags:
-      - users
-      - slots
-      - bookings
+      - policies
       operationId: GetAvailability
       deprecated: false
       produces:
@@ -521,9 +506,7 @@ paths:
       summary: Request a booking
       description: TODO pagination
       tags:
-      - users
-      - slots
-      - bookings
+      - policies
       operationId: MakeBooking
       deprecated: false
       consumes:
@@ -577,7 +560,6 @@ paths:
       summary: Get current store status
       tags:
       - users
-      - status
       operationId: getStoreStatusUser
       deprecated: false
       produces:
@@ -603,7 +585,6 @@ paths:
       description: Get all current bookings for the user. It's assumed that no pagination will be required due to likely policy limits being a couple of bookings per policy and users typically having only a couple of policies. No pagination may cause issues for admins that book hundreds or thousands slots on behalf of students, although it is likely such bookings would be automated so no need to support rapid update of a GUI, at least for now.
       tags:
       - users
-      - bookings
       operationId: GetBookingsForUser
       deprecated: false
       produces:
@@ -635,7 +616,6 @@ paths:
       description: For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -> ExportBookings() -> edit -> ReplaceBookings()-> Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking.
       tags:
       - users
-      - bookings
       operationId: CancelBooking
       deprecated: false
       produces:
@@ -666,7 +646,6 @@ paths:
       description: Checks if the booking has started or not and if so, returns an activity that can be used to access the booked resource. Since this mutates the state of the booking (from unfulfilled to fulfilled) it is a put not a get.
       tags:
       - users
-      - bookings
       operationId: GetActivity
       deprecated: false
       produces:
@@ -703,7 +682,6 @@ paths:
       description: Get all old bookings for the user. It's assumed that no pagination will be required due to likely policy limits including usage limits and users typically having only a couple of policies, although in practice pagination may be useful for heavy users. 
       tags:
       - users
-      - bookings
       operationId: GetOldBookingsForUser
       deprecated: false
       produces:
@@ -735,7 +713,6 @@ paths:
       description: Get all current policies for user
       tags:
       - users
-      - policies
       operationId: GetPoliciesForUser
       deprecated: false
       produces:
@@ -767,7 +744,6 @@ paths:
       description: Get policy status for the user
       tags:
       - users
-      - policies
       operationId: GetPolicyStatusForUser
       deprecated: false
       produces:
@@ -803,7 +779,6 @@ paths:
       description: Add policy to the list of policies with which this user is allowed to make bookings
       tags:
       - users
-      - policies
       operationId: AddPolicyForUser
       deprecated: false
       produces:

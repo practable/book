@@ -76,8 +76,8 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersGetActivityHandler: users.GetActivityHandlerFunc(func(params users.GetActivityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetActivity has not yet been implemented")
 		}),
-		UsersGetAvailabilityHandler: users.GetAvailabilityHandlerFunc(func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation users.GetAvailability has not yet been implemented")
+		PoliciesGetAvailabilityHandler: policies.GetAvailabilityHandlerFunc(func(params policies.GetAvailabilityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation policies.GetAvailability has not yet been implemented")
 		}),
 		UsersGetBookingsForUserHandler: users.GetBookingsForUserHandlerFunc(func(params users.GetBookingsForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetBookingsForUser has not yet been implemented")
@@ -100,8 +100,8 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminGetSlotIsAvailableHandler: admin.GetSlotIsAvailableHandlerFunc(func(params admin.GetSlotIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetSlotIsAvailable has not yet been implemented")
 		}),
-		UsersMakeBookingHandler: users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
+		PoliciesMakeBookingHandler: policies.MakeBookingHandlerFunc(func(params policies.MakeBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation policies.MakeBooking has not yet been implemented")
 		}),
 		AdminReplaceBookingsHandler: admin.ReplaceBookingsHandlerFunc(func(params admin.ReplaceBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceBookings has not yet been implemented")
@@ -198,8 +198,8 @@ type ServeAPI struct {
 	UsersGetAccessTokenHandler users.GetAccessTokenHandler
 	// UsersGetActivityHandler sets the operation handler for the get activity operation
 	UsersGetActivityHandler users.GetActivityHandler
-	// UsersGetAvailabilityHandler sets the operation handler for the get availability operation
-	UsersGetAvailabilityHandler users.GetAvailabilityHandler
+	// PoliciesGetAvailabilityHandler sets the operation handler for the get availability operation
+	PoliciesGetAvailabilityHandler policies.GetAvailabilityHandler
 	// UsersGetBookingsForUserHandler sets the operation handler for the get bookings for user operation
 	UsersGetBookingsForUserHandler users.GetBookingsForUserHandler
 	// DescriptionsGetDescriptionHandler sets the operation handler for the get description operation
@@ -214,8 +214,8 @@ type ServeAPI struct {
 	UsersGetPolicyStatusForUserHandler users.GetPolicyStatusForUserHandler
 	// AdminGetSlotIsAvailableHandler sets the operation handler for the get slot is available operation
 	AdminGetSlotIsAvailableHandler admin.GetSlotIsAvailableHandler
-	// UsersMakeBookingHandler sets the operation handler for the make booking operation
-	UsersMakeBookingHandler users.MakeBookingHandler
+	// PoliciesMakeBookingHandler sets the operation handler for the make booking operation
+	PoliciesMakeBookingHandler policies.MakeBookingHandler
 	// AdminReplaceBookingsHandler sets the operation handler for the replace bookings operation
 	AdminReplaceBookingsHandler admin.ReplaceBookingsHandler
 	// AdminReplaceManifestHandler sets the operation handler for the replace manifest operation
@@ -344,8 +344,8 @@ func (o *ServeAPI) Validate() error {
 	if o.UsersGetActivityHandler == nil {
 		unregistered = append(unregistered, "users.GetActivityHandler")
 	}
-	if o.UsersGetAvailabilityHandler == nil {
-		unregistered = append(unregistered, "users.GetAvailabilityHandler")
+	if o.PoliciesGetAvailabilityHandler == nil {
+		unregistered = append(unregistered, "policies.GetAvailabilityHandler")
 	}
 	if o.UsersGetBookingsForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetBookingsForUserHandler")
@@ -368,8 +368,8 @@ func (o *ServeAPI) Validate() error {
 	if o.AdminGetSlotIsAvailableHandler == nil {
 		unregistered = append(unregistered, "admin.GetSlotIsAvailableHandler")
 	}
-	if o.UsersMakeBookingHandler == nil {
-		unregistered = append(unregistered, "users.MakeBookingHandler")
+	if o.PoliciesMakeBookingHandler == nil {
+		unregistered = append(unregistered, "policies.MakeBookingHandler")
 	}
 	if o.AdminReplaceBookingsHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceBookingsHandler")
@@ -532,7 +532,7 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/policies/{policy_name}/slots/{slot_name}"] = users.NewGetAvailability(o.context, o.UsersGetAvailabilityHandler)
+	o.handlers["GET"]["/policies/{policy_name}/slots/{slot_name}"] = policies.NewGetAvailability(o.context, o.PoliciesGetAvailabilityHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -564,7 +564,7 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
-	o.handlers["POST"]["/policies/{policy_name}/slots/{slot_name}"] = users.NewMakeBooking(o.context, o.UsersMakeBookingHandler)
+	o.handlers["POST"]["/policies/{policy_name}/slots/{slot_name}"] = policies.NewMakeBooking(o.context, o.PoliciesMakeBookingHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

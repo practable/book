@@ -29,7 +29,7 @@ func NewAddPolicyForUser(ctx *middleware.Context, handler AddPolicyForUserHandle
 	return &AddPolicyForUser{Context: ctx, Handler: handler}
 }
 
-/* AddPolicyForUser swagger:route POST /users/{user_name}/policies/{policy_name} users policies addPolicyForUser
+/* AddPolicyForUser swagger:route POST /users/{user_name}/policies/{policy_name} users addPolicyForUser
 
 Add policy to user account
 
