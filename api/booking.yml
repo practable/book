@@ -121,8 +121,9 @@ paths:
       parameters:
       - name: manifest
         in: body
+        required: true
         schema:
-          $ref: '#/definitions/Manifest'
+          type: string
       security:
         - Bearer: []  
       responses:

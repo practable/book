@@ -9,6 +9,7 @@ import (
 	"github.com/timdrysdale/interval/internal/serve/models"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
 	"github.com/timdrysdale/interval/internal/store"
+	"gopkg.in/yaml.v2"
 )
 
 // replaceManifestHandler
@@ -23,13 +24,13 @@ func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManife
 			return admin.NewReplaceManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if params.Manifest == nil {
+		if params.Manifest == "" {
 			c := "404"
 			m := "no manifest in body"
 			return admin.NewReplaceManifestNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		sm, err := convertManifestToStore(*(params.Manifest))
+		sm, err := convertManifestToStore(params.Manifest)
 		if err != nil {
 			c := "500"
 			m := err.Error()
@@ -69,19 +70,14 @@ func convertStoreStatusAdminToModel(s store.StoreStatusAdmin) (models.StoreStatu
 }
 
 // convertManifestToStore
-func convertManifestToStore(m models.Manifest) (store.Manifest, error) {
+func convertManifestToStore(m string) (store.Manifest, error) {
 
 	// We don't do manifest replacement often, so using yaml as an intermediate format
 	// is not going to be inefficient overall yet reduces maintenance
 
 	var s store.Manifest
 
-	y, err := json.Marshal(m)
-	if err != nil {
-		return s, err
-	}
-
-	err = json.Unmarshal(y, &s)
+	err := yaml.Unmarshal([]byte(m), &s)
 
 	return s, err
 

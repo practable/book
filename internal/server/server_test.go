@@ -611,7 +611,7 @@ func TestReplaceManifest(t *testing.T) {
 
 	//replace manifest
 	client := &http.Client{}
-	bodyReader := bytes.NewReader(manifestJSONShort)
+	bodyReader := bytes.NewReader(manifestYAML)
 	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)

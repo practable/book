@@ -181,8 +181,9 @@ func init() {
           {
             "name": "manifest",
             "in": "body",
+            "required": true,
             "schema": {
-              "$ref": "#/definitions/Manifest"
+              "type": "string"
             }
           }
         ],
@@ -2110,8 +2111,9 @@ func init() {
           {
             "name": "manifest",
             "in": "body",
+            "required": true,
             "schema": {
-              "$ref": "#/definitions/Manifest"
+              "type": "string"
             }
           }
         ],
