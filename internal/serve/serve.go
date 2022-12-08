@@ -50,6 +50,7 @@ func API(ctx context.Context, config config.ServerConfig) {
 	api.AdminCheckManifestHandler = admin.CheckManifestHandlerFunc(checkManifestHandler(config))
 	api.AdminExportBookingsHandler = admin.ExportBookingsHandlerFunc(exportBookingsHandler(config))
 	api.AdminExportManifestHandler = admin.ExportManifestHandlerFunc(exportManifestHandler(config))
+	api.AdminExportUsersHandler = admin.ExportUsersHandlerFunc(exportUsersHandler(config))
 	api.AdminReplaceBookingsHandler = admin.ReplaceBookingsHandlerFunc(replaceBookingsHandler(config))
 	api.AdminReplaceManifestHandler = admin.ReplaceManifestHandlerFunc(replaceManifestHandler(config))
 

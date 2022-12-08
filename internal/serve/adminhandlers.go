@@ -138,6 +138,32 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 	}
 }
 
+// exportUsersHandler
+func exportUsersHandler(config config.ServerConfig) func(admin.ExportUsersParams, interface{}) middleware.Responder {
+	return func(params admin.ExportUsersParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewExportUsersUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		m := config.Store.ExportUsers()
+
+		b, err := json.Marshal(m)
+
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewExportUsersInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return admin.NewExportUsersOK().WithPayload(string(b))
+	}
+}
+
 // replaceBookingsHandler
 func replaceBookingsHandler(config config.ServerConfig) func(admin.ReplaceBookingsParams, interface{}) middleware.Responder {
 	return func(params admin.ReplaceBookingsParams, principal interface{}) middleware.Responder {

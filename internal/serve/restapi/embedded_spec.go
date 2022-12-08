@@ -528,7 +528,7 @@ func init() {
         ],
         "description": "Export bookings and usage data for each user",
         "produces": [
-          "application/json"
+          "text/plain"
         ],
         "tags": [
           "admin",
@@ -540,7 +540,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Users"
+              "type": "string"
             }
           },
           "401": {
@@ -2536,7 +2536,7 @@ func init() {
         ],
         "description": "Export bookings and usage data for each user",
         "produces": [
-          "application/json"
+          "text/plain"
         ],
         "tags": [
           "admin",
@@ -2548,7 +2548,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Users"
+              "type": "string"
             }
           },
           "401": {

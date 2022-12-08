@@ -189,7 +189,25 @@ bk-1:
   user: u-b
   when:
     start: '2022-11-05T00:20:00Z'
-    end: '2022-11-05T00:25:00Z'
+    end: '2022-11-05T00:30:00Z'
+`)
+var usersYAML = []byte(`---
+u-a:
+  bookings:
+  - bk-0
+  old_bookings: []
+  policies:
+  - p-a
+  usage:
+    p-a: 5m0s
+u-b:
+  bookings:
+  - bk-1
+  old_bookings: []
+  policies:
+  - p-b
+  usage:
+    p-b: 10m0s
 `)
 
 func init() {
@@ -379,7 +397,7 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 
 }
 
-func TestReplaceExportBookings(t *testing.T) {
+func TestReplaceExportBookingsExportUsers(t *testing.T) {
 
 	stoken := loadTestManifest(t)
 
@@ -408,5 +426,21 @@ func TestReplaceExportBookings(t *testing.T) {
 	err = yaml.Unmarshal(body, &exportedBookings)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBookings, exportedBookings)
+	resp.Body.Close()
 
+	// export users (now there are bookings we will have users)
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/users", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	var expectedUsers, exportedUsers map[string]store.UserExternal
+	err = yaml.Unmarshal(usersYAML, &expectedUsers)
+	err = yaml.Unmarshal(body, &exportedUsers)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedUsers, exportedUsers)
+	resp.Body.Close()
 }
