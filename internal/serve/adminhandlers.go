@@ -2,6 +2,7 @@ package serve
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/go-openapi/runtime/middleware"
 	log "github.com/sirupsen/logrus"
@@ -11,6 +12,43 @@ import (
 	"github.com/timdrysdale/interval/internal/store"
 	"gopkg.in/yaml.v2"
 )
+
+// checkManifestHandler
+func checkManifestHandler(config config.ServerConfig) func(admin.CheckManifestParams, interface{}) middleware.Responder {
+	return func(params admin.CheckManifestParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewCheckManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.Manifest == "" {
+			c := "404"
+			m := "no manifest in body"
+			return admin.NewCheckManifestNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		sm, err := convertManifestToStore(params.Manifest)
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewCheckManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		err, msgs := store.CheckManifest(sm)
+
+		if err != nil {
+			c := "500"
+			m := strings.Join(msgs, ",")
+			return admin.NewCheckManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return admin.NewCheckManifestNoContent()
+	}
+}
 
 // replaceManifestHandler
 func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManifestParams, interface{}) middleware.Responder {

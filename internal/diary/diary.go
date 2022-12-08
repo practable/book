@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	avl "github.com/timdrysdale/interval/internal/trees/avltree"
 
 	"github.com/timdrysdale/interval/internal/interval"
@@ -173,8 +174,19 @@ func (d *Diary) ValidateBooking(b Booking) (bool, error) {
 
 // ClearBefore removes all old bookings
 func (d *Diary) ClearBefore(t time.Time) {
+	if d == nil {
+		log.Error("nil diary pointer")
+		return
+	}
+
 	d.Lock()
 	defer d.Unlock()
+
+	if d.bookings == nil {
+		log.Error("no avltree for " + d.Name)
+		return
+	}
+
 	slots := d.bookings.Keys() //these are given in order
 
 	for _, when := range slots {

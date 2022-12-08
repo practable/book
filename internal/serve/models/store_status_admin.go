@@ -64,9 +64,9 @@ type StoreStatusAdmin struct {
 	// Required: true
 	Streams *int64 `json:"streams"`
 
-	// ui ets
+	// ui sets
 	// Required: true
-	UIEts *int64 `json:"ui_ets"`
+	UISets *int64 `json:"ui_sets"`
 
 	// uis
 	// Required: true
@@ -129,7 +129,7 @@ func (m *StoreStatusAdmin) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateUIEts(formats); err != nil {
+	if err := m.validateUISets(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -254,9 +254,9 @@ func (m *StoreStatusAdmin) validateStreams(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *StoreStatusAdmin) validateUIEts(formats strfmt.Registry) error {
+func (m *StoreStatusAdmin) validateUISets(formats strfmt.Registry) error {
 
-	if err := validate.Required("ui_ets", "body", m.UIEts); err != nil {
+	if err := validate.Required("ui_sets", "body", m.UISets); err != nil {
 		return err
 	}
 

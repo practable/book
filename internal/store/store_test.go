@@ -1941,3 +1941,20 @@ func TestDeletePolicyAddPolicy(t *testing.T) {
 	assert.Equal(t, time.Duration(0), ps.Usage)
 
 }
+
+func TestPruneDiaries(t *testing.T) {
+	s := New()
+	s.PruneDiaries()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+	s.PruneDiaries()
+
+}

@@ -216,7 +216,7 @@ func init() {
         ],
         "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
         "consumes": [
-          "application/json"
+          "text/plain"
         ],
         "produces": [
           "application/json"
@@ -231,8 +231,9 @@ func init() {
           {
             "name": "manifest",
             "in": "body",
+            "required": true,
             "schema": {
-              "$ref": "#/definitions/Manifest"
+              "type": "string"
             }
           }
         ],
@@ -1648,7 +1649,7 @@ func init() {
         "slots",
         "streams",
         "uis",
-        "ui_ets",
+        "ui_sets",
         "users",
         "windows"
       ],
@@ -1687,7 +1688,7 @@ func init() {
         "streams": {
           "type": "integer"
         },
-        "ui_ets": {
+        "ui_sets": {
           "type": "integer"
         },
         "uis": {
@@ -2156,7 +2157,7 @@ func init() {
         ],
         "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
         "consumes": [
-          "application/json"
+          "text/plain"
         ],
         "produces": [
           "application/json"
@@ -2171,8 +2172,9 @@ func init() {
           {
             "name": "manifest",
             "in": "body",
+            "required": true,
             "schema": {
-              "$ref": "#/definitions/Manifest"
+              "type": "string"
             }
           }
         ],
@@ -3780,7 +3782,7 @@ func init() {
         "slots",
         "streams",
         "uis",
-        "ui_ets",
+        "ui_sets",
         "users",
         "windows"
       ],
@@ -3819,7 +3821,7 @@ func init() {
         "streams": {
           "type": "integer"
         },
-        "ui_ets": {
+        "ui_sets": {
           "type": "integer"
         },
         "uis": {

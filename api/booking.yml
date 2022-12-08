@@ -150,14 +150,15 @@ paths:
       operationId: CheckManifest
       deprecated: false
       consumes:
-      - application/json
+      - text/plain
       produces:
       - application/json
       parameters:
       - name: manifest
         in: body
+        required: true
         schema:
-          $ref: '#/definitions/Manifest'
+          type: string
       security:
         - Bearer: []
       responses:
@@ -1220,7 +1221,7 @@ definitions:
         type: integer
       uis:
         type: integer
-      ui_ets:
+      ui_sets:
         type: integer
       users:
         type: integer
@@ -1239,7 +1240,7 @@ definitions:
       - slots
       - streams
       - uis
-      - ui_ets
+      - ui_sets
       - users
       - windows
       

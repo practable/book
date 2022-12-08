@@ -1907,7 +1907,7 @@ func CheckStreams(items map[string]Stream) (error, []string) {
 			msg = append(msg, "missing audience field in stream "+k)
 		}
 		if item.ConnectionType == "" {
-			msg = append(msg, "missing ct field in stream "+k)
+			msg = append(msg, "missing connection_type field in stream "+k)
 		}
 		if item.For == "" {
 			msg = append(msg, "missing for field in stream "+k)

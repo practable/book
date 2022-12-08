@@ -48,6 +48,7 @@ func API(ctx context.Context, config config.ServerConfig) {
 
 	// *** ADMIN *** //
 	api.AdminReplaceManifestHandler = admin.ReplaceManifestHandlerFunc(replaceManifestHandler(config))
+	api.AdminCheckManifestHandler = admin.CheckManifestHandlerFunc(checkManifestHandler(config))
 
 	// *** USERS *** //
 	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))

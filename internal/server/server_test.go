@@ -20,334 +20,12 @@ import (
 	"github.com/timdrysdale/interval/internal/login"
 	"github.com/timdrysdale/interval/internal/serve/models"
 	"github.com/timdrysdale/interval/internal/store"
-	"gopkg.in/yaml.v2"
 )
 
 var debug bool
 var cfg config.ServerConfig
 var currentTime *time.Time
-var manifestJSONSimple = []byte(`{"descriptions":{},"policies":{},"resources":{},"slots":{},"streams":{},"uis":{},"ui_sets":{},"windows":{}}`)
-var manifestJSON = []byte(`{
-  "descriptions": {
-    "d-p-a": {
-      "name": "policy-a",
-      "type": "policy",
-      "short": "a"
-    },
-    "d-p-b": {
-      "name": "policy-b",
-      "type": "policy",
-      "short": "b"
-    },
-    "d-r-a": {
-      "name": "resource-a",
-      "type": "resource",
-      "short": "a"
-    },
-    "d-r-b": {
-      "name": "resource-b",
-      "type": "resource",
-      "short": "b"
-    },
-    "d-sl-a": {
-      "name": "slot-a",
-      "type": "slot",
-      "short": "a"
-    },
-    "d-sl-b": {
-      "name": "slot-b",
-      "type": "slot",
-      "short": "b"
-    },
-    "d-ui-a": {
-      "name": "ui-a",
-      "type": "ui",
-      "short": "a"
-    },
-    "d-ui-b": {
-      "name": "ui-b",
-      "type": "ui",
-      "short": "b"
-    }
-  },
-  "policies": {
-    "p-a": {
-      "book_ahead": "0s",
-      "description": "d-p-a",
-      "enforce_book_ahead": false,
-      "enforce_max_bookings": false,
-      "enforce_max_duration": false,
-      "enforce_min_duration": false,
-      "enforce_max_usage": false,
-      "max_bookings": 0,
-      "max_duration": "0s",
-      "min_duration": "0s",
-      "max_usage": "0s",
-      "slots": [
-        "sl-a"
-      ]
-    },
-    "p-b": {
-      "book_ahead": "2h0m0s",
-      "description": "d-p-b",
-      "enforce_book_ahead": true,
-      "enforce_max_bookings": true,
-      "enforce_max_duration": true,
-      "enforce_min_duration": true,
-      "enforce_max_usage": true,
-      "max_bookings": 2,
-      "max_duration": "10m0s",
-      "min_duration": "5m0s",
-      "max_usage": "30m0s",
-      "slots": [
-        "sl-b"
-      ]
-    }
-  },
-  "resources": {
-    "r-a": {
-      "description": "d-r-a",
-      "streams": [
-        "st-a",
-        "st-b"
-      ],
-      "topic_stub": "aaaa00"
-    },
-    "r-b": {
-      "description": "d-r-b",
-      "streams": [
-        "st-a",
-        "st-b"
-      ],
-      "topic_stub": "bbbb00"
-    }
-  },
-  "slots": {
-    "sl-a": {
-      "description": "d-sl-a",
-      "policy": "p-a",
-      "resource": "r-a",
-      "ui_set": "us-a",
-      "window": "w-a"
-    },
-    "sl-b": {
-      "description": "d-sl-b",
-      "policy": "p-b",
-      "resource": "r-b",
-      "ui_set": "us-b",
-      "window": "w-b"
-    }
-  },
-  "streams": {
-    "st-a": {
-      "audience": "a",
-      "ct": "a",
-      "for": "a",
-      "scopes": [
-        "r",
-        "w"
-      ],
-      "topic": "a",
-      "url": "a"
-    },
-    "st-b": {
-      "audience": "b",
-      "ct": "b",
-      "for": "b",
-      "scopes": [
-        "r",
-        "w"
-      ],
-      "topic": "b",
-      "url": "b"
-    }
-  },
-  "uis": {
-    "ui-a": {
-      "description": "d-ui-a",
-      "url": "a",
-      "streams_required": [
-        "st-a",
-        "st-b"
-      ]
-    },
-    "ui-b": {
-      "description": "d-ui-b",
-      "url": "b",
-      "streams_required": [
-        "st-a",
-        "st-b"
-      ]
-    }
-  },
-  "ui_sets": {
-    "us-a": {
-      "uis": [
-        "ui-a"
-      ]
-    },
-    "us-b": {
-      "uis": [
-        "ui-a",
-        "ui-b"
-      ]
-    }
-  },
-  "windows": {
-    "w-a": {
-      "allowed": [
-        {
-          "start": "2022-11-04T00:00:00.000Z",
-          "end": "2022-11-06T00:00:00.000Z"
-        }
-      ],
-      "denied": []
-    },
-    "w-b": {
-      "allowed": [
-        {
-          "start": "2022-11-04T00:00:00.000Z",
-          "end": "2022-11-06T00:00:00.000Z"
-        }
-      ],
-      "denied": []
-    }
-  }
-}`)
-var manifestJSONShort = []byte(`{  
-"descriptions": {"d-p-a": {
-      "name": "policy-a",
-      "type": "policy",
-      "short": "a"
-    },
-    "d-p-b": {
-      "name": "policy-b",
-      "type": "policy",
-      "short": "b"
-    },
-    "d-r-a": {
-      "name": "resource-a",
-      "type": "resource",
-      "short": "a"
-    },
-    "d-r-b": {
-      "name": "resource-b",
-      "type": "resource",
-      "short": "b"
-    },
-    "d-sl-a": {
-      "name": "slot-a",
-      "type": "slot",
-      "short": "a"
-    },
-    "d-sl-b": {
-      "name": "slot-b",
-      "type": "slot",
-      "short": "b"
-    },
-    "d-ui-a": {
-      "name": "ui-a",
-      "type": "ui",
-      "short": "a"
-    },
-    "d-ui-b": {
-      "name": "ui-b",
-      "type": "ui",
-      "short": "b"
-    }
-  },
-"policies":{
-    "p-a": {
-      "book_ahead": "0s",
-      "description": "d-p-a",
-      "enforce_book_ahead": false,
-      "enforce_max_bookings": false,
-      "enforce_max_duration": false,
-      "enforce_min_duration": false,
-      "enforce_max_usage": false,
-      "max_bookings": 0,
-      "max_duration": "0s",
-      "min_duration": "0s",
-      "max_usage": "0s",
-      "slots": [
-        "sl-a"
-      ]
-    }
-},
-"slots": {
-    "sl-a": {
-      "description": "d-sl-a",
-      "policy": "p-a",
-      "resource": "r-a",
-      "ui_set": "us-a",
-      "window": "w-a"
-    }
-},
-"streams":{
-    "st-a": {
-      "audience": "a",
-      "connection_type": "a",
-      "for": "a",
-      "scopes": [
-        "r",
-        "w"
-      ],
-      "topic": "a",
-      "url": "a"
-    },
-    "st-b": {
-      "audience": "b",
-      "connection_type": "b",
-      "for": "b",
-      "scopes": [
-        "r",
-        "w"
-      ],
-      "topic": "b",
-      "url": "b"
-    }
-  },
-"ui_sets":{},
-"uis":{},
-"windows": {
-    "w-a": {
-      "allowed": [
-        {
-          "start": "2022-11-04T00:00:00.000Z",
-          "end": "2022-11-06T00:00:00.000Z"
-        }
-      ],
-      "denied": []
-    },
-    "w-b": {
-      "allowed": [
-        {
-          "start": "2022-11-04T00:00:00.000Z",
-          "end": "2022-11-06T00:00:00.000Z"
-        }
-      ],
-      "denied": []
-    }
-  },
-  "resources": {
-    "r-a": {
-      "description": "d-r-a",
-      "streams": [
-        "st-a",
-        "st-b"
-      ],
-      "topic_stub": "aaaa00"
-    },
-    "r-b": {
-      "description": "d-r-b",
-      "streams": [
-        "st-a",
-        "st-b"
-      ],
-      "topic_stub": "bbbb00"
-    }
-  }
-}`)
+
 var manifestYAML = []byte(`descriptions:
   d-p-a:
     name: policy-a
@@ -439,7 +117,7 @@ slots:
 streams:
   st-a:
     audience: a
-    ct: a
+    connection_type: a
     for: a
     scopes:
     - r
@@ -448,7 +126,7 @@ streams:
     url: a
   st-b:
     audience: b
-    ct: b
+    connection_type: b
     for: b
     scopes:
     - r
@@ -489,7 +167,7 @@ windows:
     denied: []`)
 
 func init() {
-	debug = true
+	debug = false
 	if debug {
 		log.SetReportCaller(true)
 		log.SetLevel(log.TraceLevel)
@@ -526,7 +204,8 @@ func TestMain(m *testing.M) {
 		MinUserNameLength:   6,
 		AccessTokenLifetime: time.Duration(time.Minute),
 		// we can update the mock time by changing the value pointed to by currentTime
-		Now: func() time.Time { return *currentTime },
+		Now:        func() time.Time { return *currentTime },
+		PruneEvery: time.Duration(time.Minute),
 	}
 
 	go Run(ctx, cfg)
@@ -567,7 +246,7 @@ func TestLogin(t *testing.T) {
 
 }
 
-func TestReplaceManifest(t *testing.T) {
+func TestCheckReplaceManifest(t *testing.T) {
 
 	// make admin token
 	audience := cfg.Host
@@ -583,91 +262,55 @@ func TestReplaceManifest(t *testing.T) {
 	// modify the time function used to verify the jwt token
 	jwt.TimeFunc = func() time.Time { return *currentTime }
 
-	var my models.Manifest
-	err = yaml.Unmarshal(manifestYAML, &my)
-	assert.NoError(t, err)
-	if err != nil {
-		t.Log(err.Error())
-	}
-
-	t.Log(my.Resources["r-a"].TopicStub) //topic_stub is null here!
-
-	var my2 store.Manifest
-	err = yaml.Unmarshal(manifestYAML, &my2)
-	assert.NoError(t, err)
-	if err != nil {
-		t.Log(err.Error())
-	}
-
-	t.Log(my2.Resources) //topic_stub is NOT null here!
-
-	mj, err := json.Marshal(my)
-	assert.NoError(t, err)
-	if err != nil {
-		t.Log(err.Error())
-	}
-
-	t.Log(string(mj)) // topic_stub is null here!!
-
-	//replace manifest
+	//check manifest
 	client := &http.Client{}
 	bodyReader := bytes.NewReader(manifestYAML)
-	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/manifest/check", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
 	req.Header.Add("Content-Type", "text/plain")
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
+	assert.Equal(t, "204 No Content", resp.Status) //should be ok!
+	resp.Body.Close()
 
+	//replace manifest
+	client = &http.Client{}
+	bodyReader = bytes.NewReader(manifestYAML)
+	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
+	var ssa store.StoreStatusAdmin
+	err = json.Unmarshal(body, &ssa)
 	assert.NoError(t, err)
-	t.Log(string(body))
-
-	rb := []byte(`{"description": "d-r-a","streams":["st-a","st-b"],"topic_stub": "aaaa00"}`)
-	var r models.Resource
-	err = json.Unmarshal(rb, &r)
-	assert.NoError(t, err)
-	t.Log(*(r.TopicStub)) //this collects the topic stub ok
-
-	rsb := []byte(`{"resources":{"r-a":{"description": "d-r-a","streams":["st-a","st-b"],"topic_stub": "aaaa00"}}}`)
-	var mm models.Manifest
-	err = json.Unmarshal(rsb, &mm)
-	assert.NoError(t, err)
-	t.Log(*(mm.Resources["r-a"].TopicStub)) //this also collects the topic stub ok
-
-	var mm2 models.Manifest
-	err = json.Unmarshal(manifestJSONShort, &mm2)
-	assert.NoError(t, err)
-	t.Log(*(mm2.Resources["r-a"].TopicStub))
-
-	//var sm store.Manifest
-	//err = json.Unmarshal(manifestJSONShort, &sm)
-	//assert.NoError(t, err)
-	//err, msgs := store.CheckManifest(sm)
-	//assert.NoError(t, err)
-	//t.Log(msgs)
+	resp.Body.Close()
+	esa := store.StoreStatusAdmin{
+		Locked:       false,
+		Message:      "Welcome to the interval booking store",
+		Now:          time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC),
+		Bookings:     0,
+		Descriptions: 8,
+		Filters:      2,
+		OldBookings:  0,
+		Policies:     2,
+		Resources:    2,
+		Slots:        2,
+		Streams:      2,
+		UIs:          2,
+		UISets:       2,
+		Users:        0,
+		Windows:      2}
+	assert.Equal(t, esa, ssa)
 
 	/* add query params
 	q := req.URL.Query()
 	q.Add("lock", "true")
 	req.URL.RawQuery = q.Encode()
 	*/
-	/*
-		body, err := ioutil.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		btr := &models.Bookingtoken{}
-		err = json.Unmarshal(body, btr)
-		assert.NoError(t, err)
-
-		if btr == nil {
-			t.Fatal("no token returned")
-		}
-
-		if btr.Token == nil {
-			t.Fatal("no token returned")
-		}*/
 
 }
-
-// UNmarshalling durations
-// https://penkovski.com/post/go-unmarshal-custom-types/
