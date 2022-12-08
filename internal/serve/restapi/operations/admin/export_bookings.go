@@ -33,7 +33,7 @@ func NewExportBookings(ctx *middleware.Context, handler ExportBookingsHandler) *
 
 Export a copy of all current bookings
 
-Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.
+Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
 
 */
 type ExportBookings struct {

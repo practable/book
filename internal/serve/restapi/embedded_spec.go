@@ -49,9 +49,9 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.",
+        "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "application/json"
+          "test/plain"
         ],
         "tags": [
           "admin",
@@ -63,7 +63,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Bookings"
+              "type": "string"
             }
           },
           "401": {
@@ -85,7 +85,7 @@ func init() {
         ],
         "description": "Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.",
         "consumes": [
-          "application/json"
+          "text/plain"
         ],
         "produces": [
           "application/json"
@@ -100,8 +100,9 @@ func init() {
           {
             "name": "bookings",
             "in": "body",
+            "required": true,
             "schema": {
-              "$ref": "#/definitions/Bookings"
+              "type": "string"
             }
           }
         ],
@@ -1954,9 +1955,9 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.",
+        "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "application/json"
+          "test/plain"
         ],
         "tags": [
           "admin",
@@ -1968,7 +1969,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Bookings"
+              "type": "string"
             }
           },
           "401": {
@@ -1999,7 +2000,7 @@ func init() {
         ],
         "description": "Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.",
         "consumes": [
-          "application/json"
+          "text/plain"
         ],
         "produces": [
           "application/json"
@@ -2014,8 +2015,9 @@ func init() {
           {
             "name": "bookings",
             "in": "body",
+            "required": true,
             "schema": {
-              "$ref": "#/definitions/Bookings"
+              "type": "string"
             }
           }
         ],

@@ -66,6 +66,16 @@ func convertStoreStatusAdminToModel(s store.StoreStatusAdmin) (models.StoreStatu
 
 }
 
+// convertBookingsToStore converts from YAML string to internal type
+func convertBookingsToStore(m string) (map[string]store.Booking, error) {
+
+	var s map[string]store.Booking
+
+	err := yaml.Unmarshal([]byte(m), &s)
+
+	return s, err
+}
+
 // convertManifestToStore converts from YAML string to internal type
 func convertManifestToStore(m string) (store.Manifest, error) {
 
@@ -74,6 +84,32 @@ func convertManifestToStore(m string) (store.Manifest, error) {
 	err := yaml.Unmarshal([]byte(m), &s)
 
 	return s, err
+}
+
+// exportBookingsHandler
+func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookingsParams, interface{}) middleware.Responder {
+	return func(params admin.ExportBookingsParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewExportBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		m := config.Store.ExportBookings()
+
+		b, err := json.Marshal(m)
+
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewExportBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return admin.NewExportBookingsOK().WithPayload(string(b))
+	}
 }
 
 // exportManifestHandler
@@ -99,6 +135,48 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 		}
 
 		return admin.NewExportManifestOK().WithPayload(string(b))
+	}
+}
+
+// replaceBookingsHandler
+func replaceBookingsHandler(config config.ServerConfig) func(admin.ReplaceBookingsParams, interface{}) middleware.Responder {
+	return func(params admin.ReplaceBookingsParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return admin.NewReplaceBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.Bookings == "" {
+			c := "404"
+			m := "no manifest in body"
+			return admin.NewReplaceBookingsNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		sm, err := convertBookingsToStore(params.Bookings)
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return admin.NewReplaceBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		err, msgs := config.Store.ReplaceBookings(sm)
+		if err != nil {
+			c := "500"
+			m := err.Error() + " : " + strings.Join(msgs, ",")
+			return admin.NewReplaceBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())
+
+		if err != nil {
+			log.Error("could not convert StoreStatusAdmin to model format")
+		}
+
+		return admin.NewReplaceBookingsOK().WithPayload(&s)
 	}
 }
 

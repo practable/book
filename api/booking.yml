@@ -26,7 +26,7 @@ paths:
 
   /admin/bookings:
     get:
-      description: Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces YAML-formatted bookings list.
+      description: Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
       summary: Export a copy of all current bookings
       tags:
       - admin
@@ -34,14 +34,14 @@ paths:
       operationId: ExportBookings
       deprecated: false
       produces:
-      - application/json
+      - test/plain
       security:
         - Bearer: []
       responses:
         200:
           description: OK
           schema:
-            $ref: '#/definitions/Bookings'
+            type: string 
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -59,14 +59,15 @@ paths:
       operationId: ReplaceBookings
       deprecated: false
       consumes:
-      - application/json
+      - text/plain
       produces:
       - application/json
       parameters:
       - name: bookings
         in: body
+        required: true
         schema:
-          $ref: '#/definitions/Bookings'
+          type: string
       security:
         - Bearer: []
       responses:
