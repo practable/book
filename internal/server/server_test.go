@@ -19,6 +19,7 @@ import (
 	"github.com/timdrysdale/interval/internal/config"
 	"github.com/timdrysdale/interval/internal/login"
 	"github.com/timdrysdale/interval/internal/serve/models"
+	"gopkg.in/yaml.v2"
 )
 
 var debug bool
@@ -448,9 +449,22 @@ func TestReplaceManifest(t *testing.T) {
 	// modify the time function used to verify the jwt token
 	jwt.TimeFunc = func() time.Time { return *currentTime }
 
+	var my models.Manifest
+	err = yaml.Unmarshal(manifestYAML, &my)
+	assert.NoError(t, err)
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	mj, err := json.Marshal(my)
+	assert.NoError(t, err)
+	if err != nil {
+		t.Log(err.Error())
+	}
+
 	//replace manifest
 	client := &http.Client{}
-	bodyReader := bytes.NewReader(manifestJSONSimple)
+	bodyReader := bytes.NewReader(mj)
 	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
