@@ -675,7 +675,10 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "TODO pagination",
+        "description": "Pagination is supported by the limit and offset parameters. For the first query '?limit=20\u0026offset=0', the second '?limit=20\u0026offset=20'. The offset is equal to the zero-indexed value of the first item of the next page to be returned (20 items are indexed from 0 to 19, so 20 is the first item to be returned in the second page). Note that drift can occur if slots are booked during the sending of availability data, potentially preventing a user from seeing some slots that move earlier in the index and cross a pagination boundary. Users should refresh their results from 0 offset on a regular-ish basis if they wish to avoid this.",
+        "consumes": [
+          "application/json"
+        ],
         "produces": [
           "application/json"
         ],
@@ -696,6 +699,16 @@ func init() {
             "name": "slot_name",
             "in": "path",
             "required": true
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
           }
         ],
         "responses": {
@@ -2675,7 +2688,10 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "TODO pagination",
+        "description": "Pagination is supported by the limit and offset parameters. For the first query '?limit=20\u0026offset=0', the second '?limit=20\u0026offset=20'. The offset is equal to the zero-indexed value of the first item of the next page to be returned (20 items are indexed from 0 to 19, so 20 is the first item to be returned in the second page). Note that drift can occur if slots are booked during the sending of availability data, potentially preventing a user from seeing some slots that move earlier in the index and cross a pagination boundary. Users should refresh their results from 0 offset on a regular-ish basis if they wish to avoid this.",
+        "consumes": [
+          "application/json"
+        ],
         "produces": [
           "application/json"
         ],
@@ -2696,6 +2712,16 @@ func init() {
             "name": "slot_name",
             "in": "path",
             "required": true
+          },
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
           }
         ],
         "responses": {

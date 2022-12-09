@@ -469,11 +469,13 @@ paths:
   /policies/{policy_name}/slots/{slot_name}:
     get:
       summary: Get availability for the slot under the policy
-      description: TODO pagination
+      description: Pagination is supported by the limit and offset parameters. For the first query '?limit=20&offset=0', the second '?limit=20&offset=20'. The offset is equal to the zero-indexed value of the first item of the next page to be returned (20 items are indexed from 0 to 19, so 20 is the first item to be returned in the second page). Note that drift can occur if slots are booked during the sending of availability data, potentially preventing a user from seeing some slots that move earlier in the index and cross a pagination boundary. Users should refresh their results from 0 offset on a regular-ish basis if they wish to avoid this.
       tags:
       - users
       operationId: GetAvailability
       deprecated: false
+      consumes:
+      - application/json
       produces:
       - application/json
       parameters:
@@ -487,6 +489,14 @@ paths:
         required: true
         type: string
         description: ''
+      - name: limit
+        in: query
+        type: integer
+        required: false
+      - name: offset
+        in: query
+        type: integer
+        required: false
       security:
         - Bearer: []
       responses:
@@ -883,7 +893,7 @@ definitions:
     - nbf
     - streams
     - uis
-    
+             
   Booking:
     title: booking
     description: A booking represents a promise to supply an activity. The booleans are not required because we don't process the booking status when loading old bookings (all old bookings are assumed to have been good bookings)
