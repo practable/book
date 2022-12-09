@@ -29,8 +29,7 @@ type PolicyStatus struct {
 
 	// usage
 	// Required: true
-	// Format: duration
-	Usage *strfmt.Duration `json:"usage"`
+	Usage *string `json:"usage"`
 }
 
 // Validate validates this policy status
@@ -76,10 +75,6 @@ func (m *PolicyStatus) validateOldbookings(formats strfmt.Registry) error {
 func (m *PolicyStatus) validateUsage(formats strfmt.Registry) error {
 
 	if err := validate.Required("usage", "body", m.Usage); err != nil {
-		return err
-	}
-
-	if err := validate.FormatOf("usage", "body", "duration", m.Usage.String(), formats); err != nil {
 		return err
 	}
 

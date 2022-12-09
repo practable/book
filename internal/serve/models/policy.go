@@ -21,8 +21,7 @@ import (
 type Policy struct {
 
 	// book ahead
-	// Format: duration
-	BookAhead strfmt.Duration `json:"book_ahead,omitempty"`
+	BookAhead string `json:"book_ahead,omitempty"`
 
 	// description
 	// Required: true
@@ -50,16 +49,13 @@ type Policy struct {
 	MaxBookings int64 `json:"max_bookings,omitempty"`
 
 	// max duration
-	// Format: duration
-	MaxDuration strfmt.Duration `json:"max_duration,omitempty"`
+	MaxDuration string `json:"max_duration,omitempty"`
 
 	// max usage
-	// Format: duration
-	MaxUsage strfmt.Duration `json:"max_usage,omitempty"`
+	MaxUsage string `json:"max_usage,omitempty"`
 
 	// min duration
-	// Format: duration
-	MinDuration strfmt.Duration `json:"min_duration,omitempty"`
+	MinDuration string `json:"min_duration,omitempty"`
 
 	// slots
 	// Required: true
@@ -70,27 +66,11 @@ type Policy struct {
 func (m *Policy) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateBookAhead(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateDescription(formats); err != nil {
 		res = append(res, err)
 	}
 
 	if err := m.validateDisplayGuides(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateMaxDuration(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateMaxUsage(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateMinDuration(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -101,18 +81,6 @@ func (m *Policy) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *Policy) validateBookAhead(formats strfmt.Registry) error {
-	if swag.IsZero(m.BookAhead) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("book_ahead", "body", "duration", m.BookAhead.String(), formats); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -146,42 +114,6 @@ func (m *Policy) validateDisplayGuides(formats strfmt.Registry) error {
 			}
 		}
 
-	}
-
-	return nil
-}
-
-func (m *Policy) validateMaxDuration(formats strfmt.Registry) error {
-	if swag.IsZero(m.MaxDuration) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("max_duration", "body", "duration", m.MaxDuration.String(), formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *Policy) validateMaxUsage(formats strfmt.Registry) error {
-	if swag.IsZero(m.MaxUsage) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("max_usage", "body", "duration", m.MaxUsage.String(), formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *Policy) validateMinDuration(formats strfmt.Registry) error {
-	if swag.IsZero(m.MinDuration) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("min_duration", "body", "duration", m.MinDuration.String(), formats); err != nil {
-		return err
 	}
 
 	return nil

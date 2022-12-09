@@ -12,6 +12,7 @@ require (
 	github.com/go-openapi/validate v0.22.0
 	github.com/golang-jwt/jwt/v4 v4.4.3
 	github.com/google/uuid v1.3.0
+	github.com/icza/gog v0.0.0-20220909135443-35d926f98ec3
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
 	github.com/sirupsen/logrus v1.8.1

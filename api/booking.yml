@@ -974,10 +974,8 @@ definitions:
     properties:
       book_ahead:
         type: string
-        format: duration
       duration: 
         type: string
-        format: duration
       max_slots:
         type: integer
     required:
@@ -1063,7 +1061,6 @@ definitions:
     properties:
       book_ahead:
         type: string
-        format: duration
       description:
         type: string
       display_guides:
@@ -1084,13 +1081,10 @@ definitions:
         type: integer
       max_duration:
         type: string
-        format: duration
       min_duration:
         type: string
-        format: duration
       max_usage:
         type: string
-        format: duration
       slots:
         type: array
         items:
@@ -1114,7 +1108,6 @@ definitions:
         type: integer
       usage:
         type: string
-        format: duration
     required:
       - currentbookings
       - oldbookings
@@ -1318,7 +1311,6 @@ definitions:
         type: object
         additionalProperties:
           type: string
-          format: duration
           
   Users:
     title: set of User Interfaces

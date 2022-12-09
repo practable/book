@@ -1348,12 +1348,10 @@ func init() {
       ],
       "properties": {
         "book_ahead": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "duration": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "max_slots": {
           "type": "integer"
@@ -1473,8 +1471,7 @@ func init() {
       ],
       "properties": {
         "book_ahead": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "description": {
           "type": "string"
@@ -1504,16 +1501,13 @@ func init() {
           "type": "integer"
         },
         "max_duration": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "max_usage": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "min_duration": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "slots": {
           "type": "array",
@@ -1538,8 +1532,7 @@ func init() {
           "type": "integer"
         },
         "usage": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         }
       }
     },
@@ -1806,8 +1799,7 @@ func init() {
         "usage": {
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "format": "duration"
+            "type": "string"
           }
         }
       }
@@ -3446,12 +3438,10 @@ func init() {
       ],
       "properties": {
         "book_ahead": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "duration": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "max_slots": {
           "type": "integer"
@@ -3571,8 +3561,7 @@ func init() {
       ],
       "properties": {
         "book_ahead": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "description": {
           "type": "string"
@@ -3602,16 +3591,13 @@ func init() {
           "type": "integer"
         },
         "max_duration": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "max_usage": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "min_duration": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         },
         "slots": {
           "type": "array",
@@ -3636,8 +3622,7 @@ func init() {
           "type": "integer"
         },
         "usage": {
-          "type": "string",
-          "format": "duration"
+          "type": "string"
         }
       }
     },
@@ -3904,8 +3889,7 @@ func init() {
         "usage": {
           "type": "object",
           "additionalProperties": {
-            "type": "string",
-            "format": "duration"
+            "type": "string"
           }
         }
       }

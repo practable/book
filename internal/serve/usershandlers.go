@@ -6,10 +6,12 @@ import (
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/icza/gog"
 	"github.com/timdrysdale/interval/internal/config"
 	lit "github.com/timdrysdale/interval/internal/login"
 	"github.com/timdrysdale/interval/internal/serve/models"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
+	"github.com/timdrysdale/interval/internal/store"
 )
 
 // getAccessTokenHandler
@@ -104,5 +106,63 @@ func getDescriptionHandler(config config.ServerConfig) func(users.GetDescription
 		}
 
 		return users.NewGetDescriptionOK().WithPayload(&dm)
+	}
+}
+
+// getPolicytHandler
+func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, interface{}) middleware.Responder {
+	return func(params users.GetPolicyParams, principal interface{}) middleware.Responder {
+
+		_, _, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewGetPolicyUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.PolicyName == "" {
+			c := "404"
+			m := "no policy_name in path"
+			return users.NewGetPolicyNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		p, err := config.Store.GetPolicy(params.PolicyName)
+
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return users.NewGetPolicyInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		dgs := []*models.DisplayGuide{}
+
+		for _, v := range p.DisplayGuides {
+			dg := models.DisplayGuide{
+				Duration:  gog.Ptr(store.HumaniseDuration(v.Duration)),
+				MaxSlots:  gog.Ptr(int64(v.MaxSlots)),
+				BookAhead: gog.Ptr(store.HumaniseDuration(v.BookAhead)),
+			}
+			dgs = append(dgs, &dg)
+		}
+
+		pm := models.Policy{
+			BookAhead:          store.HumaniseDuration(p.BookAhead),
+			Description:        &p.Description,
+			DisplayGuides:      dgs,
+			EnforceBookAhead:   p.EnforceBookAhead,
+			EnforceMaxBookings: p.EnforceMaxBookings,
+			EnforceMaxDuration: p.EnforceMaxDuration,
+			EnforceMinDuration: p.EnforceMinDuration,
+			EnforceMaxUsage:    p.EnforceMaxUsage,
+			MaxBookings:        p.MaxBookings,
+			MaxDuration:        store.HumaniseDuration(p.MaxDuration),
+			MinDuration:        store.HumaniseDuration(p.MinDuration),
+			MaxUsage:           store.HumaniseDuration(p.MaxUsage),
+			Slots:              p.Slots,
+		}
+
+		return users.NewGetPolicyOK().WithPayload(&pm)
+
 	}
 }

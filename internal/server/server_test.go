@@ -26,7 +26,13 @@ import (
 var debug bool
 var cfg config.ServerConfig
 var currentTime *time.Time
-var manifest models.Manifest
+
+// Are thinking about making a models.Manifest object
+// to compare responses to? Don't. Tried it.
+// Durations don't get populated properly when
+// you unmarshal into models.Manifest, so not particularly
+// useful for comparing to responses. Better just to use
+// strings, and may as well be consistent.
 var manifestYAML = []byte(`descriptions:
   d-p-a:
     name: policy-a
@@ -275,12 +281,6 @@ func TestMain(m *testing.M) {
 	// modify the time function used to verify the jwt token
 	jwt.TimeFunc = func() time.Time { return *currentTime }
 
-	// load test manifest into an object so we can easily check GET requests against it
-	err = yaml.Unmarshal(manifestYAML, &manifest)
-	if err != nil {
-		panic(err)
-	}
-
 	go Run(ctx, cfg)
 
 	time.Sleep(time.Second)
@@ -350,15 +350,6 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, "someuser", *(atr.Sub))
 	assert.Equal(t, []string{"booking:user"}, atr.Scopes)
 	assert.Equal(t, "ey", (*(atr.Token))[0:2]) //necessary but not sufficient!
-
-	if debug {
-		t.Log(string(body))
-		t.Log(*(atr.Token))
-		//atr := &models.Error{}
-		//err = json.Unmarshal(body, atr)
-		//assert.NoError(t, err)
-		//t.Log(*(atr.Code) + *(atr.Message))
-	}
 
 }
 
@@ -769,10 +760,31 @@ func TestGetDescription(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
-	var d models.Description
 	body, err := ioutil.ReadAll(resp.Body)
-	err = json.Unmarshal(body, &d)
+	expected := `{"name":"resource-a","short":"a","type":"resource"}` + "\n"
+	assert.Equal(t, expected, string(body))
 	resp.Body.Close()
-	assert.Equal(t, manifest.Descriptions["d-r-a"], d)
+
+}
+
+func TestGetPolicy(t *testing.T) {
+
+	loadTestManifest(t)
+
+	stoken, err := signedUserToken()
+	assert.NoError(t, err)
+
+	// get description
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	expected := `{"book_ahead":"0s","description":"d-p-a","display_guides":[],"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}` + "\n"
+	assert.Equal(t, expected, string(body))
+	resp.Body.Close()
 
 }

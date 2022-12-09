@@ -8,10 +8,8 @@ package models
 import (
 	"context"
 
-	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	"github.com/go-openapi/validate"
 )
 
 // User user
@@ -29,36 +27,11 @@ type User struct {
 	Policies []string `json:"policies"`
 
 	// usage
-	Usage map[string]strfmt.Duration `json:"usage,omitempty"`
+	Usage map[string]string `json:"usage,omitempty"`
 }
 
 // Validate validates this user
 func (m *User) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.validateUsage(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *User) validateUsage(formats strfmt.Registry) error {
-	if swag.IsZero(m.Usage) { // not required
-		return nil
-	}
-
-	for k := range m.Usage {
-
-		if err := validate.FormatOf("usage"+"."+k, "body", "duration", m.Usage[k].String(), formats); err != nil {
-			return err
-		}
-
-	}
-
 	return nil
 }
 

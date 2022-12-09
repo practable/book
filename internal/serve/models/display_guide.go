@@ -21,13 +21,11 @@ type DisplayGuide struct {
 
 	// book ahead
 	// Required: true
-	// Format: duration
-	BookAhead *strfmt.Duration `json:"book_ahead"`
+	BookAhead *string `json:"book_ahead"`
 
 	// duration
 	// Required: true
-	// Format: duration
-	Duration *strfmt.Duration `json:"duration"`
+	Duration *string `json:"duration"`
 
 	// max slots
 	// Required: true
@@ -62,20 +60,12 @@ func (m *DisplayGuide) validateBookAhead(formats strfmt.Registry) error {
 		return err
 	}
 
-	if err := validate.FormatOf("book_ahead", "body", "duration", m.BookAhead.String(), formats); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func (m *DisplayGuide) validateDuration(formats strfmt.Registry) error {
 
 	if err := validate.Required("duration", "body", m.Duration); err != nil {
-		return err
-	}
-
-	if err := validate.FormatOf("duration", "body", "duration", m.Duration.String(), formats); err != nil {
 		return err
 	}
 
