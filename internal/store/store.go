@@ -837,7 +837,7 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 	}
 
 	start := s.Now()
-	end := interval.Infinity
+	end := s.Now().Add(interval.Century) //interval.Infinity causes parsing problems in API, so choose something saner (from a parsing point of view)
 
 	if p.EnforceBookAhead {
 		end = start.Add(p.BookAhead)
@@ -1965,6 +1965,12 @@ func checkDescriptions(items map[string]Description) (error, []string) {
 }
 
 // CheckManifest checks for internal consistency, throwing an error
+// if there are any unresolved references by name
+func CheckManifest(m Manifest) (error, []string) {
+	return checkManifest(m)
+}
+
+// checkManifest checks for internal consistency, throwing an error
 // if there are any unresolved references by name
 func checkManifest(m Manifest) (error, []string) {
 

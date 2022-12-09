@@ -10,6 +10,7 @@ import (
 // https://stackoverflow.com/questions/25065055/what-is-the-maximum-time-time-in-go
 var ZeroTime = time.Unix(0, 0)
 var Infinity = time.Unix(1<<63-62135596801, 999999999)
+var Century = time.Duration(100 * 365 * 24 * time.Hour)
 
 type Interval struct {
 	Start time.Time `json:"start" yaml:"start"`

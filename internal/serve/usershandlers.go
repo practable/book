@@ -208,8 +208,14 @@ func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabili
 		// Users should refresh their results from 0 offset on a regular-ish basis if they wish to avoid this.
 		// Or request more results in a single page.
 
-		limit := int(*(params.Limit))
-		offset := int(*(params.Offset))
+		var limit, offset int
+
+		if params.Limit != nil {
+			limit = int(*(params.Limit))
+		}
+		if params.Offset != nil {
+			offset = int(*(params.Offset))
+		}
 
 		page := when[offset:]
 

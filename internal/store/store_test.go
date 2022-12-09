@@ -422,7 +422,7 @@ func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {
 	exp := []interval.Interval{
 		interval.Interval{
 			Start: s.Now(),
-			End:   interval.Infinity,
+			End:   s.Now().Add(interval.Century), //don't use infinity because it does not parse well in the API
 		},
 	}
 	assert.Equal(t, exp, a)

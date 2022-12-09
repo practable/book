@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -223,7 +224,7 @@ bk-1:
     end: '2022-11-05T00:30:00Z'
 bk-2:
   cancelled: false
-  name: bk-0
+  name: bk-2
   policy: p-a
   slot: sl-a
   started: false
@@ -234,7 +235,7 @@ bk-2:
     end: '2022-11-05T00:40:00Z'
 bk-3:
   cancelled: false
-  name: bk-1
+  name: bk-3
   policy: p-a
   slot: sl-a
   started: false
@@ -245,7 +246,7 @@ bk-3:
     end: '2022-11-05T00:50:00Z'
 bk-4:
   cancelled: false
-  name: bk-0
+  name: bk-4
   policy: p-a
   slot: sl-a
   started: false
@@ -256,7 +257,7 @@ bk-4:
     end: '2022-11-05T01:00:00Z'
 bk-5:
   cancelled: false
-  name: bk-1
+  name: bk-5
   policy: p-a
   slot: sl-a
   started: false
@@ -267,7 +268,7 @@ bk-5:
     end: '2022-11-05T01:10:00Z'
 bk-6:
   cancelled: false
-  name: bk-0
+  name: bk-6
   policy: p-a
   slot: sl-a
   started: false
@@ -278,7 +279,7 @@ bk-6:
     end: '2022-11-05T01:20:00Z'
 bk-7:
   cancelled: false
-  name: bk-1
+  name: bk-7
   policy: p-a
   slot: sl-a
   started: false
@@ -371,6 +372,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// modify the time function used to verify the jwt token
+	// this should mean any time we set currentTime, the store and jwt both have the same time
 	jwt.TimeFunc = func() time.Time { return *currentTime }
 
 	go Run(ctx, cfg)
@@ -409,7 +411,6 @@ func signedUserToken() (string, error) {
 }
 
 func loadTestManifest(t *testing.T) string {
-
 	stoken, err := signedAdminToken()
 	assert.NoError(t, err)
 	client := &http.Client{}
@@ -423,6 +424,61 @@ func loadTestManifest(t *testing.T) string {
 	assert.Equal(t, 200, resp.StatusCode)
 	resp.Body.Close()
 	return stoken //for use by other commands in test
+}
+
+func getBookings(t *testing.T) map[string]store.Booking {
+	stoken, err := signedAdminToken()
+	assert.NoError(t, err)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/bookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	var exportedBookings map[string]store.Booking
+	err = yaml.Unmarshal(body, &exportedBookings)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	return exportedBookings
+}
+
+func printBookings(t *testing.T, bm map[string]store.Booking) {
+	for k, v := range bm {
+		fmt.Print(k + " : " + v.User + " " + v.Policy + " " + v.Slot + " " + v.When.Start.String() + " " + v.When.End.String() + "\n")
+	}
+
+}
+
+func printIntervals(t *testing.T, im []*models.Interval) {
+	for k, v := range im {
+		fmt.Print(strconv.Itoa(k) + " : " + v.Start.String() + " " + v.End.String() + "\n")
+	}
+}
+
+func removeAllBookings(t *testing.T) {
+	stoken, err := signedAdminToken()
+	assert.NoError(t, err)
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(noBookingsYAML)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	client = &http.Client{}
+	bodyReader = bytes.NewReader(noBookingsYAML)
+	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/oldbookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 }
 
 func TestLogin(t *testing.T) {
@@ -656,11 +712,52 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedUsers, exportedUsers)
 	resp.Body.Close()
+
+	// Replace our old bookings (in this case, remove them)
+	client = &http.Client{}
+	bodyReader = bytes.NewReader(noBookingsYAML)
+	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/oldbookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/status", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &ssa)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	esa = store.StoreStatusAdmin{
+		Locked:       false,
+		Message:      "Welcome to the interval booking store",
+		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
+		Bookings:     0,
+		Descriptions: 8,
+		Filters:      2,
+		OldBookings:  0, // no old bookings
+		Policies:     2,
+		Resources:    2,
+		Slots:        2,
+		Streams:      2,
+		UIs:          2,
+		UISets:       2,
+		Users:        0, // no users - these are wiped when the old bookings are wiped
+		Windows:      2}
+	assert.Equal(t, esa, ssa)
+
 }
 
 func TestSetLock(t *testing.T) {
 
 	stoken := loadTestManifest(t)
+	removeAllBookings(t) // ensure consistent state
 
 	// lock the store
 	client := &http.Client{}
@@ -697,14 +794,14 @@ func TestSetLock(t *testing.T) {
 		Bookings:     0,
 		Descriptions: 8,
 		Filters:      2,
-		OldBookings:  2,
+		OldBookings:  0,
 		Policies:     2,
 		Resources:    2,
 		Slots:        2,
 		Streams:      2,
 		UIs:          2,
 		UISets:       2,
-		Users:        2,
+		Users:        0,
 		Windows:      2}
 	assert.Equal(t, esa, ssa)
 
@@ -742,14 +839,14 @@ func TestSetLock(t *testing.T) {
 		Bookings:     0,
 		Descriptions: 8,
 		Filters:      2,
-		OldBookings:  2,
+		OldBookings:  0,
 		Policies:     2,
 		Resources:    2,
 		Slots:        2,
 		Streams:      2,
 		UIs:          2,
 		UISets:       2,
-		Users:        2,
+		Users:        0,
 		Windows:      2}
 	assert.Equal(t, esa, ssa)
 
@@ -882,7 +979,15 @@ func TestGetPolicy(t *testing.T) {
 }
 func TestGetAvailability(t *testing.T) {
 
+	// make sure our pre-prepared bookings are in the future
+	// other tests may have advanced time
+	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	currentTime = &ct
+
 	satoken := loadTestManifest(t)
+	removeAllBookings(t)
+	bm := getBookings(t)
+	assert.Equal(t, 0, len(bm))
 
 	// load some bookings to break up the future availability in discrete intervals
 	client := &http.Client{}
@@ -894,6 +999,12 @@ func TestGetAvailability(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	bm = getBookings(t)
+
+	if debug {
+		printBookings(t, bm)
+	}
 
 	// get availability as user
 	sutoken, err := signedUserToken()
@@ -907,8 +1018,109 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
-	expected := ""
+	expected := `[{"end":"2022-11-05T00:09:59.999Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:19:59.999Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:34:59.999Z","start":"2022-11-05T00:30:00.000Z"},{"end":"2022-11-05T00:44:59.999Z","start":"2022-11-05T00:40:00.000Z"},{"end":"2022-11-05T00:54:59.999Z","start":"2022-11-05T00:50:00.000Z"},{"end":"2022-11-05T01:04:59.999Z","start":"2022-11-05T01:00:00.000Z"},{"end":"2022-11-05T01:14:59.999Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:24:59.999Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2122-10-12T00:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
 	assert.Equal(t, expected, string(body))
+	im := []*models.Interval{}
+	err = json.Unmarshal(body, &im)
+	assert.NoError(t, err)
+
+	if debug {
+		print("GET\n")
+		printIntervals(t, im)
+	}
 	resp.Body.Close()
 
+	// Try pagination using limit
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	// add query params
+	q := req.URL.Query()
+	q.Add("limit", "3")
+	req.URL.RawQuery = q.Encode()
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	expected = `[{"end":"2022-11-05T00:09:59.999Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:19:59.999Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:34:59.999Z","start":"2022-11-05T00:30:00.000Z"}]` + "\n"
+	assert.Equal(t, expected, string(body))
+	err = json.Unmarshal(body, &im)
+	assert.NoError(t, err)
+	if debug {
+		print("GET?limit=3\n")
+		printIntervals(t, im)
+	}
+	resp.Body.Close()
+
+	// Try pagination using limit, checking specifying offset=0 works as expected
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	// add query params
+	q = req.URL.Query()
+	q.Add("limit", "3")
+	q.Add("offset", "0")
+	req.URL.RawQuery = q.Encode()
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	expected = `[{"end":"2022-11-05T00:09:59.999Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:19:59.999Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:34:59.999Z","start":"2022-11-05T00:30:00.000Z"}]` + "\n"
+	assert.Equal(t, expected, string(body))
+	err = json.Unmarshal(body, &im)
+	assert.NoError(t, err)
+	if debug {
+		print("GET?limit=3&offset=0\n")
+		printIntervals(t, im)
+	}
+	resp.Body.Close()
+
+	// Try pagination using limit, checking specifying offset=<n*limit> works as expected
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	// add query params
+	q = req.URL.Query()
+	q.Add("limit", "3")
+	q.Add("offset", "3")
+	req.URL.RawQuery = q.Encode()
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	expected = `[{"end":"2022-11-05T00:44:59.999Z","start":"2022-11-05T00:40:00.000Z"},{"end":"2022-11-05T00:54:59.999Z","start":"2022-11-05T00:50:00.000Z"},{"end":"2022-11-05T01:04:59.999Z","start":"2022-11-05T01:00:00.000Z"}]` + "\n"
+	assert.Equal(t, expected, string(body))
+	err = json.Unmarshal(body, &im)
+	assert.NoError(t, err)
+	if debug {
+		print("GET?limit=3&offset=3\n")
+		printIntervals(t, im)
+	}
+	resp.Body.Close()
+
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	// add query params
+	q = req.URL.Query()
+	q.Add("limit", "3")
+	q.Add("offset", "6")
+	req.URL.RawQuery = q.Encode()
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	expected = `[{"end":"2022-11-05T01:14:59.999Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:24:59.999Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2122-10-12T00:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
+	assert.Equal(t, expected, string(body))
+	err = json.Unmarshal(body, &im)
+	assert.NoError(t, err)
+	if debug {
+		print("GET?limit=3&offset=6\n")
+		printIntervals(t, im)
+	}
+	resp.Body.Close()
 }
