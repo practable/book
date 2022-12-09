@@ -197,6 +197,98 @@ bk-1:
     start: '2022-11-05T00:20:00Z'
     end: '2022-11-05T00:30:00Z'
 `)
+
+var bookings2YAML = []byte(`---
+bk-0:
+  cancelled: false
+  name: bk-0
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-a
+  when:
+    start: '2022-11-05T00:10:00Z'
+    end: '2022-11-05T00:15:00Z'
+bk-1:
+  cancelled: false
+  name: bk-1
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-b
+  when:
+    start: '2022-11-05T00:20:00Z'
+    end: '2022-11-05T00:30:00Z'
+bk-2:
+  cancelled: false
+  name: bk-0
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-c
+  when:
+    start: '2022-11-05T00:35:00Z'
+    end: '2022-11-05T00:40:00Z'
+bk-3:
+  cancelled: false
+  name: bk-1
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-d
+  when:
+    start: '2022-11-05T00:45:00Z'
+    end: '2022-11-05T00:50:00Z'
+bk-4:
+  cancelled: false
+  name: bk-0
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-e
+  when:
+    start: '2022-11-05T00:55:00Z'
+    end: '2022-11-05T01:00:00Z'
+bk-5:
+  cancelled: false
+  name: bk-1
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-f
+  when:
+    start: '2022-11-05T01:05:00Z'
+    end: '2022-11-05T01:10:00Z'
+bk-6:
+  cancelled: false
+  name: bk-0
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-a
+  when:
+    start: '2022-11-05T01:15:00Z'
+    end: '2022-11-05T01:20:00Z'
+bk-7:
+  cancelled: false
+  name: bk-1
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-g
+  when:
+    start: '2022-11-05T01:25:00Z'
+    end: '2022-11-05T01:30:00Z'
+`)
+
 var noBookingsYAML = []byte(`{}`)
 
 var usersYAML = []byte(`---
@@ -784,6 +876,38 @@ func TestGetPolicy(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
 	expected := `{"book_ahead":"0s","description":"d-p-a","display_guides":[],"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}` + "\n"
+	assert.Equal(t, expected, string(body))
+	resp.Body.Close()
+
+}
+func TestGetAvailability(t *testing.T) {
+
+	satoken := loadTestManifest(t)
+
+	// load some bookings to break up the future availability in discrete intervals
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(bookings2YAML)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", satoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	// get availability as user
+	sutoken, err := signedUserToken()
+	assert.NoError(t, err)
+
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	expected := ""
 	assert.Equal(t, expected, string(body))
 	resp.Body.Close()
 

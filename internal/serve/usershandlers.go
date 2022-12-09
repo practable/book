@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/icza/gog"
 	"github.com/timdrysdale/interval/internal/config"
@@ -163,6 +164,70 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 		}
 
 		return users.NewGetPolicyOK().WithPayload(&pm)
+
+	}
+}
+
+// getAvailabilityHandler
+// func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error) {
+func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabilityParams, interface{}) middleware.Responder {
+	return func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
+
+		_, _, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewGetAvailabilityUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.PolicyName == "" {
+			c := "404"
+			m := "no policy_name in path"
+			return users.NewGetAvailabilityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.SlotName == "" {
+			c := "404"
+			m := "no slot_name in path"
+			return users.NewGetAvailabilityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		when, err := config.Store.GetAvailability(params.PolicyName, params.SlotName)
+
+		if err != nil {
+			c := "500"
+			m := "error getting availability from store: " + err.Error()
+			return users.NewGetAvailabilityInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// handle pagination. The offset is equal to the zero-indexed value of the first item of the next page to be
+		// returned (20 items are indexed from 0 to 19, so 20 is the first item to be returned in the second page).
+		// Note that drift can occur if slots are booked during the sending of availability data, potentially
+		// preventing a user from seeing some slots that move earlier in the index and cross a pagination boundary.
+		// Users should refresh their results from 0 offset on a regular-ish basis if they wish to avoid this.
+		// Or request more results in a single page.
+
+		limit := int(*(params.Limit))
+		offset := int(*(params.Offset))
+
+		page := when[offset:]
+
+		if limit > 0 {
+			page = page[:limit]
+		}
+
+		pm := []*models.Interval{}
+
+		for _, v := range page {
+			p := models.Interval{
+				Start: strfmt.DateTime(v.Start),
+				End:   strfmt.DateTime(v.End),
+			}
+			pm = append(pm, &p)
+		}
+
+		return users.NewGetAvailabilityOK().WithPayload(pm)
 
 	}
 }

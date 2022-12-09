@@ -1,11 +1,15 @@
 package store
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/timdrysdale/interval/internal/diary"
 	"github.com/timdrysdale/interval/internal/interval"
@@ -152,6 +156,25 @@ windows:
       end: 2022-11-06T00:00:00Z
     denied: []`)
 
+var debug bool
+
+func init() {
+	debug = false
+	if debug {
+		log.SetReportCaller(true)
+		log.SetLevel(log.TraceLevel)
+		log.SetFormatter(&log.TextFormatter{FullTimestamp: false, DisableColors: true})
+		defer log.SetOutput(os.Stdout)
+
+	} else {
+		log.SetLevel(log.WarnLevel)
+		var ignore bytes.Buffer
+		logignore := bufio.NewWriter(&ignore)
+		log.SetOutput(logignore)
+	}
+
+}
+
 // rename as Test... if required to update the yaml file for testing manifest ingest
 func testCreateManifestYAML(t *testing.T) {
 
@@ -170,7 +193,7 @@ func TestReplaceManifest(t *testing.T) {
 	testManifest.Lock()
 	defer testManifest.Unlock()
 
-	err, msg := CheckManifest(testManifest.Manifest)
+	err, msg := checkManifest(testManifest.Manifest)
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{}, msg)
@@ -266,7 +289,7 @@ func TestAvailability(t *testing.T) {
 		},
 	}
 
-	a := Availability(bk, start, end)
+	a := availability(bk, start, end)
 
 	assert.Equal(t, exp, a)
 
@@ -299,7 +322,7 @@ func TestAvailabilityTimeBoundaries(t *testing.T) {
 		},
 	}
 
-	a := Availability(bk, start, end)
+	a := availability(bk, start, end)
 
 	d := diary.New("test")
 
@@ -832,33 +855,33 @@ func TestCheckBooking(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	err, msg := s.CheckBooking(b)
+	err, msg := s.checkBooking(b)
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{}, msg)
 
 	b.Policy = ""
-	err, msg = s.CheckBooking(b)
+	err, msg = s.checkBooking(b)
 	assert.Error(t, err)
 	assert.Equal(t, []string{b.Name + " missing policy"}, msg)
 	b.Policy = "foo"
-	err, msg = s.CheckBooking(b)
+	err, msg = s.checkBooking(b)
 	assert.Error(t, err)
 	assert.Equal(t, []string{b.Name + " policy foo not found"}, msg)
 	b.Policy = policy
 
 	b.Slot = ""
-	err, msg = s.CheckBooking(b)
+	err, msg = s.checkBooking(b)
 	assert.Error(t, err)
 	assert.Equal(t, []string{b.Name + " missing slot"}, msg)
 	b.Slot = "foo"
-	err, msg = s.CheckBooking(b)
+	err, msg = s.checkBooking(b)
 	assert.Error(t, err)
 	assert.Equal(t, []string{b.Name + " slot foo not found"}, msg)
 	b.Slot = slot
 
 	b.User = ""
-	err, msg = s.CheckBooking(b)
+	err, msg = s.checkBooking(b)
 	assert.Error(t, err)
 	assert.Equal(t, []string{b.Name + " missing user"}, msg)
 	// no need to check for user not found - this is ok, as
@@ -868,13 +891,13 @@ func TestCheckBooking(t *testing.T) {
 
 	name := b.Name
 	b.Name = ""
-	err, msg = s.CheckBooking(b)
+	err, msg = s.checkBooking(b)
 	assert.Error(t, err)
 	assert.Equal(t, []string{"missing name"}, msg)
 	b.Name = name
 
 	b.When = interval.Interval{}
-	err, msg = s.CheckBooking(b)
+	err, msg = s.checkBooking(b)
 	assert.Error(t, err)
 	assert.Equal(t, []string{b.Name + " missing when"}, msg)
 	b.When = when
@@ -1080,7 +1103,7 @@ func TestOldBookings(t *testing.T) {
 	// Now move time forward to make these old bookings
 	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC) }
 
-	s.PruneBookings()
+	s.pruneBookings()
 
 	// check our bookings are now old bookings
 	bm = s.ExportOldBookings()
@@ -1330,7 +1353,7 @@ func TestReplaceOldBookings(t *testing.T) {
 	// Move one day to the future, to make the booking old
 	s.Now = func() time.Time { return time.Date(2022, 12, 5, 1, 0, 0, 0, time.UTC) }
 
-	s.PruneBookings()
+	s.pruneBookings()
 
 	// modify the booking to belong to user-a
 	bm := s.ExportOldBookings()
@@ -1430,7 +1453,7 @@ func TestGetBookingsForGetOldBookingsFor(t *testing.T) {
 
 	// move forward a day to make bookings old
 	s.Now = func() time.Time { return time.Date(2022, 12, 5, 1, 0, 0, 0, time.UTC) }
-	s.PruneBookings()
+	s.pruneBookings()
 
 	bm, err = s.GetBookingsFor("u-a")
 	assert.NoError(t, err)
@@ -1777,7 +1800,7 @@ var testManifest = MutexManifest{
 
 func TestCheckOKManifest(t *testing.T) {
 
-	err, msg := CheckManifest(testManifest.Manifest)
+	err, msg := checkManifest(testManifest.Manifest)
 
 	assert.NoError(t, err)
 	assert.Equal(t, []string{}, msg)
@@ -1791,7 +1814,7 @@ func TestCheckManifestCatchMissingUI(t *testing.T) {
 
 	m.UISets["us-b"].UIs[1] = "ui-c" //ui-c does not exist
 
-	err, msg := CheckManifest(m)
+	err, msg := checkManifest(m)
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"ui_set us-b references non-existent ui: ui-c"}, msg)
@@ -1799,7 +1822,7 @@ func TestCheckManifestCatchMissingUI(t *testing.T) {
 	//fix manifest for other tests
 	m.UISets["us-b"].UIs[1] = "ui-b"
 
-	err, _ = CheckManifest(m)
+	err, _ = checkManifest(m)
 	assert.NoError(t, err)
 }
 
@@ -1811,7 +1834,7 @@ func TestCheckManifestCatchMissingResource(t *testing.T) {
 	testManifest.Manifest.Resources["r-c"] = testManifest.Manifest.Resources["r-b"]
 	delete(testManifest.Manifest.Resources, "r-b")
 
-	err, msg := CheckManifest(testManifest.Manifest)
+	err, msg := checkManifest(testManifest.Manifest)
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"slot sl-b references non-existent resource: r-b"}, msg)
@@ -1820,7 +1843,7 @@ func TestCheckManifestCatchMissingResource(t *testing.T) {
 	testManifest.Manifest.Resources["r-b"] = testManifest.Manifest.Resources["r-c"]
 	delete(testManifest.Manifest.Resources, "r-c")
 
-	err, _ = CheckManifest(testManifest.Manifest)
+	err, _ = checkManifest(testManifest.Manifest)
 	assert.NoError(t, err)
 }
 
@@ -1832,14 +1855,14 @@ func TestCheckManifestCatchMissingDescriptions(t *testing.T) {
 	dsla := testManifest.Manifest.Descriptions["d-sl-a"]
 	delete(testManifest.Manifest.Descriptions, "d-sl-a")
 
-	err, msg := CheckManifest(testManifest.Manifest)
+	err, msg := checkManifest(testManifest.Manifest)
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"slot sl-a references non-existent description: d-sl-a"}, msg)
 
 	//fix manifest for other tests
 	testManifest.Manifest.Descriptions["d-sl-a"] = dsla
-	err, _ = CheckManifest(testManifest.Manifest)
+	err, _ = checkManifest(testManifest.Manifest)
 	assert.NoError(t, err)
 
 }
@@ -1854,7 +1877,7 @@ func TestCheckManifestCatchMissingStream(t *testing.T) {
 	u.StreamsRequired = []string{"st-c"}
 	testManifest.Manifest.UIs["ui-b"] = u
 
-	err, msg := CheckManifest(testManifest.Manifest)
+	err, msg := checkManifest(testManifest.Manifest)
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"ui ui-b references non-existent stream: st-c"}, msg)
@@ -1862,7 +1885,7 @@ func TestCheckManifestCatchMissingStream(t *testing.T) {
 	//fix manifest for other tests
 	u.StreamsRequired = s
 	testManifest.Manifest.UIs["ui-b"] = u
-	err, _ = CheckManifest(testManifest.Manifest)
+	err, _ = checkManifest(testManifest.Manifest)
 	assert.NoError(t, err)
 
 }
@@ -1944,7 +1967,7 @@ func TestDeletePolicyAddPolicy(t *testing.T) {
 
 func TestPruneDiaries(t *testing.T) {
 	s := New()
-	s.PruneDiaries()
+	s.pruneDiaries()
 
 	// fix time for ease of checking results
 	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
@@ -1955,6 +1978,6 @@ func TestPruneDiaries(t *testing.T) {
 
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
-	s.PruneDiaries()
+	s.pruneDiaries()
 
 }
