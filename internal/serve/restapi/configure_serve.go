@@ -12,8 +12,6 @@ import (
 
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/descriptions"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/policies"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
 )
 
@@ -101,9 +99,9 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.GetActivity has not yet been implemented")
 		})
 	}
-	if api.PoliciesGetAvailabilityHandler == nil {
-		api.PoliciesGetAvailabilityHandler = policies.GetAvailabilityHandlerFunc(func(params policies.GetAvailabilityParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation policies.GetAvailability has not yet been implemented")
+	if api.UsersGetAvailabilityHandler == nil {
+		api.UsersGetAvailabilityHandler = users.GetAvailabilityHandlerFunc(func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetAvailability has not yet been implemented")
 		})
 	}
 	if api.UsersGetBookingsForUserHandler == nil {
@@ -111,9 +109,9 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.GetBookingsForUser has not yet been implemented")
 		})
 	}
-	if api.DescriptionsGetDescriptionHandler == nil {
-		api.DescriptionsGetDescriptionHandler = descriptions.GetDescriptionHandlerFunc(func(params descriptions.GetDescriptionParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation descriptions.GetDescription has not yet been implemented")
+	if api.UsersGetDescriptionHandler == nil {
+		api.UsersGetDescriptionHandler = users.GetDescriptionHandlerFunc(func(params users.GetDescriptionParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetDescription has not yet been implemented")
 		})
 	}
 	if api.UsersGetOldBookingsForUserHandler == nil {
@@ -126,9 +124,9 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.GetPoliciesForUser has not yet been implemented")
 		})
 	}
-	if api.PoliciesGetPolicyHandler == nil {
-		api.PoliciesGetPolicyHandler = policies.GetPolicyHandlerFunc(func(params policies.GetPolicyParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation policies.GetPolicy has not yet been implemented")
+	if api.UsersGetPolicyHandler == nil {
+		api.UsersGetPolicyHandler = users.GetPolicyHandlerFunc(func(params users.GetPolicyParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetPolicy has not yet been implemented")
 		})
 	}
 	if api.UsersGetPolicyStatusForUserHandler == nil {
@@ -141,9 +139,9 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation admin.GetSlotIsAvailable has not yet been implemented")
 		})
 	}
-	if api.PoliciesMakeBookingHandler == nil {
-		api.PoliciesMakeBookingHandler = policies.MakeBookingHandlerFunc(func(params policies.MakeBookingParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation policies.MakeBooking has not yet been implemented")
+	if api.UsersMakeBookingHandler == nil {
+		api.UsersMakeBookingHandler = users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
 		})
 	}
 	if api.AdminReplaceBookingsHandler == nil {

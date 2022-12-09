@@ -556,7 +556,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "descriptions"
+          "users"
         ],
         "summary": "Get description",
         "operationId": "GetDescription",
@@ -637,7 +637,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "policies"
+          "users"
         ],
         "summary": "Get policy",
         "operationId": "GetPolicy",
@@ -680,7 +680,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "policies"
+          "users"
         ],
         "summary": "Get availability for the slot under the policy",
         "operationId": "GetAvailability",
@@ -730,7 +730,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "policies"
+          "users"
         ],
         "summary": "Request a booking",
         "operationId": "MakeBooking",
@@ -1882,19 +1882,7 @@ func init() {
       "name": "admin"
     },
     {
-      "description": "for bookings",
-      "name": "bookings"
-    },
-    {
-      "description": "for descriptions",
-      "name": "descriptions"
-    },
-    {
-      "description": "for policies",
-      "name": "policies"
-    },
-    {
-      "description": "for or about users",
+      "description": "for users",
       "name": "users"
     }
   ]
@@ -2549,7 +2537,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "descriptions"
+          "users"
         ],
         "summary": "Get description",
         "operationId": "GetDescription",
@@ -2648,7 +2636,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "policies"
+          "users"
         ],
         "summary": "Get policy",
         "operationId": "GetPolicy",
@@ -2700,7 +2688,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "policies"
+          "users"
         ],
         "summary": "Get availability for the slot under the policy",
         "operationId": "GetAvailability",
@@ -2759,7 +2747,7 @@ func init() {
           "application/json"
         ],
         "tags": [
-          "policies"
+          "users"
         ],
         "summary": "Request a booking",
         "operationId": "MakeBooking",
@@ -3992,19 +3980,7 @@ func init() {
       "name": "admin"
     },
     {
-      "description": "for bookings",
-      "name": "bookings"
-    },
-    {
-      "description": "for descriptions",
-      "name": "descriptions"
-    },
-    {
-      "description": "for policies",
-      "name": "policies"
-    },
-    {
-      "description": "for or about users",
+      "description": "for users",
       "name": "users"
     }
   ]

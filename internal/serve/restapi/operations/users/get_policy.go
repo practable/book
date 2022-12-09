@@ -11,42 +11,42 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// MakeBookingHandlerFunc turns a function with the right signature into a make booking handler
-type MakeBookingHandlerFunc func(MakeBookingParams, interface{}) middleware.Responder
+// GetPolicyHandlerFunc turns a function with the right signature into a get policy handler
+type GetPolicyHandlerFunc func(GetPolicyParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn MakeBookingHandlerFunc) Handle(params MakeBookingParams, principal interface{}) middleware.Responder {
+func (fn GetPolicyHandlerFunc) Handle(params GetPolicyParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// MakeBookingHandler interface for that can handle valid make booking params
-type MakeBookingHandler interface {
-	Handle(MakeBookingParams, interface{}) middleware.Responder
+// GetPolicyHandler interface for that can handle valid get policy params
+type GetPolicyHandler interface {
+	Handle(GetPolicyParams, interface{}) middleware.Responder
 }
 
-// NewMakeBooking creates a new http.Handler for the make booking operation
-func NewMakeBooking(ctx *middleware.Context, handler MakeBookingHandler) *MakeBooking {
-	return &MakeBooking{Context: ctx, Handler: handler}
+// NewGetPolicy creates a new http.Handler for the get policy operation
+func NewGetPolicy(ctx *middleware.Context, handler GetPolicyHandler) *GetPolicy {
+	return &GetPolicy{Context: ctx, Handler: handler}
 }
 
-/* MakeBooking swagger:route POST /policies/{policy_name}/slots/{slot_name} users makeBooking
+/* GetPolicy swagger:route GET /policies/{policy_name} users getPolicy
 
-Request a booking
+Get policy
 
-TODO pagination
+Get policy
 
 */
-type MakeBooking struct {
+type GetPolicy struct {
 	Context *middleware.Context
-	Handler MakeBookingHandler
+	Handler GetPolicyHandler
 }
 
-func (o *MakeBooking) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *GetPolicy) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		*r = *rCtx
 	}
-	var Params = NewMakeBookingParams()
+	var Params = NewGetPolicyParams()
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {
 		o.Context.Respond(rw, r, route.Produces, route, err)

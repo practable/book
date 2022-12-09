@@ -380,7 +380,7 @@ paths:
       summary: Get description 
       description: Get description
       tags:
-      - descriptions
+      - users
       operationId: GetDescription
       deprecated: false
       produces:
@@ -440,7 +440,7 @@ paths:
       summary: Get policy
       description: Get policy
       tags:
-      - policies
+      - users
       operationId: GetPolicy
       deprecated: false
       produces:
@@ -471,7 +471,7 @@ paths:
       summary: Get availability for the slot under the policy
       description: TODO pagination
       tags:
-      - policies
+      - users
       operationId: GetAvailability
       deprecated: false
       produces:
@@ -506,7 +506,7 @@ paths:
       summary: Request a booking
       description: TODO pagination
       tags:
-      - policies
+      - users
       operationId: MakeBooking
       deprecated: false
       consumes:
@@ -1364,11 +1364,5 @@ responses:
 tags:
 - name: admin
   description: 'for admins only'
-- name: bookings
-  description: 'for bookings'
-- name: descriptions
-  description: 'for descriptions'
-- name: policies
-  description: 'for policies'
 - name: users
-  description: 'for or about users'
+  description: 'for users'

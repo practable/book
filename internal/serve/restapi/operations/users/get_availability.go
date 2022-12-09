@@ -29,7 +29,7 @@ func NewGetAvailability(ctx *middleware.Context, handler GetAvailabilityHandler)
 	return &GetAvailability{Context: ctx, Handler: handler}
 }
 
-/* GetAvailability swagger:route GET /policies/{policy_name}/slots/{slot_name} users slots bookings getAvailability
+/* GetAvailability swagger:route GET /policies/{policy_name}/slots/{slot_name} users getAvailability
 
 Get availability for the slot under the policy
 

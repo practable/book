@@ -20,8 +20,6 @@ import (
 	"github.com/go-openapi/swag"
 
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/descriptions"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/policies"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
 )
 
@@ -76,14 +74,14 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersGetActivityHandler: users.GetActivityHandlerFunc(func(params users.GetActivityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetActivity has not yet been implemented")
 		}),
-		PoliciesGetAvailabilityHandler: policies.GetAvailabilityHandlerFunc(func(params policies.GetAvailabilityParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation policies.GetAvailability has not yet been implemented")
+		UsersGetAvailabilityHandler: users.GetAvailabilityHandlerFunc(func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetAvailability has not yet been implemented")
 		}),
 		UsersGetBookingsForUserHandler: users.GetBookingsForUserHandlerFunc(func(params users.GetBookingsForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetBookingsForUser has not yet been implemented")
 		}),
-		DescriptionsGetDescriptionHandler: descriptions.GetDescriptionHandlerFunc(func(params descriptions.GetDescriptionParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation descriptions.GetDescription has not yet been implemented")
+		UsersGetDescriptionHandler: users.GetDescriptionHandlerFunc(func(params users.GetDescriptionParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetDescription has not yet been implemented")
 		}),
 		UsersGetOldBookingsForUserHandler: users.GetOldBookingsForUserHandlerFunc(func(params users.GetOldBookingsForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetOldBookingsForUser has not yet been implemented")
@@ -91,8 +89,8 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersGetPoliciesForUserHandler: users.GetPoliciesForUserHandlerFunc(func(params users.GetPoliciesForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetPoliciesForUser has not yet been implemented")
 		}),
-		PoliciesGetPolicyHandler: policies.GetPolicyHandlerFunc(func(params policies.GetPolicyParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation policies.GetPolicy has not yet been implemented")
+		UsersGetPolicyHandler: users.GetPolicyHandlerFunc(func(params users.GetPolicyParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetPolicy has not yet been implemented")
 		}),
 		UsersGetPolicyStatusForUserHandler: users.GetPolicyStatusForUserHandlerFunc(func(params users.GetPolicyStatusForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetPolicyStatusForUser has not yet been implemented")
@@ -100,8 +98,8 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminGetSlotIsAvailableHandler: admin.GetSlotIsAvailableHandlerFunc(func(params admin.GetSlotIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetSlotIsAvailable has not yet been implemented")
 		}),
-		PoliciesMakeBookingHandler: policies.MakeBookingHandlerFunc(func(params policies.MakeBookingParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation policies.MakeBooking has not yet been implemented")
+		UsersMakeBookingHandler: users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
 		}),
 		AdminReplaceBookingsHandler: admin.ReplaceBookingsHandlerFunc(func(params admin.ReplaceBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceBookings has not yet been implemented")
@@ -198,24 +196,24 @@ type ServeAPI struct {
 	UsersGetAccessTokenHandler users.GetAccessTokenHandler
 	// UsersGetActivityHandler sets the operation handler for the get activity operation
 	UsersGetActivityHandler users.GetActivityHandler
-	// PoliciesGetAvailabilityHandler sets the operation handler for the get availability operation
-	PoliciesGetAvailabilityHandler policies.GetAvailabilityHandler
+	// UsersGetAvailabilityHandler sets the operation handler for the get availability operation
+	UsersGetAvailabilityHandler users.GetAvailabilityHandler
 	// UsersGetBookingsForUserHandler sets the operation handler for the get bookings for user operation
 	UsersGetBookingsForUserHandler users.GetBookingsForUserHandler
-	// DescriptionsGetDescriptionHandler sets the operation handler for the get description operation
-	DescriptionsGetDescriptionHandler descriptions.GetDescriptionHandler
+	// UsersGetDescriptionHandler sets the operation handler for the get description operation
+	UsersGetDescriptionHandler users.GetDescriptionHandler
 	// UsersGetOldBookingsForUserHandler sets the operation handler for the get old bookings for user operation
 	UsersGetOldBookingsForUserHandler users.GetOldBookingsForUserHandler
 	// UsersGetPoliciesForUserHandler sets the operation handler for the get policies for user operation
 	UsersGetPoliciesForUserHandler users.GetPoliciesForUserHandler
-	// PoliciesGetPolicyHandler sets the operation handler for the get policy operation
-	PoliciesGetPolicyHandler policies.GetPolicyHandler
+	// UsersGetPolicyHandler sets the operation handler for the get policy operation
+	UsersGetPolicyHandler users.GetPolicyHandler
 	// UsersGetPolicyStatusForUserHandler sets the operation handler for the get policy status for user operation
 	UsersGetPolicyStatusForUserHandler users.GetPolicyStatusForUserHandler
 	// AdminGetSlotIsAvailableHandler sets the operation handler for the get slot is available operation
 	AdminGetSlotIsAvailableHandler admin.GetSlotIsAvailableHandler
-	// PoliciesMakeBookingHandler sets the operation handler for the make booking operation
-	PoliciesMakeBookingHandler policies.MakeBookingHandler
+	// UsersMakeBookingHandler sets the operation handler for the make booking operation
+	UsersMakeBookingHandler users.MakeBookingHandler
 	// AdminReplaceBookingsHandler sets the operation handler for the replace bookings operation
 	AdminReplaceBookingsHandler admin.ReplaceBookingsHandler
 	// AdminReplaceManifestHandler sets the operation handler for the replace manifest operation
@@ -344,14 +342,14 @@ func (o *ServeAPI) Validate() error {
 	if o.UsersGetActivityHandler == nil {
 		unregistered = append(unregistered, "users.GetActivityHandler")
 	}
-	if o.PoliciesGetAvailabilityHandler == nil {
-		unregistered = append(unregistered, "policies.GetAvailabilityHandler")
+	if o.UsersGetAvailabilityHandler == nil {
+		unregistered = append(unregistered, "users.GetAvailabilityHandler")
 	}
 	if o.UsersGetBookingsForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetBookingsForUserHandler")
 	}
-	if o.DescriptionsGetDescriptionHandler == nil {
-		unregistered = append(unregistered, "descriptions.GetDescriptionHandler")
+	if o.UsersGetDescriptionHandler == nil {
+		unregistered = append(unregistered, "users.GetDescriptionHandler")
 	}
 	if o.UsersGetOldBookingsForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetOldBookingsForUserHandler")
@@ -359,8 +357,8 @@ func (o *ServeAPI) Validate() error {
 	if o.UsersGetPoliciesForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetPoliciesForUserHandler")
 	}
-	if o.PoliciesGetPolicyHandler == nil {
-		unregistered = append(unregistered, "policies.GetPolicyHandler")
+	if o.UsersGetPolicyHandler == nil {
+		unregistered = append(unregistered, "users.GetPolicyHandler")
 	}
 	if o.UsersGetPolicyStatusForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetPolicyStatusForUserHandler")
@@ -368,8 +366,8 @@ func (o *ServeAPI) Validate() error {
 	if o.AdminGetSlotIsAvailableHandler == nil {
 		unregistered = append(unregistered, "admin.GetSlotIsAvailableHandler")
 	}
-	if o.PoliciesMakeBookingHandler == nil {
-		unregistered = append(unregistered, "policies.MakeBookingHandler")
+	if o.UsersMakeBookingHandler == nil {
+		unregistered = append(unregistered, "users.MakeBookingHandler")
 	}
 	if o.AdminReplaceBookingsHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceBookingsHandler")
@@ -532,7 +530,7 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/policies/{policy_name}/slots/{slot_name}"] = policies.NewGetAvailability(o.context, o.PoliciesGetAvailabilityHandler)
+	o.handlers["GET"]["/policies/{policy_name}/slots/{slot_name}"] = users.NewGetAvailability(o.context, o.UsersGetAvailabilityHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -540,7 +538,7 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/descriptions/{description_name}"] = descriptions.NewGetDescription(o.context, o.DescriptionsGetDescriptionHandler)
+	o.handlers["GET"]["/descriptions/{description_name}"] = users.NewGetDescription(o.context, o.UsersGetDescriptionHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -552,7 +550,7 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/policies/{policy_name}"] = policies.NewGetPolicy(o.context, o.PoliciesGetPolicyHandler)
+	o.handlers["GET"]["/policies/{policy_name}"] = users.NewGetPolicy(o.context, o.UsersGetPolicyHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -564,7 +562,7 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
-	o.handlers["POST"]["/policies/{policy_name}/slots/{slot_name}"] = policies.NewMakeBooking(o.context, o.PoliciesMakeBookingHandler)
+	o.handlers["POST"]["/policies/{policy_name}/slots/{slot_name}"] = users.NewMakeBooking(o.context, o.UsersMakeBookingHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
