@@ -66,3 +66,43 @@ func getAccessTokenHandler(config config.ServerConfig) func(users.GetAccessToken
 			})
 	}
 }
+
+// getDescriptiontHandler
+func getDescriptionHandler(config config.ServerConfig) func(users.GetDescriptionParams, interface{}) middleware.Responder {
+	return func(params users.GetDescriptionParams, principal interface{}) middleware.Responder {
+
+		_, _, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.DescriptionName == "" {
+			c := "404"
+			m := "no description_name in path"
+			return users.NewGetDescriptionNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		d, err := config.Store.GetDescription(params.DescriptionName)
+
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return users.NewGetDescriptionInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		dm := models.Description{
+			Name:    &d.Name,
+			Type:    &d.Type,
+			Short:   d.Short,
+			Long:    d.Long,
+			Further: d.Further,
+			Thumb:   d.Thumb,
+			Image:   d.Image,
+		}
+
+		return users.NewGetDescriptionOK().WithPayload(&dm)
+	}
+}

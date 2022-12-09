@@ -59,8 +59,10 @@ func API(ctx context.Context, config config.ServerConfig) {
 	api.AdminReplaceOldBookingsHandler = admin.ReplaceOldBookingsHandlerFunc(replaceOldBookingsHandler(config))
 	api.AdminSetLockHandler = admin.SetLockHandlerFunc(setLockHandler(config))
 	api.AdminSetSlotIsAvailableHandler = admin.SetSlotIsAvailableHandlerFunc(setSlotIsAvailableHandler(config))
+
 	// *** USERS *** //
 	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))
+	api.UsersGetDescriptionHandler = users.GetDescriptionHandlerFunc(getDescriptionHandler(config))
 
 	go func() {
 		<-ctx.Done()

@@ -26,7 +26,7 @@ import (
 var debug bool
 var cfg config.ServerConfig
 var currentTime *time.Time
-
+var manifest models.Manifest
 var manifestYAML = []byte(`descriptions:
   d-p-a:
     name: policy-a
@@ -275,6 +275,12 @@ func TestMain(m *testing.M) {
 	// modify the time function used to verify the jwt token
 	jwt.TimeFunc = func() time.Time { return *currentTime }
 
+	// load test manifest into an object so we can easily check GET requests against it
+	err = yaml.Unmarshal(manifestYAML, &manifest)
+	if err != nil {
+		panic(err)
+	}
+
 	go Run(ctx, cfg)
 
 	time.Sleep(time.Second)
@@ -289,6 +295,19 @@ func signedAdminToken() (string, error) {
 	audience := cfg.Host
 	subject := "someuser"
 	scopes := []string{"booking:admin"}
+	now := (*currentTime).Unix()
+	nbf := now - 1
+	iat := nbf
+	exp := nbf + 86400 //1 day
+	token := login.New(audience, subject, scopes, iat, nbf, exp)
+	return login.Sign(token, string(cfg.StoreSecret))
+}
+
+func signedUserToken() (string, error) {
+
+	audience := cfg.Host
+	subject := "someuser"
+	scopes := []string{"booking:user"}
 	now := (*currentTime).Unix()
 	nbf := now - 1
 	iat := nbf
@@ -733,4 +752,27 @@ func TestSetGetSlotIsAvailable(t *testing.T) {
 	assert.Equal(t, true, *(ss.Available))
 	assert.Equal(t, "passed self-test", *(ss.Reason))
 	resp.Body.Close()
+}
+
+func TestGetDescription(t *testing.T) {
+
+	loadTestManifest(t)
+
+	stoken, err := signedUserToken()
+	assert.NoError(t, err)
+
+	// get description
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/descriptions/d-r-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	var d models.Description
+	body, err := ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &d)
+	resp.Body.Close()
+	assert.Equal(t, manifest.Descriptions["d-r-a"], d)
+
 }

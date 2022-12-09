@@ -79,7 +79,7 @@ func isUser(principal interface{}) (*lit.Token, error) {
 	return claims, nil
 }
 
-func isBookingAdminOrUser(principal interface{}) (bool, *lit.Token, error) {
+func isAdminOrUser(principal interface{}) (bool, *lit.Token, error) {
 
 	claims, err := claimsCheck(principal)
 
