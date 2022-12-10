@@ -368,3 +368,60 @@ func getStoreStatusUserHandler(config config.ServerConfig) func(users.GetStoreSt
 		return users.NewGetStoreStatusUserOK().WithPayload(&s)
 	}
 }
+
+// getBookingsForHandler
+func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBookingsForUserParams, interface{}) middleware.Responder {
+	return func(params users.GetBookingsForUserParams, principal interface{}) middleware.Responder {
+
+		_, claims, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewGetBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.UserName == "" {
+			c := "404"
+			m := "no user_name in query"
+			return users.NewGetBookingsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// check username against token
+		if claims.Subject != params.UserName {
+			c := "401"
+			m := "user_name in path does not match subject in token"
+			return users.NewGetBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		bs, err := config.Store.GetBookingsFor(params.UserName)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return users.NewGetBookingsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		var bm models.Bookings
+
+		for _, v := range bs {
+
+			b := models.Booking{
+				Cancelled:   v.Cancelled,
+				Name:        gog.Ptr(v.Name),
+				Policy:      gog.Ptr(v.Policy),
+				Slot:        gog.Ptr(v.Slot),
+				Started:     v.Started,
+				Unfulfilled: v.Unfulfilled,
+				User:        gog.Ptr(v.User),
+				When: gog.Ptr(models.Interval{
+					Start: strfmt.DateTime(v.When.Start),
+					End:   strfmt.DateTime(v.When.End),
+				}),
+			}
+			bm = append(bm, &b)
+		}
+
+		return users.NewGetBookingsForUserOK().WithPayload(bm)
+	}
+}

@@ -213,7 +213,7 @@ bk-0:
   slot: sl-b
   started: false
   unfulfilled: false
-  user: u-a
+  user: user-a
   when:
     start: '2022-11-05T00:10:00Z'
     end: '2022-11-05T00:15:00Z'
@@ -224,7 +224,7 @@ bk-1:
   slot: sl-b
   started: false
   unfulfilled: false
-  user: u-b
+  user: user-b
   when:
     start: '2022-11-05T00:20:00Z'
     end: '2022-11-05T00:30:00Z'
@@ -235,7 +235,7 @@ bk-2:
   slot: sl-b
   started: false
   unfulfilled: false
-  user: u-c
+  user: user-c
   when:
     start: '2022-11-05T00:35:00Z'
     end: '2022-11-05T00:40:00Z'
@@ -246,7 +246,7 @@ bk-3:
   slot: sl-b
   started: false
   unfulfilled: false
-  user: u-d
+  user: user-d
   when:
     start: '2022-11-05T00:45:00Z'
     end: '2022-11-05T00:50:00Z'
@@ -257,7 +257,7 @@ bk-4:
   slot: sl-b
   started: false
   unfulfilled: false
-  user: u-e
+  user: user-e
   when:
     start: '2022-11-05T00:55:00Z'
     end: '2022-11-05T01:00:00Z'
@@ -268,7 +268,7 @@ bk-5:
   slot: sl-b
   started: false
   unfulfilled: false
-  user: u-f
+  user: user-f
   when:
     start: '2022-11-05T01:05:00Z'
     end: '2022-11-05T01:10:00Z'
@@ -279,7 +279,7 @@ bk-6:
   slot: sl-b
   started: false
   unfulfilled: false
-  user: u-a
+  user: user-g
   when:
     start: '2022-11-05T01:15:00Z'
     end: '2022-11-05T01:20:00Z'
@@ -290,7 +290,7 @@ bk-7:
   slot: sl-b
   started: false
   unfulfilled: false
-  user: u-g
+  user: user-h
   when:
     start: '2022-11-05T01:25:00Z'
     end: '2022-11-05T01:30:00Z'
@@ -497,6 +497,7 @@ func TestLogin(t *testing.T) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
+	resp.Body.Close()
 	atr := &models.AccessToken{}
 	err = json.Unmarshal(body, atr)
 	assert.NoError(t, err)
@@ -504,6 +505,18 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, "someuser", *(atr.Sub))
 	assert.Equal(t, []string{"booking:user"}, atr.Scopes)
 	assert.Equal(t, "ey", (*(atr.Token))[0:2]) //necessary but not sufficient!
+
+	// login as user u-g (too short)
+	client = &http.Client{}
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/login/u-g", nil)
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	assert.NoError(t, err)
+	expected := `{"code":"404","message":"user name must be 6 or more alphanumeric characters"}` + "\n"
+	assert.Equal(t, expected, string(body))
 
 }
 
@@ -1246,4 +1259,64 @@ func TestGetStoreStatus(t *testing.T) {
 	}
 
 	assert.Equal(t, esa, ssa)
+}
+
+func TestGetBookingsForUser(t *testing.T) {
+
+	// make sure our pre-prepared bookings are in the future
+	// other tests may have advanced time
+	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	currentTime = &ct
+
+	satoken := loadTestManifest(t)
+	removeAllBookings(t)
+	bm := getBookings(t)
+	assert.Equal(t, 0, len(bm))
+
+	// load some bookings to break up the future availability in discrete intervals
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(bookings2YAML)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", satoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	bm = getBookings(t)
+
+	if debug {
+		printBookings(t, bm)
+	}
+
+	// login as user-g
+	client = &http.Client{}
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/login/user-g", nil)
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	assert.NoError(t, err)
+	resp.Body.Close()
+	atr := &models.AccessToken{}
+	err = json.Unmarshal(body, atr)
+	assert.NoError(t, err)
+	sutoken := *(atr.Token)
+
+	// get bookings for user u-g
+	assert.NoError(t, err)
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/bookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	bookings := `[{"name":"bk-6","policy":"p-b","slot":"sl-b","user":"user-g","when":{"end":"2022-11-05T01:20:00.000Z","start":"2022-11-05T01:15:00.000Z"}}]` + "\n"
+	assert.Equal(t, bookings, string(body))
+
 }
