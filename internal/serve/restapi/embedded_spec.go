@@ -1043,7 +1043,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Policies"
+              "$ref": "#/definitions/PoliciesDescribed"
             }
           },
           "401": {
@@ -1479,6 +1479,12 @@ func init() {
         "$ref": "#/definitions/Policy"
       }
     },
+    "PoliciesDescribed": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PolicyDescribed"
+      }
+    },
     "Policy": {
       "type": "object",
       "required": [
@@ -1491,6 +1497,60 @@ func init() {
         },
         "description": {
           "type": "string"
+        },
+        "display_guides": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DisplayGuide"
+          }
+        },
+        "enforce_book_ahead": {
+          "type": "boolean"
+        },
+        "enforce_max_bookings": {
+          "type": "boolean"
+        },
+        "enforce_max_duration": {
+          "type": "boolean"
+        },
+        "enforce_max_usage": {
+          "type": "boolean"
+        },
+        "enforce_min_duration": {
+          "type": "boolean"
+        },
+        "max_bookings": {
+          "type": "integer"
+        },
+        "max_duration": {
+          "type": "string"
+        },
+        "max_usage": {
+          "type": "string"
+        },
+        "min_duration": {
+          "type": "string"
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PolicyDescribed": {
+      "type": "object",
+      "required": [
+        "description",
+        "slots"
+      ],
+      "properties": {
+        "book_ahead": {
+          "type": "string"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
         },
         "display_guides": {
           "type": "array",
@@ -3162,7 +3222,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Policies"
+              "$ref": "#/definitions/PoliciesDescribed"
             }
           },
           "401": {
@@ -3625,6 +3685,12 @@ func init() {
         "$ref": "#/definitions/Policy"
       }
     },
+    "PoliciesDescribed": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/PolicyDescribed"
+      }
+    },
     "Policy": {
       "type": "object",
       "required": [
@@ -3637,6 +3703,60 @@ func init() {
         },
         "description": {
           "type": "string"
+        },
+        "display_guides": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/DisplayGuide"
+          }
+        },
+        "enforce_book_ahead": {
+          "type": "boolean"
+        },
+        "enforce_max_bookings": {
+          "type": "boolean"
+        },
+        "enforce_max_duration": {
+          "type": "boolean"
+        },
+        "enforce_max_usage": {
+          "type": "boolean"
+        },
+        "enforce_min_duration": {
+          "type": "boolean"
+        },
+        "max_bookings": {
+          "type": "integer"
+        },
+        "max_duration": {
+          "type": "string"
+        },
+        "max_usage": {
+          "type": "string"
+        },
+        "min_duration": {
+          "type": "string"
+        },
+        "slots": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "PolicyDescribed": {
+      "type": "object",
+      "required": [
+        "description",
+        "slots"
+      ],
+      "properties": {
+        "book_ahead": {
+          "type": "string"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
         },
         "display_guides": {
           "type": "array",

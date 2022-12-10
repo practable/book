@@ -632,3 +632,160 @@ func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams
 
 	}
 }
+
+// getOldBookingsForHandler
+func getOldBookingsForUserHandler(config config.ServerConfig) func(users.GetOldBookingsForUserParams, interface{}) middleware.Responder {
+	return func(params users.GetOldBookingsForUserParams, principal interface{}) middleware.Responder {
+
+		isAdmin, claims, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewGetOldBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.UserName == "" {
+			c := "404"
+			m := "no user_name in query"
+			return users.NewGetOldBookingsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// check username against token, unless admin (admin can check on behalf of users)
+		if (!isAdmin) && (claims.Subject != params.UserName) {
+			c := "401"
+			m := "user_name in path does not match subject in token"
+			return users.NewGetOldBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		bs, err := config.Store.GetOldBookingsFor(params.UserName)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return users.NewGetOldBookingsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		var bm models.Bookings
+
+		for _, v := range bs {
+
+			b := models.Booking{
+				Cancelled:   v.Cancelled,
+				Name:        gog.Ptr(v.Name),
+				Policy:      gog.Ptr(v.Policy),
+				Slot:        gog.Ptr(v.Slot),
+				Started:     v.Started,
+				Unfulfilled: v.Unfulfilled,
+				User:        gog.Ptr(v.User),
+				When: gog.Ptr(models.Interval{
+					Start: strfmt.DateTime(v.When.Start),
+					End:   strfmt.DateTime(v.When.End),
+				}),
+			}
+			bm = append(bm, &b)
+		}
+
+		return users.NewGetOldBookingsForUserOK().WithPayload(bm)
+	}
+}
+
+// getPoliciesForHandler
+func getPoliciesForUserHandler(config config.ServerConfig) func(users.GetPoliciesForUserParams, interface{}) middleware.Responder {
+	return func(params users.GetPoliciesForUserParams, principal interface{}) middleware.Responder {
+
+		isAdmin, claims, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewGetPoliciesForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.UserName == "" {
+			c := "404"
+			m := "no user_name in path"
+			return users.NewGetPoliciesForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// check username against token, unless admin (admin can check on behalf of users)
+		if (!isAdmin) && (claims.Subject != params.UserName) {
+			c := "401"
+			m := "user_name in path does not match subject in token"
+			return users.NewGetPoliciesForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		ps, err := config.Store.GetPoliciesFor(params.UserName)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return users.NewGetPoliciesForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		var pm models.PoliciesDescribed
+
+		for _, v := range ps {
+
+			p, err := config.Store.GetPolicy(v)
+
+			if err != nil {
+				c := "500"
+				m := "policy " + v + ": " + err.Error()
+				return users.NewGetPoliciesForUserInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+
+			if p.Description == "" {
+				c := "500"
+				m := "policy " + v + " missing description"
+				return users.NewGetPoliciesForUserInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+
+			d, err := config.Store.GetDescription(p.Description)
+			if err != nil {
+				c := "500"
+				m := "policy " + v + " description not found because " + err.Error()
+				return users.NewGetPoliciesForUserInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+
+			dgms := []*models.DisplayGuide{}
+
+			for _, v := range p.DisplayGuides {
+				dg := v // avoid pointers all pointing to last element in map
+				dgm := models.DisplayGuide{
+					BookAhead: gog.Ptr(dg.BookAhead.String()),
+					Duration:  gog.Ptr(dg.Duration.String()),
+					MaxSlots:  gog.Ptr(int64(dg.MaxSlots)),
+				}
+				dgms = append(dgms, &dgm)
+			}
+
+			pd := models.PolicyDescribed{
+				BookAhead: p.BookAhead.String(),
+				Description: gog.Ptr(models.Description{
+					Name:    &d.Name,
+					Type:    &d.Type,
+					Short:   d.Short,
+					Long:    d.Long,
+					Further: d.Further,
+					Thumb:   d.Thumb,
+					Image:   d.Image,
+				}),
+				DisplayGuides:      dgms,
+				EnforceBookAhead:   p.EnforceBookAhead,
+				EnforceMaxBookings: p.EnforceMaxBookings,
+				EnforceMaxDuration: p.EnforceMaxDuration,
+				EnforceMaxUsage:    p.EnforceMaxUsage,
+				EnforceMinDuration: p.EnforceMinDuration,
+				MaxBookings:        p.MaxBookings,
+				MaxDuration:        p.MaxDuration.String(),
+				MaxUsage:           p.MaxUsage.String(),
+				MinDuration:        p.MinDuration.String(),
+				Slots:              p.Slots,
+			}
+			pm = append(pm, &pd)
+		}
+
+		return users.NewGetPoliciesForUserOK().WithPayload(pm)
+	}
+}

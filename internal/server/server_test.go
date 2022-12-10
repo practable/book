@@ -1262,7 +1262,8 @@ func TestGetStoreStatus(t *testing.T) {
 	assert.Equal(t, esa, ssa)
 }
 
-func TestGetBookingsForUserCancelBooking(t *testing.T) {
+// Test GetBookings, CancelBookings, GetOldBookings
+func TestGetCancelBookingsGetOldBookings(t *testing.T) {
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1341,6 +1342,39 @@ func TestGetBookingsForUserCancelBooking(t *testing.T) {
 	bookings = `[]` + "\n"
 	assert.Equal(t, bookings, string(body))
 
+	// get old bookings for user (should be none at this time)
+	sutoken, err = signedUserTokenFor("user-f")
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-f/oldbookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	bookings = `[]` + "\n"
+	assert.Equal(t, bookings, string(body))
+
+	//move time on so that bookings become old
+	ct = time.Date(2022, 12, 5, 0, 0, 0, 0, time.UTC)
+	currentTime = &ct
+	time.Sleep(50 * time.Millisecond) //allow pruning to take place
+
+	// get old bookings for user
+	sutoken, err = signedUserTokenFor("user-f") //need new token that is valid for current time
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-f/oldbookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	bookings = `[{"name":"bk-5","policy":"p-b","slot":"sl-b","user":"user-f","when":{"end":"2022-11-05T01:10:00.000Z","start":"2022-11-05T01:05:00.000Z"}}]` + "\n"
+	assert.Equal(t, bookings, string(body))
+
 }
 
 func TestGetActivity(t *testing.T) {
@@ -1397,5 +1431,45 @@ func TestGetActivity(t *testing.T) {
 	resp.Body.Close()
 	expected := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1hIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.B2jdYIYf6YHV1rSK6RkMyrGX2eQAPFg6QYwc6siVpb4","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1iIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIl0sInN1YiI6InVzZXItZyIsImF1ZCI6WyJodHRwczovL3JlbGF5LWFjY2Vzcy5wcmFjdGFibGUuaW8iXSwiZXhwIjoxNjY3NjExMjAwLCJuYmYiOjE2Njc2MTA5MDAsImlhdCI6MTY2NzYxMDkwMH0.9A-5zGLjB3Dw2PpGHfYNoapfrt-VKa8BmRVaggF4oAk","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
 	assert.Equal(t, expected, string(body))
+
+}
+
+func TestGetPolicies(t *testing.T) {
+
+	// make sure our pre-prepared bookings are in the future
+	// other tests may have advanced time
+	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	currentTime = &ct
+
+	satoken := loadTestManifest(t)
+	removeAllBookings(t)
+	bm := getBookings(t)
+	assert.Equal(t, 0, len(bm))
+
+	// load some bookings to break up the future availability in discrete intervals
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(bookings2YAML)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", satoken)
+	req.Header.Add("Content-Type", "text/plain")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	// get bookings for user u-g
+	sutoken, err := signedUserTokenFor("user-g")
+	assert.NoError(t, err)
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/policies", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	policies := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
+	assert.Equal(t, policies, string(body))
 
 }

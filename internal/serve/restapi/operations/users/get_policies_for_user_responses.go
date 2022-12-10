@@ -25,7 +25,7 @@ type GetPoliciesForUserOK struct {
 	/*
 	  In: Body
 	*/
-	Payload models.Policies `json:"body,omitempty"`
+	Payload models.PoliciesDescribed `json:"body,omitempty"`
 }
 
 // NewGetPoliciesForUserOK creates GetPoliciesForUserOK with default headers values
@@ -35,13 +35,13 @@ func NewGetPoliciesForUserOK() *GetPoliciesForUserOK {
 }
 
 // WithPayload adds the payload to the get policies for user o k response
-func (o *GetPoliciesForUserOK) WithPayload(payload models.Policies) *GetPoliciesForUserOK {
+func (o *GetPoliciesForUserOK) WithPayload(payload models.PoliciesDescribed) *GetPoliciesForUserOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the get policies for user o k response
-func (o *GetPoliciesForUserOK) SetPayload(payload models.Policies) {
+func (o *GetPoliciesForUserOK) SetPayload(payload models.PoliciesDescribed) {
 	o.Payload = payload
 }
 
@@ -52,7 +52,7 @@ func (o *GetPoliciesForUserOK) WriteResponse(rw http.ResponseWriter, producer ru
 	payload := o.Payload
 	if payload == nil {
 		// return empty array
-		payload = models.Policies{}
+		payload = models.PoliciesDescribed{}
 	}
 
 	if err := producer.Produce(rw, payload); err != nil {

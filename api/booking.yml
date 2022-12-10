@@ -741,7 +741,7 @@ paths:
         200:
           description: 'OK'
           schema:
-            $ref: '#/definitions/Policies'
+            $ref: '#/definitions/PoliciesDescribed'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -1105,11 +1105,52 @@ definitions:
       - description
       - slots
       
+  PolicyDescribed:
+    type: object
+    properties:
+      book_ahead:
+        type: string
+      description:
+        $ref: '#/definitions/Description'
+      display_guides:
+        type: array
+        items:
+          $ref: '#/definitions/DisplayGuide'
+      enforce_book_ahead:
+        type: boolean
+      enforce_max_bookings:
+        type: boolean
+      enforce_max_duration:
+        type: boolean
+      enforce_min_duration:
+        type: boolean
+      enforce_max_usage:
+        type: boolean
+      max_bookings:
+        type: integer
+      max_duration:
+        type: string
+      min_duration:
+        type: string
+      max_usage:
+        type: string
+      slots:
+        type: array
+        items:
+          type: string
+    required:
+      - description
+      - slots
+      
   Policies:
     type: array
     items:
       $ref: '#/definitions/Policy'
-
+      
+  PoliciesDescribed:
+    type: array
+    items:
+      $ref: '#/definitions/PolicyDescribed'
 
   PolicyStatus:
     type: object
