@@ -457,71 +457,21 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if params.Booking == nil {
-			c := "401"
-			m := "no booking in body"
-			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		b, err := config.Store.GetBooking(params.BookingName)
+		if err != nil {
+			return users.NewMakeBookingNotFound()
 		}
 
-		if params.Booking.Name == nil {
-			c := "401"
-			m := "booking in body does not have a name"
-			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		err = config.Store.CancelBooking(b)
 
-		}
-
-		if *(params.Booking.Name) != params.BookingName {
-			c := "401"
-			m := "booking in body does not match booking_name in path"
-			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		v := *(params.Booking)
-
-		if v.Name == nil || v.Policy == nil || v.Slot == nil || v.User == nil {
-			c := "401"
-			m := "booking in body missing name, policy, slot and/or user"
-			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		start, err := dt.Parse(v.When.Start.String())
 		if err != nil {
 			c := "500"
-			m := "error parsing booking start datetime: " + err.Error()
+			m := err.Error()
 			return users.NewCancelBookingInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		end, err := dt.Parse(v.When.End.String())
-		if err != nil {
-			c := "500"
-			m := "error parsing booking end datetime: " + err.Error()
-			return users.NewCancelBookingInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		bs := store.Booking{
-			Cancelled:   v.Cancelled,
-			Name:        *(v.Name),
-			Policy:      *(v.Policy),
-			Slot:        *(v.Slot),
-			Started:     v.Started,
-			Unfulfilled: v.Unfulfilled,
-			User:        *(v.User),
-			When: interval.Interval{
-				Start: start,
-				End:   end,
-			},
-		}
-
-		err = config.Store.CancelBooking(bs)
-
-		if err != nil {
-			c := "500"
-			m := "booking in body does not match booking_name in path"
-			return users.NewMakeBookingInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		// NotFound indicates the booking has been cancelled as desired
-		return users.NewMakeBookingNotFound()
+		return users.NewCancelBookingNotFound()
 
 	}
 }

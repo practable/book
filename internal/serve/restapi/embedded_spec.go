@@ -933,7 +933,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -\u003e ExportBookings() -\u003e edit -\u003e ReplaceBookings()-\u003e Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking. The booking details must be sent in the body and must match the booking to be cancelled. This is an additional layer of protection against inadvertent cancellations.",
+        "description": "For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -\u003e ExportBookings() -\u003e edit -\u003e ReplaceBookings()-\u003e Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking.",
         "consumes": [
           "application/json"
         ],
@@ -957,14 +957,6 @@ func init() {
             "name": "booking_name",
             "in": "path",
             "required": true
-          },
-          {
-            "name": "booking",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Booking"
-            }
           }
         ],
         "responses": {
@@ -3002,7 +2994,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -\u003e ExportBookings() -\u003e edit -\u003e ReplaceBookings()-\u003e Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking. The booking details must be sent in the body and must match the booking to be cancelled. This is an additional layer of protection against inadvertent cancellations.",
+        "description": "For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -\u003e ExportBookings() -\u003e edit -\u003e ReplaceBookings()-\u003e Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking.",
         "consumes": [
           "application/json"
         ],
@@ -3026,14 +3018,6 @@ func init() {
             "name": "booking_name",
             "in": "path",
             "required": true
-          },
-          {
-            "name": "booking",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/Booking"
-            }
           }
         ],
         "responses": {

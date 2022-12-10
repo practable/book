@@ -2043,3 +2043,40 @@ func TestGetPolicy(t *testing.T) {
 		t.Log(string(y))
 	}
 }
+
+func TestGetBooking(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	policy := "p-b"
+	slot := "sl-b"
+	user := "test" //does not yet exist in store
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	b, err := s.MakeBookingWithName(policy, slot, user, when, "test00")
+	assert.NoError(t, err)
+
+	b2, err := s.GetBooking("test00")
+	assert.NoError(t, err)
+
+	assert.Equal(t, b, b2)
+
+	_, err = s.GetBooking("nosuchbooking")
+	assert.Error(t, err)
+
+}

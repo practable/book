@@ -1320,12 +1320,9 @@ func TestGetBookingsForUserCancelBooking(t *testing.T) {
 
 	// cancel booking bk-6
 	client = &http.Client{}
-	bookingJSON := []byte(`{"name":"bk-6","policy":"p-b","slot":"sl-b","user":"user-g","when":{"end":"2022-11-05T01:20:00.000Z","start":"2022-11-05T01:15:00.000Z"}}`)
-	bodyReader = bytes.NewReader(bookingJSON)
-	req, err = http.NewRequest("DELETE", cfg.Host+"/api/v1/users/user-g/bookings/bk-6", bodyReader)
+	req, err = http.NewRequest("DELETE", cfg.Host+"/api/v1/users/user-g/bookings/bk-6", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
-	req.Header.Add("Content-Type", "application/json")
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 404, resp.StatusCode) //not found means deleted

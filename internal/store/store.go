@@ -860,6 +860,26 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 
 }
 
+//GetBooking returns a booking given a bookingname
+func (s *Store) GetBooking(booking string) (Booking, error) {
+	where := "store.GetBooking"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
+	v, ok := s.Bookings[booking]
+
+	if !ok {
+		return Booking{}, errors.New("booking not found")
+	}
+
+	return *v, nil
+}
+
 // GetBookingsFor returns a slice of all the current bookings for the given user
 // don't use mutex because called from functions that do
 func (s *Store) GetBookingsFor(user string) ([]Booking, error) {
