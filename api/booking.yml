@@ -1155,15 +1155,15 @@ definitions:
   PolicyStatus:
     type: object
     properties:
-      currentbookings:
+      current_bookings:
         type: integer
-      oldbookings:
+      old_bookings:
         type: integer
       usage:
         type: string
     required:
-      - currentbookings
-      - oldbookings
+      - current_bookings
+      - old_bookings
       - usage
       
   Resource:

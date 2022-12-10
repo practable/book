@@ -1434,7 +1434,7 @@ func TestGetActivity(t *testing.T) {
 
 }
 
-func TestGetPolicies(t *testing.T) {
+func TestGetPoliciesAndStatus(t *testing.T) {
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1471,5 +1471,18 @@ func TestGetPolicies(t *testing.T) {
 	resp.Body.Close()
 	policies := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
 	assert.Equal(t, policies, string(body))
+
+	// get policy status for user u-g
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/policies/p-b", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	status := `{"current_bookings":1,"old_bookings":0,"usage":"5m0s"}` + "\n"
+	assert.Equal(t, status, string(body))
 
 }

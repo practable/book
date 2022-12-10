@@ -19,13 +19,13 @@ import (
 // swagger:model PolicyStatus
 type PolicyStatus struct {
 
-	// currentbookings
+	// current bookings
 	// Required: true
-	Currentbookings *int64 `json:"currentbookings"`
+	CurrentBookings *int64 `json:"current_bookings"`
 
-	// oldbookings
+	// old bookings
 	// Required: true
-	Oldbookings *int64 `json:"oldbookings"`
+	OldBookings *int64 `json:"old_bookings"`
 
 	// usage
 	// Required: true
@@ -36,11 +36,11 @@ type PolicyStatus struct {
 func (m *PolicyStatus) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateCurrentbookings(formats); err != nil {
+	if err := m.validateCurrentBookings(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateOldbookings(formats); err != nil {
+	if err := m.validateOldBookings(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -54,18 +54,18 @@ func (m *PolicyStatus) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *PolicyStatus) validateCurrentbookings(formats strfmt.Registry) error {
+func (m *PolicyStatus) validateCurrentBookings(formats strfmt.Registry) error {
 
-	if err := validate.Required("currentbookings", "body", m.Currentbookings); err != nil {
+	if err := validate.Required("current_bookings", "body", m.CurrentBookings); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *PolicyStatus) validateOldbookings(formats strfmt.Registry) error {
+func (m *PolicyStatus) validateOldBookings(formats strfmt.Registry) error {
 
-	if err := validate.Required("oldbookings", "body", m.Oldbookings); err != nil {
+	if err := validate.Required("old_bookings", "body", m.OldBookings); err != nil {
 		return err
 	}
 

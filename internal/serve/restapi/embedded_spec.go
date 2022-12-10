@@ -1596,15 +1596,15 @@ func init() {
     "PolicyStatus": {
       "type": "object",
       "required": [
-        "currentbookings",
-        "oldbookings",
+        "current_bookings",
+        "old_bookings",
         "usage"
       ],
       "properties": {
-        "currentbookings": {
+        "current_bookings": {
           "type": "integer"
         },
-        "oldbookings": {
+        "old_bookings": {
           "type": "integer"
         },
         "usage": {
@@ -3802,15 +3802,15 @@ func init() {
     "PolicyStatus": {
       "type": "object",
       "required": [
-        "currentbookings",
-        "oldbookings",
+        "current_bookings",
+        "old_bookings",
         "usage"
       ],
       "properties": {
-        "currentbookings": {
+        "current_bookings": {
           "type": "integer"
         },
-        "oldbookings": {
+        "old_bookings": {
           "type": "integer"
         },
         "usage": {
