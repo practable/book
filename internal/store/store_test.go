@@ -67,6 +67,15 @@ policies:
   p-b:
     book_ahead: 2h0m0s
     description: d-p-b
+    display_guides:
+      6m:
+        book_ahead: 1h
+        duration: 6m
+        max_slots: 12
+      8m:
+        book_ahead: 2h
+        duration: 8m
+        max_slots: 8
     enforce_book_ahead: true
     enforce_max_bookings: true
     enforce_max_duration: true
@@ -1980,4 +1989,57 @@ func TestPruneDiaries(t *testing.T) {
 	assert.NoError(t, err)
 	s.pruneDiaries()
 
+}
+
+func TestGetPolicy(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	p, err := s.GetPolicy("p-b")
+
+	exp := Policy{
+		BookAhead:   time.Duration(2 * time.Hour),
+		Description: "d-p-b",
+		DisplayGuides: map[string]DisplayGuide{
+			"6m": DisplayGuide{
+				BookAhead: time.Duration(1 * time.Hour),
+				Duration:  time.Duration(6 * time.Minute),
+				MaxSlots:  12,
+			},
+			"8m": DisplayGuide{
+				BookAhead: time.Duration(2 * time.Hour),
+				Duration:  time.Duration(8 * time.Minute),
+				MaxSlots:  8,
+			},
+		},
+		EnforceBookAhead:   true,
+		EnforceMaxBookings: true,
+		EnforceMinDuration: true,
+		EnforceMaxDuration: true,
+		EnforceMaxUsage:    true,
+		MaxBookings:        2,
+		MaxDuration:        time.Duration(10 * time.Minute),
+		MinDuration:        time.Duration(5 * time.Minute),
+		MaxUsage:           time.Duration(30 * time.Minute),
+		Slots:              []string{"sl-b"},
+	}
+
+	assert.Equal(t, exp, p)
+
+	if debug {
+		y, err := yaml.Marshal(exp)
+		assert.NoError(t, err)
+
+		t.Log(string(y))
+	}
 }

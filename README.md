@@ -16,6 +16,11 @@ This package implements bookings with arbitrary durations
 - Unlimited access to simulations (unlimited, anytime, no need for booking?) - relative simple, but out of scope for now (simple mod for later).
 - What if kit doesn't work - how to get another? If cannot cancel ...?! For now - when taking up booking, it returns, equipment not available. More advanced options can be added later (e.g. admin edits bookings to substitute another piece of kit instead, when taking an experiment offline).
 
+## Usage suggestions
+
+Use same booking page link format as at present, except when using this booking system, GET instead of a token, a file with a list of policies that apply to that link (e.g. everyone would be a list of the policies for all the different experiments, that don't conflict with class usages, whereas an superadmin would have all policies, including those for exclusive use of classes)
+
+
 ### Implementation limitations
 - booking status e.g. cancelled, unfulfilled, started are ignored in the Replace(Old)Bookings methods
 - we don't record the time an activity is generated for a booking (could find this in the server logs perhaps), i.e. we can't collect stats on when people arrive for their bookings.

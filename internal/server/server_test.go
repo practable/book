@@ -69,9 +69,14 @@ var manifestYAML = []byte(`descriptions:
     short: b
 policies:
   p-a:
-    book_ahead: 0s
+    book_ahead: 1h
     description: d-p-a
-    enforce_book_ahead: false
+    display_guides:
+      1m:
+        book_ahead: 20m
+        duration: 1m
+        max_slots: 15
+    enforce_book_ahead: true
     enforce_max_bookings: false
     enforce_max_duration: false
     enforce_min_duration: false
@@ -203,8 +208,8 @@ var bookings2YAML = []byte(`---
 bk-0:
   cancelled: false
   name: bk-0
-  policy: p-a
-  slot: sl-a
+  policy: p-b
+  slot: sl-b
   started: false
   unfulfilled: false
   user: u-a
@@ -214,8 +219,8 @@ bk-0:
 bk-1:
   cancelled: false
   name: bk-1
-  policy: p-a
-  slot: sl-a
+  policy: p-b
+  slot: sl-b
   started: false
   unfulfilled: false
   user: u-b
@@ -225,8 +230,8 @@ bk-1:
 bk-2:
   cancelled: false
   name: bk-2
-  policy: p-a
-  slot: sl-a
+  policy: p-b
+  slot: sl-b
   started: false
   unfulfilled: false
   user: u-c
@@ -236,8 +241,8 @@ bk-2:
 bk-3:
   cancelled: false
   name: bk-3
-  policy: p-a
-  slot: sl-a
+  policy: p-b
+  slot: sl-b
   started: false
   unfulfilled: false
   user: u-d
@@ -247,8 +252,8 @@ bk-3:
 bk-4:
   cancelled: false
   name: bk-4
-  policy: p-a
-  slot: sl-a
+  policy: p-b
+  slot: sl-b
   started: false
   unfulfilled: false
   user: u-e
@@ -258,8 +263,8 @@ bk-4:
 bk-5:
   cancelled: false
   name: bk-5
-  policy: p-a
-  slot: sl-a
+  policy: p-b
+  slot: sl-b
   started: false
   unfulfilled: false
   user: u-f
@@ -269,8 +274,8 @@ bk-5:
 bk-6:
   cancelled: false
   name: bk-6
-  policy: p-a
-  slot: sl-a
+  policy: p-b
+  slot: sl-b
   started: false
   unfulfilled: false
   user: u-a
@@ -280,8 +285,8 @@ bk-6:
 bk-7:
   cancelled: false
   name: bk-7
-  policy: p-a
-  slot: sl-a
+  policy: p-b
+  slot: sl-b
   started: false
   unfulfilled: false
   user: u-g
@@ -972,7 +977,7 @@ func TestGetPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
-	expected := `{"book_ahead":"0s","description":"d-p-a","display_guides":[],"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}` + "\n"
+	expected := `{"book_ahead":"1h0m0s","description":"d-p-a","display_guides":[{"book_ahead":"20m0s","duration":"1m0s","max_slots":15}],"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}` + "\n"
 	assert.Equal(t, expected, string(body))
 	resp.Body.Close()
 
@@ -1011,14 +1016,14 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
-	expected := `[{"end":"2022-11-05T00:09:59.999Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:19:59.999Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:34:59.999Z","start":"2022-11-05T00:30:00.000Z"},{"end":"2022-11-05T00:44:59.999Z","start":"2022-11-05T00:40:00.000Z"},{"end":"2022-11-05T00:54:59.999Z","start":"2022-11-05T00:50:00.000Z"},{"end":"2022-11-05T01:04:59.999Z","start":"2022-11-05T01:00:00.000Z"},{"end":"2022-11-05T01:14:59.999Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:24:59.999Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2122-10-12T00:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
+	expected := `[{"end":"2022-11-05T00:09:59.999Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:19:59.999Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:34:59.999Z","start":"2022-11-05T00:30:00.000Z"},{"end":"2022-11-05T00:44:59.999Z","start":"2022-11-05T00:40:00.000Z"},{"end":"2022-11-05T00:54:59.999Z","start":"2022-11-05T00:50:00.000Z"},{"end":"2022-11-05T01:04:59.999Z","start":"2022-11-05T01:00:00.000Z"},{"end":"2022-11-05T01:14:59.999Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:24:59.999Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2022-11-05T02:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
 	assert.Equal(t, expected, string(body))
 	im := []*models.Interval{}
 	err = json.Unmarshal(body, &im)
@@ -1032,7 +1037,7 @@ func TestGetAvailability(t *testing.T) {
 
 	// Try pagination using limit
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1055,7 +1060,7 @@ func TestGetAvailability(t *testing.T) {
 
 	// Try pagination using limit, checking specifying offset=0 works as expected
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1079,7 +1084,7 @@ func TestGetAvailability(t *testing.T) {
 
 	// Try pagination using limit, checking specifying offset=<n*limit> works as expected
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1102,7 +1107,7 @@ func TestGetAvailability(t *testing.T) {
 	resp.Body.Close()
 
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-a/slots/sl-a", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1114,7 +1119,7 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err = ioutil.ReadAll(resp.Body)
-	expected = `[{"end":"2022-11-05T01:14:59.999Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:24:59.999Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2122-10-12T00:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
+	expected = `[{"end":"2022-11-05T01:14:59.999Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:24:59.999Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2022-11-05T02:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
 	assert.Equal(t, expected, string(body))
 	err = json.Unmarshal(body, &im)
 	assert.NoError(t, err)

@@ -97,7 +97,7 @@ type Manifest struct {
 type Policy struct {
 	BookAhead          time.Duration           `json:"book_ahead"  yaml:"book_ahead"`
 	Description        string                  `json:"description"  yaml:"description"`
-	DisplayGuides      map[string]DisplayGuide `json:"dsiplay_guide"  yaml:"display_guide"`
+	DisplayGuides      map[string]DisplayGuide `json:"display_guides"  yaml:"display_guides"`
 	EnforceBookAhead   bool                    `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
 	EnforceMaxBookings bool                    `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
 	EnforceMaxDuration bool                    `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
@@ -963,6 +963,7 @@ func (s *Store) getOldBookingsFor(user string) ([]Booking, error) {
 }
 
 // GetPolicy returns a policy if found
+// this is not used internally
 func (s *Store) GetPolicy(name string) (Policy, error) {
 
 	where := "store.GetPolicy"
@@ -975,6 +976,14 @@ func (s *Store) GetPolicy(name string) (Policy, error) {
 	}()
 
 	p, ok := s.Policies[name]
+
+	// remove the slotmap, not for external use
+	// this uninitilialised form is easier to test
+	// because you can just omit the SlotMap field
+	// from the expected object you are checking against
+	// in the test and it will be the same as this now
+	var sm map[string]bool
+	p.SlotMap = sm
 
 	if !ok {
 		return Policy{}, errors.New("not found")
