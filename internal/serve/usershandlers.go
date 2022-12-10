@@ -8,13 +8,17 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/icza/gog"
+	log "github.com/sirupsen/logrus"
 	"github.com/timdrysdale/interval/internal/config"
+	dt "github.com/timdrysdale/interval/internal/datetime"
+	"github.com/timdrysdale/interval/internal/interval"
 	lit "github.com/timdrysdale/interval/internal/login"
 	"github.com/timdrysdale/interval/internal/serve/models"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
 	"github.com/timdrysdale/interval/internal/store"
 )
 
+// dt "github.com/timdrysdale/interval/internal/datetime
 // getAccessTokenHandler
 func getAccessTokenHandler(config config.ServerConfig) func(users.GetAccessTokenParams) middleware.Responder {
 	return func(params users.GetAccessTokenParams) middleware.Responder {
@@ -169,7 +173,6 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 }
 
 // getAvailabilityHandler
-// func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error) {
 func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabilityParams, interface{}) middleware.Responder {
 	return func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
 
@@ -234,6 +237,95 @@ func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabili
 		}
 
 		return users.NewGetAvailabilityOK().WithPayload(pm)
+
+	}
+}
+
+// makeBookingHandler
+func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams, interface{}) middleware.Responder {
+	return func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
+
+		_, claims, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewMakeBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.UserName == "" {
+			c := "404"
+			m := "no user_name in query"
+			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// check username against token
+		if claims.Subject != params.UserName {
+			c := "401"
+			m := "user_name in query does not match subject in token"
+			return users.NewMakeBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.PolicyName == "" {
+			c := "404"
+			m := "no policy_name in path"
+			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.SlotName == "" {
+			c := "404"
+			m := "no slot_name in path"
+			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// Check that the from, to exist and that they parse as future dates
+		var emptyDT strfmt.DateTime
+
+		if params.From == emptyDT {
+			c := "404"
+			m := `no query parameter: from`
+			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+		if params.To == emptyDT {
+			c := "404"
+			m := `no query parameter: to`
+			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		from, err := dt.Parse(params.From.String())
+
+		if err != nil {
+			c := "404"
+			m := "could not parse ?from=" + params.From.String() + " as RFC3339 datetime"
+			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		to, err := dt.Parse(params.To.String())
+
+		if err != nil {
+			c := "404"
+			m := "could not parse ?to=" + params.To.String() + " as RFC3339 datetime"
+			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		when := interval.Interval{
+			Start: from,
+			End:   to,
+		}
+
+		log.Debug(when)
+
+		_, err = config.Store.MakeBooking(params.PolicyName, params.SlotName, params.UserName, when)
+
+		if err != nil {
+			c := "404"
+			m := "could not make the booking because " + err.Error()
+			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// existing UI ignores any booking info in response to booking request
+		// so save sending info we don't need (revisit if UI develops a need for info at this stage)
+		return users.NewMakeBookingNoContent()
 
 	}
 }
