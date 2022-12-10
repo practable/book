@@ -1261,7 +1261,7 @@ func TestGetStoreStatus(t *testing.T) {
 	assert.Equal(t, esa, ssa)
 }
 
-func TestGetBookingsForUser(t *testing.T) {
+func TestGetBookingsForUserCancelBooking(t *testing.T) {
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1306,7 +1306,6 @@ func TestGetBookingsForUser(t *testing.T) {
 	sutoken := *(atr.Token)
 
 	// get bookings for user u-g
-	assert.NoError(t, err)
 	client = &http.Client{}
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/bookings", nil)
 	assert.NoError(t, err)
@@ -1317,6 +1316,31 @@ func TestGetBookingsForUser(t *testing.T) {
 	assert.NoError(t, err)
 	resp.Body.Close()
 	bookings := `[{"name":"bk-6","policy":"p-b","slot":"sl-b","user":"user-g","when":{"end":"2022-11-05T01:20:00.000Z","start":"2022-11-05T01:15:00.000Z"}}]` + "\n"
+	assert.Equal(t, bookings, string(body))
+
+	// cancel booking bk-6
+	client = &http.Client{}
+	bookingJSON := []byte(`{"name":"bk-6","policy":"p-b","slot":"sl-b","user":"user-g","when":{"end":"2022-11-05T01:20:00.000Z","start":"2022-11-05T01:15:00.000Z"}}`)
+	bodyReader = bytes.NewReader(bookingJSON)
+	req, err = http.NewRequest("DELETE", cfg.Host+"/api/v1/users/user-g/bookings/bk-6", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 404, resp.StatusCode) //not found means deleted
+
+	// get bookings again
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/bookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	bookings = `[]` + "\n"
 	assert.Equal(t, bookings, string(body))
 
 }

@@ -33,7 +33,7 @@ func NewMakeBooking(ctx *middleware.Context, handler MakeBookingHandler) *MakeBo
 
 Request a booking
 
-TODO pagination
+A booking is requested for a specific combination of policy-slot-user-from-to. Users should check availability first, and only make requests that are likely to be granted. If there is no current availability then requests will be denied. If there is availability, there is still a chance another user requests the same slot just before - whichever request is received by the server first will be allowed, the other denied. The user_name must match the user_name the user logged in with, that is in the authorisation token in the header.
 
 */
 type MakeBooking struct {

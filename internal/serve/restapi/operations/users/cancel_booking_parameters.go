@@ -6,11 +6,16 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/go-openapi/errors"
+	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/validate"
+
+	"github.com/timdrysdale/interval/internal/serve/models"
 )
 
 // NewCancelBookingParams creates a new CancelBookingParams object
@@ -32,6 +37,11 @@ type CancelBookingParams struct {
 
 	/*
 	  Required: true
+	  In: body
+	*/
+	Booking *models.Booking
+	/*
+	  Required: true
 	  In: path
 	*/
 	BookingName string
@@ -50,6 +60,34 @@ func (o *CancelBookingParams) BindRequest(r *http.Request, route *middleware.Mat
 	var res []error
 
 	o.HTTPRequest = r
+
+	if runtime.HasBody(r) {
+		defer r.Body.Close()
+		var body models.Booking
+		if err := route.Consumer.Consume(r.Body, &body); err != nil {
+			if err == io.EOF {
+				res = append(res, errors.Required("booking", "body", ""))
+			} else {
+				res = append(res, errors.NewParseError("booking", "body", "", err))
+			}
+		} else {
+			// validate body object
+			if err := body.Validate(route.Formats); err != nil {
+				res = append(res, err)
+			}
+
+			ctx := validate.WithOperationRequest(r.Context())
+			if err := body.ContextValidate(ctx, route.Formats); err != nil {
+				res = append(res, err)
+			}
+
+			if len(res) == 0 {
+				o.Booking = &body
+			}
+		}
+	} else {
+		res = append(res, errors.Required("booking", "body", ""))
+	}
 
 	rBookingName, rhkBookingName, _ := route.Params.GetOK("booking_name")
 	if err := o.bindBookingName(rBookingName, rhkBookingName, route.Formats); err != nil {

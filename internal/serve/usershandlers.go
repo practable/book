@@ -262,7 +262,7 @@ func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabili
 func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams, interface{}) middleware.Responder {
 	return func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 
-		_, claims, err := isAdminOrUser(principal)
+		isAdmin, claims, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
@@ -276,8 +276,8 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		// check username against token
-		if claims.Subject != params.UserName {
+		// check username against token (admins can book on behalf of users, so ignore if
+		if (!isAdmin) && (claims.Subject != params.UserName) {
 			c := "401"
 			m := "user_name in query does not match subject in token"
 			return users.NewMakeBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
@@ -373,7 +373,7 @@ func getStoreStatusUserHandler(config config.ServerConfig) func(users.GetStoreSt
 func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBookingsForUserParams, interface{}) middleware.Responder {
 	return func(params users.GetBookingsForUserParams, principal interface{}) middleware.Responder {
 
-		_, claims, err := isAdminOrUser(principal)
+		isAdmin, claims, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
@@ -387,8 +387,8 @@ func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBooking
 			return users.NewGetBookingsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		// check username against token
-		if claims.Subject != params.UserName {
+		// check username against token, unless admin (admin can check on behalf of users)
+		if (!isAdmin) && (claims.Subject != params.UserName) {
 			c := "401"
 			m := "user_name in path does not match subject in token"
 			return users.NewGetBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
@@ -423,5 +423,105 @@ func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBooking
 		}
 
 		return users.NewGetBookingsForUserOK().WithPayload(bm)
+	}
+}
+
+// cancelBookingHandler
+func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingParams, interface{}) middleware.Responder {
+	return func(params users.CancelBookingParams, principal interface{}) middleware.Responder {
+
+		isAdmin, claims, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.UserName == "" {
+			c := "401"
+			m := "no user_name in path"
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// check username against token, if not admin (admin can cancel on behalf of users)
+		if (!isAdmin) && (claims.Subject != params.UserName) {
+			c := "401"
+			m := "user_name in query does not match subject in token"
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.BookingName == "" {
+			c := "401"
+			m := "no booking_name in path"
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.Booking == nil {
+			c := "401"
+			m := "no booking in body"
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.Booking.Name == nil {
+			c := "401"
+			m := "booking in body does not have a name"
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+
+		}
+
+		if *(params.Booking.Name) != params.BookingName {
+			c := "401"
+			m := "booking in body does not match booking_name in path"
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		v := *(params.Booking)
+
+		if v.Name == nil || v.Policy == nil || v.Slot == nil || v.User == nil {
+			c := "401"
+			m := "booking in body missing name, policy, slot and/or user"
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		start, err := dt.Parse(v.When.Start.String())
+		if err != nil {
+			c := "500"
+			m := "error parsing booking start datetime: " + err.Error()
+			return users.NewCancelBookingInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		end, err := dt.Parse(v.When.End.String())
+		if err != nil {
+			c := "500"
+			m := "error parsing booking end datetime: " + err.Error()
+			return users.NewCancelBookingInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		bs := store.Booking{
+			Cancelled:   v.Cancelled,
+			Name:        *(v.Name),
+			Policy:      *(v.Policy),
+			Slot:        *(v.Slot),
+			Started:     v.Started,
+			Unfulfilled: v.Unfulfilled,
+			User:        *(v.User),
+			When: interval.Interval{
+				Start: start,
+				End:   end,
+			},
+		}
+
+		err = config.Store.CancelBooking(bs)
+
+		if err != nil {
+			c := "500"
+			m := "booking in body does not match booking_name in path"
+			return users.NewMakeBookingInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// NotFound indicates the booking has been cancelled as desired
+		return users.NewMakeBookingNotFound()
+
 	}
 }

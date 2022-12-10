@@ -68,7 +68,7 @@ func API(ctx context.Context, config config.ServerConfig) {
 	api.UsersMakeBookingHandler = users.MakeBookingHandlerFunc(makeBookingHandler(config))
 	api.UsersGetStoreStatusUserHandler = users.GetStoreStatusUserHandlerFunc(getStoreStatusUserHandler(config))
 	api.UsersGetBookingsForUserHandler = users.GetBookingsForUserHandlerFunc(getBookingsForUserHandler(config))
-
+	api.UsersCancelBookingHandler = users.CancelBookingHandlerFunc(cancelBookingHandler(config))
 	go func() {
 		<-ctx.Done()
 		if err := server.Shutdown(); err != nil {
