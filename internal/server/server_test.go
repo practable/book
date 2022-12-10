@@ -1196,3 +1196,54 @@ func TestMakeBooking(t *testing.T) {
 	assert.Equal(t, eb, ab) //compared bookings omitting the names
 
 }
+
+func TestGetStoreStatus(t *testing.T) {
+
+	// make sure our pre-prepared bookings are in the future
+	// other tests may have advanced time
+	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	currentTime = &ct
+
+	satoken := loadTestManifest(t)
+	removeAllBookings(t)
+	bm := getBookings(t)
+	assert.Equal(t, 0, len(bm))
+
+	// unlock the store
+	client := &http.Client{}
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/status", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", satoken)
+
+	// add query params
+	q := req.URL.Query()
+	q.Add("lock", "false")
+	q.Add("msg", "Open for bookings")
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	// check status
+	sutoken, err := signedUserToken()
+	assert.NoError(t, err)
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/status", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	var ssa store.StoreStatusAdmin
+	err = json.Unmarshal(body, &ssa)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	esa := store.StoreStatusAdmin{
+		Locked:  false,
+		Message: "Open for bookings",
+		Now:     ct,
+	}
+
+	assert.Equal(t, esa, ssa)
+}

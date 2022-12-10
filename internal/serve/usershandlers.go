@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -17,6 +18,22 @@ import (
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
 	"github.com/timdrysdale/interval/internal/store"
 )
+
+// convertStoreStatusUserToModel converts from internal to API type
+func convertStoreStatusUserToModel(s store.StoreStatusUser) (models.StoreStatusUser, error) {
+	var m models.StoreStatusUser
+
+	y, err := json.Marshal(s)
+
+	if err != nil {
+		return m, err
+	}
+
+	err = json.Unmarshal(y, &m)
+
+	return m, err
+
+}
 
 // dt "github.com/timdrysdale/interval/internal/datetime
 // getAccessTokenHandler
@@ -327,5 +344,27 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 		// so save sending info we don't need (revisit if UI develops a need for info at this stage)
 		return users.NewMakeBookingNoContent()
 
+	}
+}
+
+// getStoreStatusUserHandler
+func getStoreStatusUserHandler(config config.ServerConfig) func(users.GetStoreStatusUserParams, interface{}) middleware.Responder {
+	return func(params users.GetStoreStatusUserParams, principal interface{}) middleware.Responder {
+
+		_, _, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewGetStoreStatusUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		s, err := convertStoreStatusUserToModel(config.Store.GetStoreStatusUser())
+
+		if err != nil {
+			log.Error("could not convert StoreStatusAdmin to model format")
+		}
+
+		return users.NewGetStoreStatusUserOK().WithPayload(&s)
 	}
 }
