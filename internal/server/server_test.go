@@ -333,7 +333,7 @@ u-b:
 `)
 
 func init() {
-	debug = true
+	debug = false
 	if debug {
 		log.SetReportCaller(true)
 		log.SetLevel(log.DebugLevel)
@@ -1434,7 +1434,7 @@ func TestGetActivity(t *testing.T) {
 
 }
 
-func TestGetPoliciesAndStatus(t *testing.T) {
+func TestAddGetPoliciesAndStatus(t *testing.T) {
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1457,7 +1457,7 @@ func TestGetPoliciesAndStatus(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 
-	// get bookings for user u-g
+	// get policies for user u-g
 	sutoken, err := signedUserTokenFor("user-g")
 	assert.NoError(t, err)
 	client = &http.Client{}
@@ -1472,7 +1472,7 @@ func TestGetPoliciesAndStatus(t *testing.T) {
 	policies := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
 	assert.Equal(t, policies, string(body))
 
-	// get policy status for user u-g
+	// get policy status for p-b for user u-g
 	client = &http.Client{}
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/policies/p-b", nil)
 	assert.NoError(t, err)
@@ -1484,5 +1484,38 @@ func TestGetPoliciesAndStatus(t *testing.T) {
 	resp.Body.Close()
 	status := `{"current_bookings":1,"old_bookings":0,"usage":"5m0s"}` + "\n"
 	assert.Equal(t, status, string(body))
+
+	//add policy p-a for user u-g
+	client = &http.Client{}
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/users/user-g/policies/p-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	assert.Equal(t, 204, resp.StatusCode) //should be ok!
+
+	// get policies for user u-g
+	sutoken, err = signedUserTokenFor("user-g")
+	assert.NoError(t, err)
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/policies", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	body, err = ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	resp.Body.Close()
+
+	policiesJSON := []byte(`[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]},{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":[{"book_ahead":"20m0s","duration":"1m0s","max_slots":15}],"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}]`)
+	var actualPolicies, expectedPolicies models.PoliciesDescribed
+	err = json.Unmarshal(policiesJSON, &expectedPolicies)
+	assert.NoError(t, err)
+	err = json.Unmarshal(body, &actualPolicies)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedPolicies, actualPolicies)
 
 }

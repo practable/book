@@ -73,6 +73,8 @@ func API(ctx context.Context, config config.ServerConfig) {
 	api.UsersGetOldBookingsForUserHandler = users.GetOldBookingsForUserHandlerFunc(getOldBookingsForUserHandler(config))
 	api.UsersGetPoliciesForUserHandler = users.GetPoliciesForUserHandlerFunc(getPoliciesForUserHandler(config))
 	api.UsersGetPolicyStatusForUserHandler = users.GetPolicyStatusForUserHandlerFunc(getPolicyStatusForUserHandler(config))
+	api.UsersAddPolicyForUserHandler = users.AddPolicyForUserHandlerFunc(addPolicyForUserHandler(config))
+
 	go func() {
 		<-ctx.Done()
 		if err := server.Shutdown(); err != nil {

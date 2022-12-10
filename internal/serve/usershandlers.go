@@ -838,3 +838,46 @@ func getPolicyStatusForUserHandler(config config.ServerConfig) func(users.GetPol
 		return users.NewGetPolicyStatusForUserOK().WithPayload(&pm)
 	}
 }
+
+// addPolicyForHandler
+func addPolicyForUserHandler(config config.ServerConfig) func(users.AddPolicyForUserParams, interface{}) middleware.Responder {
+	return func(params users.AddPolicyForUserParams, principal interface{}) middleware.Responder {
+
+		isAdmin, claims, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewAddPolicyForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.UserName == "" {
+			c := "404"
+			m := "no user_name in path"
+			return users.NewAddPolicyForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.PolicyName == "" {
+			c := "404"
+			m := "no policy_name in path"
+			return users.NewAddPolicyForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// check username against token, unless admin (admin can check on behalf of users)
+		if (!isAdmin) && (claims.Subject != params.UserName) {
+			c := "401"
+			m := "user_name in path does not match subject in token"
+			return users.NewAddPolicyForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		err = config.Store.AddPolicyFor(params.UserName, params.PolicyName)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return users.NewAddPolicyForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return users.NewAddPolicyForUserNoContent()
+	}
+}
