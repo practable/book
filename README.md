@@ -497,6 +497,109 @@ Definitions
 
 ```
 
+### Activities format
+
+#### Example of the activity information supplied by the original booking app
+```
+{"activities":[{"config":{"url":""},"description":{"further":"https://static.practable.io/info/penduino-real-1.0/index.html","id":"541975de-a47a-46cc-a140-c42798ec47f3","image":"https://assets.practable.io/images/booking/activities/penduino-real-1.0/image.png","long":"A single pendulum with electromagnetic drive system producing simple harmonic motion. The drive and braking are variable, with the coil energised over a specified angular range which can be increased or decreased to control the effect. The pendulum can also be slowed down by short-circuiting the coil, without applying any power, or left to swing freely with no drive or braking.","name":"Penduino","short":"A pendulum driven by an electromagnet, producing simple harmonic motion.","thumb":"https://assets.practable.io/images/booking/activities/penduino-real-1.0/thumb.png","type":"penduino-activity-v1.0"},"exp":1670703344,"streams":[{"for":"data","permission":{"audience":"https://relay-access.practable.io","connection_type":"session","scopes":["read","write"],"topic":"pend13-data"},"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b3BpYyI6InBlbmQxMy1kYXRhIiwicHJlZml4Ijoic2Vzc2lvbiIsInNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2NzA3MDMzNDQsIm5iZiI6MTY3MDcwMzA0NCwiaWF0IjoxNjcwNzAzMDQ0fQ.6bbZoNK-dCrRP_I-m6D1KQmOZ0_uHOaJlBnaAcI5trI","url":"https://relay-access.practable.io/session/pend13-data","verb":"POST"},{"for":"video","permission":{"audience":"https://relay-access.practable.io","connection_type":"session","scopes":["read"],"topic":"pend13-video"},"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b3BpYyI6InBlbmQxMy12aWRlbyIsInByZWZpeCI6InNlc3Npb24iLCJzY29wZXMiOlsicmVhZCJdLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY3MDcwMzM0NCwibmJmIjoxNjcwNzAzMDQ0LCJpYXQiOjE2NzA3MDMwNDR9.NUvssbuUHIJNJ82AzExff2Rx3ckN2jH1lTQLAu_DsEs","url":"https://relay-access.practable.io/session/pend13-video","verb":"POST"}],"uis":[{"description":{"further":"https://static.practable.io/info/penduino-basic-ui-1.0/index.html","image":"https://assets.practable.io/images/booking/ui/penduino-default-1.0/image.png","long":"Start the pendulum swinging, and observe the difference in decay time for four different types of swinging - driving, braking, short circuit load, and open circuit coil.","name":"Penduino (Default)","short":"Control an Electromagnetic Pendulum","thumb":"https://assets.practable.io/images/booking/ui/penduino-default-1.0/thumb.png","type":"penduino-default-ui-1.0"},"streamsRequired":["data","video"],"url":"https://static.practable.io/ui/penduino-1.0/?streams={{streams}}&exp={{exp}}"}]}],"max":2,"msg":"For support contact timothy.drysdale@ed.ac.uk"}
+```
+
+Pretty-printed, that becomes:
+```
+{
+   "activities":[
+      {
+         "config":{
+            "url":""
+         },
+         "description":{
+            "further":"https://static.practable.io/info/penduino-real-1.0/index.html",
+            "id":"541975de-a47a-46cc-a140-c42798ec47f3",
+            "image":"https://assets.practable.io/images/booking/activities/penduino-real-1.0/image.png",
+            "long":"A single pendulum with electromagnetic drive system producing simple harmonic motion. The drive and braking are variable, with the coil energised over a specified angular range which can be increased or decreased to control the effect. The pendulum can also be slowed down by short-circuiting the coil, without applying any power, or left to swing freely with no drive or braking.",
+            "name":"Penduino",
+            "short":"A pendulum driven by an electromagnet, producing simple harmonic motion.",
+            "thumb":"https://assets.practable.io/images/booking/activities/penduino-real-1.0/thumb.png",
+            "type":"penduino-activity-v1.0"
+         },
+         "exp":1670703344,
+         "streams":[
+            {
+               "for":"data",
+               "permission":{
+                  "audience":"https://relay-access.practable.io",
+                  "connection_type":"session",
+                  "scopes":[
+                     "read",
+                     "write"
+                  ],
+                  "topic":"pend13-data"
+               },
+               "token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b3BpYyI6InBlbmQxMy1kYXRhIiwicHJlZml4Ijoic2Vzc2lvbiIsInNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2NzA3MDMzNDQsIm5iZiI6MTY3MDcwMzA0NCwiaWF0IjoxNjcwNzAzMDQ0fQ.6bbZoNK-dCrRP_I-m6D1KQmOZ0_uHOaJlBnaAcI5trI",
+               "url":"https://relay-access.practable.io/session/pend13-data",
+               "verb":"POST"
+            },
+            {
+               "for":"video",
+               "permission":{
+                  "audience":"https://relay-access.practable.io",
+                  "connection_type":"session",
+                  "scopes":[
+                     "read"
+                  ],
+                  "topic":"pend13-video"
+               },
+               "token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b3BpYyI6InBlbmQxMy12aWRlbyIsInByZWZpeCI6InNlc3Npb24iLCJzY29wZXMiOlsicmVhZCJdLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY3MDcwMzM0NCwibmJmIjoxNjcwNzAzMDQ0LCJpYXQiOjE2NzA3MDMwNDR9.NUvssbuUHIJNJ82AzExff2Rx3ckN2jH1lTQLAu_DsEs",
+               "url":"https://relay-access.practable.io/session/pend13-video",
+               "verb":"POST"
+            }
+         ],
+         "uis":[
+            {
+               "description":{
+                  "further":"https://static.practable.io/info/penduino-basic-ui-1.0/index.html",
+                  "image":"https://assets.practable.io/images/booking/ui/penduino-default-1.0/image.png",
+                  "long":"Start the pendulum swinging, and observe the difference in decay time for four different types of swinging - driving, braking, short circuit load, and open circuit coil.",
+                  "name":"Penduino (Default)",
+                  "short":"Control an Electromagnetic Pendulum",
+                  "thumb":"https://assets.practable.io/images/booking/ui/penduino-default-1.0/thumb.png",
+                  "type":"penduino-default-ui-1.0"
+               },
+               "streamsRequired":[
+                  "data",
+                  "video"
+               ],
+               "url":"https://static.practable.io/ui/penduino-1.0/?streams={{streams}}&exp={{exp}}"
+            }
+         ]
+      }
+   ],
+   "max":2,
+   "msg":"For support contact timothy.drysdale@ed.ac.uk"
+}
+```
+
+The first stream token is
+```
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b3BpYyI6InBlbmQxMy1kYXRhIiwicHJlZml4Ijoic2Vzc2lvbiIsInNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2NzA3MDMzNDQsIm5iZiI6MTY3MDcwMzA0NCwiaWF0IjoxNjcwNzAzMDQ0fQ.6bbZoNK-dCrRP_I-m6D1KQmOZ0_uHOaJlBnaAcI5trI
+```
+```
+{
+  "topic": "pend13-data",
+  "prefix": "session",
+  "scopes": [
+    "read",
+    "write"
+  ],
+  "aud": [
+    "https://relay-access.practable.io"
+  ],
+  "exp": 1670703344,
+  "nbf": 1670703044,
+  "iat": 1670703044
+}
+```
+
 ## Gotchas
 
 ### Re-defining the Manifest data structure in swagger

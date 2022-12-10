@@ -13,7 +13,7 @@ type ServerConfig struct {
 	Now                 func() time.Time
 	Port                int
 	PruneEvery          time.Duration
-	RelaySecret         string
+	RelaySecret         []byte
 	StoreSecret         []byte
 	Store               *store.Store
 }

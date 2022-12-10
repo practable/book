@@ -888,7 +888,7 @@ definitions:
         description: User interfaces
         type: array
         items:
-          $ref: '#/definitions/UI'
+          $ref: '#/definitions/UIDescribed'
     required:
     - description
     - exp
@@ -1258,11 +1258,18 @@ definitions:
         description: Describes the stream, and doubles as template key in the URL
         example: video
         type: string
+      prefix:
+        description: prefix of the relay routing
+        example: session
+        type: string
       scopes:
         type: array
         items:
           type: string
       topic:
+        type: string
+      token:
+        description: signed jwt token for accessing the stream
         type: string
       url:
         description: URL at which to obtain access to the stream (getting a redirect URL containing a one time code)
@@ -1298,6 +1305,28 @@ definitions:
     - url
     - description
 
+  UIDescribed:
+    title: User Interface with description including
+    type: object
+    properties:
+      url:
+        description: template for the URL for the user interface
+        example: https://static.practable.io/ui/penduino-basic.html?video={{video}}&data={{data}}
+        type: string
+      streams_required:
+        description: list of names of required streams
+        example: ["data","video"]
+        type: array
+        items:
+          type: string
+          example: video
+          description: stream name
+      description:
+        $ref: '#/definitions/Description'
+    required:
+    - url
+    - description
+    
   UISet:
     title: set of User Interfaces
     type: array

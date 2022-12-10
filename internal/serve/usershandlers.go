@@ -19,6 +19,13 @@ import (
 	"github.com/timdrysdale/interval/internal/store"
 )
 
+type Permission struct {
+	Topic  string
+	Prefix string
+	Scopes []string
+	jwt.RegisteredClaims
+}
+
 // convertStoreStatusUserToModel converts from internal to API type
 func convertStoreStatusUserToModel(s store.StoreStatusUser) (models.StoreStatusUser, error) {
 	var m models.StoreStatusUser
@@ -459,7 +466,7 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 
 		b, err := config.Store.GetBooking(params.BookingName)
 		if err != nil {
-			return users.NewMakeBookingNotFound()
+			return users.NewCancelBookingNotFound()
 		}
 
 		err = config.Store.CancelBooking(b)
@@ -472,6 +479,156 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 
 		// NotFound indicates the booking has been cancelled as desired
 		return users.NewCancelBookingNotFound()
+
+	}
+}
+
+// getActivityHandler
+func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams, interface{}) middleware.Responder {
+	return func(params users.GetActivityParams, principal interface{}) middleware.Responder {
+
+		isAdmin, claims, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return users.NewGetActivityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.UserName == "" {
+			c := "404"
+			m := "no user_name in path"
+			return users.NewGetActivityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		// check username against token, if not admin (admin can cancel on behalf of users)
+		if (!isAdmin) && (claims.Subject != params.UserName) {
+			c := "404"
+			m := "user_name in query does not match subject in token"
+			return users.NewGetActivityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.BookingName == "" {
+			c := "404"
+			m := "no booking_name in path"
+			return users.NewGetActivityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		b, err := config.Store.GetBooking(params.BookingName)
+
+		if err != nil {
+			c := "404"
+			m := "booking not found " + err.Error()
+			return users.NewGetActivityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		a, err := config.Store.GetActivity(b)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return users.NewGetActivityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+
+		}
+		// convert stream format
+		streams := []*models.Stream{}
+
+		/* Stream token format:
+		   {
+		     "topic": "pend13-data",
+		     "prefix": "session",
+		     "scopes": [
+		       "read",
+		       "write"
+		     ],
+		     "aud": [
+		       "https://relay-access.practable.io"
+		     ],
+		     "exp": 1670703344,
+		     "nbf": 1670703044,
+		     "iat": 1670703044
+		   }*/
+		for k, v := range a.Streams {
+
+			st := v //avoid all pointers pointing to last in map
+			now := jwt.NewNumericDate(config.Store.Now().Add(-1 * time.Second))
+			later := jwt.NewNumericDate(b.When.End)
+
+			permission := Permission{
+				Topic:  st.Topic,
+				Prefix: st.ConnectionType,
+				Scopes: st.Scopes,
+				RegisteredClaims: jwt.RegisteredClaims{
+					IssuedAt:  now,
+					NotBefore: now,
+					ExpiresAt: later,
+					Subject:   params.UserName, //adding for future usage
+					Audience:  jwt.ClaimStrings{st.URL},
+				},
+			}
+			token := jwt.NewWithClaims(jwt.SigningMethodHS256, permission)
+			// Sign and get the complete encoded token as a string using the relay secret
+			stoken, err := token.SignedString(config.RelaySecret)
+
+			if err != nil {
+				c := "500"
+				m := "error making token for stream " + k + " : " + err.Error()
+				return users.NewGetActivityInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+
+			stm := gog.Ptr(models.Stream{
+				Audience:       gog.Ptr(st.URL),
+				ConnectionType: gog.Ptr(st.ConnectionType),
+				For:            gog.Ptr(st.For),
+				Scopes:         v.Scopes,
+				Topic:          gog.Ptr(st.Topic),
+				URL:            gog.Ptr(st.URL),
+				Token:          stoken,
+			})
+			streams = append(streams, stm)
+		}
+
+		// convert UIDescribed format
+		uids := []*models.UIDescribed{}
+
+		for _, v := range a.UIs {
+			u := v //avoid all pointers pointing to last in map
+			uid := gog.Ptr(models.UIDescribed{
+				Description: gog.Ptr(models.Description{
+					Name:    &u.Description.Name,
+					Type:    &u.Description.Type,
+					Short:   u.Description.Short,
+					Long:    u.Description.Long,
+					Further: u.Description.Further,
+					Thumb:   u.Description.Thumb,
+					Image:   u.Description.Image,
+				}),
+				URL:             gog.Ptr(u.URL),
+				StreamsRequired: u.StreamsRequired,
+			})
+			uids = append(uids, uid)
+
+		}
+
+		am := models.Activity{
+			Description: gog.Ptr(models.Description{
+				Name:    &a.Description.Name,
+				Type:    &a.Description.Type,
+				Short:   a.Description.Short,
+				Long:    a.Description.Long,
+				Further: a.Description.Further,
+				Thumb:   a.Description.Thumb,
+				Image:   a.Description.Image,
+			}),
+			Config:  a.ConfigURL,
+			Nbf:     gog.Ptr(float64(a.NotBefore.Unix())),
+			Exp:     gog.Ptr(float64(a.ExpiresAt.Unix())),
+			Streams: streams,
+			Uis:     uids,
+		}
+
+		// NotFound indicates the booking has been cancelled as desired
+		return users.NewGetActivityOK().WithPayload(&am)
 
 	}
 }

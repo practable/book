@@ -35,9 +35,16 @@ type Stream struct {
 	// Required: true
 	For *string `json:"for"`
 
+	// prefix of the relay routing
+	// Example: session
+	Prefix string `json:"prefix,omitempty"`
+
 	// scopes
 	// Required: true
 	Scopes []string `json:"scopes"`
+
+	// signed jwt token for accessing the stream
+	Token string `json:"token,omitempty"`
 
 	// topic
 	// Required: true

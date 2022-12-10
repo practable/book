@@ -1244,7 +1244,7 @@ func init() {
           "description": "User interfaces",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/UI"
+            "$ref": "#/definitions/UIDescribed"
           }
         }
       }
@@ -1732,11 +1732,20 @@ func init() {
           "type": "string",
           "example": "video"
         },
+        "prefix": {
+          "description": "prefix of the relay routing",
+          "type": "string",
+          "example": "session"
+        },
         "scopes": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "token": {
+          "description": "signed jwt token for accessing the stream",
+          "type": "string"
         },
         "topic": {
           "type": "string"
@@ -1763,6 +1772,37 @@ func init() {
       "properties": {
         "description": {
           "type": "string"
+        },
+        "streams_required": {
+          "description": "list of names of required streams",
+          "type": "array",
+          "items": {
+            "description": "stream name",
+            "type": "string",
+            "example": "video"
+          },
+          "example": [
+            "data",
+            "video"
+          ]
+        },
+        "url": {
+          "description": "template for the URL for the user interface",
+          "type": "string",
+          "example": "https://static.practable.io/ui/penduino-basic.html?video={{video}}\u0026data={{data}}"
+        }
+      }
+    },
+    "UIDescribed": {
+      "type": "object",
+      "title": "User Interface with description including",
+      "required": [
+        "url",
+        "description"
+      ],
+      "properties": {
+        "description": {
+          "$ref": "#/definitions/Description"
         },
         "streams_required": {
           "description": "list of names of required streams",
@@ -3350,7 +3390,7 @@ func init() {
           "description": "User interfaces",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/UI"
+            "$ref": "#/definitions/UIDescribed"
           }
         }
       }
@@ -3838,11 +3878,20 @@ func init() {
           "type": "string",
           "example": "video"
         },
+        "prefix": {
+          "description": "prefix of the relay routing",
+          "type": "string",
+          "example": "session"
+        },
         "scopes": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "token": {
+          "description": "signed jwt token for accessing the stream",
+          "type": "string"
         },
         "topic": {
           "type": "string"
@@ -3869,6 +3918,37 @@ func init() {
       "properties": {
         "description": {
           "type": "string"
+        },
+        "streams_required": {
+          "description": "list of names of required streams",
+          "type": "array",
+          "items": {
+            "description": "stream name",
+            "type": "string",
+            "example": "video"
+          },
+          "example": [
+            "data",
+            "video"
+          ]
+        },
+        "url": {
+          "description": "template for the URL for the user interface",
+          "type": "string",
+          "example": "https://static.practable.io/ui/penduino-basic.html?video={{video}}\u0026data={{data}}"
+        }
+      }
+    },
+    "UIDescribed": {
+      "type": "object",
+      "title": "User Interface with description including",
+      "required": [
+        "url",
+        "description"
+      ],
+      "properties": {
+        "description": {
+          "$ref": "#/definitions/Description"
         },
         "streams_required": {
           "description": "list of names of required streams",

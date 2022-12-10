@@ -44,7 +44,7 @@ type Activity struct {
 
 	// User interfaces
 	// Required: true
-	Uis []*UI `json:"uis"`
+	Uis []*UIDescribed `json:"uis"`
 }
 
 // Validate validates this activity

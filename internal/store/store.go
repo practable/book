@@ -244,9 +244,6 @@ type StoreStatusUser struct {
 // Streams are typically accessed via POST with bearer token to an access API
 type Stream struct {
 
-	// Audience is the URL of the relay server e.g. https://relay-access.practable.io
-	Audience string `json:"audience"  yaml:"audience"`
-
 	// ConnectionType is whether for session or shell e.g. session
 	ConnectionType string `json:"connection_type"  yaml:"connection_type"`
 
@@ -261,7 +258,7 @@ type Stream struct {
 	// Topic is the relay topic, usually <resource name>-<for>. e.g. pend03-data
 	Topic string `json:"topic"  yaml:"topic"`
 
-	// URL of the relay access point for this stream
+	// URL of the relay access point for this stream e.g. https://relay-access.practable.io
 	URL string `json:"url"  yaml:"url"`
 }
 
@@ -2227,9 +2224,6 @@ func checkStreams(items map[string]Stream) (error, []string) {
 	msg := []string{}
 
 	for k, item := range items {
-		if item.Audience == "" {
-			msg = append(msg, "missing audience field in stream "+k)
-		}
 		if item.ConnectionType == "" {
 			msg = append(msg, "missing connection_type field in stream "+k)
 		}
