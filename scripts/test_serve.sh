@@ -102,7 +102,8 @@ then
 	../cmd/book/book status set unlock "$message"
 elif [ "$command" = "3" ];
 then
-	echo "export bookings"
+	export BOOKCLIENT_FORMAT=yaml
+	../cmd/book/book bookings export
 elif [ "$command" = "4" ];
 then
 	read -p "Definitely replace [y/N]?" confirm
@@ -115,7 +116,7 @@ then
 elif [ "$command" = "5" ];
 then
 	export BOOKCLIENT_FORMAT=yaml
-	../cmd/book/book bookings export
+	../cmd/book/book oldbookings export
 elif [ "$command" = "6" ];
 then
 	read -p "Definitely replace [y/N]?" confirm
