@@ -30,8 +30,8 @@ import (
 )
 
 // getstatusCmd represents the getstatus command
-var getstatusCmd = &cobra.Command{
-	Use:   "getstatus",
+var statusGetCmd = &cobra.Command{
+	Use:   "get",
 	Short: "Get the lock status and message of the day",
 	Long: `Set server details with environment variables. F
 For example:
@@ -64,13 +64,13 @@ book getstatus
 		params := admin.NewGetStoreStatusAdminParams().WithTimeout(timeout)
 		status, err := bc.Admin.GetStoreStatusAdmin(params, auth)
 		if err != nil {
-			fmt.Printf("Error: failed to log in because %s\n", err.Error())
+			fmt.Printf("Error: failed to get status because %s\n", err.Error())
 			os.Exit(1)
 		}
 
 		pretty, err := json.MarshalIndent(status.Payload, "", "\t")
 		if err != nil {
-			fmt.Printf("Error: failed to getstatus because %s\n", err.Error())
+			fmt.Printf("Error: failed to format response because %s\n", err.Error())
 			os.Exit(1)
 		}
 		fmt.Println(string(pretty))
@@ -80,5 +80,5 @@ book getstatus
 }
 
 func init() {
-	rootCmd.AddCommand(getstatusCmd)
+	statusCmd.AddCommand(statusGetCmd)
 }

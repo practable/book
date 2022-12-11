@@ -31,15 +31,16 @@ import (
 )
 
 // setstatusCmd represents the setstatus command
-var setstatusCmd = &cobra.Command{
-	Use:   "setstatus",
+var statusSetCmd = &cobra.Command{
+	Use:   "set",
 	Short: "Set the lock status and message of the day",
 	Long: `Set server details with environment variables 
 and pass settings as arguments. 
 For example:
-export BOOKCLIENT_HOST=localhost:4000
-export BOOKCLIENT_SCHEME=http
+export BOOKCLIENT_HOST=book.practable.io
+export BOOKCLIENT_SCHEME=https
 export BOOKCLIENT_TOKEN=$secret
+book setstatus lock "Bookings are currently closed for maintenance"
 book setstatus unlock "Bookings are open"
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -99,5 +100,5 @@ book setstatus unlock "Bookings are open"
 }
 
 func init() {
-	rootCmd.AddCommand(setstatusCmd)
+	statusCmd.AddCommand(statusSetCmd)
 }

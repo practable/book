@@ -68,6 +68,8 @@ set | grep BOOKCLIENT
 echo "book server at ${BOOKCLIENT_HOST} (testing)"
 
 echo "commands:"
+echo "  c: check manifest"
+echo "  e: export manifest"
 echo "  g: start insecure chrome"
 echo "  l: Lock bookings"
 echo "  m: replace manifest"
@@ -78,24 +80,31 @@ echo "  s: get the status of the poolstore)"
 for (( ; ; ))
 do
 	read -p 'What next? [g/l/m/n/s]:' command
-if [ "$command" = "g" ];
+if [ "$command" = "c" ];
+then
+	../cmd/book/book manifest check ../demo/manifest.yaml
+elif [ "$command" = "e" ];
+then
+	export BOOKCLIENT_FORMAT=yaml
+	../cmd/book/book manifest export 
+	elif [ "$command" = "g" ];
 then
 	mkdir -p ~/tmp/chrome-user
-	google-chrome --disable-web-security --user-data-dir="~/tmp/chrome-user" > chrome.log 2>&1 &	
+	google-chrome --disable-web-security --user-data-dir="~/tmp/chrome-user" > chrome.log 2>&1 &
 elif [ "$command" = "l" ];
 then
 	read -p 'Enter lock message:' message
-	../cmd/book/book setstatus lock "$message"
+	../cmd/book/book status set lock "$message"
 elif [ "$command" = "m" ];
 then
-	echo "NOT IMPLEMENTED"
+	../cmd/book/book manifest replace ../demo/manifest.yaml
 elif [ "$command" = "n" ];
 then
 	read -p 'Enter unlock message:' message
-	../cmd/book/book setstatus unlock "$message"
+	../cmd/book/book status set unlock "$message"
 elif [ "$command" = "s" ];
 then
- 	../cmd/book/book getstatus
+ 	../cmd/book/book status get
 	
 elif [ "$command" = "u" ];
 then
