@@ -84,21 +84,15 @@ then
 	google-chrome --disable-web-security --user-data-dir="~/tmp/chrome-user" > chrome.log 2>&1 &	
 elif [ "$command" = "l" ];
 then
-	echo "NOT IMPLEMENTED"
-	#export BOOKTOKEN_ADMIN=true
-    #export BOOKSTATUS_TOKEN=$(book token)
-	#read -p 'Enter lock message:' message
-	#book setstatus lock "$message"
+	read -p 'Enter lock message:' message
+	../cmd/book/book setstatus lock "$message"
 elif [ "$command" = "m" ];
 then
 	echo "NOT IMPLEMENTED"
 elif [ "$command" = "n" ];
 then
-	echo "NOT IMPLEMENTED"
-	#export BOOKTOKEN_ADMIN=true
-    #export BOOKSTATUS_TOKEN=$(book token)
-	#read -p 'Enter unlock message:' message
-	#book setstatus unlock "$message"
+	read -p 'Enter unlock message:' message
+	../cmd/book/book setstatus unlock "$message"
 elif [ "$command" = "s" ];
 then
  	../cmd/book/book getstatus
