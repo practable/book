@@ -68,60 +68,90 @@ set | grep BOOKCLIENT
 echo "book server at ${BOOKCLIENT_HOST} (testing)"
 
 echo "commands:"
-echo "  c: check manifest"
-echo "  e: export manifest"
-echo "  g: start insecure chrome"
-echo "  l: Lock bookings"
-echo "  m: replace manifest"
-echo "  n: uNlock bookings"
-echo "  s: get the status of the poolstore)"
-
+echo
+echo "  0: Get status"
+echo "  1: Lock bookings"
+echo "  2: Unlock bookings"
+echo 
+echo "  3: Export bookings"
+echo "  4: Replace bookings"
+echo 
+echo "  5: Export old bookings"
+echo "  6: Replace old bookings"
+echo 
+echo "  7: Check manifest"
+echo "  8: Export manifest"
+echo "  9: Replace manifest"
+echo 
+echo "  a: Export users"
+echo "  b: start insecure chrome"
 
 for (( ; ; ))
 do
-	read -p 'What next? [g/l/m/n/s]:' command
-if [ "$command" = "c" ];
+	read -p 'What next? ' command
+if [ "$command" = "0" ];
 then
-	../cmd/book/book manifest check ../demo/manifest.yaml
-elif [ "$command" = "e" ];
-then
-	export BOOKCLIENT_FORMAT=yaml
-	../cmd/book/book manifest export 
-	elif [ "$command" = "g" ];
-then
-	mkdir -p ~/tmp/chrome-user
-	google-chrome --disable-web-security --user-data-dir="~/tmp/chrome-user" > chrome.log 2>&1 &
-elif [ "$command" = "l" ];
+ 	../cmd/book/book status get
+elif [ "$command" = "1" ];
 then
 	read -p 'Enter lock message:' message
 	../cmd/book/book status set lock "$message"
-elif [ "$command" = "m" ];
-then
-	../cmd/book/book manifest replace ../demo/manifest.yaml
-elif [ "$command" = "n" ];
+elif [ "$command" = "2" ];
 then
 	read -p 'Enter unlock message:' message
 	../cmd/book/book status set unlock "$message"
-elif [ "$command" = "s" ];
+elif [ "$command" = "3" ];
 then
- 	../cmd/book/book status get
-	
-elif [ "$command" = "u" ];
+	echo "export bookings"
+elif [ "$command" = "4" ];
 then
-	echo "NOT IMPLEMENTED"
-	#read -p "Definitely upload [y/N]?" confirm
-	#if ([ "$confirm" == "y" ] || [ "$confirm" == "Y" ]  || [ "$confirm" == "yes"  ] );
-	#then
-	#	export BOOKTOKEN_ADMIN=true
-    #	export BOOKUPLOAD_TOKEN=$(book token)
-	#	book upload manifest.yaml
-	#else
-	#	echo "wise choice, aborting"
-	#fi
+	read -p "Definitely replace [y/N]?" confirm
+	if ([ "$confirm" == "y" ] || [ "$confirm" == "Y" ]  || [ "$confirm" == "yes"  ] );
+	then
+		#./cmd/book/book bookings replace ../demo/bookings.yaml #boiler plate code doesn't report the error messages (just get pointer values) ... :-(
+		curl --data-binary "@../demo/bookings.yaml"  -X PUT -H "Authorization: ${BOOKCLIENT_TOKEN}" -H "Content-type: text/plain" "${BOOKCLIENT_HOST}/api/v1/admin/bookings" 
+	fi
+
+elif [ "$command" = "5" ];
+then
+	export BOOKCLIENT_FORMAT=yaml
+	../cmd/book/book bookings export
+elif [ "$command" = "6" ];
+then
+	read -p "Definitely replace [y/N]?" confirm
+	if ([ "$confirm" == "y" ] || [ "$confirm" == "Y" ]  || [ "$confirm" == "yes"  ] );
+	then	
+	    echo "replace old bookings"
+	fi	
+
+elif [ "$command" = "7" ];
+then
+	../cmd/book/book manifest check ../demo/manifest.yaml
+elif [ "$command" = "8" ];
+then
+	export BOOKCLIENT_FORMAT=yaml
+	../cmd/book/book manifest export 
+elif [ "$command" = "9" ];
+then
+	read -p "Definitely replace [y/N]?" confirm
+	if ([ "$confirm" == "y" ] || [ "$confirm" == "Y" ]  || [ "$confirm" == "yes"  ] );
+	then
+		../cmd/book/book manifest replace ../demo/manifest.yaml
+	fi
+
+elif [ "$command" = "a" ];
+then
+	echo "export users"
+elif [ "$command" = "b" ];
+then	
+	mkdir -p ~/tmp/chrome-user
+	google-chrome --disable-web-security --user-data-dir="~/tmp/chrome-user" > chrome.log 2>&1 &
 else	
      echo -e "\nUnknown command ${command}."
 fi
 done
 
 kill book_pid
+
+
 

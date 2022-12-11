@@ -1,0 +1,23 @@
+---
+bk-0:
+  cancelled: false
+  name: bk-0
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-a
+  when:
+    start: '2023-11-05T00:10:00Z'
+    end: '2023-11-05T00:15:00Z'
+bk-1:
+  cancelled: false
+  name: bk-1
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: u-b
+  when:
+    start: '2023-12-05T01:00:00Z'
+    end: '2023-12-05T01:05:00Z'
