@@ -194,7 +194,7 @@ func (a *Client) ExportOldBookings(params *ExportOldBookingsParams, authInfo run
 		ID:                 "ExportOldBookings",
 		Method:             "GET",
 		PathPattern:        "/admin/oldbookings",
-		ProducesMediaTypes: []string{"application/json", "text/plain"},
+		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json", "text/plain"},
 		Schemes:            []string{"http"},
 		Params:             params,

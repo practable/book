@@ -263,8 +263,7 @@ func init() {
         ],
         "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "application/json",
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -275,7 +274,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           },
           "401": {
@@ -2292,8 +2291,7 @@ func init() {
         ],
         "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "application/json",
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -2304,7 +2302,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           },
           "401": {

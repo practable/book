@@ -215,17 +215,44 @@ func exportOldBookingsHandler(config config.ServerConfig) func(admin.ExportOldBo
 			return admin.NewExportOldBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		m := config.Store.ExportOldBookings()
+		bs := config.Store.ExportOldBookings()
 
-		b, err := json.Marshal(m)
+		bm := []*models.Booking{}
 
-		if err != nil {
-			c := "500"
-			m := err.Error()
-			return admin.NewExportOldBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		for _, v := range bs {
+
+			_, err := json.Marshal(v)
+
+			if err != nil {
+				c := "500"
+				m := err.Error()
+				return admin.NewExportBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+
+			b := models.Booking{
+
+				Name:      gog.Ptr(v.Name),
+				Policy:    gog.Ptr(v.Policy),
+				Slot:      gog.Ptr(v.Slot),
+				User:      gog.Ptr(v.User),
+				Cancelled: v.Cancelled,
+
+				Started:     v.Started,
+				Unfulfilled: v.Unfulfilled,
+
+				When: gog.Ptr(models.Interval{
+					Start: strfmt.DateTime(v.When.Start),
+					End:   strfmt.DateTime(v.When.End),
+				}),
+			}
+
+			bm = append(bm, &b)
+
 		}
 
-		return admin.NewExportOldBookingsOK().WithPayload(string(b))
+		log.Debugf("exported " + strconv.Itoa(len(bm)) + " old bookings")
+
+		return admin.NewExportOldBookingsOK().WithPayload(bm)
 	}
 }
 

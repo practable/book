@@ -181,14 +181,13 @@ paths:
       deprecated: false
       produces:
       - application/json  
-      - text/plain
       security:
         - Bearer: []
       responses:
         200:
-          description: OK
+          description: 'OK'
           schema:
-            type: string
+            $ref: '#/definitions/Bookings'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
