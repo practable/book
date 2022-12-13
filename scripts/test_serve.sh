@@ -109,8 +109,8 @@ then
 	read -p "Definitely replace [y/N]?" confirm
 	if ([ "$confirm" == "y" ] || [ "$confirm" == "Y" ]  || [ "$confirm" == "yes"  ] );
 	then
-		#./cmd/book/book bookings replace ../demo/bookings.yaml #boiler plate code doesn't report the error messages (just get pointer values) ... :-(
-		curl --data-binary "@../demo/bookings.yaml"  -X PUT -H "Authorization: ${BOOKCLIENT_TOKEN}" -H "Content-type: text/plain" "${BOOKCLIENT_HOST}/api/v1/admin/bookings" 
+		../cmd/book/book bookings replace ../demo/bookings.yaml #boiler plate code doesn't report the error messages (just get pointer values) ... :-(
+		#curl --data-binary "@../demo/bookings.yaml"  -X PUT -H "Authorization: ${BOOKCLIENT_TOKEN}" -H "Content-type: text/plain" "${BOOKCLIENT_HOST}/api/v1/admin/bookings" 
 	fi
 
 elif [ "$command" = "5" ];
