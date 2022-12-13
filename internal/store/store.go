@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -635,7 +634,7 @@ func (s *Store) ExportManifest() Manifest {
 			TopicStub:   v.TopicStub,
 		}
 	}
-	fmt.Printf("There are " + strconv.Itoa(len(s.DisplayGuides)) + " display guides in the store\n")
+
 	return Manifest{
 		Descriptions:  s.Descriptions,
 		DisplayGuides: s.DisplayGuides,
