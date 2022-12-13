@@ -13,5 +13,5 @@ func (e Error) String() string {
 	if e.Message != nil {
 		message = *(e.Message)
 	}
-	return fmt.Sprintf(`asdfasdfasdfasdf {"Code":%#v,"Message":%#v}`, code, message)
+	return fmt.Sprintf(`{"Code":%#v,"Message":%#v}`, code, message)
 }
