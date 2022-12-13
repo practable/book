@@ -23,7 +23,8 @@ func init() {
     "text/plain"
   ],
   "produces": [
-    "application/json"
+    "application/json",
+    "text/plain"
   ],
   "schemes": [
     "http"
@@ -51,7 +52,7 @@ func init() {
         ],
         "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -62,7 +63,10 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Booking"
+              }
             }
           },
           "401": {
@@ -132,6 +136,7 @@ func init() {
         ],
         "description": "Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users",
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "tags": [
@@ -261,6 +266,7 @@ func init() {
         ],
         "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "tags": [
@@ -2001,7 +2007,8 @@ func init() {
     "text/plain"
   ],
   "produces": [
-    "application/json"
+    "application/json",
+    "text/plain"
   ],
   "schemes": [
     "http"
@@ -2029,7 +2036,7 @@ func init() {
         ],
         "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -2040,7 +2047,10 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Booking"
+              }
             }
           },
           "401": {
@@ -2128,6 +2138,7 @@ func init() {
         ],
         "description": "Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users",
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "tags": [
@@ -2287,6 +2298,7 @@ func init() {
         ],
         "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
+          "application/json",
           "text/plain"
         ],
         "tags": [

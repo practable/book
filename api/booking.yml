@@ -21,6 +21,7 @@ consumes:
 - text/plain
 produces:
 - application/json
+- text/plain
 
 paths:
 
@@ -33,15 +34,17 @@ paths:
       operationId: ExportBookings
       deprecated: false
       produces:
-      - text/plain
+      - application/json
       security:
         - Bearer: []
       responses:
         200:
           description: OK
           schema:
-            type: string 
-          headers: {}
+            type: array
+            items:
+              $ref: '#/definitions/Booking'
+          headers: {}  
         401:
           $ref: '#/responses/Unauthorized'
         404:
@@ -90,6 +93,7 @@ paths:
       operationId: ExportManifest
       deprecated: false
       produces:
+      - application/json
       - text/plain
       security:
         - Bearer: []
@@ -178,6 +182,7 @@ paths:
       operationId: ExportOldBookings
       deprecated: false
       produces:
+      - application/json  
       - text/plain
       security:
         - Bearer: []

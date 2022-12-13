@@ -631,9 +631,14 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
 	resp, err = client.Do(req)
+	body, err := ioutil.ReadAll(resp.Body)
+	t.Log(string(body))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
-	body, err := ioutil.ReadAll(resp.Body)
+
+	//t.Log(string(body))
+	// application/json "{\"bk-0\":{\"cancelled\":false,\"name\":\"bk-0\",\"policy\":\"p-a\",\"slot\":\"sl-a\",\"started\":false,\"unfulfilled\":false,\"user\":\"u-a\",\"when\":{\"start\":\"2022-11-05T00:10:00Z\",\"end\":\"2022-11-05T00:15:00Z\"}},\"bk-1\":{\"cancelled\":false,\"name\":\"bk-1\",\"policy\":\"p-b\",\"slot\":\"sl-b\",\"started\":false,\"unfulfilled\":false,\"user\":\"u-b\",\"when\":{\"start\":\"2022-11-05T00:20:00Z\",\"end\":\"2022-11-05T00:30:00Z\"}}}"
+	// text/plain {"bk-0":{"cancelled":false,"name":"bk-0","policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"u-a","when":{"start":"2022-11-05T00:10:00Z","end":"2022-11-05T00:15:00Z"}},"bk-1":{"cancelled":false,"name":"bk-1","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"u-b","when":{"start":"2022-11-05T00:20:00Z","end":"2022-11-05T00:30:00Z"}}}
 	var expectedBookings, exportedBookings map[string]store.Booking
 	err = yaml.Unmarshal(bookingsYAML, &expectedBookings)
 	err = yaml.Unmarshal(body, &exportedBookings)
@@ -1533,13 +1538,24 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 	assert.NoError(t, err)
 	resp.Body.Close()
 
-	policiesJSON := []byte(`[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]},{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":[{"book_ahead":"20m0s","duration":"1m0s","max_slots":15}],"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}]`)
-	var actualPolicies, expectedPolicies models.PoliciesDescribed
-	err = json.Unmarshal(policiesJSON, &expectedPolicies)
-	assert.NoError(t, err)
-	err = json.Unmarshal(body, &actualPolicies)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedPolicies, actualPolicies)
+	// order can change so check both possibilities
+	// unmarshalling can comparing objects did not work reliably because of the use of pointers in struct
+	policies1JSON := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]},{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":[{"book_ahead":"20m0s","duration":"1m0s","max_slots":15}],"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}]` + "\n"
+	policies2JSON := `[{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":[{"book_ahead":"20m0s","duration":"1m0s","max_slots":15}],"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]},{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
+
+	assert.True(t, policies1JSON == string(body) || policies2JSON == string(body))
+
+	if !(policies1JSON == string(body) || policies2JSON == string(body)) {
+		t.Error("Policies did not match")
+		t.Log("expected either (1):\n " + policies1JSON + " or (2):\n" + policies2JSON)
+		t.Log("got: " + string(body))
+	}
+	//var actualPolicies, expectedPolicies models.PoliciesDescribed
+	//err = json.Unmarshal(policiesJSON, &expectedPolicies)
+	//assert.NoError(t, err)
+	//err = json.Unmarshal(body, &actualPolicies)
+	//assert.NoError(t, err)
+	//assert.Equal(t, expectedPolicies, actualPolicies)
 
 }
 
@@ -1571,12 +1587,30 @@ func TestLockedToUser(t *testing.T) {
 		p := admin.NewSetLockParams().WithTimeout(timeout).WithLock(lock).WithMsg(&message)
 		return bc.Admin.SetLock(p, auth)
 	}
-
+	exportBookings := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewExportBookingsParams().WithTimeout(timeout)
+		return bc.Admin.ExportBookings(p, auth)
+	}
+	exportManifest := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewExportManifestParams().WithTimeout(timeout)
+		return bc.Admin.ExportManifest(p, auth)
+	}
+	exportOldBookings := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewExportOldBookingsParams().WithTimeout(timeout)
+		return bc.Admin.ExportOldBookings(p, auth)
+	}
+	replaceBookings := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewReplaceBookingsParams().WithTimeout(timeout).WithBookings(string(bookingsYAML))
+		return bc.Admin.ReplaceBookings(p, auth)
+	}
 	replaceManifest := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(string(manifestYAML))
 		return bc.Admin.ReplaceManifest(p, auth)
 	}
-
+	replaceOldBookings := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewReplaceOldBookingsParams().WithTimeout(timeout).WithBookings(string(bookingsYAML))
+		return bc.Admin.ReplaceOldBookings(p, auth)
+	}
 	tests := map[string]struct {
 		setup   func()
 		command func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error)
@@ -1584,10 +1618,20 @@ func TestLockedToUser(t *testing.T) {
 		ok      bool
 		want    string
 	}{
-		"replaceManifestAdmin": {unlocked, replaceManifest, authAdmin, true, `[PUT /admin/manifest][200] replaceManifestOK`},
-		"replaceManifestUser":  {unlocked, replaceManifest, authUser, false, `[PUT /admin/manifest][401] replaceManifestUnauthorized`},
-		"setLockAdmin":         {unlocked, setLock, authAdmin, true, `[PUT /admin/status][200] setLockOK`},
-		"setLockUser":          {unlocked, setLock, authUser, false, `[PUT /admin/status][401] setLockUnauthorized`},
+		"exportBookingsAdmin":     {unlocked, exportBookings, authAdmin, true, `[GET /admin/bookings][200] exportBookingsOK`},
+		"exportBookingsUser":      {unlocked, exportBookings, authUser, false, `[GET /admin/bookings][401] exportBookingsUnauthorized`},
+		"exportManifestAdmin":     {unlocked, exportManifest, authAdmin, true, `[GET /admin/manifest][200] exportManifestOK`},
+		"exportManifestUser":      {unlocked, exportManifest, authUser, false, `[GET /admin/manifest][401] exportManifestUnauthorized`},
+		"exportOldBookingsAdmin":  {unlocked, exportOldBookings, authAdmin, true, `[GET /admin/oldbookings][200] exportOldBookingsOK`},
+		"exportOldBookingsUser":   {unlocked, exportOldBookings, authUser, false, `[GET /admin/oldbookings][401] exportOldBookingsUnauthorized`},
+		"replaceBookingsAdmin":    {unlocked, replaceBookings, authAdmin, true, `[PUT /admin/bookings][200] replaceBookingsOK`},
+		"replaceBookingsUser":     {unlocked, replaceBookings, authUser, false, `[PUT /admin/bookings][401] replaceBookingsUnauthorized`},
+		"replaceManifestAdmin":    {unlocked, replaceManifest, authAdmin, true, `[PUT /admin/manifest][200] replaceManifestOK`},
+		"replaceManifestUser":     {unlocked, replaceManifest, authUser, false, `[PUT /admin/manifest][401] replaceManifestUnauthorized`},
+		"replaceOldBookingsAdmin": {unlocked, replaceOldBookings, authAdmin, true, `[PUT /admin/oldbookings][200] replaceOldBookingsOK`},
+		"replaceOldBookingsUser":  {unlocked, replaceOldBookings, authUser, false, `[PUT /admin/oldbookings][401] replaceOldBookingsUnauthorized`},
+		"setLockAdmin":            {unlocked, setLock, authAdmin, true, `[PUT /admin/status][200] setLockOK`},
+		"setLockUser":             {unlocked, setLock, authUser, false, `[PUT /admin/status][401] setLockUnauthorized`},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -1613,8 +1657,12 @@ func TestLockedToUser(t *testing.T) {
 			if debug {
 				fmt.Printf("%+v // %+v\n", got, err)
 			}
-			assert.Equal(t, tc.want, s[:len(tc.want)])
-
+			if tc.want != s[:len(tc.want)] {
+				t.Error("Unexpected response")
+				t.Log("want: " + tc.want)
+				t.Log("got:  " + s)
+				fmt.Printf("%+v %+v", got, err)
+			}
 		})
 	}
 

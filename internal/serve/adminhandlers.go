@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
+	"github.com/icza/gog"
 	log "github.com/sirupsen/logrus"
 	"github.com/timdrysdale/interval/internal/config"
 	"github.com/timdrysdale/interval/internal/serve/models"
@@ -21,7 +23,7 @@ func checkManifestHandler(config config.ServerConfig) func(admin.CheckManifestPa
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewCheckManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -87,6 +89,7 @@ func convertManifestToStore(m string) (store.Manifest, error) {
 }
 
 // exportBookingsHandler
+// https://github.com/go-swagger/go-swagger/issues/2275
 func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookingsParams, interface{}) middleware.Responder {
 	return func(params admin.ExportBookingsParams, principal interface{}) middleware.Responder {
 
@@ -94,21 +97,54 @@ func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookings
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewExportBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		m := config.Store.ExportBookings()
+		bs := config.Store.ExportBookings()
 
-		b, err := json.Marshal(m)
+		//b, err := json.Marshal(m)
 
-		if err != nil {
-			c := "500"
-			m := err.Error()
-			return admin.NewExportBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		//if err != nil {
+		//	c := "500"
+		//	m := err.Error()
+		//	return admin.NewExportBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		//}
+
+		bm := []*models.Booking{}
+
+		for _, v := range bs {
+
+			_, err := json.Marshal(v)
+
+			if err != nil {
+				c := "500"
+				m := err.Error()
+				return admin.NewExportBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+
+			b := models.Booking{
+
+				Name:      gog.Ptr(v.Name),
+				Policy:    gog.Ptr(v.Policy),
+				Slot:      gog.Ptr(v.Slot),
+				User:      gog.Ptr(v.User),
+				Cancelled: v.Cancelled,
+
+				Started:     v.Started,
+				Unfulfilled: v.Unfulfilled,
+
+				When: gog.Ptr(models.Interval{
+					Start: strfmt.DateTime(v.When.Start),
+					End:   strfmt.DateTime(v.When.End),
+				}),
+			}
+
+			bm = append(bm, &b)
+
 		}
 
-		return admin.NewExportBookingsOK().WithPayload(string(b))
+		return admin.NewExportBookingsOK().WithPayload(bm)
 	}
 }
 
@@ -120,7 +156,7 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewExportManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -146,7 +182,7 @@ func exportOldBookingsHandler(config config.ServerConfig) func(admin.ExportOldBo
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewExportOldBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -172,7 +208,7 @@ func exportUsersHandler(config config.ServerConfig) func(admin.ExportUsersParams
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewExportUsersUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -198,7 +234,7 @@ func getStoreStatusAdminHandler(config config.ServerConfig) func(admin.GetStoreS
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewGetStoreStatusAdminUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -220,7 +256,7 @@ func getSlotIsAvailableHandler(config config.ServerConfig) func(admin.GetSlotIsA
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewGetSlotIsAvailableUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -248,7 +284,7 @@ func replaceBookingsHandler(config config.ServerConfig) func(admin.ReplaceBookin
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewReplaceBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -290,7 +326,7 @@ func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManife
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewReplaceManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -332,7 +368,7 @@ func replaceOldBookingsHandler(config config.ServerConfig) func(admin.ReplaceOld
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewReplaceOldBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -374,7 +410,7 @@ func setLockHandler(config config.ServerConfig) func(admin.SetLockParams, interf
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewSetLockUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -402,7 +438,7 @@ func setSlotIsAvailableHandler(config config.ServerConfig) func(admin.SetSlotIsA
 
 		if err != nil {
 			c := "401"
-			m := err.Error()
+			m := "no scope booking:admin"
 			return admin.NewSetSlotIsAvailableUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
