@@ -189,17 +189,54 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 			return admin.NewExportManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		m := config.Store.ExportManifest()
+		sm := config.Store.ExportManifest()
 
-		b, err := json.Marshal(m)
+		dm := make(map[string]models.Description)
 
-		if err != nil {
-			c := "500"
-			m := err.Error()
-			return admin.NewExportManifestInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		for k, v := range sm.Descriptions {
+			s := v
+			dm[k] = models.Description{
+				Name:    gog.Ptr(s.Name),
+				Short:   s.Short,
+				Type:    gog.Ptr(s.Type),
+				Long:    s.Long,
+				Further: s.Further,
+				Thumb:   s.Thumb,
+				Image:   s.Image,
+			}
 		}
 
-		return admin.NewExportManifestOK().WithPayload(string(b))
+		pm := make(map[string]models.Policy)
+		for k, v := range sm.Policies {
+			s := v
+
+			dgm := []*models.DisplayGuide{}
+
+			for _, vv := range s.DisplayGuides {
+				ss := vv
+				dg := models.DisplayGuide{
+					BookAhead: gog.Ptr(ss.BookAhead.String()),
+					Duration:  gog.Ptr(ss.Duration.String()),
+					MaxSlots:  gog.Ptr(int64(ss.MaxSlots)),
+				}
+				dgm = append(dgm, &dg)
+			}
+
+			pm[k] = models.Policy{
+				BookAhead:     s.BookAhead.String(),
+				Description:   gog.Ptr(s.Description),
+				DisplayGuides: dgm,
+			}
+		}
+
+		mm := models.Manifest{
+			Descriptions: dm,
+			Policies:     pm,
+		}
+
+		//TODO convert it here
+
+		return admin.NewExportManifestOK().WithPayload(&mm)
 	}
 }
 

@@ -644,10 +644,10 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 	req.Header.Add("Authorization", stoken)
 	resp, err = client.Do(req)
 	body, err = ioutil.ReadAll(resp.Body)
-	var expectedManifest, exportedManifest store.Manifest
+	var expectedManifest, exportedManifest cmodels.Manifest
 	err = yaml.Unmarshal(manifestYAML, &expectedManifest)
 	assert.NoError(t, err)
-	err = yaml.Unmarshal(body, &exportedManifest)
+	err = json.Unmarshal(body, &exportedManifest)
 	assert.NoError(t, err)
 	resp.Body.Close()
 	assert.Equal(t, expectedManifest, exportedManifest)

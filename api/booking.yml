@@ -92,14 +92,13 @@ paths:
       deprecated: false
       produces:
       - application/json
-      - text/plain
       security:
         - Bearer: []
       responses:
         200:
           description: OK
           schema:
-            type: string
+            $ref: '#/definitions/Manifest'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'

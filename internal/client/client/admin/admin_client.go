@@ -153,7 +153,7 @@ func (a *Client) ExportManifest(params *ExportManifestParams, authInfo runtime.C
 		ID:                 "ExportManifest",
 		Method:             "GET",
 		PathPattern:        "/admin/manifest",
-		ProducesMediaTypes: []string{"application/json", "text/plain"},
+		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json", "text/plain"},
 		Schemes:            []string{"http"},
 		Params:             params,

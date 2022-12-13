@@ -25,7 +25,7 @@ type ExportManifestOK struct {
 	/*
 	  In: Body
 	*/
-	Payload string `json:"body,omitempty"`
+	Payload *models.Manifest `json:"body,omitempty"`
 }
 
 // NewExportManifestOK creates ExportManifestOK with default headers values
@@ -35,13 +35,13 @@ func NewExportManifestOK() *ExportManifestOK {
 }
 
 // WithPayload adds the payload to the export manifest o k response
-func (o *ExportManifestOK) WithPayload(payload string) *ExportManifestOK {
+func (o *ExportManifestOK) WithPayload(payload *models.Manifest) *ExportManifestOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the export manifest o k response
-func (o *ExportManifestOK) SetPayload(payload string) {
+func (o *ExportManifestOK) SetPayload(payload *models.Manifest) {
 	o.Payload = payload
 }
 
@@ -49,9 +49,11 @@ func (o *ExportManifestOK) SetPayload(payload string) {
 func (o *ExportManifestOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(200)
-	payload := o.Payload
-	if err := producer.Produce(rw, payload); err != nil {
-		panic(err) // let the recovery middleware deal with this
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
 	}
 }
 
