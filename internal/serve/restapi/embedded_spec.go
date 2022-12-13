@@ -1413,9 +1413,9 @@ func init() {
     "DisplayGuide": {
       "type": "object",
       "required": [
-        "name",
         "book_ahead",
         "duration",
+        "label",
         "max_slots"
       ],
       "properties": {
@@ -1425,11 +1425,12 @@ func init() {
         "duration": {
           "type": "string"
         },
+        "label": {
+          "description": "what to display in the tab heading for these slots",
+          "type": "string"
+        },
         "max_slots": {
           "type": "integer"
-        },
-        "name": {
-          "type": "string"
         }
       }
     },
@@ -1486,6 +1487,12 @@ func init() {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Description"
+          }
+        },
+        "display_guides": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/DisplayGuide"
           }
         },
         "policies": {
@@ -3665,9 +3672,9 @@ func init() {
     "DisplayGuide": {
       "type": "object",
       "required": [
-        "name",
         "book_ahead",
         "duration",
+        "label",
         "max_slots"
       ],
       "properties": {
@@ -3677,11 +3684,12 @@ func init() {
         "duration": {
           "type": "string"
         },
+        "label": {
+          "description": "what to display in the tab heading for these slots",
+          "type": "string"
+        },
         "max_slots": {
           "type": "integer"
-        },
-        "name": {
-          "type": "string"
         }
       }
     },
@@ -3738,6 +3746,12 @@ func init() {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/Description"
+          }
+        },
+        "display_guides": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/DisplayGuide"
           }
         },
         "policies": {

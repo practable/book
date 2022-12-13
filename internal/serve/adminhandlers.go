@@ -206,23 +206,22 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 			}
 		}
 
+		dgm := make(map[string]models.DisplayGuide)
+
+		for k, v := range sm.DisplayGuides {
+			s := v
+			dgm[k] = models.DisplayGuide{
+				BookAhead: gog.Ptr(s.BookAhead.String()),
+				Duration:  gog.Ptr(s.Duration.String()),
+				MaxSlots:  gog.Ptr(int64(s.MaxSlots)),
+				Label:     gog.Ptr(s.Label),
+			}
+		}
+
 		pm := make(map[string]models.Policy)
 
 		for k, v := range sm.Policies {
 			s := v
-
-			/* TODO delete - manifest has array of displayguide names
-			dgm := make(map[string]*models.DisplayGuide)
-
-			for kk, vv := range s.DisplayGuides {
-				ss := vv
-				dg := models.DisplayGuide{
-					BookAhead: gog.Ptr(ss.BookAhead.String()),
-					Duration:  gog.Ptr(ss.Duration.String()),
-					MaxSlots:  gog.Ptr(int64(ss.MaxSlots)),
-				}
-				dgm[kk] = &dg
-			}*/
 
 			pm[k] = models.Policy{
 				BookAhead:          s.BookAhead.String(),
@@ -329,17 +328,16 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 		}
 
 		mm := models.Manifest{
-			Descriptions: dm,
-			Policies:     pm,
-			Resources:    rm,
-			Slots:        slm,
-			Streams:      stm,
-			Uis:          uim,
-			UISets:       usm,
-			Windows:      wm,
+			Descriptions:  dm,
+			DisplayGuides: dgm,
+			Policies:      pm,
+			Resources:     rm,
+			Slots:         slm,
+			Streams:       stm,
+			Uis:           uim,
+			UISets:        usm,
+			Windows:       wm,
 		}
-
-		//TODO convert it here
 
 		return admin.NewExportManifestOK().WithPayload(&mm)
 	}

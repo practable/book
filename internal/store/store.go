@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -75,9 +76,10 @@ type Description struct {
 // to influence the offerings to students in a way that might better suit their
 // teaching views.
 type DisplayGuide struct {
-	Duration  time.Duration `json:"duration" yaml:"duration"`
-	MaxSlots  int           `json:"max_slots" yaml:"max_slots"`
 	BookAhead time.Duration `json:"book_ahead" yaml:"book_ahead"`
+	Duration  time.Duration `json:"duration" yaml:"duration"`
+	Label     string        `json:"label" yaml:"label"`
+	MaxSlots  int           `json:"max_slots" yaml:"max_slots"`
 }
 
 // Manifest represents all the available equipment and how to access it
@@ -610,7 +612,11 @@ func (s *Store) ExportManifest() Manifest {
 
 	uis := make(map[string]UI)
 
-	// Manifest only has the name of the description in the UI
+	// We store the full description in the store for convenience
+	// but the manifest only has the name of the description in the UI
+	// as a reference to the description elsewhere in teh manifest
+	// so we restore that format on export by removing all description
+	// except for the description reference
 	for k, v := range s.UIs {
 		uis[k] = UI{
 			Description:     v.DescriptionReference,
@@ -629,7 +635,7 @@ func (s *Store) ExportManifest() Manifest {
 			TopicStub:   v.TopicStub,
 		}
 	}
-
+	fmt.Printf("There are " + strconv.Itoa(len(s.DisplayGuides)) + " display guides in the store\n")
 	return Manifest{
 		Descriptions:  s.Descriptions,
 		DisplayGuides: s.DisplayGuides,
@@ -1632,7 +1638,6 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 	}()
 
 	// lock is taken after we check whether we need to alter the store (see below)
-	fmt.Printf("there are " + strconv.Itoa(len(m.DisplayGuides)) + "DisplayGuides\n")
 	err, _ := checkManifest(m)
 
 	if err != nil {
@@ -1680,12 +1685,11 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 		for _, k := range v.Slots {
 			v.SlotMap[k] = true
 		}
-		s.Policies[k] = v
-
 		v.DisplayGuidesMap = make(map[string]DisplayGuide)
 		for _, k := range v.DisplayGuides {
 			v.DisplayGuidesMap[k] = s.DisplayGuides[k]
 		}
+		s.Policies[k] = v
 	}
 
 	for k := range s.Resources {
@@ -2403,39 +2407,106 @@ func checkWindows(items map[string]Window) (error, []string) {
 
 }
 
-/*
 // Unmarshallers for structs with durations
 // so that we can handle JSON in our store format during testing
 // which makes it easier to read diffs due to the lack
 // of pointers unlike the swagger models
+// method from https://penkovski.com/post/go-unmarshal-custom-types/
 func (p *Policy) UnmarshalJSON(data []byte) (err error) {
 
 	var tmp struct {
 		// durations are set to string for now
-		BookAhead          string                  `json:"book_ahead"  yaml:"book_ahead"`
-		MaxDuration        string                  `json:"max_duration"  yaml:"max_duration"`
-		MinDuration        string                  `json:"min_duration"  yaml:"min_duration"`
-		MaxUsage           string                  `json:"max_usage"  yaml:"max_usage"`
-
-
+		BookAhead   string `json:"book_ahead"  yaml:"book_ahead"`
+		MaxDuration string `json:"max_duration"  yaml:"max_duration"`
+		MinDuration string `json:"min_duration"  yaml:"min_duration"`
+		MaxUsage    string `json:"max_usage"  yaml:"max_usage"`
 
 		// other fields stay the same
-		Description        string                  `json:"description"  yaml:"description"`
-		DisplayGuides      map[string]DisplayGuide `json:"display_guides"  yaml:"display_guides"`
-		EnforceBookAhead   bool                    `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
-		EnforceMaxBookings bool                    `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
-		EnforceMaxDuration bool                    `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
-		EnforceMinDuration bool                    `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
-		EnforceMaxUsage    bool                    `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
-		MaxBookings        int64                   `json:"max_bookings"  yaml:"max_bookings"`
-		Slots              []string                `json:"slots" yaml:"slots"`
+		Description        string   `json:"description"  yaml:"description"`
+		DisplayGuides      []string `json:"display_guides"  yaml:"display_guides"`
+		EnforceBookAhead   bool     `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
+		EnforceMaxBookings bool     `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
+		EnforceMaxDuration bool     `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
+		EnforceMinDuration bool     `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
+		EnforceMaxUsage    bool     `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
+		MaxBookings        int64    `json:"max_bookings"  yaml:"max_bookings"`
+		Slots              []string `json:"slots" yaml:"slots"`
 	}
 
 	if err = json.Unmarshal(data, &tmp); err != nil {
 		return err
 	}
 
-	p.Book
+	// parse durations
+
+	ba, err := time.ParseDuration(tmp.BookAhead)
+	if err != nil {
+		return err
+	}
+	xd, err := time.ParseDuration(tmp.MaxDuration)
+	if err != nil {
+		return err
+	}
+	nd, err := time.ParseDuration(tmp.MinDuration)
+	if err != nil {
+		return err
+	}
+	xu, err := time.ParseDuration(tmp.MaxUsage)
+	if err != nil {
+		return err
+	}
+
+	p.BookAhead = ba
+	p.MaxDuration = xd
+	p.MinDuration = nd
+	p.MaxUsage = xu
+
+	p.Description = tmp.Description
+	p.DisplayGuides = tmp.DisplayGuides
+	p.EnforceBookAhead = tmp.EnforceBookAhead
+	p.EnforceMaxBookings = tmp.EnforceMaxBookings
+	p.EnforceMaxDuration = tmp.EnforceMaxDuration
+	p.EnforceMinDuration = tmp.EnforceMinDuration
+	p.EnforceMaxUsage = tmp.EnforceMaxUsage
+	p.MaxBookings = tmp.MaxBookings
+	p.Slots = tmp.Slots
+
+	return nil
 
 }
-*/
+
+func (d *DisplayGuide) UnmarshalJSON(data []byte) (err error) {
+
+	var tmp struct {
+		// durations are set to string for now
+		Duration  string `json:"duration" yaml:"duration"`
+		BookAhead string `json:"book_ahead" yaml:"book_ahead"`
+
+		//others stay the same
+		MaxSlots int    `json:"max_slots" yaml:"max_slots"`
+		Label    string `json:"label" yaml:"label"`
+	}
+
+	if err = json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+
+	// parse durations
+
+	ba, err := time.ParseDuration(tmp.BookAhead)
+	if err != nil {
+		return err
+	}
+	dd, err := time.ParseDuration(tmp.Duration)
+	if err != nil {
+		return err
+	}
+
+	d.BookAhead = ba
+	d.Duration = dd
+	d.MaxSlots = tmp.MaxSlots
+	d.Label = tmp.Label
+
+	return nil
+
+}

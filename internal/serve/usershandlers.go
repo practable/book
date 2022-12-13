@@ -186,6 +186,7 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 				Duration:  gog.Ptr(store.HumaniseDuration(dg.Duration)),
 				MaxSlots:  gog.Ptr(int64(dg.MaxSlots)),
 				BookAhead: gog.Ptr(store.HumaniseDuration(dg.BookAhead)),
+				Label:     gog.Ptr(dg.Label),
 			}
 		}
 
@@ -821,6 +822,7 @@ func getPoliciesForUserHandler(config config.ServerConfig) func(users.GetPolicie
 					BookAhead: gog.Ptr(dg.BookAhead.String()),
 					Duration:  gog.Ptr(dg.Duration.String()),
 					MaxSlots:  gog.Ptr(int64(dg.MaxSlots)),
+					Label:     gog.Ptr(dg.Label),
 				}
 			}
 

@@ -77,16 +77,17 @@ var manifestYAML = []byte(`descriptions:
     type: ui
     short: b
 display_guides:
-  1m:
+  1mFor20m:
     book_ahead: 20m
     duration: 1m
     max_slots: 15
+    label: 1m
 policies:
   p-a:
     book_ahead: 1h
     description: d-p-a
     display_guides:
-      - 1m
+      - 1mFor20m
     enforce_book_ahead: true
     enforce_max_bookings: false
     enforce_max_duration: false
@@ -555,6 +556,7 @@ func removeAllBookings(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 }
 
+// TestManifestOK lets us know if our test manifest is correct
 func TestManifestOK(t *testing.T) {
 
 	var m store.Manifest
@@ -562,8 +564,6 @@ func TestManifestOK(t *testing.T) {
 	err := yaml.Unmarshal(manifestYAML, &m)
 
 	assert.NoError(t, err)
-	t.Log(m.Descriptions)
-	t.Log(m.DisplayGuides)
 
 	err, msgs := store.CheckManifest(m)
 
@@ -1070,7 +1070,7 @@ func TestGetPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
-	expected := `{"book_ahead":"1h0m0s","description":"d-p-a","display_guides":[{"book_ahead":"20m0s","duration":"1m0s","max_slots":15}],"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}` + "\n"
+	expected := `{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}` + "\n"
 	assert.Equal(t, expected, string(body))
 	resp.Body.Close()
 
@@ -1541,7 +1541,8 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	policies := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
+	// display_guides are omitted if empty
+	policies := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
 	assert.Equal(t, policies, string(body))
 
 	// get policy status for p-b for user u-g
@@ -1584,8 +1585,8 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 
 	// order can change so check both possibilities
 	// unmarshalling can comparing objects did not work reliably because of the use of pointers in struct
-	policies1JSON := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]},{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":[{"book_ahead":"20m0s","duration":"1m0s","max_slots":15}],"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}]` + "\n"
-	policies2JSON := `[{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":[{"book_ahead":"20m0s","duration":"1m0s","max_slots":15}],"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]},{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"display_guides":[],"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
+	policies1JSON := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]},{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}]` + "\n"
+	policies2JSON := `[{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]},{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
 
 	assert.True(t, policies1JSON == string(body) || policies2JSON == string(body))
 

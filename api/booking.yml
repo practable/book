@@ -1027,18 +1027,19 @@ definitions:
   DisplayGuide:
     type: object
     properties:
-      name:
-        type: string
       book_ahead:
         type: string
       duration: 
         type: string
       max_slots:
         type: integer
+      label:
+        description: what to display in the tab heading for these slots
+        type: string
     required:
-      - name
       - book_ahead
       - duration
+      - label
       - max_slots
       
   Error:
@@ -1076,6 +1077,10 @@ definitions:
         type: object
         additionalProperties:
           $ref: '#/definitions/Description'
+      display_guides:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/DisplayGuide'       
       policies:
         type: object
         additionalProperties:
