@@ -2,6 +2,7 @@ package serve
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 
 	"github.com/go-openapi/runtime/middleware"
@@ -9,6 +10,8 @@ import (
 	"github.com/icza/gog"
 	log "github.com/sirupsen/logrus"
 	"github.com/timdrysdale/interval/internal/config"
+	dt "github.com/timdrysdale/interval/internal/datetime"
+	"github.com/timdrysdale/interval/internal/interval"
 	"github.com/timdrysdale/interval/internal/serve/models"
 	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
 	"github.com/timdrysdale/interval/internal/store"
@@ -68,6 +71,7 @@ func convertStoreStatusAdminToModel(s store.StoreStatusAdmin) (models.StoreStatu
 
 }
 
+/*
 // convertBookingsToStore converts from YAML string to internal type
 func convertBookingsToStore(m string) (map[string]store.Booking, error) {
 
@@ -76,6 +80,38 @@ func convertBookingsToStore(m string) (map[string]store.Booking, error) {
 	err := yaml.Unmarshal([]byte(m), &s)
 
 	return s, err
+}*/
+
+func convertBookingsToStore(m models.Bookings) (map[string]store.Booking, error) {
+
+	sm := make(map[string]store.Booking)
+
+	for _, v := range m {
+		start, err := dt.Parse(v.When.Start.String())
+		if err != nil {
+			return sm, err
+		}
+		end, err := dt.Parse(v.When.End.String())
+		if err != nil {
+			return sm, err
+		}
+		b := store.Booking{
+			Name:        *v.Name,
+			Policy:      *v.Policy,
+			Slot:        *v.Slot,
+			User:        *v.User,
+			Cancelled:   v.Cancelled,
+			Started:     v.Started,
+			Unfulfilled: v.Unfulfilled,
+			When: interval.Interval{
+				Start: start,
+				End:   end,
+			},
+		}
+		sm[b.Name] = b
+	}
+
+	return sm, nil
 }
 
 // convertManifestToStore converts from YAML string to internal type
@@ -102,14 +138,6 @@ func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookings
 		}
 
 		bs := config.Store.ExportBookings()
-
-		//b, err := json.Marshal(m)
-
-		//if err != nil {
-		//	c := "500"
-		//	m := err.Error()
-		//	return admin.NewExportBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-		//}
 
 		bm := []*models.Booking{}
 
@@ -144,6 +172,7 @@ func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookings
 
 		}
 
+		log.Debugf("exported " + strconv.Itoa(len(bm)) + " bookings")
 		return admin.NewExportBookingsOK().WithPayload(bm)
 	}
 }
@@ -288,18 +317,14 @@ func replaceBookingsHandler(config config.ServerConfig) func(admin.ReplaceBookin
 			return admin.NewReplaceBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if params.Bookings == "" {
-			c := "404"
-			m := "no manifest in body"
-			return admin.NewReplaceBookingsNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
+		//params.Bookings is array of bookings, need a map
 		sm, err := convertBookingsToStore(params.Bookings)
 		if err != nil {
 			c := "500"
-			m := err.Error()
+			m := "error parsing bookings: " + err.Error()
 			return admin.NewReplaceBookingsInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
+		log.Debugf("replaced " + strconv.Itoa(len(sm)) + " bookings")
 
 		err, msgs := config.Store.ReplaceBookings(sm)
 		if err != nil {
@@ -370,12 +395,6 @@ func replaceOldBookingsHandler(config config.ServerConfig) func(admin.ReplaceOld
 			c := "401"
 			m := "no scope booking:admin"
 			return admin.NewReplaceOldBookingsUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		if params.Bookings == "" {
-			c := "404"
-			m := "no manifest in body"
-			return admin.NewReplaceOldBookingsNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		sm, err := convertBookingsToStore(params.Bookings)

@@ -25,7 +25,7 @@ type ExportBookingsOK struct {
 	/*
 	  In: Body
 	*/
-	Payload []*models.Booking `json:"body,omitempty"`
+	Payload models.Bookings `json:"body,omitempty"`
 }
 
 // NewExportBookingsOK creates ExportBookingsOK with default headers values
@@ -35,13 +35,13 @@ func NewExportBookingsOK() *ExportBookingsOK {
 }
 
 // WithPayload adds the payload to the export bookings o k response
-func (o *ExportBookingsOK) WithPayload(payload []*models.Booking) *ExportBookingsOK {
+func (o *ExportBookingsOK) WithPayload(payload models.Bookings) *ExportBookingsOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the export bookings o k response
-func (o *ExportBookingsOK) SetPayload(payload []*models.Booking) {
+func (o *ExportBookingsOK) SetPayload(payload models.Bookings) {
 	o.Payload = payload
 }
 
@@ -52,7 +52,7 @@ func (o *ExportBookingsOK) WriteResponse(rw http.ResponseWriter, producer runtim
 	payload := o.Payload
 	if payload == nil {
 		// return empty array
-		payload = make([]*models.Booking, 0, 50)
+		payload = models.Bookings{}
 	}
 
 	if err := producer.Produce(rw, payload); err != nil {

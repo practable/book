@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	apiclient "github.com/timdrysdale/interval/internal/client/client"
 	"github.com/timdrysdale/interval/internal/client/client/admin"
+	cmodels "github.com/timdrysdale/interval/internal/client/models"
 	"github.com/timdrysdale/interval/internal/config"
 	"github.com/timdrysdale/interval/internal/login"
 	"github.com/timdrysdale/interval/internal/serve/models"
@@ -183,9 +184,8 @@ windows:
     denied: []`)
 
 var bookingsYAML = []byte(`---
-bk-0:
+- name: bk-0
   cancelled: false
-  name: bk-0
   policy: p-a
   slot: sl-a
   started: false
@@ -194,9 +194,8 @@ bk-0:
   when:
     start: '2022-11-05T00:10:00Z'
     end: '2022-11-05T00:15:00Z'
-bk-1:
+- name: bk-1
   cancelled: false
-  name: bk-1
   policy: p-b
   slot: sl-b
   started: false
@@ -206,10 +205,12 @@ bk-1:
     start: '2022-11-05T00:20:00Z'
     end: '2022-11-05T00:30:00Z'
 `)
+var bookingsJSON = []byte(`[{"name":"bk-0","cancelled":false,"policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"u-a","when":{"start":"2022-11-05T00:10:00Z","end":"2022-11-05T00:15:00Z"}},{"name":"bk-1","cancelled":false,"policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"u-b","when":{"start":"2022-11-05T00:20:00Z","end":"2022-11-05T00:30:00Z"}}]`)
+
+var bookings2JSON = []byte(`[{"cancelled":false,"name":"bk-0","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-a","when":{"start":"2022-11-05T00:10:00Z","end":"2022-11-05T00:15:00Z"}},{"cancelled":false,"name":"bk-1","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-b","when":{"start":"2022-11-05T00:20:00Z","end":"2022-11-05T00:30:00Z"}},{"cancelled":false,"name":"bk-2","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-c","when":{"start":"2022-11-05T00:35:00Z","end":"2022-11-05T00:40:00Z"}},{"cancelled":false,"name":"bk-3","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-d","when":{"start":"2022-11-05T00:45:00Z","end":"2022-11-05T00:50:00Z"}},{"cancelled":false,"name":"bk-4","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-e","when":{"start":"2022-11-05T00:55:00Z","end":"2022-11-05T01:00:00Z"}},{"cancelled":false,"name":"bk-5","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-f","when":{"start":"2022-11-05T01:05:00Z","end":"2022-11-05T01:10:00Z"}},{"cancelled":false,"name":"bk-6","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-g","when":{"start":"2022-11-05T01:15:00Z","end":"2022-11-05T01:20:00Z"}},{"cancelled":false,"name":"bk-7","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-h","when":{"start":"2022-11-05T01:25:00Z","end":"2022-11-05T01:30:00Z"}}]`)
 
 var bookings2YAML = []byte(`---
-bk-0:
-  cancelled: false
+- cancelled: false
   name: bk-0
   policy: p-b
   slot: sl-b
@@ -219,8 +220,7 @@ bk-0:
   when:
     start: '2022-11-05T00:10:00Z'
     end: '2022-11-05T00:15:00Z'
-bk-1:
-  cancelled: false
+- cancelled: false
   name: bk-1
   policy: p-b
   slot: sl-b
@@ -230,8 +230,7 @@ bk-1:
   when:
     start: '2022-11-05T00:20:00Z'
     end: '2022-11-05T00:30:00Z'
-bk-2:
-  cancelled: false
+- cancelled: false
   name: bk-2
   policy: p-b
   slot: sl-b
@@ -241,8 +240,7 @@ bk-2:
   when:
     start: '2022-11-05T00:35:00Z'
     end: '2022-11-05T00:40:00Z'
-bk-3:
-  cancelled: false
+- cancelled: false
   name: bk-3
   policy: p-b
   slot: sl-b
@@ -252,8 +250,7 @@ bk-3:
   when:
     start: '2022-11-05T00:45:00Z'
     end: '2022-11-05T00:50:00Z'
-bk-4:
-  cancelled: false
+- cancelled: false
   name: bk-4
   policy: p-b
   slot: sl-b
@@ -263,8 +260,7 @@ bk-4:
   when:
     start: '2022-11-05T00:55:00Z'
     end: '2022-11-05T01:00:00Z'
-bk-5:
-  cancelled: false
+- cancelled: false
   name: bk-5
   policy: p-b
   slot: sl-b
@@ -274,8 +270,7 @@ bk-5:
   when:
     start: '2022-11-05T01:05:00Z'
     end: '2022-11-05T01:10:00Z'
-bk-6:
-  cancelled: false
+- cancelled: false
   name: bk-6
   policy: p-b
   slot: sl-b
@@ -285,8 +280,7 @@ bk-6:
   when:
     start: '2022-11-05T01:15:00Z'
     end: '2022-11-05T01:20:00Z'
-bk-7:
-  cancelled: false
+- cancelled: false
   name: bk-7
   policy: p-b
   slot: sl-b
@@ -616,11 +610,11 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 
 	// replace bookings
 	client := &http.Client{}
-	bodyReader := bytes.NewReader(bookingsYAML)
+	bodyReader := bytes.NewReader(bookingsJSON)
 	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
-	req.Header.Add("Content-Type", "text/plain")
+	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
@@ -632,16 +626,15 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 	req.Header.Add("Authorization", stoken)
 	resp, err = client.Do(req)
 	body, err := ioutil.ReadAll(resp.Body)
-	t.Log(string(body))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 
-	//t.Log(string(body))
-	// application/json "{\"bk-0\":{\"cancelled\":false,\"name\":\"bk-0\",\"policy\":\"p-a\",\"slot\":\"sl-a\",\"started\":false,\"unfulfilled\":false,\"user\":\"u-a\",\"when\":{\"start\":\"2022-11-05T00:10:00Z\",\"end\":\"2022-11-05T00:15:00Z\"}},\"bk-1\":{\"cancelled\":false,\"name\":\"bk-1\",\"policy\":\"p-b\",\"slot\":\"sl-b\",\"started\":false,\"unfulfilled\":false,\"user\":\"u-b\",\"when\":{\"start\":\"2022-11-05T00:20:00Z\",\"end\":\"2022-11-05T00:30:00Z\"}}}"
-	// text/plain {"bk-0":{"cancelled":false,"name":"bk-0","policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"u-a","when":{"start":"2022-11-05T00:10:00Z","end":"2022-11-05T00:15:00Z"}},"bk-1":{"cancelled":false,"name":"bk-1","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"u-b","when":{"start":"2022-11-05T00:20:00Z","end":"2022-11-05T00:30:00Z"}}}
-	var expectedBookings, exportedBookings map[string]store.Booking
+	t.Log(resp)
+	body, err = ioutil.ReadAll(resp.Body)
+	t.Log("body: " + string(body))
+	var expectedBookings, exportedBookings models.Bookings
 	err = yaml.Unmarshal(bookingsYAML, &expectedBookings)
-	err = yaml.Unmarshal(body, &exportedBookings)
+	err = json.Unmarshal(body, &exportedBookings)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBookings, exportedBookings)
 	resp.Body.Close()
@@ -1573,6 +1566,11 @@ func TestLockedToUser(t *testing.T) {
 	assert.NoError(t, err)
 	authUser := httptransport.APIKeyAuth("Authorization", "header", sutoken)
 
+	var bookings cmodels.Bookings
+
+	err = yaml.Unmarshal(bookingsYAML, &bookings)
+	assert.NoError(t, err)
+
 	unlocked := func() {
 		loadTestManifest(t)
 		removeAllBookings(t)
@@ -1600,7 +1598,7 @@ func TestLockedToUser(t *testing.T) {
 		return bc.Admin.ExportOldBookings(p, auth)
 	}
 	replaceBookings := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
-		p := admin.NewReplaceBookingsParams().WithTimeout(timeout).WithBookings(string(bookingsYAML))
+		p := admin.NewReplaceBookingsParams().WithTimeout(timeout).WithBookings(bookings)
 		return bc.Admin.ReplaceBookings(p, auth)
 	}
 	replaceManifest := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
@@ -1608,7 +1606,7 @@ func TestLockedToUser(t *testing.T) {
 		return bc.Admin.ReplaceManifest(p, auth)
 	}
 	replaceOldBookings := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
-		p := admin.NewReplaceOldBookingsParams().WithTimeout(timeout).WithBookings(string(bookingsYAML))
+		p := admin.NewReplaceOldBookingsParams().WithTimeout(timeout).WithBookings(bookings)
 		return bc.Admin.ReplaceOldBookings(p, auth)
 	}
 	tests := map[string]struct {

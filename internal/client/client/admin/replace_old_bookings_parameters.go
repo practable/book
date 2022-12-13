@@ -14,6 +14,8 @@ import (
 	"github.com/go-openapi/runtime"
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+
+	"github.com/timdrysdale/interval/internal/client/models"
 )
 
 // NewReplaceOldBookingsParams creates a new ReplaceOldBookingsParams object,
@@ -60,7 +62,7 @@ func NewReplaceOldBookingsParamsWithHTTPClient(client *http.Client) *ReplaceOldB
 type ReplaceOldBookingsParams struct {
 
 	// Bookings.
-	Bookings string
+	Bookings models.Bookings
 
 	timeout    time.Duration
 	Context    context.Context
@@ -116,13 +118,13 @@ func (o *ReplaceOldBookingsParams) SetHTTPClient(client *http.Client) {
 }
 
 // WithBookings adds the bookings to the replace old bookings params
-func (o *ReplaceOldBookingsParams) WithBookings(bookings string) *ReplaceOldBookingsParams {
+func (o *ReplaceOldBookingsParams) WithBookings(bookings models.Bookings) *ReplaceOldBookingsParams {
 	o.SetBookings(bookings)
 	return o
 }
 
 // SetBookings adds the bookings to the replace old bookings params
-func (o *ReplaceOldBookingsParams) SetBookings(bookings string) {
+func (o *ReplaceOldBookingsParams) SetBookings(bookings models.Bookings) {
 	o.Bookings = bookings
 }
 
@@ -133,8 +135,10 @@ func (o *ReplaceOldBookingsParams) WriteToRequest(r runtime.ClientRequest, reg s
 		return err
 	}
 	var res []error
-	if err := r.SetBodyParam(o.Bookings); err != nil {
-		return err
+	if o.Bookings != nil {
+		if err := r.SetBodyParam(o.Bookings); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

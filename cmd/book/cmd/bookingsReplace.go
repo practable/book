@@ -27,6 +27,8 @@ import (
 	"github.com/spf13/cobra"
 	apiclient "github.com/timdrysdale/interval/internal/client/client"
 	"github.com/timdrysdale/interval/internal/client/client/admin"
+	"github.com/timdrysdale/interval/internal/client/models"
+	"gopkg.in/yaml.v2"
 )
 
 // bookingsReplaceCmd represents the replace bookings command
@@ -73,7 +75,16 @@ The bookings must be in a file, in yaml format.
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
 		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
-		params := admin.NewReplaceBookingsParams().WithTimeout(timeout).WithBookings(string(mfest))
+
+		// convert yaml file to models.Bookings
+		var bm models.Bookings
+		err = yaml.Unmarshal(mfest, &bm)
+		if err != nil {
+			fmt.Printf("Error: failed to parse bookings because %s\n", err.Error())
+			os.Exit(1)
+		}
+
+		params := admin.NewReplaceBookingsParams().WithTimeout(timeout).WithBookings(bm)
 		_, err = bc.Admin.ReplaceBookings(params, auth)
 		if err != nil {
 			fmt.Printf("Error: failed to replace bookings because %s\n", err.Error())

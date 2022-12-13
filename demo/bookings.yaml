@@ -1,6 +1,5 @@
 ---
-bk-0:
-  cancelled: false
+- cancelled: false
   name: bk-0
   policy: p-a
   slot: sl-a
@@ -10,8 +9,7 @@ bk-0:
   when:
     start: '2023-11-05T00:10:00Z'
     end: '2023-11-05T00:15:00Z'
-bk-1:
-  cancelled: false
+- cancelled: false
   name: bk-1
   policy: p-a
   slot: sl-a

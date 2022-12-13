@@ -63,10 +63,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Booking"
-              }
+              "$ref": "#/definitions/Bookings"
             }
           },
           "401": {
@@ -88,7 +85,7 @@ func init() {
         ],
         "description": "Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -104,7 +101,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           }
         ],
@@ -300,7 +297,7 @@ func init() {
         ],
         "description": "Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -316,7 +313,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           }
         ],
@@ -2047,10 +2044,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Booking"
-              }
+              "$ref": "#/definitions/Bookings"
             }
           },
           "401": {
@@ -2081,7 +2075,7 @@ func init() {
         ],
         "description": "Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2097,7 +2091,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           }
         ],
@@ -2341,7 +2335,7 @@ func init() {
         ],
         "description": "Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2357,7 +2351,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           }
         ],

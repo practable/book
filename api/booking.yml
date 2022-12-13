@@ -39,12 +39,10 @@ paths:
         - Bearer: []
       responses:
         200:
-          description: OK
+          description: 'OK'
           schema:
-            type: array
-            items:
-              $ref: '#/definitions/Booking'
-          headers: {}  
+            $ref: '#/definitions/Bookings'
+          headers: {}
         401:
           $ref: '#/responses/Unauthorized'
         404:
@@ -60,7 +58,7 @@ paths:
       operationId: ReplaceBookings
       deprecated: false
       consumes:
-      - text/plain
+      - application/json
       produces:
       - application/json
       parameters:
@@ -68,7 +66,7 @@ paths:
         in: body
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/Bookings'
       security:
         - Bearer: []
       responses:
@@ -207,7 +205,7 @@ paths:
       operationId: ReplaceOldBookings
       deprecated: false
       consumes:
-      - text/plain
+      - application/json
       produces:
       - application/json
       parameters:
@@ -215,7 +213,7 @@ paths:
         in: body
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/Bookings'
       security:
         - Bearer: []
       responses:
