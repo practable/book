@@ -1450,8 +1450,10 @@ func TestGetActivity(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	expected := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1hIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.B2jdYIYf6YHV1rSK6RkMyrGX2eQAPFg6QYwc6siVpb4","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1iIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIl0sInN1YiI6InVzZXItZyIsImF1ZCI6WyJodHRwczovL3JlbGF5LWFjY2Vzcy5wcmFjdGFibGUuaW8iXSwiZXhwIjoxNjY3NjExMjAwLCJuYmYiOjE2Njc2MTA5MDAsImlhdCI6MTY2NzYxMDkwMH0.9A-5zGLjB3Dw2PpGHfYNoapfrt-VKa8BmRVaggF4oAk","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
-	assert.Equal(t, expected, string(body))
+	//Order might change
+	expected1 := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1hIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.B2jdYIYf6YHV1rSK6RkMyrGX2eQAPFg6QYwc6siVpb4","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1iIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIl0sInN1YiI6InVzZXItZyIsImF1ZCI6WyJodHRwczovL3JlbGF5LWFjY2Vzcy5wcmFjdGFibGUuaW8iXSwiZXhwIjoxNjY3NjExMjAwLCJuYmYiOjE2Njc2MTA5MDAsImlhdCI6MTY2NzYxMDkwMH0.9A-5zGLjB3Dw2PpGHfYNoapfrt-VKa8BmRVaggF4oAk","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
+	expected2 := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1iIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIl0sInN1YiI6InVzZXItZyIsImF1ZCI6WyJodHRwczovL3JlbGF5LWFjY2Vzcy5wcmFjdGFibGUuaW8iXSwiZXhwIjoxNjY3NjExMjAwLCJuYmYiOjE2Njc2MTA5MDAsImlhdCI6MTY2NzYxMDkwMH0.9A-5zGLjB3Dw2PpGHfYNoapfrt-VKa8BmRVaggF4oAk","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1hIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.B2jdYIYf6YHV1rSK6RkMyrGX2eQAPFg6QYwc6siVpb4","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
+	assert.True(t, expected1 == string(body) || expected2 == string(body))
 
 }
 
@@ -1555,7 +1557,7 @@ func TestLockedToUser(t *testing.T) {
 	assert.NoError(t, err)
 	authUser := httptransport.APIKeyAuth("Authorization", "header", sutoken)
 
-	base := func() {
+	unlocked := func() {
 		loadTestManifest(t)
 		removeAllBookings(t)
 		setLock(t, false, "open")
@@ -1570,6 +1572,11 @@ func TestLockedToUser(t *testing.T) {
 		return bc.Admin.SetLock(p, auth)
 	}
 
+	replaceManifest := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(string(manifestYAML))
+		return bc.Admin.ReplaceManifest(p, auth)
+	}
+
 	tests := map[string]struct {
 		setup   func()
 		command func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error)
@@ -1577,8 +1584,10 @@ func TestLockedToUser(t *testing.T) {
 		ok      bool
 		want    string
 	}{
-		"setLockAdmin": {base, setLock, authAdmin, true, `[PUT /admin/status][200] setLockOK`},
-		"setLockUser":  {base, setLock, authUser, false, `[PUT /admin/status][401] setLockUnauthorized`},
+		"replaceManifestAdmin": {unlocked, replaceManifest, authAdmin, true, `[PUT /admin/manifest][200] replaceManifestOK`},
+		"replaceManifestUser":  {unlocked, replaceManifest, authUser, false, `[PUT /admin/manifest][401] replaceManifestUnauthorized`},
+		"setLockAdmin":         {unlocked, setLock, authAdmin, true, `[PUT /admin/status][200] setLockOK`},
+		"setLockUser":          {unlocked, setLock, authUser, false, `[PUT /admin/status][401] setLockUnauthorized`},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
