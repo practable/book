@@ -84,7 +84,7 @@ type DisplayGuide struct {
 // Slots are the primary entities, so reference checking starts with them
 type Manifest struct {
 	Descriptions  map[string]Description  `json:"descriptions" yaml:"descriptions"`
-	DisplayGuides map[string]DisplayGuide `json"display_guides" yaml"display_guides"`
+	DisplayGuides map[string]DisplayGuide `json:"display_guides" yaml:"display_guides"`
 	Policies      map[string]Policy       `json:"policies" yaml:"policies"`
 	Resources     map[string]Resource     `json:"resources" yaml:"resources"`
 	Slots         map[string]Slot         `json:"slots" yaml:"slots"`
