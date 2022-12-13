@@ -188,6 +188,8 @@ windows:
       end: 2022-11-06T00:00:00Z
     denied: []`)
 
+var manifestJSON = []byte(`{"descriptions":{"d-p-a":{"name":"policy-a","type":"policy","short":"a"},"d-p-b":{"name":"policy-b","type":"policy","short":"b"},"d-r-a":{"name":"resource-a","type":"resource","short":"a"},"d-r-b":{"name":"resource-b","type":"resource","short":"b"},"d-sl-a":{"name":"slot-a","type":"slot","short":"a"},"d-sl-b":{"name":"slot-b","type":"slot","short":"b"},"d-ui-a":{"name":"ui-a","type":"ui","short":"a"},"d-ui-b":{"name":"ui-b","type":"ui","short":"b"}},"display_guides":{"1mFor20m":{"book_ahead":"20m","duration":"1m","max_slots":15,"label":"1m"}},"policies":{"p-a":{"book_ahead":"1h","description":"d-p-a","display_guides":["1mFor20m"],"enforce_book_ahead":true,"enforce_max_bookings":false,"enforce_max_duration":false,"enforce_min_duration":false,"enforce_max_usage":false,"max_bookings":0,"max_duration":"0s","min_duration":"0s","max_usage":"0s","slots":["sl-a"]},"p-b":{"book_ahead":"2h0m0s","description":"d-p-b","enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","slots":["sl-b"]}},"resources":{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"topic_stub":"bbbb00"}},"slots":{"sl-a":{"description":"d-sl-a","policy":"p-a","resource":"r-a","ui_set":"us-a","window":"w-a"},"sl-b":{"description":"d-sl-b","policy":"p-b","resource":"r-b","ui_set":"us-b","window":"w-b"}},"streams":{"st-a":{"url":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"topic":"tbc"},"st-b":{"url":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"topic":"tbc"}},"uis":{"ui-a":{"description":"d-ui-a","url":"a","streams_required":["st-a","st-b"]},"ui-b":{"description":"d-ui-b","url":"b","streams_required":["st-a","st-b"]}},"ui_sets":{"us-a":{"uis":["ui-a"]},"us-b":{"uis":["ui-a","ui-b"]}},"windows":{"w-a":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]},"w-b":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]}}}`)
+
 var bookingsYAML = []byte(`---
 - name: bk-0
   cancelled: false
@@ -472,11 +474,11 @@ func loadTestManifest(t *testing.T) string {
 	stoken, err := signedAdminToken()
 	assert.NoError(t, err)
 	client := &http.Client{}
-	bodyReader := bytes.NewReader(manifestYAML)
+	bodyReader := bytes.NewReader(manifestJSON)
 	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
-	req.Header.Add("Content-Type", "text/plain")
+	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode)
@@ -574,6 +576,23 @@ func TestManifestOK(t *testing.T) {
 	}
 }
 
+func TestReplaceManifestWithClient(t *testing.T) {
+
+	var manifest cmodels.Manifest
+	err := json.Unmarshal(manifestJSON, &manifest)
+	assert.NoError(t, err)
+
+	satoken, err := signedAdminToken()
+	assert.NoError(t, err)
+	auth := httptransport.APIKeyAuth("Authorization", "header", satoken)
+	timeout := 1 * time.Second
+	c := apiclient.DefaultTransportConfig().WithHost(ch).WithSchemes([]string{cs})
+	bc := apiclient.NewHTTPClientWithConfig(nil, c)
+	p := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(&manifest)
+	_, err = bc.Admin.ReplaceManifest(p, auth)
+	assert.NoError(t, err)
+}
+
 func TestLogin(t *testing.T) {
 
 	client := &http.Client{}
@@ -615,23 +634,22 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 
 	//check manifest
 	client := &http.Client{}
-	bodyReader := bytes.NewReader(manifestYAML)
+	bodyReader := bytes.NewReader(manifestJSON)
 	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/manifest/check", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
-	req.Header.Add("Content-Type", "text/plain")
+	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, "204 No Content", resp.Status) //should be ok!
 	resp.Body.Close()
-
 	//replace manifest
 	client = &http.Client{}
-	bodyReader = bytes.NewReader(manifestYAML)
+	bodyReader = bytes.NewReader(manifestJSON)
 	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
-	req.Header.Add("Content-Type", "text/plain")
+	req.Header.Add("Content-Type", "application/json")
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
@@ -1654,7 +1672,11 @@ func TestLockedToUser(t *testing.T) {
 		return bc.Admin.ReplaceBookings(p, auth)
 	}
 	replaceManifest := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
-		p := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(string(manifestYAML))
+		var manifest cmodels.Manifest
+		err := json.Unmarshal(manifestJSON, &manifest)
+		assert.NoError(t, err)
+
+		p := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(&manifest)
 		return bc.Admin.ReplaceManifest(p, auth)
 	}
 	replaceOldBookings := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
@@ -1703,15 +1725,16 @@ func TestLockedToUser(t *testing.T) {
 			}
 			if len(tc.want) > len(s) {
 				t.Error("output too short")
-			}
-			if debug {
-				fmt.Printf("%+v // %+v\n", got, err)
-			}
-			if tc.want != s[:len(tc.want)] {
-				t.Error("Unexpected response")
-				t.Log("want: " + tc.want)
-				t.Log("got:  " + s)
-				fmt.Printf("%+v %+v", got, err)
+				t.Log(fmt.Sprintf("%+v // %+v\n", got, err))
+
+			} else {
+				// don't check this if already an error, throws out of range error
+				if tc.want != s[:len(tc.want)] {
+					t.Error("Unexpected response")
+					t.Log("want: " + tc.want)
+					t.Log("got:  " + s)
+					fmt.Printf("%+v %+v", got, err)
+				}
 			}
 		})
 	}

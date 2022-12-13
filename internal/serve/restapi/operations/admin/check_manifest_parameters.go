@@ -12,6 +12,9 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/validate"
+
+	"github.com/timdrysdale/interval/internal/serve/models"
 )
 
 // NewCheckManifestParams creates a new CheckManifestParams object
@@ -35,7 +38,7 @@ type CheckManifestParams struct {
 	  Required: true
 	  In: body
 	*/
-	Manifest string
+	Manifest *models.Manifest
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -49,7 +52,7 @@ func (o *CheckManifestParams) BindRequest(r *http.Request, route *middleware.Mat
 
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
-		var body string
+		var body models.Manifest
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
 				res = append(res, errors.Required("manifest", "body", ""))
@@ -57,8 +60,19 @@ func (o *CheckManifestParams) BindRequest(r *http.Request, route *middleware.Mat
 				res = append(res, errors.NewParseError("manifest", "body", "", err))
 			}
 		} else {
-			// no validation required on inline body
-			o.Manifest = body
+			// validate body object
+			if err := body.Validate(route.Formats); err != nil {
+				res = append(res, err)
+			}
+
+			ctx := validate.WithOperationRequest(r.Context())
+			if err := body.ContextValidate(ctx, route.Formats); err != nil {
+				res = append(res, err)
+			}
+
+			if len(res) == 0 {
+				o.Manifest = &body
+			}
 		}
 	} else {
 		res = append(res, errors.Required("manifest", "body", ""))

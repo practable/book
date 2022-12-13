@@ -114,7 +114,7 @@ paths:
       operationId: ReplaceManifest
       deprecated: false
       consumes:
-      - text/plain
+      - application/json
       produces:
       - application/json
       parameters:
@@ -122,7 +122,7 @@ paths:
         in: body
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/Manifest'
       security:
         - Bearer: []  
       responses:
@@ -147,7 +147,7 @@ paths:
       operationId: CheckManifest
       deprecated: false
       consumes:
-      - text/plain
+      - application/json
       produces:
       - application/json
       parameters:
@@ -155,7 +155,7 @@ paths:
         in: body
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/Manifest'
       security:
         - Bearer: []
       responses:

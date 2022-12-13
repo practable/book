@@ -166,7 +166,7 @@ func init() {
         ],
         "description": "Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -182,7 +182,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           }
         ],
@@ -214,7 +214,7 @@ func init() {
         ],
         "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -230,7 +230,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           }
         ],
@@ -2224,7 +2224,7 @@ func init() {
         ],
         "description": "Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2240,7 +2240,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           }
         ],
@@ -2281,7 +2281,7 @@ func init() {
         ],
         "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2297,7 +2297,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           }
         ],

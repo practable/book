@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
@@ -30,13 +31,7 @@ func checkManifestHandler(config config.ServerConfig) func(admin.CheckManifestPa
 			return admin.NewCheckManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if params.Manifest == "" {
-			c := "404"
-			m := "no manifest in body"
-			return admin.NewCheckManifestNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		sm, err := convertManifestToStore(params.Manifest)
+		sm, err := convertModelsManifestToStore(*params.Manifest)
 		if err != nil {
 			c := "500"
 			m := err.Error()
@@ -122,6 +117,204 @@ func convertManifestToStore(m string) (store.Manifest, error) {
 	err := yaml.Unmarshal([]byte(m), &s)
 
 	return s, err
+}
+
+func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
+
+	dm := make(map[string]store.Description)
+
+	for k, v := range mm.Descriptions {
+		m := v
+		dm[k] = store.Description{
+			Name:    *(m.Name),
+			Short:   m.Short,
+			Type:    *(m.Type),
+			Long:    m.Long,
+			Further: m.Further,
+			Thumb:   m.Thumb,
+			Image:   m.Image,
+		}
+	}
+
+	dgm := make(map[string]store.DisplayGuide)
+
+	for k, v := range mm.DisplayGuides {
+		m := v
+		ba, err := time.ParseDuration(*m.BookAhead)
+		if err != nil {
+			return store.Manifest{}, err
+		}
+		dd, err := time.ParseDuration(*m.Duration)
+		if err != nil {
+			return store.Manifest{}, err
+		}
+		dgm[k] = store.DisplayGuide{
+			BookAhead: ba,
+			Duration:  dd,
+			MaxSlots:  int(*(m.MaxSlots)),
+			Label:     *(m.Label),
+		}
+	}
+
+	pm := make(map[string]store.Policy)
+
+	for k, v := range mm.Policies {
+		m := v
+
+		ba, err := time.ParseDuration(m.BookAhead)
+		if err != nil {
+			return store.Manifest{}, err
+		}
+		nd, err := time.ParseDuration(m.MinDuration)
+		if err != nil {
+			return store.Manifest{}, err
+		}
+		xd, err := time.ParseDuration(m.MaxDuration)
+		if err != nil {
+			return store.Manifest{}, err
+		}
+		mu, err := time.ParseDuration(m.MaxUsage)
+		if err != nil {
+			return store.Manifest{}, err
+		}
+
+		pm[k] = store.Policy{
+			BookAhead:          ba,
+			Description:        *(m.Description),
+			DisplayGuides:      m.DisplayGuides,
+			EnforceBookAhead:   m.EnforceBookAhead,
+			EnforceMaxBookings: m.EnforceMaxBookings,
+			EnforceMaxDuration: m.EnforceMaxDuration,
+			EnforceMinDuration: m.EnforceMinDuration,
+			EnforceMaxUsage:    m.EnforceMaxUsage,
+			MaxBookings:        m.MaxBookings,
+			MaxDuration:        xd,
+			MinDuration:        nd,
+			MaxUsage:           mu,
+			Slots:              m.Slots,
+		}
+	}
+
+	rm := make(map[string]store.Resource)
+
+	for k, v := range mm.Resources {
+		m := v
+		rm[k] = store.Resource{
+			ConfigURL:   m.ConfigURL,
+			Description: *(m.Description),
+			Streams:     m.Streams,
+			TopicStub:   *(m.TopicStub),
+		}
+	}
+
+	slm := make(map[string]store.Slot)
+
+	for k, v := range mm.Slots {
+		m := v
+		slm[k] = store.Slot{
+			Description: *(m.Description),
+			Policy:      *(m.Policy),
+			Resource:    *(m.Resource),
+			UISet:       *(m.UISet),
+			Window:      *(m.Window),
+		}
+	}
+
+	stm := make(map[string]store.Stream)
+
+	for k, v := range mm.Streams {
+		m := v
+		stm[k] = store.Stream{
+			ConnectionType: *(m.ConnectionType),
+			For:            *(m.For),
+			Scopes:         m.Scopes,
+			Topic:          *(m.Topic),
+			URL:            *(m.URL),
+		}
+	}
+
+	uim := make(map[string]store.UI)
+
+	for k, v := range mm.Uis {
+		m := v
+		uim[k] = store.UI{
+			Description:     *(m.Description),
+			StreamsRequired: m.StreamsRequired,
+			URL:             *(m.URL),
+		}
+	}
+
+	usm := make(map[string]store.UISet)
+
+	for k, v := range mm.UISets {
+		m := v
+		usm[k] = store.UISet{
+			UIs: m.UIs,
+		}
+	}
+
+	wm := make(map[string]store.Window)
+
+	for k, v := range mm.Windows {
+		m := v
+
+		aa := []interval.Interval{}
+		dd := []interval.Interval{}
+
+		for _, mi := range m.Allowed {
+
+			st, err := dt.Parse(mi.Start.String())
+			if err != nil {
+				return store.Manifest{}, err
+			}
+			et, err := dt.Parse(mi.End.String())
+			if err != nil {
+				return store.Manifest{}, err
+			}
+			mi := interval.Interval{
+				Start: st,
+				End:   et,
+			}
+			aa = append(aa, mi)
+		}
+		for _, mi := range m.Denied {
+
+			st, err := dt.Parse(mi.Start.String())
+			if err != nil {
+				return store.Manifest{}, err
+			}
+			et, err := dt.Parse(mi.End.String())
+			if err != nil {
+				return store.Manifest{}, err
+			}
+			mi := interval.Interval{
+				Start: st,
+				End:   et,
+			}
+
+			dd = append(dd, mi)
+		}
+
+		wm[k] = store.Window{
+			Allowed: aa,
+			Denied:  dd,
+		}
+	}
+
+	sm := store.Manifest{
+		Descriptions:  dm,
+		DisplayGuides: dgm,
+		Policies:      pm,
+		Resources:     rm,
+		Slots:         slm,
+		Streams:       stm,
+		UIs:           uim,
+		UISets:        usm,
+		Windows:       wm,
+	}
+
+	return sm, nil
+
 }
 
 // exportBookingsHandler
@@ -522,13 +715,7 @@ func replaceManifestHandler(config config.ServerConfig) func(admin.ReplaceManife
 			return admin.NewReplaceManifestUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if params.Manifest == "" {
-			c := "404"
-			m := "no manifest in body"
-			return admin.NewReplaceManifestNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		sm, err := convertManifestToStore(params.Manifest)
+		sm, err := convertModelsManifestToStore(*params.Manifest)
 		if err != nil {
 			c := "500"
 			m := err.Error()
