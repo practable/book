@@ -207,31 +207,136 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 		}
 
 		pm := make(map[string]models.Policy)
+
 		for k, v := range sm.Policies {
 			s := v
 
-			dgm := []*models.DisplayGuide{}
+			/* TODO delete - manifest has array of displayguide names
+			dgm := make(map[string]*models.DisplayGuide)
 
-			for _, vv := range s.DisplayGuides {
+			for kk, vv := range s.DisplayGuides {
 				ss := vv
 				dg := models.DisplayGuide{
 					BookAhead: gog.Ptr(ss.BookAhead.String()),
 					Duration:  gog.Ptr(ss.Duration.String()),
 					MaxSlots:  gog.Ptr(int64(ss.MaxSlots)),
 				}
-				dgm = append(dgm, &dg)
-			}
+				dgm[kk] = &dg
+			}*/
 
 			pm[k] = models.Policy{
-				BookAhead:     s.BookAhead.String(),
-				Description:   gog.Ptr(s.Description),
-				DisplayGuides: dgm,
+				BookAhead:          s.BookAhead.String(),
+				Description:        gog.Ptr(s.Description),
+				DisplayGuides:      s.DisplayGuides,
+				EnforceBookAhead:   s.EnforceBookAhead,
+				EnforceMaxBookings: s.EnforceMaxBookings,
+				EnforceMaxDuration: s.EnforceMaxDuration,
+				EnforceMinDuration: s.EnforceMinDuration,
+				EnforceMaxUsage:    s.EnforceMaxUsage,
+				MaxBookings:        s.MaxBookings,
+				MaxDuration:        s.MaxDuration.String(),
+				MinDuration:        s.MinDuration.String(),
+				MaxUsage:           s.MaxUsage.String(),
+				Slots:              s.Slots,
+			}
+		}
+
+		rm := make(map[string]models.Resource)
+
+		for k, v := range sm.Resources {
+			s := v
+			rm[k] = models.Resource{
+				ConfigURL:   s.ConfigURL,
+				Description: gog.Ptr(s.Description),
+				Streams:     s.Streams,
+				TopicStub:   gog.Ptr(s.TopicStub),
+			}
+		}
+
+		slm := make(map[string]models.Slot)
+
+		for k, v := range sm.Slots {
+			s := v
+			slm[k] = models.Slot{
+				Description: gog.Ptr(s.Description),
+				Policy:      gog.Ptr(s.Policy),
+				Resource:    gog.Ptr(s.Resource),
+				UISet:       gog.Ptr(s.UISet),
+				Window:      gog.Ptr(s.Window),
+			}
+		}
+
+		stm := make(map[string]models.ManifestStream)
+
+		for k, v := range sm.Streams {
+			s := v
+			stm[k] = models.ManifestStream{
+				ConnectionType: gog.Ptr(s.ConnectionType),
+				For:            gog.Ptr(s.For),
+				Scopes:         s.Scopes,
+				Topic:          gog.Ptr(s.Topic),
+				URL:            gog.Ptr(s.URL),
+			}
+		}
+
+		uim := make(map[string]models.UI)
+
+		for k, v := range sm.UIs {
+			s := v
+			uim[k] = models.UI{
+				Description:     gog.Ptr(s.Description),
+				StreamsRequired: s.StreamsRequired,
+				URL:             gog.Ptr(s.URL),
+			}
+		}
+
+		usm := make(map[string]models.UISet)
+
+		for k, v := range sm.UISets {
+			s := v
+			usm[k] = models.UISet{
+				UIs: s.UIs,
+			}
+		}
+
+		wm := make(map[string]models.Window)
+
+		for k, v := range sm.Windows {
+			s := v
+
+			aa := []*models.Interval{}
+			dd := []*models.Interval{}
+
+			for _, si := range s.Allowed {
+				mi := models.Interval{
+					Start: strfmt.DateTime(si.Start),
+					End:   strfmt.DateTime(si.End),
+				}
+				aa = append(aa, &mi)
+			}
+			for _, si := range s.Denied {
+				mi := models.Interval{
+					Start: strfmt.DateTime(si.Start),
+					End:   strfmt.DateTime(si.End),
+				}
+				dd = append(dd, &mi)
+			}
+
+			wm[k] = models.Window{
+				Allowed: aa,
+				Denied:  dd,
 			}
 		}
 
 		mm := models.Manifest{
 			Descriptions: dm,
 			Policies:     pm,
+			Resources:    rm,
+			Slots:        slm,
+			Streams:      stm,
+			Uis:          uim,
+			UISets:       usm,
+			Windows:      wm,
 		}
 
 		//TODO convert it here

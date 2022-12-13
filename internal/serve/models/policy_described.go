@@ -7,7 +7,6 @@ package models
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -28,7 +27,7 @@ type PolicyDescribed struct {
 	Description *Description `json:"description"`
 
 	// display guides
-	DisplayGuides []*DisplayGuide `json:"display_guides"`
+	DisplayGuides map[string]DisplayGuide `json:"display_guides,omitempty"`
 
 	// enforce book ahead
 	EnforceBookAhead bool `json:"enforce_book_ahead,omitempty"`
@@ -109,17 +108,17 @@ func (m *PolicyDescribed) validateDisplayGuides(formats strfmt.Registry) error {
 		return nil
 	}
 
-	for i := 0; i < len(m.DisplayGuides); i++ {
-		if swag.IsZero(m.DisplayGuides[i]) { // not required
-			continue
-		}
+	for k := range m.DisplayGuides {
 
-		if m.DisplayGuides[i] != nil {
-			if err := m.DisplayGuides[i].Validate(formats); err != nil {
+		if err := validate.Required("display_guides"+"."+k, "body", m.DisplayGuides[k]); err != nil {
+			return err
+		}
+		if val, ok := m.DisplayGuides[k]; ok {
+			if err := val.Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("display_guides" + "." + strconv.Itoa(i))
+					return ve.ValidateName("display_guides" + "." + k)
 				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("display_guides" + "." + strconv.Itoa(i))
+					return ce.ValidateName("display_guides" + "." + k)
 				}
 				return err
 			}
@@ -175,15 +174,10 @@ func (m *PolicyDescribed) contextValidateDescription(ctx context.Context, format
 
 func (m *PolicyDescribed) contextValidateDisplayGuides(ctx context.Context, formats strfmt.Registry) error {
 
-	for i := 0; i < len(m.DisplayGuides); i++ {
+	for k := range m.DisplayGuides {
 
-		if m.DisplayGuides[i] != nil {
-			if err := m.DisplayGuides[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("display_guides" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("display_guides" + "." + strconv.Itoa(i))
-				}
+		if val, ok := m.DisplayGuides[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
 				return err
 			}
 		}

@@ -30,6 +30,10 @@ type DisplayGuide struct {
 	// max slots
 	// Required: true
 	MaxSlots *int64 `json:"max_slots"`
+
+	// name
+	// Required: true
+	Name *string `json:"name"`
 }
 
 // Validate validates this display guide
@@ -45,6 +49,10 @@ func (m *DisplayGuide) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateMaxSlots(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -75,6 +83,15 @@ func (m *DisplayGuide) validateDuration(formats strfmt.Registry) error {
 func (m *DisplayGuide) validateMaxSlots(formats strfmt.Registry) error {
 
 	if err := validate.Required("max_slots", "body", m.MaxSlots); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *DisplayGuide) validateName(formats strfmt.Registry) error {
+
+	if err := validate.Required("name", "body", m.Name); err != nil {
 		return err
 	}
 

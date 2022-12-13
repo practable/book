@@ -654,7 +654,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Policy"
+              "$ref": "#/definitions/PolicyDescribed"
             }
           },
           "401": {
@@ -1238,7 +1238,7 @@ func init() {
           "description": "A list of streams",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Stream"
+            "$ref": "#/definitions/ActivityStream"
           }
         },
         "uis": {
@@ -1248,6 +1248,60 @@ func init() {
             "$ref": "#/definitions/UIDescribed"
           }
         }
+      }
+    },
+    "ActivityStream": {
+      "description": "Represents an assigned, valid booking slot for an individual piece of equipment",
+      "type": "object",
+      "title": "stream",
+      "required": [
+        "audience",
+        "connection_type",
+        "for",
+        "scopes",
+        "topic",
+        "url"
+      ],
+      "properties": {
+        "audience": {
+          "type": "string"
+        },
+        "connection_type": {
+          "type": "string"
+        },
+        "for": {
+          "description": "Describes the stream, and doubles as template key in the URL",
+          "type": "string",
+          "example": "video"
+        },
+        "prefix": {
+          "description": "prefix of the relay routing",
+          "type": "string",
+          "example": "session"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "token": {
+          "description": "signed jwt token for accessing the stream",
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
+          "type": "string",
+          "example": "https://relay-access.practable.io/session/abc123"
+        }
+      },
+      "example": {
+        "for": "video",
+        "token": "ey....",
+        "url": "https://relay-access.practable.io/session/abc123"
       }
     },
     "Booking": {
@@ -1359,6 +1413,7 @@ func init() {
     "DisplayGuide": {
       "type": "object",
       "required": [
+        "name",
         "book_ahead",
         "duration",
         "max_slots"
@@ -1372,6 +1427,9 @@ func init() {
         },
         "max_slots": {
           "type": "integer"
+        },
+        "name": {
+          "type": "string"
         }
       }
     },
@@ -1451,7 +1509,7 @@ func init() {
         "streams": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/Stream"
+            "$ref": "#/definitions/ManifestStream"
           }
         },
         "ui_sets": {
@@ -1471,6 +1529,42 @@ func init() {
           "additionalProperties": {
             "$ref": "#/definitions/Window"
           }
+        }
+      }
+    },
+    "ManifestStream": {
+      "description": "represents a prototype stream as described in manifest",
+      "type": "object",
+      "title": "manifest stream",
+      "required": [
+        "connection_type",
+        "for",
+        "scopes",
+        "topic",
+        "url"
+      ],
+      "properties": {
+        "connection_type": {
+          "type": "string"
+        },
+        "for": {
+          "description": "Describes the stream, and doubles as template key in the URL",
+          "type": "string",
+          "example": "video"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "topic": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
+          "type": "string",
+          "example": "https://relay-access.practable.io/session/abc123"
         }
       }
     },
@@ -1502,7 +1596,7 @@ func init() {
         "display_guides": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/DisplayGuide"
+            "type": "string"
           }
         },
         "enforce_book_ahead": {
@@ -1554,8 +1648,8 @@ func init() {
           "$ref": "#/definitions/Description"
         },
         "display_guides": {
-          "type": "array",
-          "items": {
+          "type": "object",
+          "additionalProperties": {
             "$ref": "#/definitions/DisplayGuide"
           }
         },
@@ -1769,60 +1863,6 @@ func init() {
         }
       }
     },
-    "Stream": {
-      "description": "Represents an assigned, valid booking slot for an individual piece of equipment",
-      "type": "object",
-      "title": "stream",
-      "required": [
-        "audience",
-        "connection_type",
-        "for",
-        "scopes",
-        "topic",
-        "url"
-      ],
-      "properties": {
-        "audience": {
-          "type": "string"
-        },
-        "connection_type": {
-          "type": "string"
-        },
-        "for": {
-          "description": "Describes the stream, and doubles as template key in the URL",
-          "type": "string",
-          "example": "video"
-        },
-        "prefix": {
-          "description": "prefix of the relay routing",
-          "type": "string",
-          "example": "session"
-        },
-        "scopes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "token": {
-          "description": "signed jwt token for accessing the stream",
-          "type": "string"
-        },
-        "topic": {
-          "type": "string"
-        },
-        "url": {
-          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
-          "type": "string",
-          "example": "https://relay-access.practable.io/session/abc123"
-        }
-      },
-      "example": {
-        "for": "video",
-        "token": "ey....",
-        "url": "https://relay-access.practable.io/session/abc123"
-      }
-    },
     "UI": {
       "type": "object",
       "title": "User Interface",
@@ -1886,10 +1926,15 @@ func init() {
       }
     },
     "UISet": {
-      "type": "array",
+      "type": "object",
       "title": "set of User Interfaces",
-      "items": {
-        "$ref": "#/definitions/UI"
+      "properties": {
+        "UIs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "User": {
@@ -2762,7 +2807,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Policy"
+              "$ref": "#/definitions/PolicyDescribed"
             }
           },
           "401": {
@@ -3445,7 +3490,7 @@ func init() {
           "description": "A list of streams",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Stream"
+            "$ref": "#/definitions/ActivityStream"
           }
         },
         "uis": {
@@ -3455,6 +3500,60 @@ func init() {
             "$ref": "#/definitions/UIDescribed"
           }
         }
+      }
+    },
+    "ActivityStream": {
+      "description": "Represents an assigned, valid booking slot for an individual piece of equipment",
+      "type": "object",
+      "title": "stream",
+      "required": [
+        "audience",
+        "connection_type",
+        "for",
+        "scopes",
+        "topic",
+        "url"
+      ],
+      "properties": {
+        "audience": {
+          "type": "string"
+        },
+        "connection_type": {
+          "type": "string"
+        },
+        "for": {
+          "description": "Describes the stream, and doubles as template key in the URL",
+          "type": "string",
+          "example": "video"
+        },
+        "prefix": {
+          "description": "prefix of the relay routing",
+          "type": "string",
+          "example": "session"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "token": {
+          "description": "signed jwt token for accessing the stream",
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
+          "type": "string",
+          "example": "https://relay-access.practable.io/session/abc123"
+        }
+      },
+      "example": {
+        "for": "video",
+        "token": "ey....",
+        "url": "https://relay-access.practable.io/session/abc123"
       }
     },
     "Booking": {
@@ -3566,6 +3665,7 @@ func init() {
     "DisplayGuide": {
       "type": "object",
       "required": [
+        "name",
         "book_ahead",
         "duration",
         "max_slots"
@@ -3579,6 +3679,9 @@ func init() {
         },
         "max_slots": {
           "type": "integer"
+        },
+        "name": {
+          "type": "string"
         }
       }
     },
@@ -3658,7 +3761,7 @@ func init() {
         "streams": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/Stream"
+            "$ref": "#/definitions/ManifestStream"
           }
         },
         "ui_sets": {
@@ -3678,6 +3781,42 @@ func init() {
           "additionalProperties": {
             "$ref": "#/definitions/Window"
           }
+        }
+      }
+    },
+    "ManifestStream": {
+      "description": "represents a prototype stream as described in manifest",
+      "type": "object",
+      "title": "manifest stream",
+      "required": [
+        "connection_type",
+        "for",
+        "scopes",
+        "topic",
+        "url"
+      ],
+      "properties": {
+        "connection_type": {
+          "type": "string"
+        },
+        "for": {
+          "description": "Describes the stream, and doubles as template key in the URL",
+          "type": "string",
+          "example": "video"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "topic": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
+          "type": "string",
+          "example": "https://relay-access.practable.io/session/abc123"
         }
       }
     },
@@ -3709,7 +3848,7 @@ func init() {
         "display_guides": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/DisplayGuide"
+            "type": "string"
           }
         },
         "enforce_book_ahead": {
@@ -3761,8 +3900,8 @@ func init() {
           "$ref": "#/definitions/Description"
         },
         "display_guides": {
-          "type": "array",
-          "items": {
+          "type": "object",
+          "additionalProperties": {
             "$ref": "#/definitions/DisplayGuide"
           }
         },
@@ -3976,60 +4115,6 @@ func init() {
         }
       }
     },
-    "Stream": {
-      "description": "Represents an assigned, valid booking slot for an individual piece of equipment",
-      "type": "object",
-      "title": "stream",
-      "required": [
-        "audience",
-        "connection_type",
-        "for",
-        "scopes",
-        "topic",
-        "url"
-      ],
-      "properties": {
-        "audience": {
-          "type": "string"
-        },
-        "connection_type": {
-          "type": "string"
-        },
-        "for": {
-          "description": "Describes the stream, and doubles as template key in the URL",
-          "type": "string",
-          "example": "video"
-        },
-        "prefix": {
-          "description": "prefix of the relay routing",
-          "type": "string",
-          "example": "session"
-        },
-        "scopes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "token": {
-          "description": "signed jwt token for accessing the stream",
-          "type": "string"
-        },
-        "topic": {
-          "type": "string"
-        },
-        "url": {
-          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
-          "type": "string",
-          "example": "https://relay-access.practable.io/session/abc123"
-        }
-      },
-      "example": {
-        "for": "video",
-        "token": "ey....",
-        "url": "https://relay-access.practable.io/session/abc123"
-      }
-    },
     "UI": {
       "type": "object",
       "title": "User Interface",
@@ -4093,10 +4178,15 @@ func init() {
       }
     },
     "UISet": {
-      "type": "array",
+      "type": "object",
       "title": "set of User Interfaces",
-      "items": {
-        "$ref": "#/definitions/UI"
+      "properties": {
+        "UIs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "User": {

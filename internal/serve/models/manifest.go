@@ -39,7 +39,7 @@ type Manifest struct {
 
 	// streams
 	// Required: true
-	Streams map[string]Stream `json:"streams"`
+	Streams map[string]ManifestStream `json:"streams"`
 
 	// ui sets
 	// Required: true
@@ -242,14 +242,15 @@ func (m *Manifest) validateUISets(formats strfmt.Registry) error {
 		if err := validate.Required("ui_sets"+"."+k, "body", m.UISets[k]); err != nil {
 			return err
 		}
-
-		if err := m.UISets[k].Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("ui_sets" + "." + k)
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ui_sets" + "." + k)
+		if val, ok := m.UISets[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("ui_sets" + "." + k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("ui_sets" + "." + k)
+				}
+				return err
 			}
-			return err
 		}
 
 	}
@@ -456,13 +457,10 @@ func (m *Manifest) contextValidateUISets(ctx context.Context, formats strfmt.Reg
 
 	for k := range m.UISets {
 
-		if err := m.UISets[k].ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("ui_sets" + "." + k)
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ui_sets" + "." + k)
+		if val, ok := m.UISets[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
 			}
-			return err
 		}
 
 	}

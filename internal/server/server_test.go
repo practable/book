@@ -76,15 +76,17 @@ var manifestYAML = []byte(`descriptions:
     name: ui-b
     type: ui
     short: b
+display_guides:
+  1m:
+    book_ahead: 20m
+    duration: 1m
+    max_slots: 15
 policies:
   p-a:
     book_ahead: 1h
     description: d-p-a
     display_guides:
-      1m:
-        book_ahead: 20m
-        duration: 1m
-        max_slots: 15
+      - 1m
     enforce_book_ahead: true
     enforce_max_bookings: false
     enforce_max_duration: false
@@ -553,6 +555,25 @@ func removeAllBookings(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 }
 
+func TestManifestOK(t *testing.T) {
+
+	var m store.Manifest
+
+	err := yaml.Unmarshal(manifestYAML, &m)
+
+	assert.NoError(t, err)
+	t.Log(m.Descriptions)
+	t.Log(m.DisplayGuides)
+
+	err, msgs := store.CheckManifest(m)
+
+	assert.NoError(t, err)
+
+	if err != nil {
+		t.Log(msgs)
+	}
+}
+
 func TestLogin(t *testing.T) {
 
 	client := &http.Client{}
@@ -644,7 +665,7 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 	req.Header.Add("Authorization", stoken)
 	resp, err = client.Do(req)
 	body, err = ioutil.ReadAll(resp.Body)
-	var expectedManifest, exportedManifest cmodels.Manifest
+	var expectedManifest, exportedManifest store.Manifest
 	err = yaml.Unmarshal(manifestYAML, &expectedManifest)
 	assert.NoError(t, err)
 	err = json.Unmarshal(body, &exportedManifest)

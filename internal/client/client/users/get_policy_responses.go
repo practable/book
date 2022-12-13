@@ -62,7 +62,7 @@ func NewGetPolicyOK() *GetPolicyOK {
 OK
 */
 type GetPolicyOK struct {
-	Payload *models.Policy
+	Payload *models.PolicyDescribed
 }
 
 // IsSuccess returns true when this get policy o k response has a 2xx status code
@@ -98,13 +98,13 @@ func (o *GetPolicyOK) String() string {
 	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyOK  %+v", 200, o.Payload)
 }
 
-func (o *GetPolicyOK) GetPayload() *models.Policy {
+func (o *GetPolicyOK) GetPayload() *models.PolicyDescribed {
 	return o.Payload
 }
 
 func (o *GetPolicyOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.Policy)
+	o.Payload = new(models.PolicyDescribed)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

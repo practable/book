@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"time"
@@ -82,14 +83,15 @@ type DisplayGuide struct {
 // Manifest represents all the available equipment and how to access it
 // Slots are the primary entities, so reference checking starts with them
 type Manifest struct {
-	Descriptions map[string]Description `json:"descriptions" yaml:"descriptions"`
-	Policies     map[string]Policy      `json:"policies" yaml:"policies"`
-	Resources    map[string]Resource    `json:"resources" yaml:"resources"`
-	Slots        map[string]Slot        `json:"slots" yaml:"slots"`
-	Streams      map[string]Stream      `json:"streams" yaml:"streams"`
-	UIs          map[string]UI          `json:"uis" yaml:"uis"`
-	UISets       map[string]UISet       `json:"ui_sets" yaml:"ui_sets"`
-	Windows      map[string]Window      `json:"windows" yaml:"windows"`
+	Descriptions  map[string]Description  `json:"descriptions" yaml:"descriptions"`
+	DisplayGuides map[string]DisplayGuide `json"display_guides" yaml"display_guides"`
+	Policies      map[string]Policy       `json:"policies" yaml:"policies"`
+	Resources     map[string]Resource     `json:"resources" yaml:"resources"`
+	Slots         map[string]Slot         `json:"slots" yaml:"slots"`
+	Streams       map[string]Stream       `json:"streams" yaml:"streams"`
+	UIs           map[string]UI           `json:"uis" yaml:"uis"`
+	UISets        map[string]UISet        `json:"ui_sets" yaml:"ui_sets"`
+	Windows       map[string]Window       `json:"windows" yaml:"windows"`
 }
 
 // Policy represents what a user can book, and any limits on bookings/usage
@@ -97,7 +99,8 @@ type Manifest struct {
 type Policy struct {
 	BookAhead          time.Duration           `json:"book_ahead"  yaml:"book_ahead"`
 	Description        string                  `json:"description"  yaml:"description"`
-	DisplayGuides      map[string]DisplayGuide `json:"display_guides"  yaml:"display_guides"`
+	DisplayGuides      []string                `json:"display_guides"  yaml:"display_guides"`
+	DisplayGuidesMap   map[string]DisplayGuide `json:"-"  yaml:"-"` //local copy so that exported policies are complete
 	EnforceBookAhead   bool                    `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
 	EnforceMaxBookings bool                    `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
 	EnforceMaxDuration bool                    `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
@@ -109,7 +112,6 @@ type Policy struct {
 	MaxUsage           time.Duration           `json:"max_usage"  yaml:"max_usage"`
 	Slots              []string                `json:"slots" yaml:"slots"`
 	SlotMap            map[string]bool         `json:"-" yaml:"-"` // internal usage, do not populate from file
-
 }
 
 type PolicyStatus struct {
@@ -167,6 +169,8 @@ type Store struct {
 
 	// Descriptions represents all the descriptions of various entities, indexed by description name
 	Descriptions map[string]Description
+
+	DisplayGuides map[string]DisplayGuide
 
 	// Filters are how the windows are checked, mapped by window name (populated after loading window info from manifest)
 	Filters map[string]*filter.Filter
@@ -316,6 +320,7 @@ func New() *Store {
 		&sync.RWMutex{},
 		make(map[string]*Booking),
 		make(map[string]Description),
+		make(map[string]DisplayGuide),
 		make(map[string]*filter.Filter),
 		false,
 		"Welcome to the interval booking store",
@@ -626,14 +631,15 @@ func (s *Store) ExportManifest() Manifest {
 	}
 
 	return Manifest{
-		Descriptions: s.Descriptions,
-		Policies:     s.Policies,
-		Resources:    rm,
-		Slots:        s.Slots,
-		Streams:      s.Streams,
-		UIs:          uis,
-		UISets:       s.UISets,
-		Windows:      s.Windows,
+		Descriptions:  s.Descriptions,
+		DisplayGuides: s.DisplayGuides,
+		Policies:      s.Policies,
+		Resources:     rm,
+		Slots:         s.Slots,
+		Streams:       s.Streams,
+		UIs:           uis,
+		UISets:        s.UISets,
+		Windows:       s.Windows,
 	}
 }
 
@@ -938,6 +944,35 @@ func (s *Store) getDescription(name string) (Description, error) {
 
 	if !ok {
 		return Description{}, errors.New("not found")
+	}
+
+	return d, nil
+}
+
+// GetDisplayGuide returns a diplay guide if found
+func (s *Store) GetDisplayGuide(name string) (DisplayGuide, error) {
+
+	where := "store.GetDisplayGuide"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
+	return s.getDisplayGuide(name)
+
+}
+
+// getDescription returns a description if found
+// no lock - internal use only
+func (s *Store) getDisplayGuide(name string) (DisplayGuide, error) {
+
+	d, ok := s.DisplayGuides[name]
+
+	if !ok {
+		return DisplayGuide{}, errors.New("not found")
 	}
 
 	return d, nil
@@ -1597,7 +1632,7 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 	}()
 
 	// lock is taken after we check whether we need to alter the store (see below)
-
+	fmt.Printf("there are " + strconv.Itoa(len(m.DisplayGuides)) + "DisplayGuides\n")
 	err, _ := checkManifest(m)
 
 	if err != nil {
@@ -1628,6 +1663,7 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 
 	// Make new maps for our new entities
 	s.Descriptions = m.Descriptions
+	s.DisplayGuides = m.DisplayGuides
 	s.Policies = m.Policies
 	s.Resources = m.Resources
 	s.Slots = m.Slots
@@ -1638,12 +1674,18 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 	status := "Loaded at " + s.Now().Format(time.RFC3339)
 
 	// SlotMap is used for checking if slots are listed in policy
+	// DisplayGuidesMap is used for exporting complete policies
 	for k, v := range s.Policies {
 		v.SlotMap = make(map[string]bool)
 		for _, k := range v.Slots {
 			v.SlotMap[k] = true
 		}
 		s.Policies[k] = v
+
+		v.DisplayGuidesMap = make(map[string]DisplayGuide)
+		for _, k := range v.DisplayGuides {
+			v.DisplayGuidesMap[k] = s.DisplayGuides[k]
+		}
 	}
 
 	for k := range s.Resources {
@@ -1990,6 +2032,30 @@ func checkDescriptions(items map[string]Description) (error, []string) {
 
 }
 
+func checkDisplayGuides(items map[string]DisplayGuide) (error, []string) {
+
+	msg := []string{}
+
+	for k, item := range items {
+		if item.BookAhead == time.Duration(0) {
+			msg = append(msg, "missing book_ahead field in display_guide "+k)
+		}
+		if item.Duration == time.Duration(0) {
+			msg = append(msg, "missing duration field in display_guide "+k)
+		}
+		if item.MaxSlots == 0 {
+			msg = append(msg, "missing max_slots field in display_guide "+k)
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
+	}
+
+	return nil, []string{}
+
+}
+
 // CheckManifest checks for internal consistency, throwing an error
 // if there are any unresolved references by name
 func CheckManifest(m Manifest) (error, []string) {
@@ -2003,6 +2069,12 @@ func checkManifest(m Manifest) (error, []string) {
 	// check if any elements have duplicate or missing names
 
 	err, msg := checkDescriptions(m.Descriptions)
+
+	if err != nil {
+		return err, msg
+	}
+
+	err, msg = checkDisplayGuides(m.DisplayGuides)
 
 	if err != nil {
 		return err, msg
@@ -2054,11 +2126,17 @@ func checkManifest(m Manifest) (error, []string) {
 
 	// Description -> N/A
 
-	// Policy -> Description, Slots
+	// Policy -> Description, DisplayGuide, Slots
 	for k, v := range m.Policies {
 		if _, ok := m.Descriptions[v.Description]; !ok {
 			m := "policy " + k + " references non-existent description: " + v.Description
 			msg = append(msg, m)
+		}
+		for _, dg := range v.DisplayGuides {
+			if _, ok := m.DisplayGuides[dg]; !ok {
+				m := "policy " + k + " references non-existent display_guide: " + dg
+				msg = append(msg, m)
+			}
 		}
 		for _, s := range v.Slots {
 			if _, ok := m.Slots[s]; !ok {
@@ -2324,3 +2402,40 @@ func checkWindows(items map[string]Window) (error, []string) {
 	return nil, []string{}
 
 }
+
+/*
+// Unmarshallers for structs with durations
+// so that we can handle JSON in our store format during testing
+// which makes it easier to read diffs due to the lack
+// of pointers unlike the swagger models
+func (p *Policy) UnmarshalJSON(data []byte) (err error) {
+
+	var tmp struct {
+		// durations are set to string for now
+		BookAhead          string                  `json:"book_ahead"  yaml:"book_ahead"`
+		MaxDuration        string                  `json:"max_duration"  yaml:"max_duration"`
+		MinDuration        string                  `json:"min_duration"  yaml:"min_duration"`
+		MaxUsage           string                  `json:"max_usage"  yaml:"max_usage"`
+
+
+
+		// other fields stay the same
+		Description        string                  `json:"description"  yaml:"description"`
+		DisplayGuides      map[string]DisplayGuide `json:"display_guides"  yaml:"display_guides"`
+		EnforceBookAhead   bool                    `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
+		EnforceMaxBookings bool                    `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
+		EnforceMaxDuration bool                    `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
+		EnforceMinDuration bool                    `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
+		EnforceMaxUsage    bool                    `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
+		MaxBookings        int64                   `json:"max_bookings"  yaml:"max_bookings"`
+		Slots              []string                `json:"slots" yaml:"slots"`
+	}
+
+	if err = json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+
+	p.Book
+
+}
+*/

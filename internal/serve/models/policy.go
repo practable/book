@@ -7,7 +7,6 @@ package models
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -28,7 +27,7 @@ type Policy struct {
 	Description *string `json:"description"`
 
 	// display guides
-	DisplayGuides []*DisplayGuide `json:"display_guides"`
+	DisplayGuides []string `json:"display_guides"`
 
 	// enforce book ahead
 	EnforceBookAhead bool `json:"enforce_book_ahead,omitempty"`
@@ -70,10 +69,6 @@ func (m *Policy) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateDisplayGuides(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateSlots(formats); err != nil {
 		res = append(res, err)
 	}
@@ -93,32 +88,6 @@ func (m *Policy) validateDescription(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Policy) validateDisplayGuides(formats strfmt.Registry) error {
-	if swag.IsZero(m.DisplayGuides) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.DisplayGuides); i++ {
-		if swag.IsZero(m.DisplayGuides[i]) { // not required
-			continue
-		}
-
-		if m.DisplayGuides[i] != nil {
-			if err := m.DisplayGuides[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("display_guides" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("display_guides" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
 func (m *Policy) validateSlots(formats strfmt.Registry) error {
 
 	if err := validate.Required("slots", "body", m.Slots); err != nil {
@@ -128,37 +97,8 @@ func (m *Policy) validateSlots(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validate this policy based on the context it is used
+// ContextValidate validates this policy based on context it is used
 func (m *Policy) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.contextValidateDisplayGuides(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *Policy) contextValidateDisplayGuides(ctx context.Context, formats strfmt.Registry) error {
-
-	for i := 0; i < len(m.DisplayGuides); i++ {
-
-		if m.DisplayGuides[i] != nil {
-			if err := m.DisplayGuides[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("display_guides" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("display_guides" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
 	return nil
 }
 
