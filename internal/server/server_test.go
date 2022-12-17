@@ -1802,6 +1802,11 @@ func TestLockedToUser(t *testing.T) {
 		currentTime = &ct
 	}
 
+	getAvailability := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := users.NewGetAvailabilityParams().WithTimeout(timeout).WithPolicyName("p-a").WithSlotName("sl-a")
+		return bc.Users.GetAvailability(p, auth)
+	}
+
 	getDescription := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetDescriptionParams().WithTimeout(timeout).WithDescriptionName("d-r-a")
 		return bc.Users.GetDescription(p, auth)
@@ -1817,14 +1822,18 @@ func TestLockedToUser(t *testing.T) {
 		ok      bool
 		want    string
 	}{
-		"GetDescriptionLockedAdminAllowed":   {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetDescriptionLockedUserDenied":     {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
-		"GetDescriptionUnlockedAdminAllowed": {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetDescriptionUnlockedUserAllowed":  {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetPolicyLockedAdminAllowed":        {locked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetPolicyLockedUserDenied":          {locked, getPolicy, authUser, false, `[GET /policies/{policy_name}][401] getPolicyUnauthorized`},
-		"GetPolicyUnlockedAdminAllowed":      {unlocked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetPolicyUnlockedUserAllowed":       {unlocked, getPolicy, authUser, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetDescriptionLockedAdminAllowed":    {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionLockedUserDenied":      {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
+		"GetDescriptionUnlockedAdminAllowed":  {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionUnlockedUserAllowed":   {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetPolicyLockedAdminAllowed":         {locked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetPolicyLockedUserDenied":           {locked, getPolicy, authUser, false, `[GET /policies/{policy_name}][401] getPolicyUnauthorized`},
+		"GetPolicyUnlockedAdminAllowed":       {unlocked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetPolicyUnlockedUserAllowed":        {unlocked, getPolicy, authUser, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetAvailabilityLockedAdminAllowed":   {locked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"GetAvailabilityLockedUserDenied":     {locked, getAvailability, authUser, false, `[GET /policies/{policy_name}/slots/{slot_name}][401] getAvailabilityUnauthorized`},
+		"GetAvailabilityUnlockedAdminAllowed": {unlocked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"GetAvailabilityUnlockedUserAllowed":  {unlocked, getAvailability, authUser, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
 	}
 
 	for name, tc := range tests {
