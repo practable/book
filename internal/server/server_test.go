@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	apiclient "github.com/timdrysdale/interval/internal/client/client"
 	"github.com/timdrysdale/interval/internal/client/client/admin"
+	"github.com/timdrysdale/interval/internal/client/client/users"
 	cmodels "github.com/timdrysdale/interval/internal/client/models"
 	"github.com/timdrysdale/interval/internal/config"
 	"github.com/timdrysdale/interval/internal/login"
@@ -1622,8 +1623,8 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 
 }
 
-// TestLockedToUser checks that the lock prevents user access to routes but does not block admin
-func TestLockedToUser(t *testing.T) {
+// TestRestrictedToAdmin checks that users cannot access admin endpoints
+func TestRestrictedToAdmin(t *testing.T) {
 
 	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 	currentTime = &ct
@@ -1727,6 +1728,96 @@ func TestLockedToUser(t *testing.T) {
 		"setLockUser":             {unlocked, setLock, authUser, false, `[PUT /admin/status][401] setLockUnauthorized`},
 		"setSlotIsAvailableUser":  {unlocked, setSlotIsAvailable, authUser, false, `[PUT /admin/slots/{slot_name}][401] setSlotIsAvailableUnauthorized`},
 		"setSlotIsAvailableAdmin": {unlocked, setSlotIsAvailable, authAdmin, true, `[PUT /admin/slots/{slot_name}][204] setSlotIsAvailableNoContent`},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+
+			tc.setup()
+
+			c := apiclient.DefaultTransportConfig().WithHost(ch).WithSchemes([]string{cs})
+			bc := apiclient.NewHTTPClientWithConfig(nil, c)
+			got, err := tc.command(bc, tc.auth)
+			if debug {
+				gots := fmt.Sprintf("%+v", got)
+				fmt.Println(gots)
+			}
+			if len(tc.want) == 0 {
+				t.Error("test should check against non-zero length string")
+			}
+			var s string
+			if tc.ok {
+				s = fmt.Sprintf("%+v\n", got)
+			} else {
+				s = fmt.Sprintf("%+v\n", err)
+			}
+			if len(tc.want) > len(s) {
+				t.Error("output too short")
+				t.Log(fmt.Sprintf("%+v // %+v\n", got, err))
+
+			} else {
+				// don't check this if already an error, throws out of range error
+				if tc.want != s[:len(tc.want)] {
+					t.Error("Unexpected response")
+					t.Log("want: " + tc.want)
+					t.Log("got:  " + s)
+					fmt.Printf("%+v %+v", got, err)
+				}
+			}
+		})
+	}
+
+}
+
+// TestLockedToUser checks that the lock prevents user access to routes but does not block admin
+func TestLockedToUser(t *testing.T) {
+
+	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	currentTime = &ct
+
+	satoken := loadTestManifest(t)
+	authAdmin := httptransport.APIKeyAuth("Authorization", "header", satoken)
+	timeout := 1 * time.Second
+
+	sutoken, err := signedUserToken()
+	assert.NoError(t, err)
+	authUser := httptransport.APIKeyAuth("Authorization", "header", sutoken)
+
+	var bookings cmodels.Bookings
+
+	err = yaml.Unmarshal(bookingsYAML, &bookings)
+	assert.NoError(t, err)
+
+	unlocked := func() {
+		loadTestManifest(t)
+		removeAllBookings(t)
+		setLock(t, false, "unlocked")
+		ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+		currentTime = &ct
+	}
+	locked := func() {
+		loadTestManifest(t)
+		removeAllBookings(t)
+		setLock(t, true, "locked")
+		ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+		currentTime = &ct
+	}
+
+	getDescription := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := users.NewGetDescriptionParams().WithTimeout(timeout).WithDescriptionName("d-r-a")
+		return bc.Users.GetDescription(p, auth)
+	}
+
+	tests := map[string]struct {
+		setup   func()
+		command func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error)
+		auth    rt.ClientAuthInfoWriter
+		ok      bool
+		want    string
+	}{
+		"GetDescriptionLockedAdmin":   {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionLockedUser":    {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
+		"GetDescriptionUnLockedAdmin": {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionUnLockedUser":  {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
