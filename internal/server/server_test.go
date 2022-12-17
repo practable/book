@@ -1806,7 +1806,10 @@ func TestLockedToUser(t *testing.T) {
 		p := users.NewGetDescriptionParams().WithTimeout(timeout).WithDescriptionName("d-r-a")
 		return bc.Users.GetDescription(p, auth)
 	}
-
+	getPolicy := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := users.NewGetPolicyParams().WithTimeout(timeout).WithPolicyName("p-a")
+		return bc.Users.GetPolicy(p, auth)
+	}
 	tests := map[string]struct {
 		setup   func()
 		command func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error)
@@ -1814,11 +1817,16 @@ func TestLockedToUser(t *testing.T) {
 		ok      bool
 		want    string
 	}{
-		"GetDescriptionLockedAdmin":   {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetDescriptionLockedUser":    {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
-		"GetDescriptionUnLockedAdmin": {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetDescriptionUnLockedUser":  {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionLockedAdminAllowed":   {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionLockedUserDenied":     {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
+		"GetDescriptionUnlockedAdminAllowed": {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionUnlockedUserAllowed":  {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetPolicyLockedAdminAllowed":        {locked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetPolicyLockedUserDenied":          {locked, getPolicy, authUser, false, `[GET /policies/{policy_name}][401] getPolicyUnauthorized`},
+		"GetPolicyUnlockedAdminAllowed":      {unlocked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetPolicyUnlockedUserAllowed":       {unlocked, getPolicy, authUser, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
 	}
+
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 
