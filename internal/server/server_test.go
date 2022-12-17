@@ -1824,21 +1824,11 @@ func TestLockedToUser(t *testing.T) {
 	}
 
 	cancelBooking := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
-		sutoken, err := signedUserTokenFor("user-a")
-		client := &http.Client{}
-		req, err := http.NewRequest("DELETE", cfg.Host+"/api/v1/users/user-a/bookings/bk-0", nil)
-		assert.NoError(t, err)
-		req.Header.Add("Authorization", sutoken)
-		resp, err := client.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 404, resp.StatusCode) //NotFound if successful deletion
-		body, err := ioutil.ReadAll(resp.Body)
-		assert.NoError(t, err)
-		return string(body), nil
-		//p := users.NewCancelBookingParams().
-		//	WithTimeout(timeout).
-		//	WithBookingName("bk-0")
-		//return nil, bc.Users.CancelBooking(p, auth) //only returns error codes
+		p := users.NewCancelBookingParams().
+			WithTimeout(timeout).
+			WithBookingName("bk-0").
+			WithUserName("user-a") //get a json error about not unmarshalling number into string in models.Error if omit this
+		return nil, bc.Users.CancelBooking(p, auth) //this method only returns error codes
 	}
 	getAvailability := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetAvailabilityParams().WithTimeout(timeout).WithPolicyName("p-a").WithSlotName("sl-a")
@@ -1932,10 +1922,10 @@ func TestLockedToUser(t *testing.T) {
 		"GetBookingsForUserLockedUserDenied":     {locked, getBookingsForUser, authUser, false, `[GET /users/{user_name}/bookings][401] getBookingsForUserUnauthorized`},
 		"GetBookingsForUserUnlockedAdminAllowed": {unlocked, getBookingsForUser, authAdmin, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
 		"GetBookingsForUserUnlockedUserAllowed":  {unlocked, getBookingsForUser, authUser, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
-		"CancelBookingLockedAdminAllowed":        {locked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][204] cancelBookingNoContent`},
+		"CancelBookingLockedAdminAllowed":        {locked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
 		"CancelBookingLockedUserDenied":          {locked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][401] cancelBookingUnauthorized`},
-		"CancelBookingUnlockedAdminAllowed":      {unlocked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][204] cancelBookingNoContent`},
-		"CancelBookingUnlockedUserAllowed":       {unlocked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][204] cancelBookingNoContent`},
+		"CancelBookingUnlockedAdminAllowed":      {unlocked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
+		"CancelBookingUnlockedUserAllowed":       {unlocked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
 	}
 
 	for name, tc := range tests {
