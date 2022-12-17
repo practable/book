@@ -601,17 +601,48 @@ func exportUsersHandler(config config.ServerConfig) func(admin.ExportUsersParams
 			return admin.NewExportUsersUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		m := config.Store.ExportUsers()
+		su := config.Store.ExportUsers()
+		var mu models.Users
 
-		b, err := json.Marshal(m)
+		mu = make(map[string]models.User)
 
-		if err != nil {
-			c := "500"
-			m := err.Error()
-			return admin.NewExportUsersInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		for k, v := range su {
+
+			bs := []string{}
+			obs := []string{}
+			ps := []string{}
+			um := make(map[string]string)
+
+			for _, bv := range v.Bookings {
+				bs = append(bs, bv)
+			}
+
+			for _, obv := range v.OldBookings {
+				obs = append(obs, obv)
+			}
+
+			// ignore bool in map, has no meaning
+			for _, pv := range v.Policies {
+				ps = append(ps, pv)
+			}
+
+			// store format is map[string]*time.Duration
+			for uk, uv := range v.Usage {
+				um[uk] = uv
+			}
+
+			m := models.User{
+
+				Bookings:    bs,
+				OldBookings: obs,
+				Policies:    ps,
+				Usage:       um,
+			}
+
+			mu[k] = m
 		}
 
-		return admin.NewExportUsersOK().WithPayload(string(b))
+		return admin.NewExportUsersOK().WithPayload(mu)
 	}
 }
 

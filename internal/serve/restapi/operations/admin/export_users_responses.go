@@ -26,7 +26,7 @@ type ExportUsersOK struct {
 	/*
 	  In: Body
 	*/
-	Payload string `json:"body,omitempty"`
+	Payload models.Users `json:"body,omitempty"`
 }
 
 // NewExportUsersOK creates ExportUsersOK with default headers values
@@ -36,13 +36,13 @@ func NewExportUsersOK() *ExportUsersOK {
 }
 
 // WithPayload adds the payload to the export users o k response
-func (o *ExportUsersOK) WithPayload(payload string) *ExportUsersOK {
+func (o *ExportUsersOK) WithPayload(payload models.Users) *ExportUsersOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the export users o k response
-func (o *ExportUsersOK) SetPayload(payload string) {
+func (o *ExportUsersOK) SetPayload(payload models.Users) {
 	o.Payload = payload
 }
 
@@ -51,6 +51,11 @@ func (o *ExportUsersOK) WriteResponse(rw http.ResponseWriter, producer runtime.P
 
 	rw.WriteHeader(200)
 	payload := o.Payload
+	if payload == nil {
+		// return empty map
+		payload = models.Users{}
+	}
+
 	if err := producer.Produce(rw, payload); err != nil {
 		panic(err) // let the recovery middleware deal with this
 	}

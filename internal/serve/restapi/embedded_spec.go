@@ -519,7 +519,7 @@ func init() {
         ],
         "description": "Export bookings and usage data for each user",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -530,7 +530,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Users"
             }
           },
           "401": {
@@ -1974,9 +1974,9 @@ func init() {
       }
     },
     "Users": {
-      "type": "array",
-      "title": "set of User Interfaces",
-      "items": {
+      "type": "object",
+      "title": "set of Users (export only)",
+      "additionalProperties": {
         "$ref": "#/definitions/User"
       }
     },
@@ -2652,7 +2652,7 @@ func init() {
         ],
         "description": "Export bookings and usage data for each user",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -2663,7 +2663,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Users"
             }
           },
           "401": {
@@ -4233,9 +4233,9 @@ func init() {
       }
     },
     "Users": {
-      "type": "array",
-      "title": "set of User Interfaces",
-      "items": {
+      "type": "object",
+      "title": "set of Users (export only)",
+      "additionalProperties": {
         "$ref": "#/definitions/User"
       }
     },

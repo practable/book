@@ -63,7 +63,7 @@ ExportUsersOK describes a response with status code 200, with default header val
 OK
 */
 type ExportUsersOK struct {
-	Payload string
+	Payload models.Users
 }
 
 // IsSuccess returns true when this export users o k response has a 2xx status code
@@ -99,7 +99,7 @@ func (o *ExportUsersOK) String() string {
 	return fmt.Sprintf("[GET /admin/users][%d] exportUsersOK  %+v", 200, o.Payload)
 }
 
-func (o *ExportUsersOK) GetPayload() string {
+func (o *ExportUsersOK) GetPayload() models.Users {
 	return o.Payload
 }
 

@@ -235,7 +235,7 @@ func (a *Client) ExportUsers(params *ExportUsersParams, authInfo runtime.ClientA
 		ID:                 "ExportUsers",
 		Method:             "GET",
 		PathPattern:        "/admin/users",
-		ProducesMediaTypes: []string{"text/plain"},
+		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json", "text/plain"},
 		Schemes:            []string{"http"},
 		Params:             params,

@@ -360,14 +360,14 @@ paths:
       operationId: ExportUsers
       deprecated: false
       produces:
-      - text/plain
+      - application/json
       security:
         - Bearer: []
       responses:
         200:
           description: OK
           schema:
-            type: string
+            $ref: '#/definitions/Users'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -1439,9 +1439,9 @@ definitions:
           type: string
           
   Users:
-    title: set of User Interfaces
-    type: array
-    items:
+    title: set of Users (export only)
+    type: object
+    additionalProperties:
       $ref: '#/definitions/User'
       
   Window:

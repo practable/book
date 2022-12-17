@@ -1683,6 +1683,13 @@ func TestLockedToUser(t *testing.T) {
 		p := admin.NewReplaceOldBookingsParams().WithTimeout(timeout).WithBookings(bookings)
 		return bc.Admin.ReplaceOldBookings(p, auth)
 	}
+
+	exportUsers := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewExportUsersParams().WithTimeout(timeout)
+		return bc.Admin.ExportUsers(p, auth)
+
+	}
+
 	tests := map[string]struct {
 		setup   func()
 		command func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error)
@@ -1696,6 +1703,8 @@ func TestLockedToUser(t *testing.T) {
 		"exportManifestUser":      {unlocked, exportManifest, authUser, false, `[GET /admin/manifest][401] exportManifestUnauthorized`},
 		"exportOldBookingsAdmin":  {unlocked, exportOldBookings, authAdmin, true, `[GET /admin/oldbookings][200] exportOldBookingsOK`},
 		"exportOldBookingsUser":   {unlocked, exportOldBookings, authUser, false, `[GET /admin/oldbookings][401] exportOldBookingsUnauthorized`},
+		"exportUsersUser":         {unlocked, exportUsers, authUser, false, `[GET /admin/users][401] exportUsersUnauthorized`},
+		"exportUsersAdmin":        {unlocked, exportUsers, authAdmin, true, `[GET /admin/users][200] exportUsersOK`},
 		"replaceBookingsAdmin":    {unlocked, replaceBookings, authAdmin, true, `[PUT /admin/bookings][200] replaceBookingsOK`},
 		"replaceBookingsUser":     {unlocked, replaceBookings, authUser, false, `[PUT /admin/bookings][401] replaceBookingsUnauthorized`},
 		"replaceManifestAdmin":    {unlocked, replaceManifest, authAdmin, true, `[PUT /admin/manifest][200] replaceManifestOK`},
