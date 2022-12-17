@@ -1910,10 +1910,19 @@ func TestLockedToUser(t *testing.T) {
 		}
 
 	}
+
+	getPoliciesForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+
+		p := users.NewGetPoliciesForUserParams().WithTimeout(timeout).WithUserName("user-a")
+		return bc.Users.GetPoliciesForUser(p, auth)
+
+	}
+
 	getPolicy := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetPolicyParams().WithTimeout(timeout).WithPolicyName("p-a")
 		return bc.Users.GetPolicy(p, auth)
 	}
+
 	getStoreStatusUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetStoreStatusUserParams().WithTimeout(timeout)
 		return bc.Users.GetStoreStatusUser(p, auth)
@@ -1973,6 +1982,10 @@ func TestLockedToUser(t *testing.T) {
 		"GetOldBookingsForUserLockedUserDenied":     {locked, getOldBookingsForUser, authUser, false, `[GET /users/{user_name}/oldbookings][401] getOldBookingsForUserUnauthorized`},
 		"GetOldBookingsForUserUnlockedAdminAllowed": {unlocked, getOldBookingsForUser, authAdmin, true, `[GET /users/{user_name}/oldbookings][200] getOldBookingsForUserOK`},
 		"GetOldBookingsForUserUnlockedUserAllowed":  {unlocked, getOldBookingsForUser, authUser, true, `[GET /users/{user_name}/oldbookings][200] getOldBookingsForUserOK`},
+		"GetPoliciesForUserLockedAdminAllowed":      {locked, getPoliciesForUser, authAdmin, true, `[GET /users/{user_name}/policies][200] getPoliciesForUserOK`},
+		"GetPoliciesForUserLockedUserDenied":        {locked, getPoliciesForUser, authUser, false, `[GET /users/{user_name}/policies][401] getPoliciesForUserUnauthorized`},
+		"GetPoliciesForUserUnlockedAdminAllowed":    {unlocked, getPoliciesForUser, authAdmin, true, `[GET /users/{user_name}/policies][200] getPoliciesForUserOK`},
+		"GetPoliciesForUserUnlockedUserAllowed":     {unlocked, getPoliciesForUser, authUser, true, `[GET /users/{user_name}/policies][200] getPoliciesForUserOK`},
 	}
 
 	for name, tc := range tests {
