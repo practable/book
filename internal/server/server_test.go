@@ -1668,7 +1668,11 @@ func TestLockedToUser(t *testing.T) {
 		return bc.Admin.ExportOldBookings(p, auth)
 	}
 
-	//GetSlotIsAvailable
+	exportUsers := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewExportUsersParams().WithTimeout(timeout)
+		return bc.Admin.ExportUsers(p, auth)
+	}
+
 	getSlotIsAvailable := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := admin.NewGetSlotIsAvailableParams().WithTimeout(timeout).WithSlotName("sl-a")
 		return bc.Admin.GetSlotIsAvailable(p, auth)
@@ -1691,10 +1695,9 @@ func TestLockedToUser(t *testing.T) {
 		return bc.Admin.ReplaceOldBookings(p, auth)
 	}
 
-	exportUsers := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
-		p := admin.NewExportUsersParams().WithTimeout(timeout)
-		return bc.Admin.ExportUsers(p, auth)
-
+	setSlotIsAvailable := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewSetSlotIsAvailableParams().WithTimeout(timeout).WithSlotName("sl-a").WithAvailable(true).WithReason("test")
+		return bc.Admin.SetSlotIsAvailable(p, auth)
 	}
 
 	tests := map[string]struct {
@@ -1722,6 +1725,8 @@ func TestLockedToUser(t *testing.T) {
 		"replaceOldBookingsUser":  {unlocked, replaceOldBookings, authUser, false, `[PUT /admin/oldbookings][401] replaceOldBookingsUnauthorized`},
 		"setLockAdmin":            {unlocked, setLock, authAdmin, true, `[PUT /admin/status][200] setLockOK`},
 		"setLockUser":             {unlocked, setLock, authUser, false, `[PUT /admin/status][401] setLockUnauthorized`},
+		"setSlotIsAvailableUser":  {unlocked, setSlotIsAvailable, authUser, false, `[PUT /admin/slots/{slot_name}][401] setSlotIsAvailableUnauthorized`},
+		"setSlotIsAvailableAdmin": {unlocked, setSlotIsAvailable, authAdmin, true, `[PUT /admin/slots/{slot_name}][204] setSlotIsAvailableNoContent`},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -1731,7 +1736,10 @@ func TestLockedToUser(t *testing.T) {
 			c := apiclient.DefaultTransportConfig().WithHost(ch).WithSchemes([]string{cs})
 			bc := apiclient.NewHTTPClientWithConfig(nil, c)
 			got, err := tc.command(bc, tc.auth)
-			//gots := fmt.Sprintf("%+v", got)
+			if debug {
+				gots := fmt.Sprintf("%+v", got)
+				fmt.Println(gots)
+			}
 			if len(tc.want) == 0 {
 				t.Error("test should check against non-zero length string")
 			}
