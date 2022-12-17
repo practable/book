@@ -16,6 +16,7 @@ import (
 
 	rt "github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/phayes/freeport"
 	log "github.com/sirupsen/logrus"
@@ -1815,6 +1816,17 @@ func TestLockedToUser(t *testing.T) {
 		p := users.NewGetPolicyParams().WithTimeout(timeout).WithPolicyName("p-a")
 		return bc.Users.GetPolicy(p, auth)
 	}
+	makeBooking := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := users.NewMakeBookingParams().
+			WithTimeout(timeout).
+			WithPolicyName("p-a").
+			WithSlotName("sl-a").
+			WithUserName("someuser").
+			WithFrom(strfmt.DateTime(time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC))).
+			WithTo(strfmt.DateTime(time.Date(2022, 11, 5, 1, 5, 0, 0, time.UTC)))
+		return bc.Users.MakeBooking(p, auth)
+	}
+
 	tests := map[string]struct {
 		setup   func()
 		command func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error)
@@ -1834,6 +1846,10 @@ func TestLockedToUser(t *testing.T) {
 		"GetAvailabilityLockedUserDenied":     {locked, getAvailability, authUser, false, `[GET /policies/{policy_name}/slots/{slot_name}][401] getAvailabilityUnauthorized`},
 		"GetAvailabilityUnlockedAdminAllowed": {unlocked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
 		"GetAvailabilityUnlockedUserAllowed":  {unlocked, getAvailability, authUser, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"makeBookingLockedAdminAllowed":       {locked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"makeBookingLockedUserDenied":         {locked, makeBooking, authUser, false, `[POST /policies/{policy_name}/slots/{slot_name}][401] makeBookingUnauthorized`},
+		"makeBookingUnlockedAdminAllowed":     {unlocked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"makeBookingUnlockedUserAllowed":      {unlocked, makeBooking, authUser, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
 	}
 
 	for name, tc := range tests {
