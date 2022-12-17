@@ -1667,6 +1667,13 @@ func TestLockedToUser(t *testing.T) {
 		p := admin.NewExportOldBookingsParams().WithTimeout(timeout)
 		return bc.Admin.ExportOldBookings(p, auth)
 	}
+
+	//GetSlotIsAvailable
+	getSlotIsAvailable := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := admin.NewGetSlotIsAvailableParams().WithTimeout(timeout).WithSlotName("sl-a")
+		return bc.Admin.GetSlotIsAvailable(p, auth)
+	}
+
 	replaceBookings := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := admin.NewReplaceBookingsParams().WithTimeout(timeout).WithBookings(bookings)
 		return bc.Admin.ReplaceBookings(p, auth)
@@ -1705,6 +1712,8 @@ func TestLockedToUser(t *testing.T) {
 		"exportOldBookingsUser":   {unlocked, exportOldBookings, authUser, false, `[GET /admin/oldbookings][401] exportOldBookingsUnauthorized`},
 		"exportUsersUser":         {unlocked, exportUsers, authUser, false, `[GET /admin/users][401] exportUsersUnauthorized`},
 		"exportUsersAdmin":        {unlocked, exportUsers, authAdmin, true, `[GET /admin/users][200] exportUsersOK`},
+		"getSlotIsAvailableUser":  {unlocked, getSlotIsAvailable, authUser, false, `[GET /admin/slots/{slot_name}][401] getSlotIsAvailableUnauthorized`},
+		"getSlotIsAvailableAdmin": {unlocked, getSlotIsAvailable, authAdmin, true, `[GET /admin/slots/{slot_name}][200] getSlotIsAvailableOK`},
 		"replaceBookingsAdmin":    {unlocked, replaceBookings, authAdmin, true, `[PUT /admin/bookings][200] replaceBookingsOK`},
 		"replaceBookingsUser":     {unlocked, replaceBookings, authUser, false, `[PUT /admin/bookings][401] replaceBookingsUnauthorized`},
 		"replaceManifestAdmin":    {unlocked, replaceManifest, authAdmin, true, `[PUT /admin/manifest][200] replaceManifestOK`},
