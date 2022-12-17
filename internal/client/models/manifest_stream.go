@@ -14,17 +14,12 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Stream stream
+// ManifestStream manifest stream
 //
-// Represents an assigned, valid booking slot for an individual piece of equipment
-// Example: {"for":"video","token":"ey....","url":"https://relay-access.practable.io/session/abc123"}
+// represents a prototype stream as described in manifest
 //
-// swagger:model Stream
-type Stream struct {
-
-	// audience
-	// Required: true
-	Audience *string `json:"audience"`
+// swagger:model ManifestStream
+type ManifestStream struct {
 
 	// connection type
 	// Required: true
@@ -35,16 +30,9 @@ type Stream struct {
 	// Required: true
 	For *string `json:"for"`
 
-	// prefix of the relay routing
-	// Example: session
-	Prefix string `json:"prefix,omitempty"`
-
 	// scopes
 	// Required: true
 	Scopes []string `json:"scopes"`
-
-	// signed jwt token for accessing the stream
-	Token string `json:"token,omitempty"`
 
 	// topic
 	// Required: true
@@ -56,13 +44,9 @@ type Stream struct {
 	URL *string `json:"url"`
 }
 
-// Validate validates this stream
-func (m *Stream) Validate(formats strfmt.Registry) error {
+// Validate validates this manifest stream
+func (m *ManifestStream) Validate(formats strfmt.Registry) error {
 	var res []error
-
-	if err := m.validateAudience(formats); err != nil {
-		res = append(res, err)
-	}
 
 	if err := m.validateConnectionType(formats); err != nil {
 		res = append(res, err)
@@ -90,16 +74,7 @@ func (m *Stream) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Stream) validateAudience(formats strfmt.Registry) error {
-
-	if err := validate.Required("audience", "body", m.Audience); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *Stream) validateConnectionType(formats strfmt.Registry) error {
+func (m *ManifestStream) validateConnectionType(formats strfmt.Registry) error {
 
 	if err := validate.Required("connection_type", "body", m.ConnectionType); err != nil {
 		return err
@@ -108,7 +83,7 @@ func (m *Stream) validateConnectionType(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Stream) validateFor(formats strfmt.Registry) error {
+func (m *ManifestStream) validateFor(formats strfmt.Registry) error {
 
 	if err := validate.Required("for", "body", m.For); err != nil {
 		return err
@@ -117,7 +92,7 @@ func (m *Stream) validateFor(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Stream) validateScopes(formats strfmt.Registry) error {
+func (m *ManifestStream) validateScopes(formats strfmt.Registry) error {
 
 	if err := validate.Required("scopes", "body", m.Scopes); err != nil {
 		return err
@@ -126,7 +101,7 @@ func (m *Stream) validateScopes(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Stream) validateTopic(formats strfmt.Registry) error {
+func (m *ManifestStream) validateTopic(formats strfmt.Registry) error {
 
 	if err := validate.Required("topic", "body", m.Topic); err != nil {
 		return err
@@ -135,7 +110,7 @@ func (m *Stream) validateTopic(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Stream) validateURL(formats strfmt.Registry) error {
+func (m *ManifestStream) validateURL(formats strfmt.Registry) error {
 
 	if err := validate.Required("url", "body", m.URL); err != nil {
 		return err
@@ -144,13 +119,13 @@ func (m *Stream) validateURL(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this stream based on context it is used
-func (m *Stream) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this manifest stream based on context it is used
+func (m *ManifestStream) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *Stream) MarshalBinary() ([]byte, error) {
+func (m *ManifestStream) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -158,8 +133,8 @@ func (m *Stream) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *Stream) UnmarshalBinary(b []byte) error {
-	var res Stream
+func (m *ManifestStream) UnmarshalBinary(b []byte) error {
+	var res ManifestStream
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

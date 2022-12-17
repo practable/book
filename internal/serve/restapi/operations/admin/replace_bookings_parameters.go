@@ -12,6 +12,9 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/validate"
+
+	"github.com/timdrysdale/interval/internal/serve/models"
 )
 
 // NewReplaceBookingsParams creates a new ReplaceBookingsParams object
@@ -35,7 +38,7 @@ type ReplaceBookingsParams struct {
 	  Required: true
 	  In: body
 	*/
-	Bookings string
+	Bookings models.Bookings
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -49,7 +52,7 @@ func (o *ReplaceBookingsParams) BindRequest(r *http.Request, route *middleware.M
 
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
-		var body string
+		var body models.Bookings
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			if err == io.EOF {
 				res = append(res, errors.Required("bookings", "body", ""))
@@ -57,8 +60,19 @@ func (o *ReplaceBookingsParams) BindRequest(r *http.Request, route *middleware.M
 				res = append(res, errors.NewParseError("bookings", "body", "", err))
 			}
 		} else {
-			// no validation required on inline body
-			o.Bookings = body
+			// validate body object
+			if err := body.Validate(route.Formats); err != nil {
+				res = append(res, err)
+			}
+
+			ctx := validate.WithOperationRequest(r.Context())
+			if err := body.ContextValidate(ctx, route.Formats); err != nil {
+				res = append(res, err)
+			}
+
+			if len(res) == 0 {
+				o.Bookings = body
+			}
 		}
 	} else {
 		res = append(res, errors.Required("bookings", "body", ""))

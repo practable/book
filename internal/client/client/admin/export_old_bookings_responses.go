@@ -62,7 +62,7 @@ func NewExportOldBookingsOK() *ExportOldBookingsOK {
 OK
 */
 type ExportOldBookingsOK struct {
-	Payload string
+	Payload models.Bookings
 }
 
 // IsSuccess returns true when this export old bookings o k response has a 2xx status code
@@ -98,7 +98,7 @@ func (o *ExportOldBookingsOK) String() string {
 	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsOK  %+v", 200, o.Payload)
 }
 
-func (o *ExportOldBookingsOK) GetPayload() string {
+func (o *ExportOldBookingsOK) GetPayload() models.Bookings {
 	return o.Payload
 }
 

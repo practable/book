@@ -102,11 +102,17 @@ func getAccessTokenHandler(config config.ServerConfig) func(users.GetAccessToken
 func getDescriptionHandler(config config.ServerConfig) func(users.GetDescriptionParams, interface{}) middleware.Responder {
 	return func(params users.GetDescriptionParams, principal interface{}) middleware.Responder {
 
-		_, _, err := isAdminOrUser(principal)
+		isAdmin, _, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
 			m := err.Error()
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
 			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -142,12 +148,18 @@ func getDescriptionHandler(config config.ServerConfig) func(users.GetDescription
 func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, interface{}) middleware.Responder {
 	return func(params users.GetPolicyParams, principal interface{}) middleware.Responder {
 
-		_, _, err := isAdminOrUser(principal)
+		isAdmin, _, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
 			m := err.Error()
 			return users.NewGetPolicyUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.PolicyName == "" {
@@ -164,21 +176,39 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 			return users.NewGetPolicyInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		dgs := []*models.DisplayGuide{}
+		dgm := make(map[string]models.DisplayGuide)
 
-		for _, v := range p.DisplayGuides {
-			dg := models.DisplayGuide{
-				Duration:  gog.Ptr(store.HumaniseDuration(v.Duration)),
-				MaxSlots:  gog.Ptr(int64(v.MaxSlots)),
-				BookAhead: gog.Ptr(store.HumaniseDuration(v.BookAhead)),
+		for k, v := range p.DisplayGuidesMap {
+
+			dg := v // avoid pointers to last element problem
+
+			dgm[k] = models.DisplayGuide{
+				Duration:  gog.Ptr(store.HumaniseDuration(dg.Duration)),
+				MaxSlots:  gog.Ptr(int64(dg.MaxSlots)),
+				BookAhead: gog.Ptr(store.HumaniseDuration(dg.BookAhead)),
+				Label:     gog.Ptr(dg.Label),
 			}
-			dgs = append(dgs, &dg)
 		}
 
-		pm := models.Policy{
-			BookAhead:          store.HumaniseDuration(p.BookAhead),
-			Description:        &p.Description,
-			DisplayGuides:      dgs,
+		descr, err := config.Store.GetDescription(p.Description)
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return users.NewGetPolicyInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		pm := models.PolicyDescribed{
+			BookAhead: store.HumaniseDuration(p.BookAhead),
+			Description: gog.Ptr(models.Description{
+				Name:    &descr.Name,
+				Type:    &descr.Type,
+				Short:   descr.Short,
+				Long:    descr.Long,
+				Further: descr.Further,
+				Thumb:   descr.Thumb,
+				Image:   descr.Image,
+			}),
+			DisplayGuides:      dgm,
 			EnforceBookAhead:   p.EnforceBookAhead,
 			EnforceMaxBookings: p.EnforceMaxBookings,
 			EnforceMaxDuration: p.EnforceMaxDuration,
@@ -200,12 +230,18 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabilityParams, interface{}) middleware.Responder {
 	return func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
 
-		_, _, err := isAdminOrUser(principal)
+		isAdmin, _, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
 			m := err.Error()
 			return users.NewGetAvailabilityUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.PolicyName == "" {
@@ -275,6 +311,12 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 			c := "401"
 			m := err.Error()
 			return users.NewMakeBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.UserName == "" {
@@ -388,6 +430,12 @@ func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBooking
 			return users.NewGetBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in query"
@@ -445,6 +493,12 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
 		if params.UserName == "" {
 			c := "401"
 			m := "no user_name in path"
@@ -494,7 +548,11 @@ func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams
 			m := err.Error()
 			return users.NewGetActivityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
-
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in path"
@@ -531,7 +589,7 @@ func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams
 
 		}
 		// convert stream format
-		streams := []*models.Stream{}
+		streams := []*models.ActivityStream{}
 
 		/* Stream token format:
 		   {
@@ -576,7 +634,7 @@ func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams
 				return users.NewGetActivityInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 			}
 
-			stm := gog.Ptr(models.Stream{
+			stm := gog.Ptr(models.ActivityStream{
 				Audience:       gog.Ptr(st.URL),
 				ConnectionType: gog.Ptr(st.ConnectionType),
 				For:            gog.Ptr(st.For),
@@ -644,7 +702,11 @@ func getOldBookingsForUserHandler(config config.ServerConfig) func(users.GetOldB
 			m := err.Error()
 			return users.NewGetOldBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
-
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in query"
@@ -701,7 +763,11 @@ func getPoliciesForUserHandler(config config.ServerConfig) func(users.GetPolicie
 			m := err.Error()
 			return users.NewGetPoliciesForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
-
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in path"
@@ -748,16 +814,16 @@ func getPoliciesForUserHandler(config config.ServerConfig) func(users.GetPolicie
 				return users.NewGetPoliciesForUserInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 			}
 
-			dgms := []*models.DisplayGuide{}
+			dgm := make(map[string]models.DisplayGuide)
 
-			for _, v := range p.DisplayGuides {
+			for k, v := range p.DisplayGuidesMap {
 				dg := v // avoid pointers all pointing to last element in map
-				dgm := models.DisplayGuide{
+				dgm[k] = models.DisplayGuide{
 					BookAhead: gog.Ptr(dg.BookAhead.String()),
 					Duration:  gog.Ptr(dg.Duration.String()),
 					MaxSlots:  gog.Ptr(int64(dg.MaxSlots)),
+					Label:     gog.Ptr(dg.Label),
 				}
-				dgms = append(dgms, &dgm)
 			}
 
 			pd := models.PolicyDescribed{
@@ -771,7 +837,7 @@ func getPoliciesForUserHandler(config config.ServerConfig) func(users.GetPolicie
 					Thumb:   d.Thumb,
 					Image:   d.Image,
 				}),
-				DisplayGuides:      dgms,
+				DisplayGuides:      dgm,
 				EnforceBookAhead:   p.EnforceBookAhead,
 				EnforceMaxBookings: p.EnforceMaxBookings,
 				EnforceMaxDuration: p.EnforceMaxDuration,
@@ -795,7 +861,11 @@ func getPolicyStatusForUserHandler(config config.ServerConfig) func(users.GetPol
 	return func(params users.GetPolicyStatusForUserParams, principal interface{}) middleware.Responder {
 
 		isAdmin, claims, err := isAdminOrUser(principal)
-
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
 		if err != nil {
 			c := "401"
 			m := err.Error()
@@ -844,7 +914,11 @@ func addPolicyForUserHandler(config config.ServerConfig) func(users.AddPolicyFor
 	return func(params users.AddPolicyForUserParams, principal interface{}) middleware.Responder {
 
 		isAdmin, claims, err := isAdminOrUser(principal)
-
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
 		if err != nil {
 			c := "401"
 			m := err.Error()

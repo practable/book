@@ -25,7 +25,7 @@ type GetPolicyOK struct {
 	/*
 	  In: Body
 	*/
-	Payload *models.Policy `json:"body,omitempty"`
+	Payload *models.PolicyDescribed `json:"body,omitempty"`
 }
 
 // NewGetPolicyOK creates GetPolicyOK with default headers values
@@ -35,13 +35,13 @@ func NewGetPolicyOK() *GetPolicyOK {
 }
 
 // WithPayload adds the payload to the get policy o k response
-func (o *GetPolicyOK) WithPayload(payload *models.Policy) *GetPolicyOK {
+func (o *GetPolicyOK) WithPayload(payload *models.PolicyDescribed) *GetPolicyOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the get policy o k response
-func (o *GetPolicyOK) SetPayload(payload *models.Policy) {
+func (o *GetPolicyOK) SetPayload(payload *models.PolicyDescribed) {
 	o.Payload = payload
 }
 

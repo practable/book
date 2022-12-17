@@ -27,6 +27,10 @@ type DisplayGuide struct {
 	// Required: true
 	Duration *string `json:"duration"`
 
+	// what to display in the tab heading for these slots
+	// Required: true
+	Label *string `json:"label"`
+
 	// max slots
 	// Required: true
 	MaxSlots *int64 `json:"max_slots"`
@@ -41,6 +45,10 @@ func (m *DisplayGuide) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateDuration(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateLabel(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -66,6 +74,15 @@ func (m *DisplayGuide) validateBookAhead(formats strfmt.Registry) error {
 func (m *DisplayGuide) validateDuration(formats strfmt.Registry) error {
 
 	if err := validate.Required("duration", "body", m.Duration); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *DisplayGuide) validateLabel(formats strfmt.Registry) error {
+
+	if err := validate.Required("label", "body", m.Label); err != nil {
 		return err
 	}
 

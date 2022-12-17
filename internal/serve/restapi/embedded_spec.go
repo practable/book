@@ -23,7 +23,8 @@ func init() {
     "text/plain"
   ],
   "produces": [
-    "application/json"
+    "application/json",
+    "text/plain"
   ],
   "schemes": [
     "http"
@@ -51,7 +52,7 @@ func init() {
         ],
         "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -62,7 +63,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           },
           "401": {
@@ -84,7 +85,7 @@ func init() {
         ],
         "description": "Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -100,7 +101,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           }
         ],
@@ -132,7 +133,7 @@ func init() {
         ],
         "description": "Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -143,7 +144,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           },
           "401": {
@@ -165,7 +166,7 @@ func init() {
         ],
         "description": "Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -181,7 +182,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           }
         ],
@@ -213,7 +214,7 @@ func init() {
         ],
         "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -229,7 +230,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           }
         ],
@@ -261,7 +262,7 @@ func init() {
         ],
         "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -272,7 +273,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           },
           "401": {
@@ -294,7 +295,7 @@ func init() {
         ],
         "description": "Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -310,7 +311,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           }
         ],
@@ -653,7 +654,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Policy"
+              "$ref": "#/definitions/PolicyDescribed"
             }
           },
           "401": {
@@ -1237,7 +1238,7 @@ func init() {
           "description": "A list of streams",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Stream"
+            "$ref": "#/definitions/ActivityStream"
           }
         },
         "uis": {
@@ -1247,6 +1248,60 @@ func init() {
             "$ref": "#/definitions/UIDescribed"
           }
         }
+      }
+    },
+    "ActivityStream": {
+      "description": "Represents an assigned, valid booking slot for an individual piece of equipment",
+      "type": "object",
+      "title": "stream",
+      "required": [
+        "audience",
+        "connection_type",
+        "for",
+        "scopes",
+        "topic",
+        "url"
+      ],
+      "properties": {
+        "audience": {
+          "type": "string"
+        },
+        "connection_type": {
+          "type": "string"
+        },
+        "for": {
+          "description": "Describes the stream, and doubles as template key in the URL",
+          "type": "string",
+          "example": "video"
+        },
+        "prefix": {
+          "description": "prefix of the relay routing",
+          "type": "string",
+          "example": "session"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "token": {
+          "description": "signed jwt token for accessing the stream",
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
+          "type": "string",
+          "example": "https://relay-access.practable.io/session/abc123"
+        }
+      },
+      "example": {
+        "for": "video",
+        "token": "ey....",
+        "url": "https://relay-access.practable.io/session/abc123"
       }
     },
     "Booking": {
@@ -1360,6 +1415,7 @@ func init() {
       "required": [
         "book_ahead",
         "duration",
+        "label",
         "max_slots"
       ],
       "properties": {
@@ -1367,6 +1423,10 @@ func init() {
           "type": "string"
         },
         "duration": {
+          "type": "string"
+        },
+        "label": {
+          "description": "what to display in the tab heading for these slots",
           "type": "string"
         },
         "max_slots": {
@@ -1429,6 +1489,12 @@ func init() {
             "$ref": "#/definitions/Description"
           }
         },
+        "display_guides": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/DisplayGuide"
+          }
+        },
         "policies": {
           "type": "object",
           "additionalProperties": {
@@ -1450,7 +1516,7 @@ func init() {
         "streams": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/Stream"
+            "$ref": "#/definitions/ManifestStream"
           }
         },
         "ui_sets": {
@@ -1470,6 +1536,42 @@ func init() {
           "additionalProperties": {
             "$ref": "#/definitions/Window"
           }
+        }
+      }
+    },
+    "ManifestStream": {
+      "description": "represents a prototype stream as described in manifest",
+      "type": "object",
+      "title": "manifest stream",
+      "required": [
+        "connection_type",
+        "for",
+        "scopes",
+        "topic",
+        "url"
+      ],
+      "properties": {
+        "connection_type": {
+          "type": "string"
+        },
+        "for": {
+          "description": "Describes the stream, and doubles as template key in the URL",
+          "type": "string",
+          "example": "video"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "topic": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
+          "type": "string",
+          "example": "https://relay-access.practable.io/session/abc123"
         }
       }
     },
@@ -1501,7 +1603,7 @@ func init() {
         "display_guides": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/DisplayGuide"
+            "type": "string"
           }
         },
         "enforce_book_ahead": {
@@ -1553,8 +1655,8 @@ func init() {
           "$ref": "#/definitions/Description"
         },
         "display_guides": {
-          "type": "array",
-          "items": {
+          "type": "object",
+          "additionalProperties": {
             "$ref": "#/definitions/DisplayGuide"
           }
         },
@@ -1768,60 +1870,6 @@ func init() {
         }
       }
     },
-    "Stream": {
-      "description": "Represents an assigned, valid booking slot for an individual piece of equipment",
-      "type": "object",
-      "title": "stream",
-      "required": [
-        "audience",
-        "connection_type",
-        "for",
-        "scopes",
-        "topic",
-        "url"
-      ],
-      "properties": {
-        "audience": {
-          "type": "string"
-        },
-        "connection_type": {
-          "type": "string"
-        },
-        "for": {
-          "description": "Describes the stream, and doubles as template key in the URL",
-          "type": "string",
-          "example": "video"
-        },
-        "prefix": {
-          "description": "prefix of the relay routing",
-          "type": "string",
-          "example": "session"
-        },
-        "scopes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "token": {
-          "description": "signed jwt token for accessing the stream",
-          "type": "string"
-        },
-        "topic": {
-          "type": "string"
-        },
-        "url": {
-          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
-          "type": "string",
-          "example": "https://relay-access.practable.io/session/abc123"
-        }
-      },
-      "example": {
-        "for": "video",
-        "token": "ey....",
-        "url": "https://relay-access.practable.io/session/abc123"
-      }
-    },
     "UI": {
       "type": "object",
       "title": "User Interface",
@@ -1885,10 +1933,15 @@ func init() {
       }
     },
     "UISet": {
-      "type": "array",
+      "type": "object",
       "title": "set of User Interfaces",
-      "items": {
-        "$ref": "#/definitions/UI"
+      "properties": {
+        "UIs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "User": {
@@ -2001,7 +2054,8 @@ func init() {
     "text/plain"
   ],
   "produces": [
-    "application/json"
+    "application/json",
+    "text/plain"
   ],
   "schemes": [
     "http"
@@ -2029,7 +2083,7 @@ func init() {
         ],
         "description": "Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -2040,7 +2094,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           },
           "401": {
@@ -2071,7 +2125,7 @@ func init() {
         ],
         "description": "Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2087,7 +2141,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           }
         ],
@@ -2128,7 +2182,7 @@ func init() {
         ],
         "description": "Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -2139,7 +2193,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           },
           "401": {
@@ -2170,7 +2224,7 @@ func init() {
         ],
         "description": "Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2186,7 +2240,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           }
         ],
@@ -2227,7 +2281,7 @@ func init() {
         ],
         "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2243,7 +2297,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Manifest"
             }
           }
         ],
@@ -2287,7 +2341,7 @@ func init() {
         ],
         "description": "Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.",
         "produces": [
-          "text/plain"
+          "application/json"
         ],
         "tags": [
           "admin"
@@ -2298,7 +2352,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           },
           "401": {
@@ -2329,7 +2383,7 @@ func init() {
         ],
         "description": "Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.",
         "consumes": [
-          "text/plain"
+          "application/json"
         ],
         "produces": [
           "application/json"
@@ -2345,7 +2399,7 @@ func init() {
             "in": "body",
             "required": true,
             "schema": {
-              "type": "string"
+              "$ref": "#/definitions/Bookings"
             }
           }
         ],
@@ -2760,7 +2814,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/Policy"
+              "$ref": "#/definitions/PolicyDescribed"
             }
           },
           "401": {
@@ -3443,7 +3497,7 @@ func init() {
           "description": "A list of streams",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Stream"
+            "$ref": "#/definitions/ActivityStream"
           }
         },
         "uis": {
@@ -3453,6 +3507,60 @@ func init() {
             "$ref": "#/definitions/UIDescribed"
           }
         }
+      }
+    },
+    "ActivityStream": {
+      "description": "Represents an assigned, valid booking slot for an individual piece of equipment",
+      "type": "object",
+      "title": "stream",
+      "required": [
+        "audience",
+        "connection_type",
+        "for",
+        "scopes",
+        "topic",
+        "url"
+      ],
+      "properties": {
+        "audience": {
+          "type": "string"
+        },
+        "connection_type": {
+          "type": "string"
+        },
+        "for": {
+          "description": "Describes the stream, and doubles as template key in the URL",
+          "type": "string",
+          "example": "video"
+        },
+        "prefix": {
+          "description": "prefix of the relay routing",
+          "type": "string",
+          "example": "session"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "token": {
+          "description": "signed jwt token for accessing the stream",
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
+          "type": "string",
+          "example": "https://relay-access.practable.io/session/abc123"
+        }
+      },
+      "example": {
+        "for": "video",
+        "token": "ey....",
+        "url": "https://relay-access.practable.io/session/abc123"
       }
     },
     "Booking": {
@@ -3566,6 +3674,7 @@ func init() {
       "required": [
         "book_ahead",
         "duration",
+        "label",
         "max_slots"
       ],
       "properties": {
@@ -3573,6 +3682,10 @@ func init() {
           "type": "string"
         },
         "duration": {
+          "type": "string"
+        },
+        "label": {
+          "description": "what to display in the tab heading for these slots",
           "type": "string"
         },
         "max_slots": {
@@ -3635,6 +3748,12 @@ func init() {
             "$ref": "#/definitions/Description"
           }
         },
+        "display_guides": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/DisplayGuide"
+          }
+        },
         "policies": {
           "type": "object",
           "additionalProperties": {
@@ -3656,7 +3775,7 @@ func init() {
         "streams": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/Stream"
+            "$ref": "#/definitions/ManifestStream"
           }
         },
         "ui_sets": {
@@ -3676,6 +3795,42 @@ func init() {
           "additionalProperties": {
             "$ref": "#/definitions/Window"
           }
+        }
+      }
+    },
+    "ManifestStream": {
+      "description": "represents a prototype stream as described in manifest",
+      "type": "object",
+      "title": "manifest stream",
+      "required": [
+        "connection_type",
+        "for",
+        "scopes",
+        "topic",
+        "url"
+      ],
+      "properties": {
+        "connection_type": {
+          "type": "string"
+        },
+        "for": {
+          "description": "Describes the stream, and doubles as template key in the URL",
+          "type": "string",
+          "example": "video"
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "topic": {
+          "type": "string"
+        },
+        "url": {
+          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
+          "type": "string",
+          "example": "https://relay-access.practable.io/session/abc123"
         }
       }
     },
@@ -3707,7 +3862,7 @@ func init() {
         "display_guides": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/DisplayGuide"
+            "type": "string"
           }
         },
         "enforce_book_ahead": {
@@ -3759,8 +3914,8 @@ func init() {
           "$ref": "#/definitions/Description"
         },
         "display_guides": {
-          "type": "array",
-          "items": {
+          "type": "object",
+          "additionalProperties": {
             "$ref": "#/definitions/DisplayGuide"
           }
         },
@@ -3974,60 +4129,6 @@ func init() {
         }
       }
     },
-    "Stream": {
-      "description": "Represents an assigned, valid booking slot for an individual piece of equipment",
-      "type": "object",
-      "title": "stream",
-      "required": [
-        "audience",
-        "connection_type",
-        "for",
-        "scopes",
-        "topic",
-        "url"
-      ],
-      "properties": {
-        "audience": {
-          "type": "string"
-        },
-        "connection_type": {
-          "type": "string"
-        },
-        "for": {
-          "description": "Describes the stream, and doubles as template key in the URL",
-          "type": "string",
-          "example": "video"
-        },
-        "prefix": {
-          "description": "prefix of the relay routing",
-          "type": "string",
-          "example": "session"
-        },
-        "scopes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "token": {
-          "description": "signed jwt token for accessing the stream",
-          "type": "string"
-        },
-        "topic": {
-          "type": "string"
-        },
-        "url": {
-          "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
-          "type": "string",
-          "example": "https://relay-access.practable.io/session/abc123"
-        }
-      },
-      "example": {
-        "for": "video",
-        "token": "ey....",
-        "url": "https://relay-access.practable.io/session/abc123"
-      }
-    },
     "UI": {
       "type": "object",
       "title": "User Interface",
@@ -4091,10 +4192,15 @@ func init() {
       }
     },
     "UISet": {
-      "type": "array",
+      "type": "object",
       "title": "set of User Interfaces",
-      "items": {
-        "$ref": "#/definitions/UI"
+      "properties": {
+        "UIs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "User": {

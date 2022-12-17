@@ -40,7 +40,7 @@ type Activity struct {
 
 	// A list of streams
 	// Required: true
-	Streams []*Stream `json:"streams"`
+	Streams []*ActivityStream `json:"streams"`
 
 	// User interfaces
 	// Required: true

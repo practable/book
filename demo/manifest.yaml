@@ -32,15 +32,17 @@ descriptions:
     name: ui-b
     type: ui
     short: b
+display_guides:
+  1m:
+    book_ahead: 20m
+    duration: 1m
+    max_slots: 15 
 policies:
   p-a:
     book_ahead: 0s
     description: d-p-a
     display_guides:
-      1m:
-        book_ahead: 20m
-        duration: 1m
-        max_slots: 15
+      - 1m
     enforce_book_ahead: false
     enforce_max_bookings: false
     enforce_max_duration: false

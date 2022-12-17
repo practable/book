@@ -28,7 +28,6 @@ import (
 	"github.com/spf13/cobra"
 	apiclient "github.com/timdrysdale/interval/internal/client/client"
 	"github.com/timdrysdale/interval/internal/client/client/admin"
-	"github.com/timdrysdale/interval/internal/store"
 	"gopkg.in/yaml.v2"
 )
 
@@ -66,7 +65,9 @@ The exported manifest is printed to stdout, and can be piped to a file if requir
 		}
 
 		switch format {
+
 		case "json", "yaml", "yml":
+
 		default:
 			fmt.Println("format can be json or yaml, but not " + format)
 			os.Exit(1)
@@ -86,21 +87,19 @@ The exported manifest is printed to stdout, and can be piped to a file if requir
 		switch format {
 
 		case "json":
-			fmt.Println(status.Payload)
-		default:
-			m := store.Manifest{}
-			err = json.Unmarshal([]byte(status.Payload), &m)
+			mj, err := json.Marshal(status.Payload)
 			if err != nil {
-				fmt.Printf("Error: failed to parse response from server because %s\n", err.Error())
+				fmt.Printf("Error: failed to marshal exported manifest because %s\n", err.Error())
 				os.Exit(1)
 			}
-			my, err := yaml.Marshal(m)
+			fmt.Println(string(mj))
+		default:
+			my, err := yaml.Marshal(status.Payload)
 			if err != nil {
-				fmt.Printf("Error: failed to convert response from server to yaml because %s\n", err.Error())
+				fmt.Printf("Error: failed to marshal exported manifest because %s\n", err.Error())
 				os.Exit(1)
 			}
 			fmt.Println(string(my))
-
 		}
 		os.Exit(0)
 	},

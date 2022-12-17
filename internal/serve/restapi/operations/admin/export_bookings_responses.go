@@ -25,7 +25,7 @@ type ExportBookingsOK struct {
 	/*
 	  In: Body
 	*/
-	Payload string `json:"body,omitempty"`
+	Payload models.Bookings `json:"body,omitempty"`
 }
 
 // NewExportBookingsOK creates ExportBookingsOK with default headers values
@@ -35,13 +35,13 @@ func NewExportBookingsOK() *ExportBookingsOK {
 }
 
 // WithPayload adds the payload to the export bookings o k response
-func (o *ExportBookingsOK) WithPayload(payload string) *ExportBookingsOK {
+func (o *ExportBookingsOK) WithPayload(payload models.Bookings) *ExportBookingsOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the export bookings o k response
-func (o *ExportBookingsOK) SetPayload(payload string) {
+func (o *ExportBookingsOK) SetPayload(payload models.Bookings) {
 	o.Payload = payload
 }
 
@@ -50,6 +50,11 @@ func (o *ExportBookingsOK) WriteResponse(rw http.ResponseWriter, producer runtim
 
 	rw.WriteHeader(200)
 	payload := o.Payload
+	if payload == nil {
+		// return empty array
+		payload = models.Bookings{}
+	}
+
 	if err := producer.Produce(rw, payload); err != nil {
 		panic(err) // let the recovery middleware deal with this
 	}

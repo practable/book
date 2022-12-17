@@ -7,9 +7,7 @@ package models
 
 import (
 	"context"
-	"strconv"
 
-	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 )
@@ -17,57 +15,36 @@ import (
 // UISet set of User Interfaces
 //
 // swagger:model UISet
-type UISet []*UI
+type UISet struct {
+
+	// u is
+	UIs []string `json:"UIs"`
+}
 
 // Validate validates this UI set
-func (m UISet) Validate(formats strfmt.Registry) error {
-	var res []error
-
-	for i := 0; i < len(m); i++ {
-		if swag.IsZero(m[i]) { // not required
-			continue
-		}
-
-		if m[i] != nil {
-			if err := m[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
+func (m *UISet) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validate this UI set based on the context it is used
-func (m UISet) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	var res []error
+// ContextValidate validates this UI set based on context it is used
+func (m *UISet) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	return nil
+}
 
-	for i := 0; i < len(m); i++ {
-
-		if m[i] != nil {
-			if err := m[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
+// MarshalBinary interface implementation
+func (m *UISet) MarshalBinary() ([]byte, error) {
+	if m == nil {
+		return nil, nil
 	}
+	return swag.WriteJSON(m)
+}
 
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
+// UnmarshalBinary interface implementation
+func (m *UISet) UnmarshalBinary(b []byte) error {
+	var res UISet
+	if err := swag.ReadJSON(b, &res); err != nil {
+		return err
 	}
+	*m = res
 	return nil
 }

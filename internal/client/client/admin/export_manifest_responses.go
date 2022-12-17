@@ -62,7 +62,7 @@ func NewExportManifestOK() *ExportManifestOK {
 OK
 */
 type ExportManifestOK struct {
-	Payload string
+	Payload *models.Manifest
 }
 
 // IsSuccess returns true when this export manifest o k response has a 2xx status code
@@ -98,14 +98,16 @@ func (o *ExportManifestOK) String() string {
 	return fmt.Sprintf("[GET /admin/manifest][%d] exportManifestOK  %+v", 200, o.Payload)
 }
 
-func (o *ExportManifestOK) GetPayload() string {
+func (o *ExportManifestOK) GetPayload() *models.Manifest {
 	return o.Payload
 }
 
 func (o *ExportManifestOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
+	o.Payload = new(models.Manifest)
+
 	// response payload
-	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
 		return err
 	}
 

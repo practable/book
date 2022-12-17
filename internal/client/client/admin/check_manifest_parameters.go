@@ -14,6 +14,8 @@ import (
 	"github.com/go-openapi/runtime"
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+
+	"github.com/timdrysdale/interval/internal/client/models"
 )
 
 // NewCheckManifestParams creates a new CheckManifestParams object,
@@ -60,7 +62,7 @@ func NewCheckManifestParamsWithHTTPClient(client *http.Client) *CheckManifestPar
 type CheckManifestParams struct {
 
 	// Manifest.
-	Manifest string
+	Manifest *models.Manifest
 
 	timeout    time.Duration
 	Context    context.Context
@@ -116,13 +118,13 @@ func (o *CheckManifestParams) SetHTTPClient(client *http.Client) {
 }
 
 // WithManifest adds the manifest to the check manifest params
-func (o *CheckManifestParams) WithManifest(manifest string) *CheckManifestParams {
+func (o *CheckManifestParams) WithManifest(manifest *models.Manifest) *CheckManifestParams {
 	o.SetManifest(manifest)
 	return o
 }
 
 // SetManifest adds the manifest to the check manifest params
-func (o *CheckManifestParams) SetManifest(manifest string) {
+func (o *CheckManifestParams) SetManifest(manifest *models.Manifest) {
 	o.Manifest = manifest
 }
 
@@ -133,8 +135,10 @@ func (o *CheckManifestParams) WriteToRequest(r runtime.ClientRequest, reg strfmt
 		return err
 	}
 	var res []error
-	if err := r.SetBodyParam(o.Manifest); err != nil {
-		return err
+	if o.Manifest != nil {
+		if err := r.SetBodyParam(o.Manifest); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

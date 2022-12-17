@@ -25,6 +25,9 @@ type Manifest struct {
 	// Required: true
 	Descriptions map[string]Description `json:"descriptions"`
 
+	// display guides
+	DisplayGuides map[string]DisplayGuide `json:"display_guides,omitempty"`
+
 	// policies
 	// Required: true
 	Policies map[string]Policy `json:"policies"`
@@ -39,7 +42,7 @@ type Manifest struct {
 
 	// streams
 	// Required: true
-	Streams map[string]Stream `json:"streams"`
+	Streams map[string]ManifestStream `json:"streams"`
 
 	// ui sets
 	// Required: true
@@ -59,6 +62,10 @@ func (m *Manifest) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateDescriptions(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDisplayGuides(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -113,6 +120,32 @@ func (m *Manifest) validateDescriptions(formats strfmt.Registry) error {
 					return ve.ValidateName("descriptions" + "." + k)
 				} else if ce, ok := err.(*errors.CompositeError); ok {
 					return ce.ValidateName("descriptions" + "." + k)
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Manifest) validateDisplayGuides(formats strfmt.Registry) error {
+	if swag.IsZero(m.DisplayGuides) { // not required
+		return nil
+	}
+
+	for k := range m.DisplayGuides {
+
+		if err := validate.Required("display_guides"+"."+k, "body", m.DisplayGuides[k]); err != nil {
+			return err
+		}
+		if val, ok := m.DisplayGuides[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("display_guides" + "." + k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("display_guides" + "." + k)
 				}
 				return err
 			}
@@ -242,14 +275,15 @@ func (m *Manifest) validateUISets(formats strfmt.Registry) error {
 		if err := validate.Required("ui_sets"+"."+k, "body", m.UISets[k]); err != nil {
 			return err
 		}
-
-		if err := m.UISets[k].Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("ui_sets" + "." + k)
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ui_sets" + "." + k)
+		if val, ok := m.UISets[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("ui_sets" + "." + k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("ui_sets" + "." + k)
+				}
+				return err
 			}
-			return err
 		}
 
 	}
@@ -319,6 +353,10 @@ func (m *Manifest) ContextValidate(ctx context.Context, formats strfmt.Registry)
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateDisplayGuides(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidatePolicies(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -362,6 +400,21 @@ func (m *Manifest) contextValidateDescriptions(ctx context.Context, formats strf
 	for k := range m.Descriptions {
 
 		if val, ok := m.Descriptions[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Manifest) contextValidateDisplayGuides(ctx context.Context, formats strfmt.Registry) error {
+
+	for k := range m.DisplayGuides {
+
+		if val, ok := m.DisplayGuides[k]; ok {
 			if err := val.ContextValidate(ctx, formats); err != nil {
 				return err
 			}
@@ -456,13 +509,10 @@ func (m *Manifest) contextValidateUISets(ctx context.Context, formats strfmt.Reg
 
 	for k := range m.UISets {
 
-		if err := m.UISets[k].ContextValidate(ctx, formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("ui_sets" + "." + k)
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ui_sets" + "." + k)
+		if val, ok := m.UISets[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
 			}
-			return err
 		}
 
 	}

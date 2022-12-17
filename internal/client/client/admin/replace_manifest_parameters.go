@@ -14,6 +14,8 @@ import (
 	"github.com/go-openapi/runtime"
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+
+	"github.com/timdrysdale/interval/internal/client/models"
 )
 
 // NewReplaceManifestParams creates a new ReplaceManifestParams object,
@@ -60,7 +62,7 @@ func NewReplaceManifestParamsWithHTTPClient(client *http.Client) *ReplaceManifes
 type ReplaceManifestParams struct {
 
 	// Manifest.
-	Manifest string
+	Manifest *models.Manifest
 
 	timeout    time.Duration
 	Context    context.Context
@@ -116,13 +118,13 @@ func (o *ReplaceManifestParams) SetHTTPClient(client *http.Client) {
 }
 
 // WithManifest adds the manifest to the replace manifest params
-func (o *ReplaceManifestParams) WithManifest(manifest string) *ReplaceManifestParams {
+func (o *ReplaceManifestParams) WithManifest(manifest *models.Manifest) *ReplaceManifestParams {
 	o.SetManifest(manifest)
 	return o
 }
 
 // SetManifest adds the manifest to the replace manifest params
-func (o *ReplaceManifestParams) SetManifest(manifest string) {
+func (o *ReplaceManifestParams) SetManifest(manifest *models.Manifest) {
 	o.Manifest = manifest
 }
 
@@ -133,8 +135,10 @@ func (o *ReplaceManifestParams) WriteToRequest(r runtime.ClientRequest, reg strf
 		return err
 	}
 	var res []error
-	if err := r.SetBodyParam(o.Manifest); err != nil {
-		return err
+	if o.Manifest != nil {
+		if err := r.SetBodyParam(o.Manifest); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

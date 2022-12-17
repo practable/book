@@ -21,6 +21,7 @@ consumes:
 - text/plain
 produces:
 - application/json
+- text/plain
 
 paths:
 
@@ -33,14 +34,14 @@ paths:
       operationId: ExportBookings
       deprecated: false
       produces:
-      - text/plain
+      - application/json
       security:
         - Bearer: []
       responses:
         200:
-          description: OK
+          description: 'OK'
           schema:
-            type: string 
+            $ref: '#/definitions/Bookings'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -57,7 +58,7 @@ paths:
       operationId: ReplaceBookings
       deprecated: false
       consumes:
-      - text/plain
+      - application/json
       produces:
       - application/json
       parameters:
@@ -65,7 +66,7 @@ paths:
         in: body
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/Bookings'
       security:
         - Bearer: []
       responses:
@@ -90,14 +91,14 @@ paths:
       operationId: ExportManifest
       deprecated: false
       produces:
-      - text/plain
+      - application/json
       security:
         - Bearer: []
       responses:
         200:
           description: OK
           schema:
-            type: string
+            $ref: '#/definitions/Manifest'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -113,7 +114,7 @@ paths:
       operationId: ReplaceManifest
       deprecated: false
       consumes:
-      - text/plain
+      - application/json
       produces:
       - application/json
       parameters:
@@ -121,7 +122,7 @@ paths:
         in: body
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/Manifest'
       security:
         - Bearer: []  
       responses:
@@ -146,7 +147,7 @@ paths:
       operationId: CheckManifest
       deprecated: false
       consumes:
-      - text/plain
+      - application/json
       produces:
       - application/json
       parameters:
@@ -154,7 +155,7 @@ paths:
         in: body
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/Manifest'
       security:
         - Bearer: []
       responses:
@@ -178,14 +179,14 @@ paths:
       operationId: ExportOldBookings
       deprecated: false
       produces:
-      - text/plain
+      - application/json  
       security:
         - Bearer: []
       responses:
         200:
-          description: OK
+          description: 'OK'
           schema:
-            type: string
+            $ref: '#/definitions/Bookings'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -202,7 +203,7 @@ paths:
       operationId: ReplaceOldBookings
       deprecated: false
       consumes:
-      - text/plain
+      - application/json
       produces:
       - application/json
       parameters:
@@ -210,7 +211,7 @@ paths:
         in: body
         required: true
         schema:
-          type: string
+          $ref: '#/definitions/Bookings'
       security:
         - Bearer: []
       responses:
@@ -457,7 +458,7 @@ paths:
         200:
           description: OK
           schema:
-            $ref: '#/definitions/Policy'
+            $ref: '#/definitions/PolicyDescribed'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -883,7 +884,7 @@ definitions:
         description: A list of streams
         type: array
         items:
-          $ref: '#/definitions/Stream'
+          $ref: '#/definitions/ActivityStream'
       uis:
         description: User interfaces
         type: array
@@ -895,7 +896,49 @@ definitions:
     - nbf
     - streams
     - uis
-             
+    
+  ActivityStream:
+    title: stream
+    description: Represents an assigned, valid booking slot for an individual piece of equipment
+    example:
+      for: video
+      url: https://relay-access.practable.io/session/abc123
+      token: ey....
+    type: object
+    properties:
+      audience:
+        type: string
+      connection_type:
+        type: string
+      for:
+        description: Describes the stream, and doubles as template key in the URL
+        example: video
+        type: string
+      prefix:
+        description: prefix of the relay routing
+        example: session
+        type: string
+      scopes:
+        type: array
+        items:
+          type: string
+      topic:
+        type: string
+      token:
+        description: signed jwt token for accessing the stream
+        type: string
+      url:
+        description: URL at which to obtain access to the stream (getting a redirect URL containing a one time code)
+        example: https://relay-access.practable.io/session/abc123
+        type: string
+    required:
+    - audience
+    - connection_type
+    - for
+    - scopes
+    - topic
+    - url
+    
   Booking:
     title: booking
     description: A booking represents a promise to supply an activity. The booleans are not required because we don't process the booking status when loading old bookings (all old bookings are assumed to have been good bookings)
@@ -990,9 +1033,13 @@ definitions:
         type: string
       max_slots:
         type: integer
+      label:
+        description: what to display in the tab heading for these slots
+        type: string
     required:
       - book_ahead
       - duration
+      - label
       - max_slots
       
   Error:
@@ -1030,6 +1077,10 @@ definitions:
         type: object
         additionalProperties:
           $ref: '#/definitions/Description'
+      display_guides:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/DisplayGuide'       
       policies:
         type: object
         additionalProperties:
@@ -1045,7 +1096,7 @@ definitions:
       streams:
         type: object
         additionalProperties:
-          $ref: '#/definitions/Stream'
+          $ref: '#/definitions/ManifestStream'
       uis:
         type: object
         additionalProperties:
@@ -1067,7 +1118,35 @@ definitions:
     - uis
     - ui_sets
     - windows
-
+    
+  ManifestStream:
+    title: manifest stream
+    description: represents a prototype stream as described in manifest
+    type: object
+    properties:
+      connection_type:
+        type: string
+      for:
+        description: Describes the stream, and doubles as template key in the URL
+        example: video
+        type: string
+      scopes:
+        type: array
+        items:
+          type: string
+      topic:
+        type: string
+      url:
+        description: URL at which to obtain access to the stream (getting a redirect URL containing a one time code)
+        example: https://relay-access.practable.io/session/abc123
+        type: string
+    required:
+    - connection_type
+    - for
+    - scopes
+    - topic
+    - url
+    
   Policy:
     type: object
     properties:
@@ -1078,7 +1157,7 @@ definitions:
       display_guides:
         type: array
         items:
-          $ref: '#/definitions/DisplayGuide'
+          type: string
       enforce_book_ahead:
         type: boolean
       enforce_max_bookings:
@@ -1113,8 +1192,8 @@ definitions:
       description:
         $ref: '#/definitions/Description'
       display_guides:
-        type: array
-        items:
+        type: object
+        additionalProperties:
           $ref: '#/definitions/DisplayGuide'
       enforce_book_ahead:
         type: boolean
@@ -1281,48 +1360,10 @@ definitions:
       - locked
       - message
       - now
-      
-  Stream:
-    title: stream
-    description: Represents an assigned, valid booking slot for an individual piece of equipment
-    example:
-      for: video
-      url: https://relay-access.practable.io/session/abc123
-      token: ey....
-    type: object
-    properties:
-      audience:
-        type: string
-      connection_type:
-        type: string
-      for:
-        description: Describes the stream, and doubles as template key in the URL
-        example: video
-        type: string
-      prefix:
-        description: prefix of the relay routing
-        example: session
-        type: string
-      scopes:
-        type: array
-        items:
-          type: string
-      topic:
-        type: string
-      token:
-        description: signed jwt token for accessing the stream
-        type: string
-      url:
-        description: URL at which to obtain access to the stream (getting a redirect URL containing a one time code)
-        example: https://relay-access.practable.io/session/abc123
-        type: string
-    required:
-    - audience
-    - connection_type
-    - for
-    - scopes
-    - topic
-    - url
+
+
+    
+
 
   UI:
     title: User Interface
@@ -1370,9 +1411,12 @@ definitions:
     
   UISet:
     title: set of User Interfaces
-    type: array
-    items:
-      $ref: '#/definitions/UI'
+    type: object
+    properties:
+      UIs:
+       type: array
+       items:
+         type: string
       
   User:
     type: object
