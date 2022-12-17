@@ -1880,6 +1880,36 @@ func TestLockedToUser(t *testing.T) {
 		p := users.NewGetDescriptionParams().WithTimeout(timeout).WithDescriptionName("d-r-a")
 		return bc.Users.GetDescription(p, auth)
 	}
+
+	getOldBookingsForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+
+		useClient := true
+
+		if !useClient { // for debug purposes (check server side is ok)
+			client := &http.Client{}
+			req, err := http.NewRequest("GET", cfg.Host+"/api/v1/users/user-a/oldbookings", nil)
+			assert.NoError(t, err)
+			req.Header.Add("Authorization", sutoken)
+			// add query params
+			q := req.URL.Query()
+			q.Add("user_name", "user-a")
+
+			req.URL.RawQuery = q.Encode()
+			resp, err := client.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 200, resp.StatusCode) //should be ok!
+			defer resp.Body.Close()
+			body, err := ioutil.ReadAll(resp.Body)
+			return string(body), err
+		} else {
+			//ct := time.Date(2022, 11, 7, 0, 0, 0, 0, time.UTC)
+			//currentTime = &ct
+			// seems to be a race condition - setting this to the future breaks GetActivity test
+			p := users.NewGetOldBookingsForUserParams().WithTimeout(timeout).WithUserName("user-a")
+			return bc.Users.GetOldBookingsForUser(p, auth)
+		}
+
+	}
 	getPolicy := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetPolicyParams().WithTimeout(timeout).WithPolicyName("p-a")
 		return bc.Users.GetPolicy(p, auth)
@@ -1907,38 +1937,42 @@ func TestLockedToUser(t *testing.T) {
 		ok      bool
 		want    string
 	}{
-		"GetDescriptionLockedAdminAllowed":       {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetDescriptionLockedUserDenied":         {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
-		"GetDescriptionUnlockedAdminAllowed":     {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetDescriptionUnlockedUserAllowed":      {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetPolicyLockedAdminAllowed":            {locked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetPolicyLockedUserDenied":              {locked, getPolicy, authUser, false, `[GET /policies/{policy_name}][401] getPolicyUnauthorized`},
-		"GetPolicyUnlockedAdminAllowed":          {unlocked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetPolicyUnlockedUserAllowed":           {unlocked, getPolicy, authUser, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetAvailabilityLockedAdminAllowed":      {locked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"GetAvailabilityLockedUserDenied":        {locked, getAvailability, authUser, false, `[GET /policies/{policy_name}/slots/{slot_name}][401] getAvailabilityUnauthorized`},
-		"GetAvailabilityUnlockedAdminAllowed":    {unlocked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"GetAvailabilityUnlockedUserAllowed":     {unlocked, getAvailability, authUser, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"MakeBookingLockedAdminAllowed":          {locked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"MakeBookingLockedUserDenied":            {locked, makeBooking, authUser, false, `[POST /policies/{policy_name}/slots/{slot_name}][401] makeBookingUnauthorized`},
-		"MakeBookingUnlockedAdminAllowed":        {unlocked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"MakeBookingUnlockedUserAllowed":         {unlocked, makeBooking, authUser, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"GetStoreStatusUserLockedAdminAllowed":   {locked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
-		"GetStoreStatusUserLockedUserAllowed":    {locked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
-		"GetStoreStatusUserUnlockedAdminAllowed": {unlocked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
-		"GetStoreStatusUserUnlockedUserAllowed":  {unlocked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
-		"GetBookingsForUserLockedAdminAllowed":   {locked, getBookingsForUser, authAdmin, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
-		"GetBookingsForUserLockedUserDenied":     {locked, getBookingsForUser, authUser, false, `[GET /users/{user_name}/bookings][401] getBookingsForUserUnauthorized`},
-		"GetBookingsForUserUnlockedAdminAllowed": {unlocked, getBookingsForUser, authAdmin, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
-		"GetBookingsForUserUnlockedUserAllowed":  {unlocked, getBookingsForUser, authUser, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
-		"CancelBookingLockedAdminAllowed":        {locked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
-		"CancelBookingLockedUserDenied":          {locked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][401] cancelBookingUnauthorized`},
-		"CancelBookingUnlockedAdminAllowed":      {unlocked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
-		"CancelBookingUnlockedUserAllowed":       {unlocked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
-		"GetActivityLockedAdminAllowed":          {locked, getActivity, authAdmin, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
-		"GetActivityLockedUserDenied":            {locked, getActivity, authUser, false, `[PUT /users/{user_name}/bookings/{booking_name}][401] getActivityUnauthorized`},
-		"GetActivityUnlockedAdminAllowed":        {unlocked, getActivity, authAdmin, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
-		"GetActivityUnlockedUserAllowed":         {unlocked, getActivity, authUser, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
+		"GetDescriptionLockedAdminAllowed":          {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionLockedUserDenied":            {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
+		"GetDescriptionUnlockedAdminAllowed":        {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionUnlockedUserAllowed":         {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetPolicyLockedAdminAllowed":               {locked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetPolicyLockedUserDenied":                 {locked, getPolicy, authUser, false, `[GET /policies/{policy_name}][401] getPolicyUnauthorized`},
+		"GetPolicyUnlockedAdminAllowed":             {unlocked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetPolicyUnlockedUserAllowed":              {unlocked, getPolicy, authUser, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetAvailabilityLockedAdminAllowed":         {locked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"GetAvailabilityLockedUserDenied":           {locked, getAvailability, authUser, false, `[GET /policies/{policy_name}/slots/{slot_name}][401] getAvailabilityUnauthorized`},
+		"GetAvailabilityUnlockedAdminAllowed":       {unlocked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"GetAvailabilityUnlockedUserAllowed":        {unlocked, getAvailability, authUser, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"MakeBookingLockedAdminAllowed":             {locked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"MakeBookingLockedUserDenied":               {locked, makeBooking, authUser, false, `[POST /policies/{policy_name}/slots/{slot_name}][401] makeBookingUnauthorized`},
+		"MakeBookingUnlockedAdminAllowed":           {unlocked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"MakeBookingUnlockedUserAllowed":            {unlocked, makeBooking, authUser, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"GetStoreStatusUserLockedAdminAllowed":      {locked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
+		"GetStoreStatusUserLockedUserAllowed":       {locked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
+		"GetStoreStatusUserUnlockedAdminAllowed":    {unlocked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
+		"GetStoreStatusUserUnlockedUserAllowed":     {unlocked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
+		"GetBookingsForUserLockedAdminAllowed":      {locked, getBookingsForUser, authAdmin, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
+		"GetBookingsForUserLockedUserDenied":        {locked, getBookingsForUser, authUser, false, `[GET /users/{user_name}/bookings][401] getBookingsForUserUnauthorized`},
+		"GetBookingsForUserUnlockedAdminAllowed":    {unlocked, getBookingsForUser, authAdmin, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
+		"GetBookingsForUserUnlockedUserAllowed":     {unlocked, getBookingsForUser, authUser, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
+		"CancelBookingLockedAdminAllowed":           {locked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
+		"CancelBookingLockedUserDenied":             {locked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][401] cancelBookingUnauthorized`},
+		"CancelBookingUnlockedAdminAllowed":         {unlocked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
+		"CancelBookingUnlockedUserAllowed":          {unlocked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
+		"GetActivityLockedAdminAllowed":             {locked, getActivity, authAdmin, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
+		"GetActivityLockedUserDenied":               {locked, getActivity, authUser, false, `[PUT /users/{user_name}/bookings/{booking_name}][401] getActivityUnauthorized`},
+		"GetActivityUnlockedAdminAllowed":           {unlocked, getActivity, authAdmin, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
+		"GetActivityUnlockedUserAllowed":            {unlocked, getActivity, authUser, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
+		"GetOldBookingsForUserLockedAdminAllowed":   {locked, getOldBookingsForUser, authAdmin, true, `[GET /users/{user_name}/oldbookings][200] getOldBookingsForUserOK`},
+		"GetOldBookingsForUserLockedUserDenied":     {locked, getOldBookingsForUser, authUser, false, `[GET /users/{user_name}/oldbookings][401] getOldBookingsForUserUnauthorized`},
+		"GetOldBookingsForUserUnlockedAdminAllowed": {unlocked, getOldBookingsForUser, authAdmin, true, `[GET /users/{user_name}/oldbookings][200] getOldBookingsForUserOK`},
+		"GetOldBookingsForUserUnlockedUserAllowed":  {unlocked, getOldBookingsForUser, authUser, true, `[GET /users/{user_name}/oldbookings][200] getOldBookingsForUserOK`},
 	}
 
 	for name, tc := range tests {
