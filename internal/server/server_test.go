@@ -573,10 +573,10 @@ func addBookings(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 
-	b := getBookings(t)
-
-	fmt.Printf("BOOKINGS: %+v\n", b)
-
+	if debug {
+		b := getBookings(t)
+		fmt.Printf("BOOKINGS: %+v\n", b)
+	}
 }
 
 // TestManifestOK lets us know if our test manifest is correct
@@ -1830,29 +1830,30 @@ func TestLockedToUser(t *testing.T) {
 
 	getBookingsForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 
-		// debug
-		p3 := admin.NewExportBookingsParams().WithTimeout(timeout)
-		status3, err := bc.Admin.ExportBookings(p3, authAdmin)
-		assert.NoError(t, err)
-		if err == nil {
-			fmt.Printf("BOOKINGS: %+v\n", status3.Payload)
+		if debug {
+			p3 := admin.NewExportBookingsParams().WithTimeout(timeout)
+			status3, err := bc.Admin.ExportBookings(p3, authAdmin)
+			assert.NoError(t, err)
+			if err == nil {
+				fmt.Printf("BOOKINGS: %+v\n", status3.Payload)
+			}
+			p2 := admin.NewExportUsersParams().WithTimeout(timeout)
+			status2, _ := bc.Admin.ExportUsers(p2, authAdmin)
+
+			fmt.Printf("USERS: %+v\n", status2.Payload)
+
+			// export users (now there are bookings we will have users)
+			client := &http.Client{}
+			req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/users", nil)
+			assert.NoError(t, err)
+			req.Header.Add("Authorization", satoken)
+			resp, err := client.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 200, resp.StatusCode) //should be ok!
+			body, err := ioutil.ReadAll(resp.Body)
+			fmt.Println(string(body))
+			resp.Body.Close()
 		}
-		p2 := admin.NewExportUsersParams().WithTimeout(timeout)
-		status2, _ := bc.Admin.ExportUsers(p2, authAdmin)
-
-		fmt.Printf("USERS: %+v\n", status2.Payload)
-
-		// export users (now there are bookings we will have users)
-		client := &http.Client{}
-		req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/users", nil)
-		assert.NoError(t, err)
-		req.Header.Add("Authorization", satoken)
-		resp, err := client.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 200, resp.StatusCode) //should be ok!
-		body, err := ioutil.ReadAll(resp.Body)
-		fmt.Println(string(body))
-		resp.Body.Close()
 
 		p := users.NewGetBookingsForUserParams().WithTimeout(timeout).WithUserName("user-a")
 		return bc.Users.GetBookingsForUser(p, auth)
