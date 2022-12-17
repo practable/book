@@ -1830,6 +1830,15 @@ func TestLockedToUser(t *testing.T) {
 			WithUserName("user-a") //get a json error about not unmarshalling number into string in models.Error if omit this
 		return nil, bc.Users.CancelBooking(p, auth) //this method only returns error codes
 	}
+	getActivity := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		ct := time.Date(2022, 11, 5, 0, 10, 1, 0, time.UTC)
+		currentTime = &ct
+		p := users.NewGetActivityParams().
+			WithTimeout(timeout).
+			WithBookingName("bk-0").
+			WithUserName("user-a")
+		return bc.Users.GetActivity(p, auth)
+	}
 	getAvailability := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetAvailabilityParams().WithTimeout(timeout).WithPolicyName("p-a").WithSlotName("sl-a")
 		return bc.Users.GetAvailability(p, auth)
@@ -1926,6 +1935,10 @@ func TestLockedToUser(t *testing.T) {
 		"CancelBookingLockedUserDenied":          {locked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][401] cancelBookingUnauthorized`},
 		"CancelBookingUnlockedAdminAllowed":      {unlocked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
 		"CancelBookingUnlockedUserAllowed":       {unlocked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][404] cancelBookingNotFound`},
+		"GetActivityLockedAdminAllowed":          {locked, getActivity, authAdmin, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
+		"GetActivityLockedUserDenied":            {locked, getActivity, authUser, false, `[PUT /users/{user_name}/bookings/{booking_name}][401] getActivityUnauthorized`},
+		"GetActivityUnlockedAdminAllowed":        {unlocked, getActivity, authAdmin, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
+		"GetActivityUnlockedUserAllowed":         {unlocked, getActivity, authUser, true, `[PUT /users/{user_name}/bookings/{booking_name}][200] getActivityOK`},
 	}
 
 	for name, tc := range tests {
