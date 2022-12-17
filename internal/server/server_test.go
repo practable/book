@@ -1816,6 +1816,10 @@ func TestLockedToUser(t *testing.T) {
 		p := users.NewGetPolicyParams().WithTimeout(timeout).WithPolicyName("p-a")
 		return bc.Users.GetPolicy(p, auth)
 	}
+	getStoreStatusUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := users.NewGetStoreStatusUserParams().WithTimeout(timeout)
+		return bc.Users.GetStoreStatusUser(p, auth)
+	}
 	makeBooking := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewMakeBookingParams().
 			WithTimeout(timeout).
@@ -1834,22 +1838,26 @@ func TestLockedToUser(t *testing.T) {
 		ok      bool
 		want    string
 	}{
-		"GetDescriptionLockedAdminAllowed":    {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetDescriptionLockedUserDenied":      {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
-		"GetDescriptionUnlockedAdminAllowed":  {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetDescriptionUnlockedUserAllowed":   {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
-		"GetPolicyLockedAdminAllowed":         {locked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetPolicyLockedUserDenied":           {locked, getPolicy, authUser, false, `[GET /policies/{policy_name}][401] getPolicyUnauthorized`},
-		"GetPolicyUnlockedAdminAllowed":       {unlocked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetPolicyUnlockedUserAllowed":        {unlocked, getPolicy, authUser, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetAvailabilityLockedAdminAllowed":   {locked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"GetAvailabilityLockedUserDenied":     {locked, getAvailability, authUser, false, `[GET /policies/{policy_name}/slots/{slot_name}][401] getAvailabilityUnauthorized`},
-		"GetAvailabilityUnlockedAdminAllowed": {unlocked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"GetAvailabilityUnlockedUserAllowed":  {unlocked, getAvailability, authUser, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"makeBookingLockedAdminAllowed":       {locked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"makeBookingLockedUserDenied":         {locked, makeBooking, authUser, false, `[POST /policies/{policy_name}/slots/{slot_name}][401] makeBookingUnauthorized`},
-		"makeBookingUnlockedAdminAllowed":     {unlocked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"makeBookingUnlockedUserAllowed":      {unlocked, makeBooking, authUser, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"GetDescriptionLockedAdminAllowed":       {locked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionLockedUserDenied":         {locked, getDescription, authUser, false, `[GET /descriptions/{description_name}][401] getDescriptionUnauthorized`},
+		"GetDescriptionUnlockedAdminAllowed":     {unlocked, getDescription, authAdmin, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetDescriptionUnlockedUserAllowed":      {unlocked, getDescription, authUser, true, `[GET /descriptions/{description_name}][200] getDescriptionOK`},
+		"GetPolicyLockedAdminAllowed":            {locked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetPolicyLockedUserDenied":              {locked, getPolicy, authUser, false, `[GET /policies/{policy_name}][401] getPolicyUnauthorized`},
+		"GetPolicyUnlockedAdminAllowed":          {unlocked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetPolicyUnlockedUserAllowed":           {unlocked, getPolicy, authUser, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
+		"GetAvailabilityLockedAdminAllowed":      {locked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"GetAvailabilityLockedUserDenied":        {locked, getAvailability, authUser, false, `[GET /policies/{policy_name}/slots/{slot_name}][401] getAvailabilityUnauthorized`},
+		"GetAvailabilityUnlockedAdminAllowed":    {unlocked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"GetAvailabilityUnlockedUserAllowed":     {unlocked, getAvailability, authUser, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
+		"makeBookingLockedAdminAllowed":          {locked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"makeBookingLockedUserDenied":            {locked, makeBooking, authUser, false, `[POST /policies/{policy_name}/slots/{slot_name}][401] makeBookingUnauthorized`},
+		"makeBookingUnlockedAdminAllowed":        {unlocked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"makeBookingUnlockedUserAllowed":         {unlocked, makeBooking, authUser, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"GetStoreStatusUserLockedAdminAllowed":   {locked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
+		"GetStoreStatusUserLockedUserAllowed":    {locked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
+		"GetStoreStatusUserUnlockedAdminAllowed": {unlocked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
+		"GetStoreStatusUserUnlockedUserAllowed":  {unlocked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
 	}
 
 	for name, tc := range tests {
