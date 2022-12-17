@@ -17,7 +17,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/ory/viper v1.7.5
 	github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2
-	github.com/practable/relay v0.2.2
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/viper v1.14.0

@@ -17,10 +17,12 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	httptransport "github.com/go-openapi/runtime/client"
@@ -28,6 +30,7 @@ import (
 	"github.com/spf13/cobra"
 	apiclient "github.com/timdrysdale/interval/internal/client/client"
 	"github.com/timdrysdale/interval/internal/client/client/admin"
+	cmodels "github.com/timdrysdale/interval/internal/client/models"
 	"github.com/timdrysdale/interval/internal/store"
 	"gopkg.in/yaml.v2"
 )
@@ -40,9 +43,9 @@ var manifestReplaceCmd = &cobra.Command{
 
 example usage:
 
-book manifest replace manifest.yaml
+book manifest replace manifest.json
 
-The manifest must be in a file, in yaml format.
+The manifest must be in a file, default is json. Yaml not currently available
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -50,10 +53,12 @@ The manifest must be in a file, in yaml format.
 		viper.AutomaticEnv()
 		viper.SetDefault("host", "book.practable.io")
 		viper.SetDefault("scheme", "https")
+		viper.SetDefault("format", "json")
 
 		host := viper.GetString("host")
 		scheme := viper.GetString("scheme")
 		token := viper.GetString("token")
+		format := strings.ToLower(viper.GetString("format"))
 
 		if token == "" {
 			fmt.Println("BOOKCLIENT_TOKEN not set")
@@ -61,7 +66,16 @@ The manifest must be in a file, in yaml format.
 		}
 
 		if len(os.Args) < 4 {
-			fmt.Println("usage: book manifest replace <file.yaml>")
+			fmt.Println("usage: book manifest replace <file>")
+			os.Exit(1)
+		}
+
+		switch format {
+
+		case "json", "yaml", "yml":
+
+		default:
+			fmt.Println("format can be json or yaml, but not " + format)
 			os.Exit(1)
 		}
 
@@ -72,16 +86,43 @@ The manifest must be in a file, in yaml format.
 			os.Exit(1)
 		}
 
-		m := store.Manifest{}
+		storeManifest := store.Manifest{}
+		clientManifest := cmodels.Manifest{}
 
-		err = yaml.Unmarshal(mfest, &m)
-		if err != nil {
-			fmt.Printf("Error: failed to unmarshal manifest from file because %s\n", err.Error())
+		switch format {
+		case "json":
+
+			err = json.Unmarshal(mfest, &storeManifest)
+			if err != nil {
+				fmt.Printf("Error: failed to unmarshal manifest into store format for checking because: %s\n", err.Error())
+				os.Exit(1)
+			}
+			err = json.Unmarshal(mfest, &clientManifest)
+			if err != nil {
+				fmt.Printf("Error: failed to unmarshal manifest into client format for uploading because: %s\n", err.Error())
+				os.Exit(1)
+			}
+
+		case "yaml", "yml":
+
+			fmt.Println("YAML format unavailable at present")
 			os.Exit(1)
+
+			err = yaml.Unmarshal(mfest, &storeManifest)
+			if err != nil {
+				fmt.Printf("Error: failed to unmarshal manifest into store format for checking because: %s\n", err.Error())
+				os.Exit(1)
+			}
+			err = yaml.Unmarshal(mfest, &clientManifest)
+			if err != nil {
+				fmt.Printf("Error: failed to unmarshal manifest into client format for uploading because: %s\n", err.Error())
+				os.Exit(1)
+			}
+
 		}
 
 		// check manifest before uploading
-		err, msgs := store.CheckManifest(m)
+		err, msgs := store.CheckManifest(storeManifest)
 
 		if err != nil {
 			fmt.Println(err.Error())
@@ -91,14 +132,17 @@ The manifest must be in a file, in yaml format.
 			os.Exit(1)
 		}
 
+		// upload
+
 		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme})
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
 		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
-		params := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(string(mfest))
-		_, err = bc.Admin.ReplaceManifest(params, auth)
+		params := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(&clientManifest)
+		status, err := bc.Admin.ReplaceManifest(params, auth)
 		if err != nil {
 			fmt.Printf("Error: failed to replace manifest because %s\n", err.Error())
+			fmt.Println(status.Payload)
 			os.Exit(1)
 		}
 

@@ -81,10 +81,11 @@ echo "  6: Replace old bookings"
 echo 
 echo "  7: Check manifest"
 echo "  8: Export manifest"
-echo "  9: Replace manifest"
+echo "  9: Replace manifest (JSON)"
+echo "  a: Replace manifest (YAML)"
 echo 
-echo "  a: Export users"
-echo "  b: start insecure chrome"
+echo "  b: Export users"
+echo "  c: start insecure chrome"
 
 for (( ; ; ))
 do
@@ -137,13 +138,20 @@ then
 	read -p "Definitely replace [y/N]?" confirm
 	if ([ "$confirm" == "y" ] || [ "$confirm" == "Y" ]  || [ "$confirm" == "yes"  ] );
 	then
-		../cmd/book/book manifest replace ../demo/manifest.yaml
+	        export BOOKCLIENT_FORMAT=json
+	    	../cmd/book/book manifest replace ../demo/manifest.json
 	fi
 
 elif [ "$command" = "a" ];
 then
-	echo "export users"
+    		export BOOKCLIENT_FORMAT=yaml
+		../cmd/book/book manifest replace ../demo/manifest2.yaml
+		
 elif [ "$command" = "b" ];
+then
+    		
+	echo "export users"
+elif [ "$command" = "c" ];
 then	
 	mkdir -p ~/tmp/chrome-user
 	google-chrome --disable-web-security --user-data-dir="~/tmp/chrome-user" > chrome.log 2>&1 &
