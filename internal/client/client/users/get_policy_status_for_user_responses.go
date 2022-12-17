@@ -57,7 +57,8 @@ func NewGetPolicyStatusForUserOK() *GetPolicyStatusForUserOK {
 	return &GetPolicyStatusForUserOK{}
 }
 
-/* GetPolicyStatusForUserOK describes a response with status code 200, with default header values.
+/*
+GetPolicyStatusForUserOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -119,7 +120,8 @@ func NewGetPolicyStatusForUserUnauthorized() *GetPolicyStatusForUserUnauthorized
 	return &GetPolicyStatusForUserUnauthorized{}
 }
 
-/* GetPolicyStatusForUserUnauthorized describes a response with status code 401, with default header values.
+/*
+GetPolicyStatusForUserUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -181,7 +183,8 @@ func NewGetPolicyStatusForUserNotFound() *GetPolicyStatusForUserNotFound {
 	return &GetPolicyStatusForUserNotFound{}
 }
 
-/* GetPolicyStatusForUserNotFound describes a response with status code 404, with default header values.
+/*
+GetPolicyStatusForUserNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -243,7 +246,8 @@ func NewGetPolicyStatusForUserInternalServerError() *GetPolicyStatusForUserInter
 	return &GetPolicyStatusForUserInternalServerError{}
 }
 
-/* GetPolicyStatusForUserInternalServerError describes a response with status code 500, with default header values.
+/*
+GetPolicyStatusForUserInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

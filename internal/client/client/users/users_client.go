@@ -60,9 +60,9 @@ type ClientService interface {
 }
 
 /*
-  AddPolicyForUser adds policy to user account
+AddPolicyForUser adds policy to user account
 
-  Add policy to the list of policies with which this user is allowed to make bookings
+Add policy to the list of policies with which this user is allowed to make bookings
 */
 func (a *Client) AddPolicyForUser(params *AddPolicyForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AddPolicyForUserNoContent, error) {
 	// TODO: Validate the params before sending
@@ -101,9 +101,9 @@ func (a *Client) AddPolicyForUser(params *AddPolicyForUserParams, authInfo runti
 }
 
 /*
-  CancelBooking cancels the booking
+CancelBooking cancels the booking
 
-  For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -> ExportBookings() -> edit -> ReplaceBookings()-> Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking.
+For users to cancel their booking(s) on at a time. Checks if the booking is unstarted and/or unfulfilled, and cancels if so. A booking cannot be cancelled once an activity has been requested. A booking can be cancelled after it started, so long as it is unfulfilled (no activity requested). The user must be the owner of the booking to cancel it. Admins can cancel bookings by Lock() -> ExportBookings() -> edit -> ReplaceBookings()-> Unlock(). There is no need for an endpoint for admin single booking cancellation because the only visibility they have of bookings is via ExportBookings. Remaing time in the booking at time of cancellation is refunded to the user's usage tracker for that policy. That is intended to encourage early cancellation. Returns 404 on successful cancellation, or if there is no such booking.
 */
 func (a *Client) CancelBooking(params *CancelBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error {
 	// TODO: Validate the params before sending
@@ -135,9 +135,9 @@ func (a *Client) CancelBooking(params *CancelBookingParams, authInfo runtime.Cli
 }
 
 /*
-  GetAccessToken requests a user access token
+GetAccessToken requests a user access token
 
-  The access token is required to authenticate requests to the rest of the user-facing API. Ideally access to this endpoint should be secured by the identity management system. The access token has a limited lifetime but can be re-requested as needed. Consider rate-limiting this per-connection.
+The access token is required to authenticate requests to the rest of the user-facing API. Ideally access to this endpoint should be secured by the identity management system. The access token has a limited lifetime but can be re-requested as needed. Consider rate-limiting this per-connection.
 */
 func (a *Client) GetAccessToken(params *GetAccessTokenParams, opts ...ClientOption) (*GetAccessTokenOK, error) {
 	// TODO: Validate the params before sending
@@ -175,9 +175,9 @@ func (a *Client) GetAccessToken(params *GetAccessTokenParams, opts ...ClientOpti
 }
 
 /*
-  GetActivity requests the activity that goes with the booking
+GetActivity requests the activity that goes with the booking
 
-  Checks if the booking has started or not and if so, returns an activity that can be used to access the booked resource. Since this mutates the state of the booking (from unfulfilled to fulfilled) it is a put not a get.
+Checks if the booking has started or not and if so, returns an activity that can be used to access the booked resource. Since this mutates the state of the booking (from unfulfilled to fulfilled) it is a put not a get.
 */
 func (a *Client) GetActivity(params *GetActivityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetActivityOK, error) {
 	// TODO: Validate the params before sending
@@ -216,9 +216,9 @@ func (a *Client) GetActivity(params *GetActivityParams, authInfo runtime.ClientA
 }
 
 /*
-  GetAvailability gets availability for the slot under the policy
+GetAvailability gets availability for the slot under the policy
 
-  Pagination is supported by the limit and offset parameters. For the first query '?limit=20&offset=0', the second '?limit=20&offset=20'. The offset is equal to the zero-indexed value of the first item of the next page to be returned (20 items are indexed from 0 to 19, so 20 is the first item to be returned in the second page). Note that drift can occur if slots are booked during the sending of availability data, potentially preventing a user from seeing some slots that move earlier in the index and cross a pagination boundary. Users should refresh their results from 0 offset on a regular-ish basis if they wish to avoid this.
+Pagination is supported by the limit and offset parameters. For the first query '?limit=20&offset=0', the second '?limit=20&offset=20'. The offset is equal to the zero-indexed value of the first item of the next page to be returned (20 items are indexed from 0 to 19, so 20 is the first item to be returned in the second page). Note that drift can occur if slots are booked during the sending of availability data, potentially preventing a user from seeing some slots that move earlier in the index and cross a pagination boundary. Users should refresh their results from 0 offset on a regular-ish basis if they wish to avoid this.
 */
 func (a *Client) GetAvailability(params *GetAvailabilityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetAvailabilityOK, error) {
 	// TODO: Validate the params before sending
@@ -257,9 +257,9 @@ func (a *Client) GetAvailability(params *GetAvailabilityParams, authInfo runtime
 }
 
 /*
-  GetBookingsForUser gets all current bookings for the user
+GetBookingsForUser gets all current bookings for the user
 
-  Get all current bookings for the user. It's assumed that no pagination will be required due to likely policy limits being a couple of bookings per policy and users typically having only a couple of policies. No pagination may cause issues for admins that book hundreds or thousands slots on behalf of students, although it is likely such bookings would be automated so no need to support rapid update of a GUI, at least for now.
+Get all current bookings for the user. It's assumed that no pagination will be required due to likely policy limits being a couple of bookings per policy and users typically having only a couple of policies. No pagination may cause issues for admins that book hundreds or thousands slots on behalf of students, although it is likely such bookings would be automated so no need to support rapid update of a GUI, at least for now.
 */
 func (a *Client) GetBookingsForUser(params *GetBookingsForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetBookingsForUserOK, error) {
 	// TODO: Validate the params before sending
@@ -298,9 +298,9 @@ func (a *Client) GetBookingsForUser(params *GetBookingsForUserParams, authInfo r
 }
 
 /*
-  GetDescription gets description
+GetDescription gets description
 
-  Get description
+Get description
 */
 func (a *Client) GetDescription(params *GetDescriptionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetDescriptionOK, error) {
 	// TODO: Validate the params before sending
@@ -339,9 +339,9 @@ func (a *Client) GetDescription(params *GetDescriptionParams, authInfo runtime.C
 }
 
 /*
-  GetOldBookingsForUser gets all old bookings for the user
+GetOldBookingsForUser gets all old bookings for the user
 
-  Get all old bookings for the user. It's assumed that no pagination will be required due to likely policy limits including usage limits and users typically having only a couple of policies, although in practice pagination may be useful for heavy users.
+Get all old bookings for the user. It's assumed that no pagination will be required due to likely policy limits including usage limits and users typically having only a couple of policies, although in practice pagination may be useful for heavy users.
 */
 func (a *Client) GetOldBookingsForUser(params *GetOldBookingsForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOldBookingsForUserOK, error) {
 	// TODO: Validate the params before sending
@@ -380,9 +380,9 @@ func (a *Client) GetOldBookingsForUser(params *GetOldBookingsForUserParams, auth
 }
 
 /*
-  GetPoliciesForUser gets all current policies for user
+GetPoliciesForUser gets all current policies for user
 
-  Get all current policies for user
+Get all current policies for user
 */
 func (a *Client) GetPoliciesForUser(params *GetPoliciesForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetPoliciesForUserOK, error) {
 	// TODO: Validate the params before sending
@@ -421,9 +421,9 @@ func (a *Client) GetPoliciesForUser(params *GetPoliciesForUserParams, authInfo r
 }
 
 /*
-  GetPolicy gets policy
+GetPolicy gets policy
 
-  Get policy
+Get policy
 */
 func (a *Client) GetPolicy(params *GetPolicyParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetPolicyOK, error) {
 	// TODO: Validate the params before sending
@@ -462,9 +462,9 @@ func (a *Client) GetPolicy(params *GetPolicyParams, authInfo runtime.ClientAuthI
 }
 
 /*
-  GetPolicyStatusForUser gets policy status
+GetPolicyStatusForUser gets policy status
 
-  Get policy status for the user
+Get policy status for the user
 */
 func (a *Client) GetPolicyStatusForUser(params *GetPolicyStatusForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetPolicyStatusForUserOK, error) {
 	// TODO: Validate the params before sending
@@ -503,9 +503,9 @@ func (a *Client) GetPolicyStatusForUser(params *GetPolicyStatusForUserParams, au
 }
 
 /*
-  MakeBooking requests a booking
+MakeBooking requests a booking
 
-  A booking is requested for a specific combination of policy-slot-user-from-to. Users should check availability first, and only make requests that are likely to be granted. If there is no current availability then requests will be denied. If there is availability, there is still a chance another user requests the same slot just before - whichever request is received by the server first will be allowed, the other denied. The user_name must match the user_name the user logged in with, that is in the authorisation token in the header.
+A booking is requested for a specific combination of policy-slot-user-from-to. Users should check availability first, and only make requests that are likely to be granted. If there is no current availability then requests will be denied. If there is availability, there is still a chance another user requests the same slot just before - whichever request is received by the server first will be allowed, the other denied. The user_name must match the user_name the user logged in with, that is in the authorisation token in the header.
 */
 func (a *Client) MakeBooking(params *MakeBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeBookingNoContent, error) {
 	// TODO: Validate the params before sending
@@ -544,9 +544,9 @@ func (a *Client) MakeBooking(params *MakeBookingParams, authInfo runtime.ClientA
 }
 
 /*
-  GetStoreStatusUser gets current store status
+GetStoreStatusUser gets current store status
 
-  Gets the current store status from a user perspective (e.g. is it locked? what is the reason?)
+Gets the current store status from a user perspective (e.g. is it locked? what is the reason?)
 */
 func (a *Client) GetStoreStatusUser(params *GetStoreStatusUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetStoreStatusUserOK, error) {
 	// TODO: Validate the params before sending

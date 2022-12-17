@@ -54,10 +54,12 @@ func NewReplaceManifestParamsWithHTTPClient(client *http.Client) *ReplaceManifes
 	}
 }
 
-/* ReplaceManifestParams contains all the parameters to send to the API endpoint
-   for the replace manifest operation.
+/*
+ReplaceManifestParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the replace manifest operation.
+
+	Typically these are written to a http.Request.
 */
 type ReplaceManifestParams struct {
 

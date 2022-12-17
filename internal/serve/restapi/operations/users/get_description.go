@@ -29,12 +29,12 @@ func NewGetDescription(ctx *middleware.Context, handler GetDescriptionHandler) *
 	return &GetDescription{Context: ctx, Handler: handler}
 }
 
-/* GetDescription swagger:route GET /descriptions/{description_name} users getDescription
+/*
+	GetDescription swagger:route GET /descriptions/{description_name} users getDescription
+
+# Get description
 
 Get description
-
-Get description
-
 */
 type GetDescription struct {
 	Context *middleware.Context

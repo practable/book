@@ -57,7 +57,8 @@ func NewGetOldBookingsForUserOK() *GetOldBookingsForUserOK {
 	return &GetOldBookingsForUserOK{}
 }
 
-/* GetOldBookingsForUserOK describes a response with status code 200, with default header values.
+/*
+GetOldBookingsForUserOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -117,7 +118,8 @@ func NewGetOldBookingsForUserUnauthorized() *GetOldBookingsForUserUnauthorized {
 	return &GetOldBookingsForUserUnauthorized{}
 }
 
-/* GetOldBookingsForUserUnauthorized describes a response with status code 401, with default header values.
+/*
+GetOldBookingsForUserUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -179,7 +181,8 @@ func NewGetOldBookingsForUserNotFound() *GetOldBookingsForUserNotFound {
 	return &GetOldBookingsForUserNotFound{}
 }
 
-/* GetOldBookingsForUserNotFound describes a response with status code 404, with default header values.
+/*
+GetOldBookingsForUserNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -241,7 +244,8 @@ func NewGetOldBookingsForUserInternalServerError() *GetOldBookingsForUserInterna
 	return &GetOldBookingsForUserInternalServerError{}
 }
 
-/* GetOldBookingsForUserInternalServerError describes a response with status code 500, with default header values.
+/*
+GetOldBookingsForUserInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

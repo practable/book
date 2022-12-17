@@ -57,7 +57,8 @@ func NewExportUsersOK() *ExportUsersOK {
 	return &ExportUsersOK{}
 }
 
-/* ExportUsersOK describes a response with status code 200, with default header values.
+/*
+ExportUsersOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -117,7 +118,8 @@ func NewExportUsersUnauthorized() *ExportUsersUnauthorized {
 	return &ExportUsersUnauthorized{}
 }
 
-/* ExportUsersUnauthorized describes a response with status code 401, with default header values.
+/*
+ExportUsersUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -179,7 +181,8 @@ func NewExportUsersNotFound() *ExportUsersNotFound {
 	return &ExportUsersNotFound{}
 }
 
-/* ExportUsersNotFound describes a response with status code 404, with default header values.
+/*
+ExportUsersNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -241,7 +244,8 @@ func NewExportUsersInternalServerError() *ExportUsersInternalServerError {
 	return &ExportUsersInternalServerError{}
 }
 
-/* ExportUsersInternalServerError describes a response with status code 500, with default header values.
+/*
+ExportUsersInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

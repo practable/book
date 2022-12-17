@@ -57,7 +57,8 @@ func NewCheckManifestNoContent() *CheckManifestNoContent {
 	return &CheckManifestNoContent{}
 }
 
-/* CheckManifestNoContent describes a response with status code 204, with default header values.
+/*
+CheckManifestNoContent describes a response with status code 204, with default header values.
 
 OK
 */
@@ -107,7 +108,8 @@ func NewCheckManifestUnauthorized() *CheckManifestUnauthorized {
 	return &CheckManifestUnauthorized{}
 }
 
-/* CheckManifestUnauthorized describes a response with status code 401, with default header values.
+/*
+CheckManifestUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -169,7 +171,8 @@ func NewCheckManifestNotFound() *CheckManifestNotFound {
 	return &CheckManifestNotFound{}
 }
 
-/* CheckManifestNotFound describes a response with status code 404, with default header values.
+/*
+CheckManifestNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -231,7 +234,8 @@ func NewCheckManifestInternalServerError() *CheckManifestInternalServerError {
 	return &CheckManifestInternalServerError{}
 }
 
-/* CheckManifestInternalServerError describes a response with status code 500, with default header values.
+/*
+CheckManifestInternalServerError describes a response with status code 500, with default header values.
 
 InternalError
 */

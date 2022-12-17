@@ -52,10 +52,12 @@ func NewGetActivityParamsWithHTTPClient(client *http.Client) *GetActivityParams 
 	}
 }
 
-/* GetActivityParams contains all the parameters to send to the API endpoint
-   for the get activity operation.
+/*
+GetActivityParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the get activity operation.
+
+	Typically these are written to a http.Request.
 */
 type GetActivityParams struct {
 

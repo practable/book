@@ -57,7 +57,8 @@ func NewGetAccessTokenOK() *GetAccessTokenOK {
 	return &GetAccessTokenOK{}
 }
 
-/* GetAccessTokenOK describes a response with status code 200, with default header values.
+/*
+GetAccessTokenOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -119,7 +120,8 @@ func NewGetAccessTokenUnauthorized() *GetAccessTokenUnauthorized {
 	return &GetAccessTokenUnauthorized{}
 }
 
-/* GetAccessTokenUnauthorized describes a response with status code 401, with default header values.
+/*
+GetAccessTokenUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -181,7 +183,8 @@ func NewGetAccessTokenNotFound() *GetAccessTokenNotFound {
 	return &GetAccessTokenNotFound{}
 }
 
-/* GetAccessTokenNotFound describes a response with status code 404, with default header values.
+/*
+GetAccessTokenNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -243,7 +246,8 @@ func NewGetAccessTokenInternalServerError() *GetAccessTokenInternalServerError {
 	return &GetAccessTokenInternalServerError{}
 }
 
-/* GetAccessTokenInternalServerError describes a response with status code 500, with default header values.
+/*
+GetAccessTokenInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

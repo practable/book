@@ -52,10 +52,12 @@ func NewAddPolicyForUserParamsWithHTTPClient(client *http.Client) *AddPolicyForU
 	}
 }
 
-/* AddPolicyForUserParams contains all the parameters to send to the API endpoint
-   for the add policy for user operation.
+/*
+AddPolicyForUserParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the add policy for user operation.
+
+	Typically these are written to a http.Request.
 */
 type AddPolicyForUserParams struct {
 

@@ -57,7 +57,8 @@ func NewGetStoreStatusAdminOK() *GetStoreStatusAdminOK {
 	return &GetStoreStatusAdminOK{}
 }
 
-/* GetStoreStatusAdminOK describes a response with status code 200, with default header values.
+/*
+GetStoreStatusAdminOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -119,7 +120,8 @@ func NewGetStoreStatusAdminUnauthorized() *GetStoreStatusAdminUnauthorized {
 	return &GetStoreStatusAdminUnauthorized{}
 }
 
-/* GetStoreStatusAdminUnauthorized describes a response with status code 401, with default header values.
+/*
+GetStoreStatusAdminUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -181,7 +183,8 @@ func NewGetStoreStatusAdminNotFound() *GetStoreStatusAdminNotFound {
 	return &GetStoreStatusAdminNotFound{}
 }
 
-/* GetStoreStatusAdminNotFound describes a response with status code 404, with default header values.
+/*
+GetStoreStatusAdminNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -243,7 +246,8 @@ func NewGetStoreStatusAdminInternalServerError() *GetStoreStatusAdminInternalSer
 	return &GetStoreStatusAdminInternalServerError{}
 }
 
-/* GetStoreStatusAdminInternalServerError describes a response with status code 500, with default header values.
+/*
+GetStoreStatusAdminInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

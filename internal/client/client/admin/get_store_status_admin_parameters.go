@@ -52,10 +52,12 @@ func NewGetStoreStatusAdminParamsWithHTTPClient(client *http.Client) *GetStoreSt
 	}
 }
 
-/* GetStoreStatusAdminParams contains all the parameters to send to the API endpoint
-   for the get store status admin operation.
+/*
+GetStoreStatusAdminParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the get store status admin operation.
+
+	Typically these are written to a http.Request.
 */
 type GetStoreStatusAdminParams struct {
 	timeout    time.Duration

@@ -57,7 +57,8 @@ func NewSetSlotIsAvailableNoContent() *SetSlotIsAvailableNoContent {
 	return &SetSlotIsAvailableNoContent{}
 }
 
-/* SetSlotIsAvailableNoContent describes a response with status code 204, with default header values.
+/*
+SetSlotIsAvailableNoContent describes a response with status code 204, with default header values.
 
 OK
 */
@@ -107,7 +108,8 @@ func NewSetSlotIsAvailableUnauthorized() *SetSlotIsAvailableUnauthorized {
 	return &SetSlotIsAvailableUnauthorized{}
 }
 
-/* SetSlotIsAvailableUnauthorized describes a response with status code 401, with default header values.
+/*
+SetSlotIsAvailableUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -169,7 +171,8 @@ func NewSetSlotIsAvailableNotFound() *SetSlotIsAvailableNotFound {
 	return &SetSlotIsAvailableNotFound{}
 }
 
-/* SetSlotIsAvailableNotFound describes a response with status code 404, with default header values.
+/*
+SetSlotIsAvailableNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -231,7 +234,8 @@ func NewSetSlotIsAvailableInternalServerError() *SetSlotIsAvailableInternalServe
 	return &SetSlotIsAvailableInternalServerError{}
 }
 
-/* SetSlotIsAvailableInternalServerError describes a response with status code 500, with default header values.
+/*
+SetSlotIsAvailableInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

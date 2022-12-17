@@ -52,10 +52,12 @@ func NewExportManifestParamsWithHTTPClient(client *http.Client) *ExportManifestP
 	}
 }
 
-/* ExportManifestParams contains all the parameters to send to the API endpoint
-   for the export manifest operation.
+/*
+ExportManifestParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the export manifest operation.
+
+	Typically these are written to a http.Request.
 */
 type ExportManifestParams struct {
 	timeout    time.Duration

@@ -54,10 +54,12 @@ func NewCheckManifestParamsWithHTTPClient(client *http.Client) *CheckManifestPar
 	}
 }
 
-/* CheckManifestParams contains all the parameters to send to the API endpoint
-   for the check manifest operation.
+/*
+CheckManifestParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the check manifest operation.
+
+	Typically these are written to a http.Request.
 */
 type CheckManifestParams struct {
 

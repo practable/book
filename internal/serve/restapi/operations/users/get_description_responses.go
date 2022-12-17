@@ -16,7 +16,8 @@ import (
 // GetDescriptionOKCode is the HTTP code returned for type GetDescriptionOK
 const GetDescriptionOKCode int = 200
 
-/*GetDescriptionOK OK
+/*
+GetDescriptionOK OK
 
 swagger:response getDescriptionOK
 */
@@ -60,7 +61,8 @@ func (o *GetDescriptionOK) WriteResponse(rw http.ResponseWriter, producer runtim
 // GetDescriptionUnauthorizedCode is the HTTP code returned for type GetDescriptionUnauthorized
 const GetDescriptionUnauthorizedCode int = 401
 
-/*GetDescriptionUnauthorized Unauthorized
+/*
+GetDescriptionUnauthorized Unauthorized
 
 swagger:response getDescriptionUnauthorized
 */
@@ -104,7 +106,8 @@ func (o *GetDescriptionUnauthorized) WriteResponse(rw http.ResponseWriter, produ
 // GetDescriptionNotFoundCode is the HTTP code returned for type GetDescriptionNotFound
 const GetDescriptionNotFoundCode int = 404
 
-/*GetDescriptionNotFound The specified resource was not found
+/*
+GetDescriptionNotFound The specified resource was not found
 
 swagger:response getDescriptionNotFound
 */
@@ -148,7 +151,8 @@ func (o *GetDescriptionNotFound) WriteResponse(rw http.ResponseWriter, producer 
 // GetDescriptionInternalServerErrorCode is the HTTP code returned for type GetDescriptionInternalServerError
 const GetDescriptionInternalServerErrorCode int = 500
 
-/*GetDescriptionInternalServerError Internal Error
+/*
+GetDescriptionInternalServerError Internal Error
 
 swagger:response getDescriptionInternalServerError
 */

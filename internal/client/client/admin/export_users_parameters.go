@@ -52,10 +52,12 @@ func NewExportUsersParamsWithHTTPClient(client *http.Client) *ExportUsersParams 
 	}
 }
 
-/* ExportUsersParams contains all the parameters to send to the API endpoint
-   for the export users operation.
+/*
+ExportUsersParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the export users operation.
+
+	Typically these are written to a http.Request.
 */
 type ExportUsersParams struct {
 	timeout    time.Duration

@@ -29,12 +29,12 @@ func NewGetAccessToken(ctx *middleware.Context, handler GetAccessTokenHandler) *
 	return &GetAccessToken{Context: ctx, Handler: handler}
 }
 
-/* GetAccessToken swagger:route POST /login/{user_name} users getAccessToken
+/*
+	GetAccessToken swagger:route POST /login/{user_name} users getAccessToken
 
-Request a user access token
+# Request a user access token
 
 The access token is required to authenticate requests to the rest of the user-facing API. Ideally access to this endpoint should be secured by the identity management system. The access token has a limited lifetime but can be re-requested as needed. Consider rate-limiting this per-connection.
-
 */
 type GetAccessToken struct {
 	Context *middleware.Context

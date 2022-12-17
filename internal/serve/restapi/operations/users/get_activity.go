@@ -29,12 +29,12 @@ func NewGetActivity(ctx *middleware.Context, handler GetActivityHandler) *GetAct
 	return &GetActivity{Context: ctx, Handler: handler}
 }
 
-/* GetActivity swagger:route PUT /users/{user_name}/bookings/{booking_name} users getActivity
+/*
+	GetActivity swagger:route PUT /users/{user_name}/bookings/{booking_name} users getActivity
 
-Request the activity that goes with the booking
+# Request the activity that goes with the booking
 
 Checks if the booking has started or not and if so, returns an activity that can be used to access the booked resource. Since this mutates the state of the booking (from unfulfilled to fulfilled) it is a put not a get.
-
 */
 type GetActivity struct {
 	Context *middleware.Context

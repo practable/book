@@ -52,10 +52,12 @@ func NewMakeBookingParamsWithHTTPClient(client *http.Client) *MakeBookingParams 
 	}
 }
 
-/* MakeBookingParams contains all the parameters to send to the API endpoint
-   for the make booking operation.
+/*
+MakeBookingParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the make booking operation.
+
+	Typically these are written to a http.Request.
 */
 type MakeBookingParams struct {
 

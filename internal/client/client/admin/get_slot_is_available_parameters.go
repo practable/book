@@ -52,10 +52,12 @@ func NewGetSlotIsAvailableParamsWithHTTPClient(client *http.Client) *GetSlotIsAv
 	}
 }
 
-/* GetSlotIsAvailableParams contains all the parameters to send to the API endpoint
-   for the get slot is available operation.
+/*
+GetSlotIsAvailableParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the get slot is available operation.
+
+	Typically these are written to a http.Request.
 */
 type GetSlotIsAvailableParams struct {
 

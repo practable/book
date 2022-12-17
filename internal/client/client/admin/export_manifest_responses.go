@@ -57,7 +57,8 @@ func NewExportManifestOK() *ExportManifestOK {
 	return &ExportManifestOK{}
 }
 
-/* ExportManifestOK describes a response with status code 200, with default header values.
+/*
+ExportManifestOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -119,7 +120,8 @@ func NewExportManifestUnauthorized() *ExportManifestUnauthorized {
 	return &ExportManifestUnauthorized{}
 }
 
-/* ExportManifestUnauthorized describes a response with status code 401, with default header values.
+/*
+ExportManifestUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -181,7 +183,8 @@ func NewExportManifestNotFound() *ExportManifestNotFound {
 	return &ExportManifestNotFound{}
 }
 
-/* ExportManifestNotFound describes a response with status code 404, with default header values.
+/*
+ExportManifestNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -243,7 +246,8 @@ func NewExportManifestInternalServerError() *ExportManifestInternalServerError {
 	return &ExportManifestInternalServerError{}
 }
 
-/* ExportManifestInternalServerError describes a response with status code 500, with default header values.
+/*
+ExportManifestInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

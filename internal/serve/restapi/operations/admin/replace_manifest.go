@@ -29,12 +29,12 @@ func NewReplaceManifest(ctx *middleware.Context, handler ReplaceManifestHandler)
 	return &ReplaceManifest{Context: ctx, Handler: handler}
 }
 
-/* ReplaceManifest swagger:route PUT /admin/manifest admin replaceManifest
+/*
+	ReplaceManifest swagger:route PUT /admin/manifest admin replaceManifest
 
-Replace the manifest
+# Replace the manifest
 
 Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)
-
 */
 type ReplaceManifest struct {
 	Context *middleware.Context

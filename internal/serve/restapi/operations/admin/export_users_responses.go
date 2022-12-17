@@ -16,7 +16,8 @@ import (
 // ExportUsersOKCode is the HTTP code returned for type ExportUsersOK
 const ExportUsersOKCode int = 200
 
-/*ExportUsersOK OK
+/*
+ExportUsersOK OK
 
 swagger:response exportUsersOK
 */
@@ -58,7 +59,8 @@ func (o *ExportUsersOK) WriteResponse(rw http.ResponseWriter, producer runtime.P
 // ExportUsersUnauthorizedCode is the HTTP code returned for type ExportUsersUnauthorized
 const ExportUsersUnauthorizedCode int = 401
 
-/*ExportUsersUnauthorized Unauthorized
+/*
+ExportUsersUnauthorized Unauthorized
 
 swagger:response exportUsersUnauthorized
 */
@@ -102,7 +104,8 @@ func (o *ExportUsersUnauthorized) WriteResponse(rw http.ResponseWriter, producer
 // ExportUsersNotFoundCode is the HTTP code returned for type ExportUsersNotFound
 const ExportUsersNotFoundCode int = 404
 
-/*ExportUsersNotFound The specified resource was not found
+/*
+ExportUsersNotFound The specified resource was not found
 
 swagger:response exportUsersNotFound
 */
@@ -146,7 +149,8 @@ func (o *ExportUsersNotFound) WriteResponse(rw http.ResponseWriter, producer run
 // ExportUsersInternalServerErrorCode is the HTTP code returned for type ExportUsersInternalServerError
 const ExportUsersInternalServerErrorCode int = 500
 
-/*ExportUsersInternalServerError Internal Error
+/*
+ExportUsersInternalServerError Internal Error
 
 swagger:response exportUsersInternalServerError
 */

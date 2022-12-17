@@ -16,7 +16,8 @@ import (
 // GetActivityOKCode is the HTTP code returned for type GetActivityOK
 const GetActivityOKCode int = 200
 
-/*GetActivityOK OK
+/*
+GetActivityOK OK
 
 swagger:response getActivityOK
 */
@@ -60,7 +61,8 @@ func (o *GetActivityOK) WriteResponse(rw http.ResponseWriter, producer runtime.P
 // GetActivityUnauthorizedCode is the HTTP code returned for type GetActivityUnauthorized
 const GetActivityUnauthorizedCode int = 401
 
-/*GetActivityUnauthorized Unauthorized
+/*
+GetActivityUnauthorized Unauthorized
 
 swagger:response getActivityUnauthorized
 */
@@ -104,7 +106,8 @@ func (o *GetActivityUnauthorized) WriteResponse(rw http.ResponseWriter, producer
 // GetActivityNotFoundCode is the HTTP code returned for type GetActivityNotFound
 const GetActivityNotFoundCode int = 404
 
-/*GetActivityNotFound The specified resource was not found
+/*
+GetActivityNotFound The specified resource was not found
 
 swagger:response getActivityNotFound
 */
@@ -148,7 +151,8 @@ func (o *GetActivityNotFound) WriteResponse(rw http.ResponseWriter, producer run
 // GetActivityInternalServerErrorCode is the HTTP code returned for type GetActivityInternalServerError
 const GetActivityInternalServerErrorCode int = 500
 
-/*GetActivityInternalServerError Internal Error
+/*
+GetActivityInternalServerError Internal Error
 
 swagger:response getActivityInternalServerError
 */

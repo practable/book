@@ -57,7 +57,8 @@ func NewExportBookingsOK() *ExportBookingsOK {
 	return &ExportBookingsOK{}
 }
 
-/* ExportBookingsOK describes a response with status code 200, with default header values.
+/*
+ExportBookingsOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -117,7 +118,8 @@ func NewExportBookingsUnauthorized() *ExportBookingsUnauthorized {
 	return &ExportBookingsUnauthorized{}
 }
 
-/* ExportBookingsUnauthorized describes a response with status code 401, with default header values.
+/*
+ExportBookingsUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -179,7 +181,8 @@ func NewExportBookingsNotFound() *ExportBookingsNotFound {
 	return &ExportBookingsNotFound{}
 }
 
-/* ExportBookingsNotFound describes a response with status code 404, with default header values.
+/*
+ExportBookingsNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -241,7 +244,8 @@ func NewExportBookingsInternalServerError() *ExportBookingsInternalServerError {
 	return &ExportBookingsInternalServerError{}
 }
 
-/* ExportBookingsInternalServerError describes a response with status code 500, with default header values.
+/*
+ExportBookingsInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

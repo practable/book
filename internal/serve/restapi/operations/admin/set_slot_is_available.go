@@ -29,12 +29,12 @@ func NewSetSlotIsAvailable(ctx *middleware.Context, handler SetSlotIsAvailableHa
 	return &SetSlotIsAvailable{Context: ctx, Handler: handler}
 }
 
-/* SetSlotIsAvailable swagger:route PUT /admin/slots/{slot_name} admin setSlotIsAvailable
+/*
+	SetSlotIsAvailable swagger:route PUT /admin/slots/{slot_name} admin setSlotIsAvailable
 
-Set the availability of the slot
+# Set the availability of the slot
 
 Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
-
 */
 type SetSlotIsAvailable struct {
 	Context *middleware.Context

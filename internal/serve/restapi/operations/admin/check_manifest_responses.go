@@ -16,7 +16,8 @@ import (
 // CheckManifestNoContentCode is the HTTP code returned for type CheckManifestNoContent
 const CheckManifestNoContentCode int = 204
 
-/*CheckManifestNoContent OK
+/*
+CheckManifestNoContent OK
 
 swagger:response checkManifestNoContent
 */
@@ -40,7 +41,8 @@ func (o *CheckManifestNoContent) WriteResponse(rw http.ResponseWriter, producer 
 // CheckManifestUnauthorizedCode is the HTTP code returned for type CheckManifestUnauthorized
 const CheckManifestUnauthorizedCode int = 401
 
-/*CheckManifestUnauthorized Unauthorized
+/*
+CheckManifestUnauthorized Unauthorized
 
 swagger:response checkManifestUnauthorized
 */
@@ -84,7 +86,8 @@ func (o *CheckManifestUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 // CheckManifestNotFoundCode is the HTTP code returned for type CheckManifestNotFound
 const CheckManifestNotFoundCode int = 404
 
-/*CheckManifestNotFound The specified resource was not found
+/*
+CheckManifestNotFound The specified resource was not found
 
 swagger:response checkManifestNotFound
 */
@@ -128,7 +131,8 @@ func (o *CheckManifestNotFound) WriteResponse(rw http.ResponseWriter, producer r
 // CheckManifestInternalServerErrorCode is the HTTP code returned for type CheckManifestInternalServerError
 const CheckManifestInternalServerErrorCode int = 500
 
-/*CheckManifestInternalServerError InternalError
+/*
+CheckManifestInternalServerError InternalError
 
 swagger:response checkManifestInternalServerError
 */

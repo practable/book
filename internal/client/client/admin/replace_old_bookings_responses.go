@@ -57,7 +57,8 @@ func NewReplaceOldBookingsOK() *ReplaceOldBookingsOK {
 	return &ReplaceOldBookingsOK{}
 }
 
-/* ReplaceOldBookingsOK describes a response with status code 200, with default header values.
+/*
+ReplaceOldBookingsOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -119,7 +120,8 @@ func NewReplaceOldBookingsUnauthorized() *ReplaceOldBookingsUnauthorized {
 	return &ReplaceOldBookingsUnauthorized{}
 }
 
-/* ReplaceOldBookingsUnauthorized describes a response with status code 401, with default header values.
+/*
+ReplaceOldBookingsUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -181,7 +183,8 @@ func NewReplaceOldBookingsNotFound() *ReplaceOldBookingsNotFound {
 	return &ReplaceOldBookingsNotFound{}
 }
 
-/* ReplaceOldBookingsNotFound describes a response with status code 404, with default header values.
+/*
+ReplaceOldBookingsNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -243,7 +246,8 @@ func NewReplaceOldBookingsInternalServerError() *ReplaceOldBookingsInternalServe
 	return &ReplaceOldBookingsInternalServerError{}
 }
 
-/* ReplaceOldBookingsInternalServerError describes a response with status code 500, with default header values.
+/*
+ReplaceOldBookingsInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

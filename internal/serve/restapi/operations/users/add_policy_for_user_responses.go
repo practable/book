@@ -16,7 +16,8 @@ import (
 // AddPolicyForUserNoContentCode is the HTTP code returned for type AddPolicyForUserNoContent
 const AddPolicyForUserNoContentCode int = 204
 
-/*AddPolicyForUserNoContent OK - No Content
+/*
+AddPolicyForUserNoContent OK - No Content
 
 swagger:response addPolicyForUserNoContent
 */
@@ -40,7 +41,8 @@ func (o *AddPolicyForUserNoContent) WriteResponse(rw http.ResponseWriter, produc
 // AddPolicyForUserUnauthorizedCode is the HTTP code returned for type AddPolicyForUserUnauthorized
 const AddPolicyForUserUnauthorizedCode int = 401
 
-/*AddPolicyForUserUnauthorized Unauthorized
+/*
+AddPolicyForUserUnauthorized Unauthorized
 
 swagger:response addPolicyForUserUnauthorized
 */
@@ -84,7 +86,8 @@ func (o *AddPolicyForUserUnauthorized) WriteResponse(rw http.ResponseWriter, pro
 // AddPolicyForUserNotFoundCode is the HTTP code returned for type AddPolicyForUserNotFound
 const AddPolicyForUserNotFoundCode int = 404
 
-/*AddPolicyForUserNotFound The specified resource was not found
+/*
+AddPolicyForUserNotFound The specified resource was not found
 
 swagger:response addPolicyForUserNotFound
 */
@@ -128,7 +131,8 @@ func (o *AddPolicyForUserNotFound) WriteResponse(rw http.ResponseWriter, produce
 // AddPolicyForUserInternalServerErrorCode is the HTTP code returned for type AddPolicyForUserInternalServerError
 const AddPolicyForUserInternalServerErrorCode int = 500
 
-/*AddPolicyForUserInternalServerError Internal Error
+/*
+AddPolicyForUserInternalServerError Internal Error
 
 swagger:response addPolicyForUserInternalServerError
 */

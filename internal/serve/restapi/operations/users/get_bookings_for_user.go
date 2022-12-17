@@ -29,12 +29,12 @@ func NewGetBookingsForUser(ctx *middleware.Context, handler GetBookingsForUserHa
 	return &GetBookingsForUser{Context: ctx, Handler: handler}
 }
 
-/* GetBookingsForUser swagger:route GET /users/{user_name}/bookings users getBookingsForUser
+/*
+	GetBookingsForUser swagger:route GET /users/{user_name}/bookings users getBookingsForUser
 
-Get all current bookings for the user
+# Get all current bookings for the user
 
 Get all current bookings for the user. It's assumed that no pagination will be required due to likely policy limits being a couple of bookings per policy and users typically having only a couple of policies. No pagination may cause issues for admins that book hundreds or thousands slots on behalf of students, although it is likely such bookings would be automated so no need to support rapid update of a GUI, at least for now.
-
 */
 type GetBookingsForUser struct {
 	Context *middleware.Context

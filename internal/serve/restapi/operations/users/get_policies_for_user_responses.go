@@ -16,7 +16,8 @@ import (
 // GetPoliciesForUserOKCode is the HTTP code returned for type GetPoliciesForUserOK
 const GetPoliciesForUserOKCode int = 200
 
-/*GetPoliciesForUserOK OK
+/*
+GetPoliciesForUserOK OK
 
 swagger:response getPoliciesForUserOK
 */
@@ -63,7 +64,8 @@ func (o *GetPoliciesForUserOK) WriteResponse(rw http.ResponseWriter, producer ru
 // GetPoliciesForUserUnauthorizedCode is the HTTP code returned for type GetPoliciesForUserUnauthorized
 const GetPoliciesForUserUnauthorizedCode int = 401
 
-/*GetPoliciesForUserUnauthorized Unauthorized
+/*
+GetPoliciesForUserUnauthorized Unauthorized
 
 swagger:response getPoliciesForUserUnauthorized
 */
@@ -107,7 +109,8 @@ func (o *GetPoliciesForUserUnauthorized) WriteResponse(rw http.ResponseWriter, p
 // GetPoliciesForUserNotFoundCode is the HTTP code returned for type GetPoliciesForUserNotFound
 const GetPoliciesForUserNotFoundCode int = 404
 
-/*GetPoliciesForUserNotFound The specified resource was not found
+/*
+GetPoliciesForUserNotFound The specified resource was not found
 
 swagger:response getPoliciesForUserNotFound
 */
@@ -151,7 +154,8 @@ func (o *GetPoliciesForUserNotFound) WriteResponse(rw http.ResponseWriter, produ
 // GetPoliciesForUserInternalServerErrorCode is the HTTP code returned for type GetPoliciesForUserInternalServerError
 const GetPoliciesForUserInternalServerErrorCode int = 500
 
-/*GetPoliciesForUserInternalServerError Internal Error
+/*
+GetPoliciesForUserInternalServerError Internal Error
 
 swagger:response getPoliciesForUserInternalServerError
 */
