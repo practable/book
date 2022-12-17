@@ -560,6 +560,25 @@ func removeAllBookings(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 }
 
+func addBookings(t *testing.T) {
+	stoken, err := signedAdminToken()
+	assert.NoError(t, err)
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(bookings2JSON)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	b := getBookings(t)
+
+	fmt.Printf("BOOKINGS: %+v\n", b)
+
+}
+
 // TestManifestOK lets us know if our test manifest is correct
 func TestManifestOK(t *testing.T) {
 
@@ -741,6 +760,7 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, expectedUsers, exportedUsers)
 	resp.Body.Close()
+	//fmt.Println("USERS: " + string(body))
 }
 
 func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
@@ -1779,7 +1799,7 @@ func TestLockedToUser(t *testing.T) {
 	authAdmin := httptransport.APIKeyAuth("Authorization", "header", satoken)
 	timeout := 1 * time.Second
 
-	sutoken, err := signedUserToken()
+	sutoken, err := signedUserTokenFor("user-a") //to match bookings2JSON
 	assert.NoError(t, err)
 	authUser := httptransport.APIKeyAuth("Authorization", "header", sutoken)
 
@@ -1790,14 +1810,14 @@ func TestLockedToUser(t *testing.T) {
 
 	unlocked := func() {
 		loadTestManifest(t)
-		removeAllBookings(t)
+		addBookings(t)
 		setLock(t, false, "unlocked")
 		ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 		currentTime = &ct
 	}
 	locked := func() {
 		loadTestManifest(t)
-		removeAllBookings(t)
+		addBookings(t)
 		setLock(t, true, "locked")
 		ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 		currentTime = &ct
@@ -1806,6 +1826,37 @@ func TestLockedToUser(t *testing.T) {
 	getAvailability := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetAvailabilityParams().WithTimeout(timeout).WithPolicyName("p-a").WithSlotName("sl-a")
 		return bc.Users.GetAvailability(p, auth)
+	}
+
+	getBookingsForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+
+		// debug
+		p3 := admin.NewExportBookingsParams().WithTimeout(timeout)
+		status3, err := bc.Admin.ExportBookings(p3, authAdmin)
+		assert.NoError(t, err)
+		if err == nil {
+			fmt.Printf("BOOKINGS: %+v\n", status3.Payload)
+		}
+		p2 := admin.NewExportUsersParams().WithTimeout(timeout)
+		status2, _ := bc.Admin.ExportUsers(p2, authAdmin)
+
+		fmt.Printf("USERS: %+v\n", status2.Payload)
+
+		// export users (now there are bookings we will have users)
+		client := &http.Client{}
+		req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/users", nil)
+		assert.NoError(t, err)
+		req.Header.Add("Authorization", satoken)
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, resp.StatusCode) //should be ok!
+		body, err := ioutil.ReadAll(resp.Body)
+		fmt.Println(string(body))
+		resp.Body.Close()
+
+		p := users.NewGetBookingsForUserParams().WithTimeout(timeout).WithUserName("user-a")
+		return bc.Users.GetBookingsForUser(p, auth)
+
 	}
 
 	getDescription := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
@@ -1823,8 +1874,8 @@ func TestLockedToUser(t *testing.T) {
 	makeBooking := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewMakeBookingParams().
 			WithTimeout(timeout).
-			WithPolicyName("p-a").
-			WithSlotName("sl-a").
+			WithPolicyName("p-b").
+			WithSlotName("sl-b").
 			WithUserName("someuser").
 			WithFrom(strfmt.DateTime(time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC))).
 			WithTo(strfmt.DateTime(time.Date(2022, 11, 5, 1, 5, 0, 0, time.UTC)))
@@ -1858,6 +1909,10 @@ func TestLockedToUser(t *testing.T) {
 		"GetStoreStatusUserLockedUserAllowed":    {locked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
 		"GetStoreStatusUserUnlockedAdminAllowed": {unlocked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
 		"GetStoreStatusUserUnlockedUserAllowed":  {unlocked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
+		"GetBookingsForUserLockedAdminAllowed":   {locked, getBookingsForUser, authAdmin, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
+		"GetBookingsForUserLockedUserDenied":     {locked, getBookingsForUser, authUser, false, `[GET /users/{user_name}/bookings][401] getBookingsForUserUnauthorized`},
+		"GetBookingsForUserUnlockedAdminAllowed": {unlocked, getBookingsForUser, authAdmin, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
+		"GetBookingsForUserUnlockedUserAllowed":  {unlocked, getBookingsForUser, authUser, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
 	}
 
 	for name, tc := range tests {

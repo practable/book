@@ -445,7 +445,7 @@ func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBooking
 		// check username against token, unless admin (admin can check on behalf of users)
 		if (!isAdmin) && (claims.Subject != params.UserName) {
 			c := "401"
-			m := "user_name in path does not match subject in token"
+			m := "user_name in path " + params.UserName + " does not match subject " + claims.Subject + " in token"
 			return users.NewGetBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -453,7 +453,7 @@ func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBooking
 
 		if err != nil {
 			c := "404"
-			m := err.Error()
+			m := "error retrieving bookings for user " + params.UserName + ": " + err.Error()
 			return users.NewGetBookingsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
