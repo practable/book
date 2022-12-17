@@ -1437,7 +1437,7 @@ func TestGetCancelBookingsGetOldBookings(t *testing.T) {
 	req.Header.Add("Authorization", sutoken)
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 404, resp.StatusCode) //not found means deleted
+	assert.Equal(t, 404, resp.StatusCode) //NotFound if successful deletion
 
 	// get bookings again
 	client = &http.Client{}
@@ -1823,6 +1823,23 @@ func TestLockedToUser(t *testing.T) {
 		currentTime = &ct
 	}
 
+	cancelBooking := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		sutoken, err := signedUserTokenFor("user-a")
+		client := &http.Client{}
+		req, err := http.NewRequest("DELETE", cfg.Host+"/api/v1/users/user-a/bookings/bk-0", nil)
+		assert.NoError(t, err)
+		req.Header.Add("Authorization", sutoken)
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 404, resp.StatusCode) //NotFound if successful deletion
+		body, err := ioutil.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		return string(body), nil
+		//p := users.NewCancelBookingParams().
+		//	WithTimeout(timeout).
+		//	WithBookingName("bk-0")
+		//return nil, bc.Users.CancelBooking(p, auth) //only returns error codes
+	}
 	getAvailability := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetAvailabilityParams().WithTimeout(timeout).WithPolicyName("p-a").WithSlotName("sl-a")
 		return bc.Users.GetAvailability(p, auth)
@@ -1872,6 +1889,7 @@ func TestLockedToUser(t *testing.T) {
 		p := users.NewGetStoreStatusUserParams().WithTimeout(timeout)
 		return bc.Users.GetStoreStatusUser(p, auth)
 	}
+
 	makeBooking := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewMakeBookingParams().
 			WithTimeout(timeout).
@@ -1902,10 +1920,10 @@ func TestLockedToUser(t *testing.T) {
 		"GetAvailabilityLockedUserDenied":        {locked, getAvailability, authUser, false, `[GET /policies/{policy_name}/slots/{slot_name}][401] getAvailabilityUnauthorized`},
 		"GetAvailabilityUnlockedAdminAllowed":    {unlocked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
 		"GetAvailabilityUnlockedUserAllowed":     {unlocked, getAvailability, authUser, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"makeBookingLockedAdminAllowed":          {locked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"makeBookingLockedUserDenied":            {locked, makeBooking, authUser, false, `[POST /policies/{policy_name}/slots/{slot_name}][401] makeBookingUnauthorized`},
-		"makeBookingUnlockedAdminAllowed":        {unlocked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"makeBookingUnlockedUserAllowed":         {unlocked, makeBooking, authUser, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"MakeBookingLockedAdminAllowed":          {locked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"MakeBookingLockedUserDenied":            {locked, makeBooking, authUser, false, `[POST /policies/{policy_name}/slots/{slot_name}][401] makeBookingUnauthorized`},
+		"MakeBookingUnlockedAdminAllowed":        {unlocked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"MakeBookingUnlockedUserAllowed":         {unlocked, makeBooking, authUser, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
 		"GetStoreStatusUserLockedAdminAllowed":   {locked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
 		"GetStoreStatusUserLockedUserAllowed":    {locked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
 		"GetStoreStatusUserUnlockedAdminAllowed": {unlocked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
@@ -1914,6 +1932,10 @@ func TestLockedToUser(t *testing.T) {
 		"GetBookingsForUserLockedUserDenied":     {locked, getBookingsForUser, authUser, false, `[GET /users/{user_name}/bookings][401] getBookingsForUserUnauthorized`},
 		"GetBookingsForUserUnlockedAdminAllowed": {unlocked, getBookingsForUser, authAdmin, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
 		"GetBookingsForUserUnlockedUserAllowed":  {unlocked, getBookingsForUser, authUser, true, `[GET /users/{user_name}/bookings][200] getBookingsForUserOK`},
+		"CancelBookingLockedAdminAllowed":        {locked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][204] cancelBookingNoContent`},
+		"CancelBookingLockedUserDenied":          {locked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][401] cancelBookingUnauthorized`},
+		"CancelBookingUnlockedAdminAllowed":      {unlocked, cancelBooking, authAdmin, false, `[DELETE /users/{user_name}/bookings/{booking_name}][204] cancelBookingNoContent`},
+		"CancelBookingUnlockedUserAllowed":       {unlocked, cancelBooking, authUser, false, `[DELETE /users/{user_name}/bookings/{booking_name}][204] cancelBookingNoContent`},
 	}
 
 	for name, tc := range tests {
@@ -1948,6 +1970,7 @@ func TestLockedToUser(t *testing.T) {
 					t.Log("want: " + tc.want)
 					t.Log("got:  " + s)
 					fmt.Printf("%+v %+v", got, err)
+
 				}
 			}
 		})

@@ -487,6 +487,7 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 
 		isAdmin, claims, err := isAdminOrUser(principal)
 
+		//fmt.Printf("CancelBooking %s by %s isAdmin?%v isLocked?%v\n", params.BookingName, params.UserName, isAdmin, config.Store.Locked)
 		if err != nil {
 			c := "401"
 			m := err.Error()
@@ -496,13 +497,13 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 		if config.Store.Locked && !isAdmin {
 			c := "401"
 			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.UserName == "" {
-			c := "401"
+			c := "404"
 			m := "no user_name in path"
-			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewCancelBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		// check username against token, if not admin (admin can cancel on behalf of users)
@@ -513,14 +514,16 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 		}
 
 		if params.BookingName == "" {
-			c := "401"
+			c := "404"
 			m := "no booking_name in path"
-			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewCancelBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		b, err := config.Store.GetBooking(params.BookingName)
 		if err != nil {
-			return users.NewCancelBookingNotFound()
+			c := "404"
+			m := "not found"
+			return users.NewCancelBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		err = config.Store.CancelBooking(b)
@@ -531,8 +534,10 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 			return users.NewCancelBookingInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		// NotFound indicates the booking has been cancelled as desired
-		return users.NewCancelBookingNotFound()
+		// Use NotFound to indicate successful deletion. Repeat calls will return NotFound
+		c := "404"
+		m := "cancelled"
+		return users.NewCancelBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 
 	}
 }
