@@ -20,6 +20,8 @@ This package implements bookings with arbitrary durations
 
 Use same booking page link format as at present, except when using this booking system, GET instead of a token, a file with a list of policies that apply to that link (e.g. everyone would be a list of the policies for all the different experiments, that don't conflict with class usages, whereas an superadmin would have all policies, including those for exclusive use of classes)
 
+In client side javascript, prepare calendar info e.g. .ics for their student outlook account, so students can take of reminding themselves automatically, but without us having to store identifying info like emails
+
 
 ### Implementation limitations
 - booking status e.g. cancelled, unfulfilled, started are ignored in the Replace(Old)Bookings methods

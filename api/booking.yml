@@ -1187,6 +1187,8 @@ definitions:
         type: boolean
       grace_period:
         type: string
+      grace_penalty:
+        type: string
       max_bookings:
         type: integer
       max_duration:
@@ -1227,6 +1229,8 @@ definitions:
       enforce_max_usage:
         type: boolean
       grace_period:
+        type: string
+      grace_penalty:
         type: string
       max_bookings:
         type: integer

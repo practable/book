@@ -44,7 +44,12 @@ type Activity struct {
 // Booking represents a promise to access an equipment that
 // provided by the pool referenced in the resource of the slot
 type Booking struct {
+	// Cancelled indicates if booking cancelled
 	Cancelled bool `json:"cancelled" yaml:"cancelled"`
+	// CancelledAt represents when the booking was cancelled
+	CancelledAt time.Time `json:"cancelled_at" yaml:"cancelled_at"`
+	// CancelledBy indicates who cancelled e.g. auto-grace-period, admin or user
+	CancelledBy string `json:"cancelled_by" yaml:"cancelled_by"`
 	// booking unique reference
 	Name string `json:"name" yaml:"name"`
 	// reference to policy it was booked under
@@ -52,10 +57,19 @@ type Booking struct {
 	// slot name
 	Slot    string `json:"slot" yaml:"slot"`
 	Started bool   `json:"started" yaml:"started"`
+	//StartedAt is for reporting purposes, do not use to calculate usage
+	StartedAt string `json:"started_at", yaml:"started_at"`
 	//when the resource was unavailable
 	Unfulfilled bool `json:"unfulfilled" yaml:"unfulfilled"`
-	// user pseudo id
-	User string            `json:"user" yaml:"user"`
+	// User represents user's name
+	User string `json:"user" yaml:"user"`
+
+	// UsageCharged represents how much usage was charged
+	// This is updated on cancellation and is for convenience of admin looking at exports/reports
+	// Replace(Old)Bookings should calculate the usage to be charged based on the policy
+	// That avoids those editing bookings to upload from performing this calculation manually
+	UsageCharged time.Duration `json:"usage_charged" yaml:"usage_charged"`
+
 	When interval.Interval `json:"when" yaml:"when"`
 }
 
@@ -103,16 +117,21 @@ type Policy struct {
 	DisplayGuides      []string                `json:"display_guides"  yaml:"display_guides"`
 	DisplayGuidesMap   map[string]DisplayGuide `json:"-"  yaml:"-"` //local copy so that exported policies are complete
 	EnforceBookAhead   bool                    `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
+	EnforceGracePeriod bool                    `json:"enforce_grace_period"  yaml:"enforce_grace_period"`
 	EnforceMaxBookings bool                    `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
 	EnforceMaxDuration bool                    `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
 	EnforceMinDuration bool                    `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
 	EnforceMaxUsage    bool                    `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
-	MaxBookings        int64                   `json:"max_bookings"  yaml:"max_bookings"`
-	MaxDuration        time.Duration           `json:"max_duration"  yaml:"max_duration"`
-	MinDuration        time.Duration           `json:"min_duration"  yaml:"min_duration"`
-	MaxUsage           time.Duration           `json:"max_usage"  yaml:"max_usage"`
-	Slots              []string                `json:"slots" yaml:"slots"`
-	SlotMap            map[string]bool         `json:"-" yaml:"-"` // internal usage, do not populate from file
+	// GracePeriod is how long after When.Start that the booking will be kept
+	GracePeriod time.Duration `json:"grace_period" yaml:"grace_period"`
+	// GracePenalty represents the time lost to finding a new user after auto-cancellation
+	GracePenalty time.Duration   `json:"grace_penalty" yaml:"grace_penalty"`
+	MaxBookings  int64           `json:"max_bookings"  yaml:"max_bookings"`
+	MaxDuration  time.Duration   `json:"max_duration"  yaml:"max_duration"`
+	MinDuration  time.Duration   `json:"min_duration"  yaml:"min_duration"`
+	MaxUsage     time.Duration   `json:"max_usage"  yaml:"max_usage"`
+	Slots        []string        `json:"slots" yaml:"slots"`
+	SlotMap      map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
 }
 
 type PolicyStatus struct {
@@ -248,7 +267,7 @@ type StoreStatusUser struct {
 // are multiple access points that this would be needed.
 // Streams are typically accessed via POST with bearer token to an access API
 type Stream struct {
-
+	Audience string `json:"audience" yaml:"audience"`
 	// ConnectionType is whether for session or shell e.g. session
 	ConnectionType string `json:"connection_type"  yaml:"connection_type"`
 
@@ -2008,6 +2027,48 @@ func availability(bk []diary.Booking, start, end time.Time) []interval.Interval 
 	}
 
 	return fa
+
+}
+
+// calculateUsage applies policy to booking to work out the usage that should be charged
+func calculateUsage(b Booking, p Policy) (time.Duration, error) {
+
+	// The booking attracts different usage tariffs depending on if/when started and cancelled:
+	// cancelled before start, or unfulfilled - no usage
+	// cancelled after start but before grace period - grace period
+	// cancelled at/after end of grace period due to no-show (not started) - grace_period + grace_penalty
+	// cancelled after grace period, but booking started - from booking start to time cancelled
+
+	if !b.Cancelled {
+		if b.Unfulfilled {
+			return time.Duration(0), nil
+		}
+		return b.When.End.Sub(b.When.Start), nil
+	}
+
+	if b.CancelledAt.Before(b.When.Start) {
+		return time.Duration(0), nil
+	}
+
+	if b.CancelledAt.After(b.When.End) {
+		return b.When.End.Sub(b.When.Start), nil
+	}
+
+	if p.EnforceGracePeriod {
+
+		if b.CancelledAt.Before(b.When.Start.Add(p.GracePeriod)) {
+			return p.GracePeriod, nil
+		}
+
+		if !(b.Started) { //assume autocancellation worked, don't charge user for our mistake if it didn't
+			// so don't check whether rest of data is consistent with autocancellation, just leave
+			// that data for reporting purposes not calculation purposes
+			return p.GracePeriod + p.GracePenalty, nil
+		}
+
+	}
+
+	return b.CancelledAt.Sub(b.When.Start), nil
 
 }
 

@@ -2084,3 +2084,117 @@ func TestGetBooking(t *testing.T) {
 	assert.Error(t, err)
 
 }
+
+func TestCalculateUsage(t *testing.T) {
+
+	tEarly := time.Date(2022, 11, 4, 0, 0, 0, 0, time.UTC)
+	tStart := time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC)
+	tDuringGrace := time.Date(2022, 11, 5, 1, 3, 0, 0, time.UTC)
+	tAutoGrace := time.Date(2022, 11, 5, 1, 5, 1, 0, time.UTC) //juuuust after the grace period to avoid equal_or_greater than comparison
+	tAfterGrace := time.Date(2022, 11, 5, 1, 22, 0, 0, time.UTC)
+	tAfterBooking := time.Date(2022, 11, 7, 1, 22, 0, 0, time.UTC)
+	tEnd := time.Date(2022, 11, 5, 1, 30, 0, 0, time.UTC)
+	w := interval.Interval{
+		Start: tStart,
+		End:   tEnd,
+	}
+
+	nograce := Policy{}
+	grace := Policy{
+		EnforceGracePeriod: true,
+		GracePeriod:        time.Duration(5 * time.Minute),
+		// make different to GracePeriod for checking correct member of struct is used
+		GracePenalty: time.Duration(6 * time.Minute),
+	}
+
+	cancelledEarly := Booking{
+		Cancelled:   true,
+		CancelledAt: tEarly,
+		When:        w,
+	}
+
+	// shouldn't be allowed to set this, but check we handle it correctly and charge for full usage
+	cancelledLate := Booking{
+		Cancelled:   true,
+		CancelledAt: tAfterBooking,
+		When:        w,
+	}
+
+	completed := Booking{
+		Started: true,
+		When:    w,
+	}
+
+	unfulfilled := Booking{
+		// check that we do not charge for unfulfilled bookings that are incorrectly set as started
+		Started:     true,
+		Unfulfilled: true,
+		When:        w,
+	}
+
+	noShow := Booking{
+		Cancelled:   true,
+		CancelledAt: tAutoGrace,
+		When:        w,
+	}
+
+	cancelledDuringGraceUnstarted := Booking{
+		Cancelled:   true,
+		CancelledAt: tDuringGrace,
+		When:        w,
+	}
+	cancelledDuringGraceStarted := Booking{
+		Cancelled:   true,
+		CancelledAt: tDuringGrace,
+		Started:     true,
+		When:        w,
+	}
+	cancelledAfterGraceUnstarted := Booking{
+		Cancelled:   true,
+		CancelledAt: tAfterGrace,
+		When:        w,
+	}
+	cancelledAfterGraceStarted := Booking{
+		Cancelled:   true,
+		CancelledAt: tAfterGrace,
+		Started:     true,
+		When:        w,
+	}
+
+	tests := map[string]struct {
+		booking Booking
+		policy  Policy
+		err     error
+		minutes int
+	}{
+		"grace:completed":                       {completed, grace, nil, 30},
+		"grace:unfulfilled":                     {unfulfilled, grace, nil, 0},
+		"grace:cancelledEarly":                  {cancelledEarly, grace, nil, 0},
+		"grace:cancelledLate":                   {cancelledLate, grace, nil, 30},
+		"grace:noShow":                          {noShow, grace, nil, 11}, //penalty applied
+		"grace:cancelledDuringGraceUnstarted":   {cancelledDuringGraceUnstarted, grace, nil, 5},
+		"grace:cancelledDuringGraceStarted":     {cancelledDuringGraceStarted, grace, nil, 5},
+		"grace:cancelledAfterGraceUnstarted":    {cancelledAfterGraceUnstarted, grace, nil, 11}, //auto-cancel will have happened
+		"grace:cancelledAfterGraceStarted":      {cancelledAfterGraceStarted, grace, nil, 22},   //session ran for a while then user cancelled
+		"nograce:completed":                     {completed, nograce, nil, 30},
+		"nograce:unfulfilled":                   {unfulfilled, nograce, nil, 0},
+		"nograce:cancelledEarly":                {cancelledEarly, nograce, nil, 0},
+		"nograce:cancelledLate":                 {cancelledLate, nograce, nil, 30},
+		"nograce:cancelledDuringGraceUnstarted": {cancelledDuringGraceUnstarted, nograce, nil, 3},
+		"nograce:cancelledDuringGraceStarted":   {cancelledDuringGraceStarted, nograce, nil, 3},
+		"nograce:cancelledAfterGraceUnstarted":  {cancelledAfterGraceUnstarted, nograce, nil, 22}, //no grace, no auto-cancel
+		"nograce:cancelledAfterGraceStarted":    {cancelledAfterGraceStarted, nograce, nil, 22},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+
+			usage, err := calculateUsage(tc.booking, tc.policy)
+
+			want := time.Duration(time.Duration(tc.minutes) * time.Minute)
+			assert.Equal(t, tc.err, err)
+			assert.Equal(t, want, usage)
+		})
+	}
+
+}
