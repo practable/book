@@ -947,6 +947,14 @@ definitions:
       cancelled:
         description: Has the booking been cancelled?
         type: boolean
+      cancelled_at:
+        description: time the booking was cancelled
+        type: string
+        format: date-time
+      cancelled_by:
+        description: who cancelled the booking, e.g. auto-grace-expired, admin or user
+        example: auto-grace-expired
+        type: string
       name:
         description: unique name of the booking
         type: string
@@ -959,12 +967,19 @@ definitions:
       started:
         description: has the booking been started by the user?
         type: boolean
+      started_at:
+        description: time the booking was first started by the user
+        type: string
+        format: date-time
       unfulfilled:
         description: was the resource unavailable
         type: boolean
       user:
         description: name of the user who made the booking
         type: string
+      usage_charged:
+        description: how much usage was actually charged for this booking
+        type:string
       when:
         $ref: '#/definitions/Interval'
     required:

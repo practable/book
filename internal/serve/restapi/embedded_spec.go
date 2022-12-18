@@ -1320,6 +1320,16 @@ func init() {
           "description": "Has the booking been cancelled?",
           "type": "boolean"
         },
+        "cancelled_at": {
+          "description": "time the booking was cancelled",
+          "type": "string",
+          "format": "date-time"
+        },
+        "cancelled_by": {
+          "description": "who cancelled the booking, e.g. auto-grace-expired, admin or user",
+          "type": "string",
+          "example": "auto-grace-expired"
+        },
         "name": {
           "description": "unique name of the booking",
           "type": "string"
@@ -1335,6 +1345,11 @@ func init() {
         "started": {
           "description": "has the booking been started by the user?",
           "type": "boolean"
+        },
+        "started_at": {
+          "description": "time the booking was first started by the user",
+          "type": "string",
+          "format": "date-time"
         },
         "unfulfilled": {
           "description": "was the resource unavailable",
@@ -3591,6 +3606,16 @@ func init() {
           "description": "Has the booking been cancelled?",
           "type": "boolean"
         },
+        "cancelled_at": {
+          "description": "time the booking was cancelled",
+          "type": "string",
+          "format": "date-time"
+        },
+        "cancelled_by": {
+          "description": "who cancelled the booking, e.g. auto-grace-expired, admin or user",
+          "type": "string",
+          "example": "auto-grace-expired"
+        },
         "name": {
           "description": "unique name of the booking",
           "type": "string"
@@ -3606,6 +3631,11 @@ func init() {
         "started": {
           "description": "has the booking been started by the user?",
           "type": "boolean"
+        },
+        "started_at": {
+          "description": "time the booking was first started by the user",
+          "type": "string",
+          "format": "date-time"
         },
         "unfulfilled": {
           "description": "was the resource unavailable",

@@ -24,6 +24,14 @@ type Booking struct {
 	// Has the booking been cancelled?
 	Cancelled bool `json:"cancelled,omitempty"`
 
+	// time the booking was cancelled
+	// Format: date-time
+	CancelledAt strfmt.DateTime `json:"cancelled_at,omitempty"`
+
+	// who cancelled the booking, e.g. auto-grace-expired, admin or user
+	// Example: auto-grace-expired
+	CancelledBy string `json:"cancelled_by,omitempty"`
+
 	// unique name of the booking
 	// Required: true
 	Name *string `json:"name"`
@@ -38,6 +46,10 @@ type Booking struct {
 
 	// has the booking been started by the user?
 	Started bool `json:"started,omitempty"`
+
+	// time the booking was first started by the user
+	// Format: date-time
+	StartedAt strfmt.DateTime `json:"started_at,omitempty"`
 
 	// was the resource unavailable
 	Unfulfilled bool `json:"unfulfilled,omitempty"`
@@ -55,6 +67,10 @@ type Booking struct {
 func (m *Booking) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateCancelledAt(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateName(formats); err != nil {
 		res = append(res, err)
 	}
@@ -64,6 +80,10 @@ func (m *Booking) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateSlot(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateStartedAt(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -78,6 +98,18 @@ func (m *Booking) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *Booking) validateCancelledAt(formats strfmt.Registry) error {
+	if swag.IsZero(m.CancelledAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("cancelled_at", "body", "date-time", m.CancelledAt.String(), formats); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -102,6 +134,18 @@ func (m *Booking) validatePolicy(formats strfmt.Registry) error {
 func (m *Booking) validateSlot(formats strfmt.Registry) error {
 
 	if err := validate.Required("slot", "body", m.Slot); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Booking) validateStartedAt(formats strfmt.Registry) error {
+	if swag.IsZero(m.StartedAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("started_at", "body", "date-time", m.StartedAt.String(), formats); err != nil {
 		return err
 	}
 
