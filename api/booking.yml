@@ -979,7 +979,7 @@ definitions:
         type: string
       usage_charged:
         description: how much usage was actually charged for this booking
-        type:string
+        type: string
       when:
         $ref: '#/definitions/Interval'
     required:

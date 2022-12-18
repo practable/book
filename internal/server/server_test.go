@@ -381,6 +381,8 @@ var bookingsJSON = []byte(`[{"name":"bk-0","cancelled":false,"policy":"p-a","slo
 
 var bookings2JSON = []byte(`[{"cancelled":false,"name":"bk-0","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-a","when":{"start":"2022-11-05T00:10:00Z","end":"2022-11-05T00:15:00Z"}},{"cancelled":false,"name":"bk-1","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-b","when":{"start":"2022-11-05T00:20:00Z","end":"2022-11-05T00:30:00Z"}},{"cancelled":false,"name":"bk-2","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-c","when":{"start":"2022-11-05T00:35:00Z","end":"2022-11-05T00:40:00Z"}},{"cancelled":false,"name":"bk-3","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-d","when":{"start":"2022-11-05T00:45:00Z","end":"2022-11-05T00:50:00Z"}},{"cancelled":false,"name":"bk-4","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-e","when":{"start":"2022-11-05T00:55:00Z","end":"2022-11-05T01:00:00Z"}},{"cancelled":false,"name":"bk-5","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-f","when":{"start":"2022-11-05T01:05:00Z","end":"2022-11-05T01:10:00Z"}},{"cancelled":false,"name":"bk-6","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-g","when":{"start":"2022-11-05T01:15:00Z","end":"2022-11-05T01:20:00Z"}},{"cancelled":false,"name":"bk-7","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-h","when":{"start":"2022-11-05T01:25:00Z","end":"2022-11-05T01:30:00Z"}}]`)
 
+var bookingsGraceJSON = []byte(`[{"cancelled":false,"name":"bk-0","policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"user-a","when":{"start":"2022-11-05T00:01:00Z","end":"2022-11-05T00:05:00Z"}},{"cancelled":false,"name":"bk-1","policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"user-b","when":{"start":"2022-11-05T00:06:00Z","end":"2022-11-05T00:10:00Z"}},{"cancelled":false,"name":"bk-2","policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"user-c","when":{"start":"2022-11-05T00:11:00Z","end":"2022-11-05T00:15:00Z"}}]`)
+
 var bookings2YAML = []byte(`---
 - cancelled: false
   name: bk-0
@@ -674,10 +676,26 @@ func getBookings(t *testing.T) cmodels.Bookings {
 	resp.Body.Close()
 	return exportedBookings
 }
-
+func getOldBookings(t *testing.T) cmodels.Bookings {
+	stoken, err := signedAdminToken()
+	assert.NoError(t, err)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/oldbookings", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	var exportedBookings cmodels.Bookings
+	err = yaml.Unmarshal(body, &exportedBookings)
+	assert.NoError(t, err)
+	resp.Body.Close()
+	return exportedBookings
+}
 func printBookings(t *testing.T, bm cmodels.Bookings) {
 	for k, v := range bm {
-		fmt.Print(strconv.Itoa(k) + " : " + *v.User + " " + *v.Policy + " " + *v.Slot + " " + v.When.Start.String() + " " + v.When.End.String() + "\n")
+		fmt.Print(strconv.Itoa(k) + " : " + *v.User + " " + *v.Policy + " " + *v.Slot + " " + v.When.Start.String() + " " + v.When.End.String() + " " + fmt.Sprintf(" cancelled: %t  started: %t \n", v.Cancelled, v.Started))
 	}
 
 }
@@ -2215,21 +2233,55 @@ func TestAutoCancellation(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode)
 	resp.Body.Close()
 
-	/*authAdmin := httptransport.APIKeyAuth("Authorization", "header", satoken)
-	timeout := 1 * time.Second
+	removeAllBookings(t)
 
-	sutoken, err := signedUserTokenFor("user-a") //to match bookings2JSON
+	b := getBookings(t)
+	printBookings(t, b)
+
 	assert.NoError(t, err)
-	authUser := httptransport.APIKeyAuth("Authorization", "header", sutoken)
-
-	var bookings cmodels.Bookings
-
-	err = yaml.Unmarshal(bookingsYAML, &bookings)
+	client = &http.Client{}
+	bodyReader = bytes.NewReader(bookingsGraceJSON)
+	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
 	assert.NoError(t, err)
-	*/
-	addBookings(t)
-	setLock(t, false, "unlocked")
-	ct = time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	req.Header.Add("Authorization", satoken)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+
+	ct = time.Date(2022, 11, 5, 0, 4, 0, 0, time.UTC)
 	currentTime = &ct
+
+	time.Sleep(50 * time.Millisecond) //let the GracePeriod Check expire
+
+	b = getBookings(t)
+	if debug {
+		printBookings(t, b)
+	}
+	ob := getOldBookings(t)
+	if debug {
+		printBookings(t, ob)
+	}
+	obn := make(map[string]bool)
+
+	for _, obk := range ob {
+		obn[*obk.Name] = true
+		assert.True(t, obk.Cancelled) //only cancelled booking can be an old booking here)
+
+	}
+
+	bn := make(map[string]bool)
+
+	for _, bk := range b {
+		bn[*bk.Name] = true
+
+	}
+
+	eob := map[string]bool{"bk-0": true}
+
+	assert.Equal(t, eob, obn)
+
+	eb := map[string]bool{"bk-1": true, "bk-2": true}
+	assert.Equal(t, eb, bn)
 
 }

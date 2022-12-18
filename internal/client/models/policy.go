@@ -47,6 +47,9 @@ type Policy struct {
 	// enforce min duration
 	EnforceMinDuration bool `json:"enforce_min_duration,omitempty"`
 
+	// grace penalty
+	GracePenalty string `json:"grace_penalty,omitempty"`
+
 	// grace period
 	GracePeriod string `json:"grace_period,omitempty"`
 

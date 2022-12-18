@@ -15,16 +15,28 @@ type Checker struct {
 	Times       []time.Time
 	Values      map[time.Time][]string
 	Now         func() time.Time
+	Name        string
 }
 
 func New() *Checker {
-
+	log.Debugf("New Checker")
 	return &Checker{
 		&sync.Mutex{},
 		[]time.Time{},
 		make(map[time.Time][]string),
 		func() time.Time { return time.Now() },
+		"New",
 	}
+}
+
+func (c *Checker) Clean() {
+	c.Times = []time.Time{}
+	c.Values = make(map[time.Time][]string)
+}
+
+func (c *Checker) WithName(name string) *Checker {
+	c.Name = name
+	return c
 }
 
 func (c *Checker) Run(ctx context.Context, checkEvery time.Duration, expired chan []string) {
@@ -42,6 +54,7 @@ func (c *Checker) Run(ctx context.Context, checkEvery time.Duration, expired cha
 
 				v := c.GetExpired()
 				if len(v) > 0 {
+					log.Infof("Expired %d bookings", len(v))
 					expired <- v
 				}
 			}
@@ -55,9 +68,10 @@ func (c *Checker) WithNow(now func() time.Time) *Checker {
 }
 
 func (c *Checker) Push(t time.Time, v string) error {
+	log.Debugf("awaiting lock to add booking %s to cancellation check list", v)
 	c.Lock()
 	defer c.Unlock()
-
+	log.Debugf("adding booking %s to cancellation check list", v)
 	// time must be in the future
 	if t.Before(c.Now()) {
 		return errors.New("time is in the past")
@@ -65,6 +79,7 @@ func (c *Checker) Push(t time.Time, v string) error {
 
 	//check if we already have this time?
 	if _, ok := c.Values[t]; !ok {
+		log.Debugf("checker new time")
 		c.Times = insertSorted(c.Times, t)
 		c.Values[t] = []string{v}
 	} else {
@@ -72,7 +87,7 @@ func (c *Checker) Push(t time.Time, v string) error {
 		values = append(values, v)
 		c.Values[t] = values
 	}
-
+	log.Debugf("Checker(%s) has %d times and %d values", c.Name, len(c.Times), len(c.Values))
 	return nil
 }
 
@@ -81,6 +96,8 @@ func (c *Checker) GetExpired() []string {
 	c.Lock()
 	defer c.Unlock()
 
+	log.Debugf("Checker(%s) grace checking %d bookings", c.Name, len(c.Times))
+
 	expired := []string{}
 	toDelete := []time.Time{}
 
@@ -88,6 +105,7 @@ func (c *Checker) GetExpired() []string {
 
 	for idx, t := range c.Times {
 		if t.Before(c.Now()) {
+			log.Debugf("checker: index %d is expired at time %s", idx, c.Now())
 			expiredIdx = idx
 			if values, ok := c.Values[t]; ok {
 				for _, v := range values {
@@ -95,6 +113,10 @@ func (c *Checker) GetExpired() []string {
 				}
 				toDelete = append(toDelete, t)
 			}
+		} else {
+
+			log.Debugf("checker: index %d is ok at time %s", idx, c.Now())
+
 		}
 	}
 

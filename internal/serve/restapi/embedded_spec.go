@@ -1355,6 +1355,10 @@ func init() {
           "description": "was the resource unavailable",
           "type": "boolean"
         },
+        "usage_charged": {
+          "description": "how much usage was actually charged for this booking",
+          "type": "string"
+        },
         "user": {
           "description": "name of the user who made the booking",
           "type": "string"
@@ -1639,6 +1643,9 @@ func init() {
         "enforce_min_duration": {
           "type": "boolean"
         },
+        "grace_penalty": {
+          "type": "string"
+        },
         "grace_period": {
           "type": "string"
         },
@@ -1698,6 +1705,9 @@ func init() {
         },
         "enforce_min_duration": {
           "type": "boolean"
+        },
+        "grace_penalty": {
+          "type": "string"
         },
         "grace_period": {
           "type": "string"
@@ -3641,6 +3651,10 @@ func init() {
           "description": "was the resource unavailable",
           "type": "boolean"
         },
+        "usage_charged": {
+          "description": "how much usage was actually charged for this booking",
+          "type": "string"
+        },
         "user": {
           "description": "name of the user who made the booking",
           "type": "string"
@@ -3925,6 +3939,9 @@ func init() {
         "enforce_min_duration": {
           "type": "boolean"
         },
+        "grace_penalty": {
+          "type": "string"
+        },
         "grace_period": {
           "type": "string"
         },
@@ -3984,6 +4001,9 @@ func init() {
         },
         "enforce_min_duration": {
           "type": "boolean"
+        },
+        "grace_penalty": {
+          "type": "string"
         },
         "grace_period": {
           "type": "string"

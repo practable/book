@@ -178,15 +178,32 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 			return store.Manifest{}, err
 		}
 
+		var gpd, gpy time.Duration
+
+		if m.GracePeriod != "" {
+			gpd, err = time.ParseDuration(m.GracePeriod)
+			if err != nil {
+				return store.Manifest{}, err
+			}
+		}
+		if m.GracePenalty != "" {
+			gpy, err = time.ParseDuration(m.GracePenalty)
+			if err != nil {
+				return store.Manifest{}, err
+			}
+		}
 		pm[k] = store.Policy{
 			BookAhead:          ba,
 			Description:        *(m.Description),
 			DisplayGuides:      m.DisplayGuides,
 			EnforceBookAhead:   m.EnforceBookAhead,
+			EnforceGracePeriod: m.EnforceGracePeriod,
 			EnforceMaxBookings: m.EnforceMaxBookings,
 			EnforceMaxDuration: m.EnforceMaxDuration,
 			EnforceMinDuration: m.EnforceMinDuration,
 			EnforceMaxUsage:    m.EnforceMaxUsage,
+			GracePenalty:       gpy,
+			GracePeriod:        gpd,
 			MaxBookings:        m.MaxBookings,
 			MaxDuration:        xd,
 			MinDuration:        nd,
@@ -421,10 +438,13 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 				Description:        gog.Ptr(s.Description),
 				DisplayGuides:      s.DisplayGuides,
 				EnforceBookAhead:   s.EnforceBookAhead,
+				EnforceGracePeriod: s.EnforceGracePeriod,
 				EnforceMaxBookings: s.EnforceMaxBookings,
 				EnforceMaxDuration: s.EnforceMaxDuration,
 				EnforceMinDuration: s.EnforceMinDuration,
 				EnforceMaxUsage:    s.EnforceMaxUsage,
+				GracePenalty:       s.GracePenalty.String(),
+				GracePeriod:        s.GracePeriod.String(),
 				MaxBookings:        s.MaxBookings,
 				MaxDuration:        s.MaxDuration.String(),
 				MinDuration:        s.MinDuration.String(),

@@ -54,6 +54,9 @@ type Booking struct {
 	// was the resource unavailable
 	Unfulfilled bool `json:"unfulfilled,omitempty"`
 
+	// how much usage was actually charged for this booking
+	UsageCharged string `json:"usage_charged,omitempty"`
+
 	// name of the user who made the booking
 	// Required: true
 	User *string `json:"user"`

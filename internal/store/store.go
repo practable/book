@@ -347,7 +347,7 @@ type Window struct {
 func New() *Store {
 	return &Store{
 		&sync.RWMutex{},
-		check.New().WithNow(func() time.Time { return time.Now() }),
+		check.New().WithNow(func() time.Time { return time.Now() }).WithName("forStore"),
 		make(map[string]*Booking),
 		make(map[string]Description),
 		make(map[string]DisplayGuide),
@@ -1548,7 +1548,13 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 	// register for autocancellation if required by policy
 	if p.EnforceGracePeriod {
 		checkTime := when.Start.Add(p.GracePeriod)
-		s.Checker.Push(checkTime, name)
+		log.Debugf("makebooking: requesting grace check %s at %s", name, checkTime.String())
+		err = s.Checker.Push(checkTime, name)
+		if err != nil {
+			log.Errorf("makebooking failed to request grace check for %s at %s because %s", name, checkTime.String(), err.Error())
+		}
+	} else {
+		log.Debugf("makebooking: manual cancellation only for %s", name)
 	}
 
 	return booking, nil
@@ -1686,7 +1692,7 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	// bookings are ok, so clean house.
 
 	//Stop our grace period checker, and clean it out
-	s.Checker = check.New().WithNow(s.Now) // make sure we use whatever now function store uses
+	s.Checker.Clean()
 
 	// we want to refund our users, so go through each booking and cancel
 
@@ -1972,6 +1978,7 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery ti
 				log.Trace("store stopped grace checking bookings permanently")
 				return
 			case bookings := <-expired:
+				log.Debugf("Gracechecking %d bookings", len(bookings))
 				s.GraceCheck(bookings)
 			}
 		}
