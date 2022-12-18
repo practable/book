@@ -192,6 +192,156 @@ windows:
 
 var manifestJSON = []byte(`{"descriptions":{"d-p-a":{"name":"policy-a","type":"policy","short":"a"},"d-p-b":{"name":"policy-b","type":"policy","short":"b"},"d-r-a":{"name":"resource-a","type":"resource","short":"a"},"d-r-b":{"name":"resource-b","type":"resource","short":"b"},"d-sl-a":{"name":"slot-a","type":"slot","short":"a"},"d-sl-b":{"name":"slot-b","type":"slot","short":"b"},"d-ui-a":{"name":"ui-a","type":"ui","short":"a"},"d-ui-b":{"name":"ui-b","type":"ui","short":"b"}},"display_guides":{"1mFor20m":{"book_ahead":"20m","duration":"1m","max_slots":15,"label":"1m"}},"policies":{"p-a":{"book_ahead":"1h","description":"d-p-a","display_guides":["1mFor20m"],"enforce_book_ahead":true,"enforce_max_bookings":false,"enforce_max_duration":false,"enforce_min_duration":false,"enforce_max_usage":false,"max_bookings":0,"max_duration":"0s","min_duration":"0s","max_usage":"0s","slots":["sl-a"]},"p-b":{"book_ahead":"2h0m0s","description":"d-p-b","enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","slots":["sl-b"]}},"resources":{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"topic_stub":"bbbb00"}},"slots":{"sl-a":{"description":"d-sl-a","policy":"p-a","resource":"r-a","ui_set":"us-a","window":"w-a"},"sl-b":{"description":"d-sl-b","policy":"p-b","resource":"r-b","ui_set":"us-b","window":"w-b"}},"streams":{"st-a":{"url":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"topic":"tbc"},"st-b":{"url":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"topic":"tbc"}},"uis":{"ui-a":{"description":"d-ui-a","url":"a","streams_required":["st-a","st-b"]},"ui-b":{"description":"d-ui-b","url":"b","streams_required":["st-a","st-b"]}},"ui_sets":{"us-a":{"uis":["ui-a"]},"us-b":{"uis":["ui-a","ui-b"]}},"windows":{"w-a":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]},"w-b":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]}}}`)
 
+var manifestGraceYAML = []byte(`descriptions:
+  d-p-a:
+    name: policy-a
+    type: policy
+    short: a
+  d-p-b:
+    name: policy-b
+    type: policy
+    short: b
+  d-r-a:
+    name: resource-a
+    type: resource
+    short: a
+  d-r-b:
+    name: resource-b
+    type: resource
+    short: b
+  d-sl-a:
+    name: slot-a
+    type: slot
+    short: a
+  d-sl-b:
+    name: slot-b
+    type: slot
+    short: b
+  d-ui-a:
+    name: ui-a
+    type: ui
+    short: a
+  d-ui-b:
+    name: ui-b
+    type: ui
+    short: b
+display_guides:
+  1mFor20m:
+    book_ahead: 20m
+    duration: 1m
+    max_slots: 15
+    label: 1m
+policies:
+  p-a:
+    book_ahead: 1h
+    description: d-p-a
+    display_guides:
+      - 1mFor20m
+    enforce_grace_period: true
+    grace_period: 2m
+    grace_penalty: 3m
+    enforce_book_ahead: true
+    enforce_max_bookings: false
+    enforce_max_duration: false
+    enforce_min_duration: false
+    enforce_max_usage: false
+    max_bookings: 0
+    max_duration: 0s
+    min_duration: 0s
+    max_usage: 0s
+    slots:
+    - sl-a
+  p-b:
+    book_ahead: 2h0m0s
+    description: d-p-b
+    enforce_book_ahead: true
+    enforce_max_bookings: true
+    enforce_max_duration: true
+    enforce_min_duration: true
+    enforce_max_usage: true
+    max_bookings: 2
+    max_duration: 10m0s
+    min_duration: 5m0s
+    max_usage: 30m0s
+    slots:
+    - sl-b
+resources:
+  r-a:
+    description: d-r-a
+    streams:
+    - st-a
+    - st-b
+    topic_stub: aaaa00
+  r-b:
+    description: d-r-b
+    streams:
+    - st-a
+    - st-b
+    topic_stub: bbbb00
+slots:
+  sl-a:
+    description: d-sl-a
+    policy: p-a
+    resource: r-a
+    ui_set: us-a
+    window: w-a
+  sl-b:
+    description: d-sl-b
+    policy: p-b
+    resource: r-b
+    ui_set: us-b
+    window: w-b
+streams:
+  st-a:
+    url: https://relay-access.practable.io
+    connection_type: session
+    for: data
+    scopes:
+    - read
+    - write
+    topic: tbc
+  st-b:
+    url: https://relay-access.practable.io
+    connection_type: session
+    for: video
+    scopes:
+    - read
+    topic: tbc
+uis:
+  ui-a:
+    description: d-ui-a
+    url: a
+    streams_required:
+    - st-a
+    - st-b
+  ui-b:
+    description: d-ui-b
+    url: b
+    streams_required:
+    - st-a
+    - st-b
+ui_sets:
+  us-a:
+    uis:
+    - ui-a
+  us-b:
+    uis:
+    - ui-a
+    - ui-b
+windows:
+  w-a:
+    allowed:
+    - start: 2022-11-04T00:00:00Z
+      end: 2022-11-06T00:00:00Z
+    denied: []
+  w-b:
+    allowed:
+    - start: 2022-11-04T00:00:00Z
+      end: 2022-11-06T00:00:00Z
+    denied: []`)
+
+var manifestGraceJSON = []byte(`{"descriptions":{"d-p-a":{"name":"policy-a","type":"policy","short":"a"},"d-p-b":{"name":"policy-b","type":"policy","short":"b"},"d-r-a":{"name":"resource-a","type":"resource","short":"a"},"d-r-b":{"name":"resource-b","type":"resource","short":"b"},"d-sl-a":{"name":"slot-a","type":"slot","short":"a"},"d-sl-b":{"name":"slot-b","type":"slot","short":"b"},"d-ui-a":{"name":"ui-a","type":"ui","short":"a"},"d-ui-b":{"name":"ui-b","type":"ui","short":"b"}},"display_guides":{"1mFor20m":{"book_ahead":"20m","duration":"1m","max_slots":15,"label":"1m"}},"policies":{"p-a":{"book_ahead":"1h","description":"d-p-a","display_guides":["1mFor20m"],"enforce_grace_period":true,"grace_period":"2m","grace_penalty":"3m","enforce_book_ahead":true,"enforce_max_bookings":false,"enforce_max_duration":false,"enforce_min_duration":false,"enforce_max_usage":false,"max_bookings":0,"max_duration":"0s","min_duration":"0s","max_usage":"0s","slots":["sl-a"]},"p-b":{"book_ahead":"2h0m0s","description":"d-p-b","enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","slots":["sl-b"]}},"resources":{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"topic_stub":"bbbb00"}},"slots":{"sl-a":{"description":"d-sl-a","policy":"p-a","resource":"r-a","ui_set":"us-a","window":"w-a"},"sl-b":{"description":"d-sl-b","policy":"p-b","resource":"r-b","ui_set":"us-b","window":"w-b"}},"streams":{"st-a":{"url":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"topic":"tbc"},"st-b":{"url":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"topic":"tbc"}},"uis":{"ui-a":{"description":"d-ui-a","url":"a","streams_required":["st-a","st-b"]},"ui-b":{"description":"d-ui-b","url":"b","streams_required":["st-a","st-b"]}},"ui_sets":{"us-a":{"uis":["ui-a"]},"us-b":{"uis":["ui-a","ui-b"]}},"windows":{"w-a":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]},"w-b":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]}}}`)
+
 var bookingsYAML = []byte(`---
 - name: bk-0
   cancelled: false
@@ -386,6 +536,8 @@ func TestMain(m *testing.M) {
 	currentTime = &ct
 
 	cfg = config.ServerConfig{
+		CheckEvery:          time.Duration(10 * time.Millisecond),
+		GraceRebound:        time.Duration(10 * time.Millisecond),
 		Host:                host,
 		Port:                port,
 		StoreSecret:         []byte("somesecret"),
@@ -1427,7 +1579,8 @@ func TestGetCancelBookingsGetOldBookings(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	bookings := `[{"name":"bk-6","policy":"p-b","slot":"sl-b","user":"user-g","when":{"end":"2022-11-05T01:20:00.000Z","start":"2022-11-05T01:15:00.000Z"}}]` + "\n"
+	bookings := `[{"cancelled_at":"0001-01-01T00:00:00.000Z","name":"bk-6","policy":"p-b","slot":"sl-b","started_at":"0001-01-01T00:00:00.000Z","user":"user-g","when":{"end":"2022-11-05T01:20:00.000Z","start":"2022-11-05T01:15:00.000Z"}}]` + "\n"
+
 	assert.Equal(t, bookings, string(body))
 
 	// cancel booking bk-6
@@ -1482,7 +1635,8 @@ func TestGetCancelBookingsGetOldBookings(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	bookings = `[{"name":"bk-5","policy":"p-b","slot":"sl-b","user":"user-f","when":{"end":"2022-11-05T01:10:00.000Z","start":"2022-11-05T01:05:00.000Z"}}]` + "\n"
+	bookings = `[{"cancelled_at":"0001-01-01T00:00:00.000Z","name":"bk-5","policy":"p-b","slot":"sl-b","started_at":"0001-01-01T00:00:00.000Z","user":"user-f","when":{"end":"2022-11-05T01:10:00.000Z","start":"2022-11-05T01:05:00.000Z"}}]` + "\n"
+
 	assert.Equal(t, bookings, string(body))
 
 }
@@ -1522,7 +1676,8 @@ func TestGetActivity(t *testing.T) {
 	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	bookings := `[{"name":"bk-6","policy":"p-b","slot":"sl-b","user":"user-g","when":{"end":"2022-11-05T01:20:00.000Z","start":"2022-11-05T01:15:00.000Z"}}]` + "\n"
+	bookings := `[{"cancelled_at":"0001-01-01T00:00:00.000Z","name":"bk-6","policy":"p-b","slot":"sl-b","started_at":"0001-01-01T00:00:00.000Z","user":"user-g","when":{"end":"2022-11-05T01:20:00.000Z","start":"2022-11-05T01:15:00.000Z"}}]` + "\n"
+
 	assert.Equal(t, bookings, string(body))
 
 	// move time forward to within the booked activity
@@ -2040,5 +2195,41 @@ func TestLockedToUser(t *testing.T) {
 			}
 		})
 	}
+
+}
+
+func TestAutoCancellation(t *testing.T) {
+	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	currentTime = &ct
+
+	satoken, err := signedAdminToken()
+	assert.NoError(t, err)
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(manifestGraceJSON)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", satoken)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	resp.Body.Close()
+
+	/*authAdmin := httptransport.APIKeyAuth("Authorization", "header", satoken)
+	timeout := 1 * time.Second
+
+	sutoken, err := signedUserTokenFor("user-a") //to match bookings2JSON
+	assert.NoError(t, err)
+	authUser := httptransport.APIKeyAuth("Authorization", "header", sutoken)
+
+	var bookings cmodels.Bookings
+
+	err = yaml.Unmarshal(bookingsYAML, &bookings)
+	assert.NoError(t, err)
+	*/
+	addBookings(t)
+	setLock(t, false, "unlocked")
+	ct = time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	currentTime = &ct
 
 }

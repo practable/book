@@ -15,6 +15,10 @@ func Run(ctx context.Context, config config.ServerConfig) {
 
 	s := store.New().WithNow(config.Now)
 
+	if config.GraceRebound != time.Duration(0) {
+		s.WithGraceRebound(config.GraceRebound)
+	}
+
 	if config.Now == nil {
 		config.Now = func() time.Time { return time.Now() }
 	}
@@ -24,7 +28,7 @@ func Run(ctx context.Context, config config.ServerConfig) {
 		config.PruneEvery = time.Duration(time.Hour)
 	}
 
-	go s.Run(ctx, config.PruneEvery)
+	go s.Run(ctx, config.PruneEvery, config.CheckEvery)
 
 	config.Store = s
 

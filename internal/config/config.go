@@ -8,6 +8,8 @@ import (
 
 type ServerConfig struct {
 	AccessTokenLifetime time.Duration
+	CheckEvery          time.Duration
+	GraceRebound        time.Duration
 	Host                string
 	MinUserNameLength   int
 	Now                 func() time.Time

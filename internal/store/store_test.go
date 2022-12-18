@@ -672,7 +672,7 @@ func TestPolicyChecks(t *testing.T) {
 	assert.Equal(t, "requested duration of 10m0s exceeds remaining usage limit of 4m0s", err.Error())
 
 	// free up some allocation and try again, must succeed
-	err = s.CancelBooking(bc)
+	err = s.CancelBooking(bc, "test")
 	assert.NoError(t, err)
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.NoError(t, err)
@@ -698,7 +698,7 @@ func TestPolicyChecks(t *testing.T) {
 	fake := Booking{
 		Name: b.Name,
 	}
-	err = s.CancelBooking(fake)
+	err = s.CancelBooking(fake, "test")
 	assert.Error(t, err)
 	assert.Equal(t, "could not verify booking details", err.Error())
 
@@ -833,7 +833,7 @@ func TestGetActivity(t *testing.T) {
 	assert.Equal(t, exp, a)
 
 	// must not cancel started activity
-	err = s.CancelBooking(b)
+	err = s.CancelBooking(b, "test")
 	assert.Error(t, err)
 	assert.Equal(t, "cannot cancel booking that has already been used", err.Error())
 

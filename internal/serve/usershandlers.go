@@ -526,7 +526,11 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 			return users.NewCancelBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		err = config.Store.CancelBooking(b)
+		cancelledBy := claims.Subject
+		if isAdmin && claims.Subject == "" {
+			cancelledBy = "admin"
+		}
+		err = config.Store.CancelBooking(b, cancelledBy)
 
 		if err != nil {
 			c := "500"

@@ -203,6 +203,11 @@ type Store struct {
 	// The API handler has to check this, e.g. if locked, do not make bookings or check availability on
 	// behalf of users. We can't do this automatically in the methods because then we'd need some sort
 	// of admin override, to permit maintenance when locked (which is the whole point of locking the system)
+
+	// GraceRebound represents how long to wait before checking any bookings that were
+	// supposed to be checked but the store was locked (see GraceCheck)
+	GraceRebound time.Duration
+
 	Locked bool
 
 	// Message represents our message of the day, to send to users (e.g. to explain system is locked)
@@ -347,6 +352,7 @@ func New() *Store {
 		make(map[string]Description),
 		make(map[string]DisplayGuide),
 		make(map[string]*filter.Filter),
+		time.Duration(time.Minute),
 		false,
 		"Welcome to the interval booking store",
 		func() time.Time { return time.Now() },
@@ -368,6 +374,13 @@ func (s *Store) WithNow(now func() time.Time) *Store {
 	defer s.Unlock()
 	s.Now = now
 	s.Checker.Now = now
+	return s
+}
+
+func (s *Store) WithGraceRebound(d time.Duration) *Store {
+	s.Lock()
+	defer s.Unlock()
+	s.GraceRebound = d
 	return s
 }
 
@@ -424,7 +437,7 @@ func (s *Store) AddPolicyFor(user, policy string) error {
 
 // CancelBooking cancels a booking or returns an error if not found
 // Takes a lock - for external usage
-func (s *Store) CancelBooking(booking Booking) error {
+func (s *Store) CancelBooking(booking Booking, cancelledBy string) error {
 	where := "store.CancelBooking"
 	log.Trace(where + " awaiting lock")
 	s.Lock()
@@ -434,13 +447,13 @@ func (s *Store) CancelBooking(booking Booking) error {
 		log.Trace(where + " released lock")
 	}()
 
-	return s.cancelBooking(booking)
+	return s.cancelBooking(booking, cancelledBy)
 
 }
 
 // cancelBooking cancels a booking or returns an error if not found
 // does not take a lock, for internal use by functions that handle taking the lock
-func (s *Store) cancelBooking(booking Booking) error {
+func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 	// check if booking exists and details are valid (i.e. must confirm booking contents, not just ID)
 	b, ok := s.Bookings[booking.Name]
 
@@ -482,6 +495,8 @@ func (s *Store) cancelBooking(booking Booking) error {
 	delete(s.Bookings, b.Name)
 
 	b.Cancelled = true
+	b.CancelledAt = s.Now()
+	b.CancelledBy = cancelledBy
 
 	s.OldBookings[b.Name] = b
 
@@ -599,7 +614,7 @@ func (s *Store) DeletePolicyFor(user, policy string) error {
 
 		if policy == v.Policy {
 
-			err = s.cancelBooking(v)
+			err = s.cancelBooking(v, "deletePolicy")
 
 			if err != nil {
 				return err
@@ -1309,6 +1324,19 @@ func (s *Store) GetStoreStatusUser() StoreStatusUser {
 
 func (s *Store) GraceCheck(bookings []string) {
 
+	if s.Locked {
+		// don't affect bookings but equally, don't do someone out of
+		// the autocancellation's lower usage charge compared to just
+		// not taking up the booking. So push bookings back, for processing later.
+		later := time.Now().Add(s.GraceRebound)
+		for _, b := range bookings {
+			if s.Checker != nil { //incase checker is being refreshed
+				s.Checker.Push(later, b)
+			}
+		}
+
+	}
+
 	for _, name := range bookings {
 		b, err := s.GetBooking(name)
 		if err != nil {
@@ -1322,7 +1350,7 @@ func (s *Store) GraceCheck(bookings []string) {
 			continue
 		}
 		if !b.Started {
-			s.CancelBooking(b)
+			s.CancelBooking(b, "auto-grace-check")
 		}
 
 	}
@@ -1517,6 +1545,12 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 	s.Bookings[name] = &booking
 	s.Users[user].Bookings[name] = &booking
 
+	// register for autocancellation if required by policy
+	if p.EnforceGracePeriod {
+		checkTime := when.Start.Add(p.GracePeriod)
+		s.Checker.Push(checkTime, name)
+	}
+
 	return booking, nil
 
 }
@@ -1657,7 +1691,7 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	// we want to refund our users, so go through each booking and cancel
 
 	for k, v := range s.Bookings {
-		err := s.cancelBooking(*v)
+		err := s.cancelBooking(*v, "replaceManifest")
 		if err != nil {
 			msg = append(msg,
 				"could not refund user "+
@@ -1666,7 +1700,7 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 		}
 	}
 
-	// can't delete bookings as we iterate over map, so just create a fresh map (take the lock!)
+	// can't delete bookings as we iterate over map, so just create a fresh map
 
 	s.Bookings = make(map[string]*Booking)
 
