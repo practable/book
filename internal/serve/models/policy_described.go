@@ -32,6 +32,9 @@ type PolicyDescribed struct {
 	// enforce book ahead
 	EnforceBookAhead bool `json:"enforce_book_ahead,omitempty"`
 
+	// enforce grace period
+	EnforceGracePeriod bool `json:"enforce_grace_period,omitempty"`
+
 	// enforce max bookings
 	EnforceMaxBookings bool `json:"enforce_max_bookings,omitempty"`
 
@@ -43,6 +46,9 @@ type PolicyDescribed struct {
 
 	// enforce min duration
 	EnforceMinDuration bool `json:"enforce_min_duration,omitempty"`
+
+	// grace period
+	GracePeriod string `json:"grace_period,omitempty"`
 
 	// max bookings
 	MaxBookings int64 `json:"max_bookings,omitempty"`

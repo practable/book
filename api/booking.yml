@@ -1160,6 +1160,8 @@ definitions:
           type: string
       enforce_book_ahead:
         type: boolean
+      enforce_grace_period:
+        type: boolean
       enforce_max_bookings:
         type: boolean
       enforce_max_duration:
@@ -1168,6 +1170,8 @@ definitions:
         type: boolean
       enforce_max_usage:
         type: boolean
+      grace_period:
+        type: string
       max_bookings:
         type: integer
       max_duration:
@@ -1197,6 +1201,8 @@ definitions:
           $ref: '#/definitions/DisplayGuide'
       enforce_book_ahead:
         type: boolean
+      enforce_grace_period:
+        type: boolean
       enforce_max_bookings:
         type: boolean
       enforce_max_duration:
@@ -1205,6 +1211,8 @@ definitions:
         type: boolean
       enforce_max_usage:
         type: boolean
+      grace_period:
+        type: string
       max_bookings:
         type: integer
       max_duration:

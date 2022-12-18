@@ -1609,6 +1609,9 @@ func init() {
         "enforce_book_ahead": {
           "type": "boolean"
         },
+        "enforce_grace_period": {
+          "type": "boolean"
+        },
         "enforce_max_bookings": {
           "type": "boolean"
         },
@@ -1620,6 +1623,9 @@ func init() {
         },
         "enforce_min_duration": {
           "type": "boolean"
+        },
+        "grace_period": {
+          "type": "string"
         },
         "max_bookings": {
           "type": "integer"
@@ -1663,6 +1669,9 @@ func init() {
         "enforce_book_ahead": {
           "type": "boolean"
         },
+        "enforce_grace_period": {
+          "type": "boolean"
+        },
         "enforce_max_bookings": {
           "type": "boolean"
         },
@@ -1674,6 +1683,9 @@ func init() {
         },
         "enforce_min_duration": {
           "type": "boolean"
+        },
+        "grace_period": {
+          "type": "string"
         },
         "max_bookings": {
           "type": "integer"
@@ -3868,6 +3880,9 @@ func init() {
         "enforce_book_ahead": {
           "type": "boolean"
         },
+        "enforce_grace_period": {
+          "type": "boolean"
+        },
         "enforce_max_bookings": {
           "type": "boolean"
         },
@@ -3879,6 +3894,9 @@ func init() {
         },
         "enforce_min_duration": {
           "type": "boolean"
+        },
+        "grace_period": {
+          "type": "string"
         },
         "max_bookings": {
           "type": "integer"
@@ -3922,6 +3940,9 @@ func init() {
         "enforce_book_ahead": {
           "type": "boolean"
         },
+        "enforce_grace_period": {
+          "type": "boolean"
+        },
         "enforce_max_bookings": {
           "type": "boolean"
         },
@@ -3933,6 +3954,9 @@ func init() {
         },
         "enforce_min_duration": {
           "type": "boolean"
+        },
+        "grace_period": {
+          "type": "string"
         },
         "max_bookings": {
           "type": "integer"
