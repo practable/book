@@ -14,7 +14,6 @@ type Checker struct {
 	*sync.Mutex `json:"-" yaml:"-"`
 	Times       []time.Time
 	Values      map[time.Time][]string
-	Period      time.Duration
 	Now         func() time.Time
 }
 
@@ -24,7 +23,6 @@ func New() *Checker {
 		&sync.Mutex{},
 		[]time.Time{},
 		make(map[time.Time][]string),
-		time.Duration(time.Minute),
 		func() time.Time { return time.Now() },
 	}
 }
@@ -41,7 +39,11 @@ func (c *Checker) Run(ctx context.Context, checkEvery time.Duration, expired cha
 				return
 			case <-time.After(checkEvery):
 				log.Trace("checker checking expiry at time " + c.Now().String())
-				expired <- c.GetExpired()
+
+				v := c.GetExpired()
+				if len(v) > 0 {
+					expired <- v
+				}
 			}
 		}
 	}()
@@ -49,11 +51,6 @@ func (c *Checker) Run(ctx context.Context, checkEvery time.Duration, expired cha
 
 func (c *Checker) WithNow(now func() time.Time) *Checker {
 	c.Now = now
-	return c
-}
-
-func (c *Checker) WithPeriod(period time.Duration) *Checker {
-	c.Period = period
 	return c
 }
 

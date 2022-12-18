@@ -1,10 +1,11 @@
 package check
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 var currentTime *time.Time
@@ -24,16 +25,15 @@ func init() {
 
 func TestNew(t *testing.T) {
 
-	c := New().WithPeriod(10 * time.Second).WithNow(now)
+	c := New().WithNow(now)
 
-	assert.Equal(t, 10*time.Second, c.Period)
 	assert.Equal(t, ct, c.Now())
 
 }
 
 func TestPush(t *testing.T) {
 
-	c := New().WithPeriod(10 * time.Second).WithNow(now)
+	c := New().WithNow(now)
 
 	t1 := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 
@@ -61,7 +61,7 @@ func TestPush(t *testing.T) {
 
 func TestExpired(t *testing.T) {
 
-	c := New().WithPeriod(10 * time.Second).WithNow(now)
+	c := New().WithNow(now)
 
 	got := c.GetExpired()
 	want := []string{}
@@ -105,4 +105,30 @@ func TestExpired(t *testing.T) {
 	// check we are removing old values from memory
 	assert.Equal(t, len(c.Times), 0)
 	assert.Equal(t, len(c.Values), 0)
+}
+
+func TestRun(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping testing in short mode")
+	}
+
+	c := New()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	expired := make(chan []string)
+	d := time.Duration(10 * time.Millisecond)
+
+	c.Run(ctx, d, expired)
+
+	t0 := time.Now()
+	t1 := t0.Add(time.Duration(100 * time.Millisecond))
+	c.Push(t1, "test")
+	got := <-expired
+	t2 := time.Now()
+
+	assert.Equal(t, []string{"test"}, got)
+	assert.Less(t, time.Duration(90*time.Millisecond), t2.Sub(t0))
+	assert.Greater(t, time.Duration(110*time.Millisecond), t2.Sub(t0))
+
 }
