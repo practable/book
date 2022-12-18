@@ -58,7 +58,7 @@ type Booking struct {
 	Slot    string `json:"slot" yaml:"slot"`
 	Started bool   `json:"started" yaml:"started"`
 	//StartedAt is for reporting purposes, do not use to calculate usage
-	StartedAt string `json:"started_at", yaml:"started_at"`
+	StartedAt string `json:"started_at" yaml:"started_at"`
 	//when the resource was unavailable
 	Unfulfilled bool `json:"unfulfilled" yaml:"unfulfilled"`
 	// User represents user's name
@@ -469,6 +469,7 @@ func (s *Store) cancelBooking(booking Booking) error {
 	}
 
 	if b.Started { //TODO - allow cancelling started bookings by deny-listing the stream tokens
+		//s.DenyList(b)
 		return errors.New("cannot cancel booking that has already been used")
 	}
 
@@ -478,14 +479,23 @@ func (s *Store) cancelBooking(booking Booking) error {
 
 	s.OldBookings[b.Name] = b
 
-	// adjust usage for user
+	// adjust usage for user - original usage charge was booking length
 
-	refund := b.When.End.Sub(b.When.Start)
-
-	if b.When.Start.Before(s.Now()) {
-		refund = b.When.End.Sub(s.Now()) //only refund portion after cancellation
+	originalCharge := b.When.End.Sub(b.When.Start)
+	p, err := s.getPolicy(b.Policy)
+	if err != nil {
+		return errors.New("cannot cancel booking because cannot get policy: " + err.Error())
 	}
 
+	usage, err := calculateUsage(*b, p)
+
+	if err != nil {
+		return errors.New("cannot cancel booking because cannot calculate usage to refund: " + err.Error())
+	}
+
+	refund := originalCharge - usage
+
+	// get Usage tracker so we can modify it
 	u, ok := s.Users[b.User]
 
 	if !ok { //might happen if server is restarted, old booking restored but user has not made any new bookings yet
@@ -1038,19 +1048,7 @@ func (s *Store) getOldBookingsFor(user string) ([]Booking, error) {
 	return b, nil
 }
 
-// GetPolicy returns a policy if found
-// this is not used internally
-func (s *Store) GetPolicy(name string) (Policy, error) {
-
-	where := "store.GetPolicy"
-	log.Trace(where + " awaiting Rlock")
-	s.Lock()
-	log.Trace(where + " has Rlock")
-	defer func() {
-		s.Unlock()
-		log.Trace(where + " released Rlock")
-	}()
-
+func (s *Store) getPolicy(name string) (Policy, error) {
 	p, ok := s.Policies[name]
 
 	// remove the slotmap, not for external use
@@ -1066,6 +1064,22 @@ func (s *Store) GetPolicy(name string) (Policy, error) {
 	}
 
 	return p, nil
+}
+
+// GetPolicy returns a policy if found
+// this is not used internally
+func (s *Store) GetPolicy(name string) (Policy, error) {
+
+	where := "store.GetPolicy"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
+	return s.getPolicy(name)
 }
 
 // GetPoliciesFor returns a list of policies that a user has booked with
