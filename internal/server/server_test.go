@@ -1926,6 +1926,10 @@ func TestLockedToUser(t *testing.T) {
 		p := users.NewGetPolicyStatusForUserParams().WithTimeout(timeout).WithPolicyName("p-a").WithUserName("user-a")
 		return bc.Users.GetPolicyStatusForUser(p, auth)
 	}
+	addPolicyForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := users.NewAddPolicyForUserParams().WithTimeout(timeout).WithPolicyName("p-a").WithUserName("user-a")
+		return bc.Users.AddPolicyForUser(p, auth)
+	}
 	getStoreStatusUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetStoreStatusUserParams().WithTimeout(timeout)
 		return bc.Users.GetStoreStatusUser(p, auth)
@@ -1993,6 +1997,10 @@ func TestLockedToUser(t *testing.T) {
 		"GetPolicyStatusForUserLockedUserDenied":     {locked, getPolicyStatusForUser, authUser, false, `[GET /users/{user_name}/policies/{policy_name}][401] getPolicyStatusForUserUnauthorized`},
 		"GetPolicyStatusForUserUnlockedAdminAllowed": {unlocked, getPolicyStatusForUser, authAdmin, true, `[GET /users/{user_name}/policies/{policy_name}][200] getPolicyStatusForUserOK`},
 		"GetPolicyStatusForUserUnlockedUserAllowed":  {unlocked, getPolicyStatusForUser, authUser, true, `[GET /users/{user_name}/policies/{policy_name}][200] getPolicyStatusForUserOK`},
+		"AddPolicyForUserLockedAdminAllowed":         {locked, addPolicyForUser, authAdmin, true, `[POST /users/{user_name}/policies/{policy_name}][204] addPolicyForUserNoContent`},
+		"AddPolicyForUserLockedUserDenied":           {locked, addPolicyForUser, authUser, false, `[POST /users/{user_name}/policies/{policy_name}][401] addPolicyForUserUnauthorized`},
+		"AddPolicyForUserUnlockedAdminAllowed":       {unlocked, addPolicyForUser, authAdmin, true, `[POST /users/{user_name}/policies/{policy_name}][204] addPolicyForUserNoContent`},
+		"AddPolicyForUserUnlockedUserAllowed":        {unlocked, addPolicyForUser, authUser, true, `[POST /users/{user_name}/policies/{policy_name}][204] addPolicyForUserNoContent`},
 	}
 
 	for name, tc := range tests {
