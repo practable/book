@@ -26,6 +26,7 @@ import (
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
+	"github.com/timdrysdale/interval/internal/check"
 	"github.com/timdrysdale/interval/internal/diary"
 	"github.com/timdrysdale/interval/internal/filter"
 	"github.com/timdrysdale/interval/internal/interval"
@@ -184,6 +185,9 @@ type Slot struct {
 type Store struct {
 	*sync.RWMutex `json:"-"`
 
+	// Checker does grace checking on bookings
+	Checker *check.Checker
+
 	// Bookings represents all the live bookings, indexed by booking id
 	Bookings map[string]*Booking
 
@@ -338,6 +342,7 @@ type Window struct {
 func New() *Store {
 	return &Store{
 		&sync.RWMutex{},
+		check.New().WithNow(func() time.Time { return time.Now() }),
 		make(map[string]*Booking),
 		make(map[string]Description),
 		make(map[string]DisplayGuide),
@@ -362,6 +367,7 @@ func (s *Store) WithNow(now func() time.Time) *Store {
 	s.Lock()
 	defer s.Unlock()
 	s.Now = now
+	s.Checker.Now = now
 	return s
 }
 
@@ -1301,6 +1307,28 @@ func (s *Store) GetStoreStatusUser() StoreStatusUser {
 	}
 }
 
+func (s *Store) GraceCheck(bookings []string) {
+
+	for _, name := range bookings {
+		b, err := s.GetBooking(name)
+		if err != nil {
+			continue //skip this booking - probably cancelled
+		}
+		p, err := s.GetPolicy(b.Policy)
+		if err != nil {
+			continue
+		}
+		if !p.EnforceGracePeriod {
+			continue
+		}
+		if !b.Started {
+			s.CancelBooking(b)
+		}
+
+	}
+
+}
+
 // HumaniseDuration returns a concise human readable string representing the duration
 func HumaniseDuration(t time.Duration) string {
 	return t.Round(time.Second).String()
@@ -1622,6 +1650,10 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	}
 
 	// bookings are ok, so clean house.
+
+	//Stop our grace period checker, and clean it out
+	s.Checker = check.New().WithNow(s.Now) // make sure we use whatever now function store uses
+
 	// we want to refund our users, so go through each booking and cancel
 
 	for k, v := range s.Bookings {
@@ -1633,6 +1665,7 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 					" for replaced booking "+k+" on policy "+v.Policy)
 		}
 	}
+
 	// can't delete bookings as we iterate over map, so just create a fresh map (take the lock!)
 
 	s.Bookings = make(map[string]*Booking)
@@ -1892,8 +1925,23 @@ func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
 	return nil, []string{}
 }
 
-// Run handles the regular pruning of bookings
-func (s *Store) Run(ctx context.Context, pruneEvery time.Duration) {
+// Run handles the regular pruning of bookings and autocancellation checks
+func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery time.Duration) {
+	go func() {
+
+		expired := make(chan []string)
+		s.Checker.Run(ctx, checkEvery, expired)
+		log.Debug("store will grace check bookings every " + checkEvery.String())
+		for {
+			select {
+			case <-ctx.Done():
+				log.Trace("store stopped grace checking bookings permanently")
+				return
+			case bookings := <-expired:
+				s.GraceCheck(bookings)
+			}
+		}
+	}()
 	go func() {
 		log.Debug("store will prune bookings & diaries every " + pruneEvery.String())
 		for {
