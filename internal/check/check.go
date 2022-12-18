@@ -66,14 +66,14 @@ func (c *Checker) Push(t time.Time, v string) error {
 		return errors.New("time is in the past")
 	}
 
-	c.Times = insertSorted(c.Times, t)
-
+	//check if we already have this time?
 	if _, ok := c.Values[t]; !ok {
+		c.Times = insertSorted(c.Times, t)
 		c.Values[t] = []string{v}
 	} else {
-		vv := c.Values[t]
-		vv = append(vv, v)
-		c.Values[t] = vv
+		values := c.Values[t]
+		values = append(values, v)
+		c.Values[t] = values
 	}
 
 	return nil
