@@ -63,6 +63,10 @@ func TestExpired(t *testing.T) {
 
 	c := New().WithPeriod(10 * time.Second).WithNow(now)
 
+	got := c.GetExpired()
+	want := []string{}
+	assert.Equal(t, got, want)
+
 	t1 := time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC)
 
 	c.Push(t1, "test")
@@ -81,8 +85,8 @@ func TestExpired(t *testing.T) {
 
 	currentTime = &t2
 
-	got := c.GetExpired()
-	want := []string{"test", "foo"}
+	got = c.GetExpired()
+	want = []string{"test", "foo"}
 	assert.Equal(t, got, want)
 
 	currentTime = &t4
@@ -90,4 +94,15 @@ func TestExpired(t *testing.T) {
 	want = []string{"thing", "bar"}
 	assert.Equal(t, got, want)
 
+	t5 := time.Date(2022, 11, 5, 5, 0, 0, 0, time.UTC)
+
+	currentTime = &t5
+
+	got = c.GetExpired()
+	want = []string{}
+	assert.Equal(t, got, want)
+
+	// check we are removing old values from memory
+	assert.Equal(t, len(c.Times), 0)
+	assert.Equal(t, len(c.Values), 0)
 }
