@@ -48,7 +48,16 @@ var manifestYAML = []byte(`descriptions:
   d-ui-b:
     name: ui-b
     type: ui
-    short: b
+    short: b        
+display_guides:
+  6m:
+    book_ahead: 1h
+    duration: 6m
+    max_slots: 12
+  8m:
+    book_ahead: 2h
+    duration: 8m
+    max_slots: 8
 policies:
   p-a:
     book_ahead: 0s
@@ -68,14 +77,8 @@ policies:
     book_ahead: 2h0m0s
     description: d-p-b
     display_guides:
-      6m:
-        book_ahead: 1h
-        duration: 6m
-        max_slots: 12
-      8m:
-        book_ahead: 2h
-        duration: 8m
-        max_slots: 8
+      - 6m
+      - 8m
     enforce_book_ahead: true
     enforce_max_bookings: true
     enforce_max_duration: true
@@ -2008,9 +2011,10 @@ func TestGetPolicy(t *testing.T) {
 	p, err := s.GetPolicy("p-b")
 
 	exp := Policy{
-		BookAhead:   time.Duration(2 * time.Hour),
-		Description: "d-p-b",
-		DisplayGuides: map[string]DisplayGuide{
+		BookAhead:     time.Duration(2 * time.Hour),
+		Description:   "d-p-b",
+		DisplayGuides: []string{"6m", "8m"},
+		DisplayGuidesMap: map[string]DisplayGuide{
 			"6m": DisplayGuide{
 				BookAhead: time.Duration(1 * time.Hour),
 				Duration:  time.Duration(6 * time.Minute),
