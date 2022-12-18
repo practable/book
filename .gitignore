@@ -1,3 +1,7 @@
+#emacs backups
+*.go~
+*.md~
+
 # temporary files
 ignore/
 
