@@ -16,6 +16,17 @@ This package implements bookings with arbitrary durations
 - Unlimited access to simulations (unlimited, anytime, no need for booking?) - relative simple, but out of scope for now (simple mod for later).
 - What if kit doesn't work - how to get another? If cannot cancel ...?! For now - when taking up booking, it returns, equipment not available. More advanced options can be added later (e.g. admin edits bookings to substitute another piece of kit instead, when taking an experiment offline).
 
+## Cancel after Start implemention thoughts
+
+include booking names in the stream tokens 
+update the relay API to reflect new stream token field (booking_name) AND the deny endpoint
+generate a client from the swagger
+use that client to submit the stream token to the deny list
+For testing interval, run a relay instance locally
+
+if cancellation is after start, then submit token to the relay deny list. IF successful, then cancel the booking. If not, error, suggest try again? That way, do not cancel something that is not actually cancelled at the relay.
+
+
 ## Usage suggestions
 
 Use same booking page link format as at present, except when using this booking system, GET instead of a token, a file with a list of policies that apply to that link (e.g. everyone would be a list of the policies for all the different experiments, that don't conflict with class usages, whereas an superadmin would have all policies, including those for exclusive use of classes)
