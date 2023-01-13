@@ -16,8 +16,7 @@ import (
 // ReplaceManifestOKCode is the HTTP code returned for type ReplaceManifestOK
 const ReplaceManifestOKCode int = 200
 
-/*
-ReplaceManifestOK OK
+/*ReplaceManifestOK OK
 
 swagger:response replaceManifestOK
 */
@@ -61,8 +60,7 @@ func (o *ReplaceManifestOK) WriteResponse(rw http.ResponseWriter, producer runti
 // ReplaceManifestUnauthorizedCode is the HTTP code returned for type ReplaceManifestUnauthorized
 const ReplaceManifestUnauthorizedCode int = 401
 
-/*
-ReplaceManifestUnauthorized Unauthorized
+/*ReplaceManifestUnauthorized Unauthorized
 
 swagger:response replaceManifestUnauthorized
 */
@@ -106,8 +104,7 @@ func (o *ReplaceManifestUnauthorized) WriteResponse(rw http.ResponseWriter, prod
 // ReplaceManifestNotFoundCode is the HTTP code returned for type ReplaceManifestNotFound
 const ReplaceManifestNotFoundCode int = 404
 
-/*
-ReplaceManifestNotFound The specified resource was not found
+/*ReplaceManifestNotFound The specified resource was not found
 
 swagger:response replaceManifestNotFound
 */
@@ -151,8 +148,7 @@ func (o *ReplaceManifestNotFound) WriteResponse(rw http.ResponseWriter, producer
 // ReplaceManifestInternalServerErrorCode is the HTTP code returned for type ReplaceManifestInternalServerError
 const ReplaceManifestInternalServerErrorCode int = 500
 
-/*
-ReplaceManifestInternalServerError Internal Error
+/*ReplaceManifestInternalServerError Internal Error
 
 swagger:response replaceManifestInternalServerError
 */

@@ -57,8 +57,7 @@ func NewGetActivityOK() *GetActivityOK {
 	return &GetActivityOK{}
 }
 
-/*
-GetActivityOK describes a response with status code 200, with default header values.
+/* GetActivityOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -120,8 +119,7 @@ func NewGetActivityUnauthorized() *GetActivityUnauthorized {
 	return &GetActivityUnauthorized{}
 }
 
-/*
-GetActivityUnauthorized describes a response with status code 401, with default header values.
+/* GetActivityUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -183,8 +181,7 @@ func NewGetActivityNotFound() *GetActivityNotFound {
 	return &GetActivityNotFound{}
 }
 
-/*
-GetActivityNotFound describes a response with status code 404, with default header values.
+/* GetActivityNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -246,8 +243,7 @@ func NewGetActivityInternalServerError() *GetActivityInternalServerError {
 	return &GetActivityInternalServerError{}
 }
 
-/*
-GetActivityInternalServerError describes a response with status code 500, with default header values.
+/* GetActivityInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

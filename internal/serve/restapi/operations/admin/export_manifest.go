@@ -29,12 +29,12 @@ func NewExportManifest(ctx *middleware.Context, handler ExportManifestHandler) *
 	return &ExportManifest{Context: ctx, Handler: handler}
 }
 
-/*
-	ExportManifest swagger:route GET /admin/manifest admin exportManifest
+/* ExportManifest swagger:route GET /admin/manifest admin exportManifest
 
-# Export the manifest
+Export the manifest
 
 Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users
+
 */
 type ExportManifest struct {
 	Context *middleware.Context

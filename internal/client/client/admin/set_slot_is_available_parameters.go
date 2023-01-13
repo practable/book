@@ -53,12 +53,10 @@ func NewSetSlotIsAvailableParamsWithHTTPClient(client *http.Client) *SetSlotIsAv
 	}
 }
 
-/*
-SetSlotIsAvailableParams contains all the parameters to send to the API endpoint
+/* SetSlotIsAvailableParams contains all the parameters to send to the API endpoint
+   for the set slot is available operation.
 
-	for the set slot is available operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type SetSlotIsAvailableParams struct {
 

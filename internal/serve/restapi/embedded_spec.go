@@ -1613,6 +1613,9 @@ func init() {
         "slots"
       ],
       "properties": {
+        "allow_start_in_past_within": {
+          "type": "string"
+        },
         "book_ahead": {
           "type": "string"
         },
@@ -1624,6 +1627,9 @@ func init() {
           "items": {
             "type": "string"
           }
+        },
+        "enforce_allow_start_in_past": {
+          "type": "boolean"
         },
         "enforce_book_ahead": {
           "type": "boolean"
@@ -1641,6 +1647,15 @@ func init() {
           "type": "boolean"
         },
         "enforce_min_duration": {
+          "type": "boolean"
+        },
+        "enforce_next_available": {
+          "type": "boolean"
+        },
+        "enforce_starts_within": {
+          "type": "boolean"
+        },
+        "enforce_unlimited_users": {
           "type": "boolean"
         },
         "grace_penalty": {
@@ -1661,11 +1676,17 @@ func init() {
         "min_duration": {
           "type": "string"
         },
+        "next_available": {
+          "type": "string"
+        },
         "slots": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "starts_within": {
+          "type": "string"
         }
       }
     },
@@ -1676,6 +1697,9 @@ func init() {
         "slots"
       ],
       "properties": {
+        "allow_start_in_past_within": {
+          "type": "string"
+        },
         "book_ahead": {
           "type": "string"
         },
@@ -1688,6 +1712,9 @@ func init() {
             "$ref": "#/definitions/DisplayGuide"
           }
         },
+        "enforce_allow_start_in_past": {
+          "type": "boolean"
+        },
         "enforce_book_ahead": {
           "type": "boolean"
         },
@@ -1704,6 +1731,15 @@ func init() {
           "type": "boolean"
         },
         "enforce_min_duration": {
+          "type": "boolean"
+        },
+        "enforce_next_available": {
+          "type": "boolean"
+        },
+        "enforce_starts_within": {
+          "type": "boolean"
+        },
+        "enforce_unlimited_users": {
           "type": "boolean"
         },
         "grace_penalty": {
@@ -1724,11 +1760,17 @@ func init() {
         "min_duration": {
           "type": "string"
         },
+        "next_available": {
+          "type": "string"
+        },
         "slots": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "starts_within": {
+          "type": "string"
         }
       }
     },
@@ -3909,6 +3951,9 @@ func init() {
         "slots"
       ],
       "properties": {
+        "allow_start_in_past_within": {
+          "type": "string"
+        },
         "book_ahead": {
           "type": "string"
         },
@@ -3920,6 +3965,9 @@ func init() {
           "items": {
             "type": "string"
           }
+        },
+        "enforce_allow_start_in_past": {
+          "type": "boolean"
         },
         "enforce_book_ahead": {
           "type": "boolean"
@@ -3937,6 +3985,15 @@ func init() {
           "type": "boolean"
         },
         "enforce_min_duration": {
+          "type": "boolean"
+        },
+        "enforce_next_available": {
+          "type": "boolean"
+        },
+        "enforce_starts_within": {
+          "type": "boolean"
+        },
+        "enforce_unlimited_users": {
           "type": "boolean"
         },
         "grace_penalty": {
@@ -3957,11 +4014,17 @@ func init() {
         "min_duration": {
           "type": "string"
         },
+        "next_available": {
+          "type": "string"
+        },
         "slots": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "starts_within": {
+          "type": "string"
         }
       }
     },
@@ -3972,6 +4035,9 @@ func init() {
         "slots"
       ],
       "properties": {
+        "allow_start_in_past_within": {
+          "type": "string"
+        },
         "book_ahead": {
           "type": "string"
         },
@@ -3984,6 +4050,9 @@ func init() {
             "$ref": "#/definitions/DisplayGuide"
           }
         },
+        "enforce_allow_start_in_past": {
+          "type": "boolean"
+        },
         "enforce_book_ahead": {
           "type": "boolean"
         },
@@ -4000,6 +4069,15 @@ func init() {
           "type": "boolean"
         },
         "enforce_min_duration": {
+          "type": "boolean"
+        },
+        "enforce_next_available": {
+          "type": "boolean"
+        },
+        "enforce_starts_within": {
+          "type": "boolean"
+        },
+        "enforce_unlimited_users": {
           "type": "boolean"
         },
         "grace_penalty": {
@@ -4020,11 +4098,17 @@ func init() {
         "min_duration": {
           "type": "string"
         },
+        "next_available": {
+          "type": "string"
+        },
         "slots": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "starts_within": {
+          "type": "string"
         }
       }
     },

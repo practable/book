@@ -52,12 +52,10 @@ func NewGetAccessTokenParamsWithHTTPClient(client *http.Client) *GetAccessTokenP
 	}
 }
 
-/*
-GetAccessTokenParams contains all the parameters to send to the API endpoint
+/* GetAccessTokenParams contains all the parameters to send to the API endpoint
+   for the get access token operation.
 
-	for the get access token operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type GetAccessTokenParams struct {
 

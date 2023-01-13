@@ -63,8 +63,7 @@ func NewMakeBookingNoContent() *MakeBookingNoContent {
 	return &MakeBookingNoContent{}
 }
 
-/*
-MakeBookingNoContent describes a response with status code 204, with default header values.
+/* MakeBookingNoContent describes a response with status code 204, with default header values.
 
 OK - No Content
 */
@@ -114,8 +113,7 @@ func NewMakeBookingUnauthorized() *MakeBookingUnauthorized {
 	return &MakeBookingUnauthorized{}
 }
 
-/*
-MakeBookingUnauthorized describes a response with status code 401, with default header values.
+/* MakeBookingUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -177,8 +175,7 @@ func NewMakeBookingNotFound() *MakeBookingNotFound {
 	return &MakeBookingNotFound{}
 }
 
-/*
-MakeBookingNotFound describes a response with status code 404, with default header values.
+/* MakeBookingNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -240,8 +237,7 @@ func NewMakeBookingConflict() *MakeBookingConflict {
 	return &MakeBookingConflict{}
 }
 
-/*
-MakeBookingConflict describes a response with status code 409, with default header values.
+/* MakeBookingConflict describes a response with status code 409, with default header values.
 
 Conflict - unavailable for the requested interval
 */
@@ -301,8 +297,7 @@ func NewMakeBookingInternalServerError() *MakeBookingInternalServerError {
 	return &MakeBookingInternalServerError{}
 }
 
-/*
-MakeBookingInternalServerError describes a response with status code 500, with default header values.
+/* MakeBookingInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

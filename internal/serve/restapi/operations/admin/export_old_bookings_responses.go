@@ -16,8 +16,7 @@ import (
 // ExportOldBookingsOKCode is the HTTP code returned for type ExportOldBookingsOK
 const ExportOldBookingsOKCode int = 200
 
-/*
-ExportOldBookingsOK OK
+/*ExportOldBookingsOK OK
 
 swagger:response exportOldBookingsOK
 */
@@ -64,8 +63,7 @@ func (o *ExportOldBookingsOK) WriteResponse(rw http.ResponseWriter, producer run
 // ExportOldBookingsUnauthorizedCode is the HTTP code returned for type ExportOldBookingsUnauthorized
 const ExportOldBookingsUnauthorizedCode int = 401
 
-/*
-ExportOldBookingsUnauthorized Unauthorized
+/*ExportOldBookingsUnauthorized Unauthorized
 
 swagger:response exportOldBookingsUnauthorized
 */
@@ -109,8 +107,7 @@ func (o *ExportOldBookingsUnauthorized) WriteResponse(rw http.ResponseWriter, pr
 // ExportOldBookingsNotFoundCode is the HTTP code returned for type ExportOldBookingsNotFound
 const ExportOldBookingsNotFoundCode int = 404
 
-/*
-ExportOldBookingsNotFound The specified resource was not found
+/*ExportOldBookingsNotFound The specified resource was not found
 
 swagger:response exportOldBookingsNotFound
 */
@@ -154,8 +151,7 @@ func (o *ExportOldBookingsNotFound) WriteResponse(rw http.ResponseWriter, produc
 // ExportOldBookingsInternalServerErrorCode is the HTTP code returned for type ExportOldBookingsInternalServerError
 const ExportOldBookingsInternalServerErrorCode int = 500
 
-/*
-ExportOldBookingsInternalServerError Internal Error
+/*ExportOldBookingsInternalServerError Internal Error
 
 swagger:response exportOldBookingsInternalServerError
 */

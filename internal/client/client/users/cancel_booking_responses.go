@@ -51,8 +51,7 @@ func NewCancelBookingUnauthorized() *CancelBookingUnauthorized {
 	return &CancelBookingUnauthorized{}
 }
 
-/*
-CancelBookingUnauthorized describes a response with status code 401, with default header values.
+/* CancelBookingUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -114,8 +113,7 @@ func NewCancelBookingNotFound() *CancelBookingNotFound {
 	return &CancelBookingNotFound{}
 }
 
-/*
-CancelBookingNotFound describes a response with status code 404, with default header values.
+/* CancelBookingNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -177,8 +175,7 @@ func NewCancelBookingInternalServerError() *CancelBookingInternalServerError {
 	return &CancelBookingInternalServerError{}
 }
 
-/*
-CancelBookingInternalServerError describes a response with status code 500, with default header values.
+/* CancelBookingInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

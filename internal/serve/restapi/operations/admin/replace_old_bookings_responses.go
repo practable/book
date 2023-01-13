@@ -16,8 +16,7 @@ import (
 // ReplaceOldBookingsOKCode is the HTTP code returned for type ReplaceOldBookingsOK
 const ReplaceOldBookingsOKCode int = 200
 
-/*
-ReplaceOldBookingsOK OK
+/*ReplaceOldBookingsOK OK
 
 swagger:response replaceOldBookingsOK
 */
@@ -61,8 +60,7 @@ func (o *ReplaceOldBookingsOK) WriteResponse(rw http.ResponseWriter, producer ru
 // ReplaceOldBookingsUnauthorizedCode is the HTTP code returned for type ReplaceOldBookingsUnauthorized
 const ReplaceOldBookingsUnauthorizedCode int = 401
 
-/*
-ReplaceOldBookingsUnauthorized Unauthorized
+/*ReplaceOldBookingsUnauthorized Unauthorized
 
 swagger:response replaceOldBookingsUnauthorized
 */
@@ -106,8 +104,7 @@ func (o *ReplaceOldBookingsUnauthorized) WriteResponse(rw http.ResponseWriter, p
 // ReplaceOldBookingsNotFoundCode is the HTTP code returned for type ReplaceOldBookingsNotFound
 const ReplaceOldBookingsNotFoundCode int = 404
 
-/*
-ReplaceOldBookingsNotFound The specified resource was not found
+/*ReplaceOldBookingsNotFound The specified resource was not found
 
 swagger:response replaceOldBookingsNotFound
 */
@@ -151,8 +148,7 @@ func (o *ReplaceOldBookingsNotFound) WriteResponse(rw http.ResponseWriter, produ
 // ReplaceOldBookingsInternalServerErrorCode is the HTTP code returned for type ReplaceOldBookingsInternalServerError
 const ReplaceOldBookingsInternalServerErrorCode int = 500
 
-/*
-ReplaceOldBookingsInternalServerError Internal Error
+/*ReplaceOldBookingsInternalServerError Internal Error
 
 swagger:response replaceOldBookingsInternalServerError
 */

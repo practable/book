@@ -29,12 +29,12 @@ func NewGetOldBookingsForUser(ctx *middleware.Context, handler GetOldBookingsFor
 	return &GetOldBookingsForUser{Context: ctx, Handler: handler}
 }
 
-/*
-	GetOldBookingsForUser swagger:route GET /users/{user_name}/oldbookings users getOldBookingsForUser
+/* GetOldBookingsForUser swagger:route GET /users/{user_name}/oldbookings users getOldBookingsForUser
 
-# Get all old bookings for the user
+Get all old bookings for the user
 
 Get all old bookings for the user. It's assumed that no pagination will be required due to likely policy limits including usage limits and users typically having only a couple of policies, although in practice pagination may be useful for heavy users.
+
 */
 type GetOldBookingsForUser struct {
 	Context *middleware.Context

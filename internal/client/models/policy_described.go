@@ -19,6 +19,9 @@ import (
 // swagger:model PolicyDescribed
 type PolicyDescribed struct {
 
+	// allow start in past within
+	AllowStartInPastWithin string `json:"allow_start_in_past_within,omitempty"`
+
 	// book ahead
 	BookAhead string `json:"book_ahead,omitempty"`
 
@@ -28,6 +31,9 @@ type PolicyDescribed struct {
 
 	// display guides
 	DisplayGuides map[string]DisplayGuide `json:"display_guides,omitempty"`
+
+	// enforce allow start in past
+	EnforceAllowStartInPast bool `json:"enforce_allow_start_in_past,omitempty"`
 
 	// enforce book ahead
 	EnforceBookAhead bool `json:"enforce_book_ahead,omitempty"`
@@ -47,6 +53,15 @@ type PolicyDescribed struct {
 	// enforce min duration
 	EnforceMinDuration bool `json:"enforce_min_duration,omitempty"`
 
+	// enforce next available
+	EnforceNextAvailable bool `json:"enforce_next_available,omitempty"`
+
+	// enforce starts within
+	EnforceStartsWithin bool `json:"enforce_starts_within,omitempty"`
+
+	// enforce unlimited users
+	EnforceUnlimitedUsers bool `json:"enforce_unlimited_users,omitempty"`
+
 	// grace penalty
 	GracePenalty string `json:"grace_penalty,omitempty"`
 
@@ -65,9 +80,15 @@ type PolicyDescribed struct {
 	// min duration
 	MinDuration string `json:"min_duration,omitempty"`
 
+	// next available
+	NextAvailable string `json:"next_available,omitempty"`
+
 	// slots
 	// Required: true
 	Slots []string `json:"slots"`
+
+	// starts within
+	StartsWithin string `json:"starts_within,omitempty"`
 }
 
 // Validate validates this policy described

@@ -29,12 +29,12 @@ func NewGetPoliciesForUser(ctx *middleware.Context, handler GetPoliciesForUserHa
 	return &GetPoliciesForUser{Context: ctx, Handler: handler}
 }
 
-/*
-	GetPoliciesForUser swagger:route GET /users/{user_name}/policies users getPoliciesForUser
-
-# Get all current policies for user
+/* GetPoliciesForUser swagger:route GET /users/{user_name}/policies users getPoliciesForUser
 
 Get all current policies for user
+
+Get all current policies for user
+
 */
 type GetPoliciesForUser struct {
 	Context *middleware.Context

@@ -52,12 +52,10 @@ func NewGetDescriptionParamsWithHTTPClient(client *http.Client) *GetDescriptionP
 	}
 }
 
-/*
-GetDescriptionParams contains all the parameters to send to the API endpoint
+/* GetDescriptionParams contains all the parameters to send to the API endpoint
+   for the get description operation.
 
-	for the get description operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type GetDescriptionParams struct {
 

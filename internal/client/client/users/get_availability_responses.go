@@ -57,8 +57,7 @@ func NewGetAvailabilityOK() *GetAvailabilityOK {
 	return &GetAvailabilityOK{}
 }
 
-/*
-GetAvailabilityOK describes a response with status code 200, with default header values.
+/* GetAvailabilityOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -118,8 +117,7 @@ func NewGetAvailabilityUnauthorized() *GetAvailabilityUnauthorized {
 	return &GetAvailabilityUnauthorized{}
 }
 
-/*
-GetAvailabilityUnauthorized describes a response with status code 401, with default header values.
+/* GetAvailabilityUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -181,8 +179,7 @@ func NewGetAvailabilityNotFound() *GetAvailabilityNotFound {
 	return &GetAvailabilityNotFound{}
 }
 
-/*
-GetAvailabilityNotFound describes a response with status code 404, with default header values.
+/* GetAvailabilityNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -244,8 +241,7 @@ func NewGetAvailabilityInternalServerError() *GetAvailabilityInternalServerError
 	return &GetAvailabilityInternalServerError{}
 }
 
-/*
-GetAvailabilityInternalServerError describes a response with status code 500, with default header values.
+/* GetAvailabilityInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

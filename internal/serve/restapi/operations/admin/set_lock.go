@@ -29,12 +29,12 @@ func NewSetLock(ctx *middleware.Context, handler SetLockHandler) *SetLock {
 	return &SetLock{Context: ctx, Handler: handler}
 }
 
-/*
-	SetLock swagger:route PUT /admin/status admin setLock
+/* SetLock swagger:route PUT /admin/status admin setLock
 
 set/release booking lock
 
 Set whether the booking system is locked for users
+
 */
 type SetLock struct {
 	Context *middleware.Context

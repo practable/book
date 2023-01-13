@@ -29,12 +29,12 @@ func NewCheckManifest(ctx *middleware.Context, handler CheckManifestHandler) *Ch
 	return &CheckManifest{Context: ctx, Handler: handler}
 }
 
-/*
-	CheckManifest swagger:route GET /admin/manifest/check admin checkManifest
+/* CheckManifest swagger:route GET /admin/manifest/check admin checkManifest
 
-# Check a manifest
+Check a manifest
 
 Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).
+
 */
 type CheckManifest struct {
 	Context *middleware.Context

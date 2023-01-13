@@ -53,12 +53,10 @@ func NewGetAvailabilityParamsWithHTTPClient(client *http.Client) *GetAvailabilit
 	}
 }
 
-/*
-GetAvailabilityParams contains all the parameters to send to the API endpoint
+/* GetAvailabilityParams contains all the parameters to send to the API endpoint
+   for the get availability operation.
 
-	for the get availability operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type GetAvailabilityParams struct {
 

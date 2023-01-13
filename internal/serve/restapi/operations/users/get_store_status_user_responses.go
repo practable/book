@@ -16,8 +16,7 @@ import (
 // GetStoreStatusUserOKCode is the HTTP code returned for type GetStoreStatusUserOK
 const GetStoreStatusUserOKCode int = 200
 
-/*
-GetStoreStatusUserOK OK
+/*GetStoreStatusUserOK OK
 
 swagger:response getStoreStatusUserOK
 */
@@ -61,8 +60,7 @@ func (o *GetStoreStatusUserOK) WriteResponse(rw http.ResponseWriter, producer ru
 // GetStoreStatusUserUnauthorizedCode is the HTTP code returned for type GetStoreStatusUserUnauthorized
 const GetStoreStatusUserUnauthorizedCode int = 401
 
-/*
-GetStoreStatusUserUnauthorized Unauthorized
+/*GetStoreStatusUserUnauthorized Unauthorized
 
 swagger:response getStoreStatusUserUnauthorized
 */
@@ -106,8 +104,7 @@ func (o *GetStoreStatusUserUnauthorized) WriteResponse(rw http.ResponseWriter, p
 // GetStoreStatusUserNotFoundCode is the HTTP code returned for type GetStoreStatusUserNotFound
 const GetStoreStatusUserNotFoundCode int = 404
 
-/*
-GetStoreStatusUserNotFound The specified resource was not found
+/*GetStoreStatusUserNotFound The specified resource was not found
 
 swagger:response getStoreStatusUserNotFound
 */
@@ -151,8 +148,7 @@ func (o *GetStoreStatusUserNotFound) WriteResponse(rw http.ResponseWriter, produ
 // GetStoreStatusUserInternalServerErrorCode is the HTTP code returned for type GetStoreStatusUserInternalServerError
 const GetStoreStatusUserInternalServerErrorCode int = 500
 
-/*
-GetStoreStatusUserInternalServerError Internal Error
+/*GetStoreStatusUserInternalServerError Internal Error
 
 swagger:response getStoreStatusUserInternalServerError
 */

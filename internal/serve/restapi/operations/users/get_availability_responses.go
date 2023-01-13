@@ -16,8 +16,7 @@ import (
 // GetAvailabilityOKCode is the HTTP code returned for type GetAvailabilityOK
 const GetAvailabilityOKCode int = 200
 
-/*
-GetAvailabilityOK OK
+/*GetAvailabilityOK OK
 
 swagger:response getAvailabilityOK
 */
@@ -64,8 +63,7 @@ func (o *GetAvailabilityOK) WriteResponse(rw http.ResponseWriter, producer runti
 // GetAvailabilityUnauthorizedCode is the HTTP code returned for type GetAvailabilityUnauthorized
 const GetAvailabilityUnauthorizedCode int = 401
 
-/*
-GetAvailabilityUnauthorized Unauthorized
+/*GetAvailabilityUnauthorized Unauthorized
 
 swagger:response getAvailabilityUnauthorized
 */
@@ -109,8 +107,7 @@ func (o *GetAvailabilityUnauthorized) WriteResponse(rw http.ResponseWriter, prod
 // GetAvailabilityNotFoundCode is the HTTP code returned for type GetAvailabilityNotFound
 const GetAvailabilityNotFoundCode int = 404
 
-/*
-GetAvailabilityNotFound The specified resource was not found
+/*GetAvailabilityNotFound The specified resource was not found
 
 swagger:response getAvailabilityNotFound
 */
@@ -154,8 +151,7 @@ func (o *GetAvailabilityNotFound) WriteResponse(rw http.ResponseWriter, producer
 // GetAvailabilityInternalServerErrorCode is the HTTP code returned for type GetAvailabilityInternalServerError
 const GetAvailabilityInternalServerErrorCode int = 500
 
-/*
-GetAvailabilityInternalServerError Internal Error
+/*GetAvailabilityInternalServerError Internal Error
 
 swagger:response getAvailabilityInternalServerError
 */

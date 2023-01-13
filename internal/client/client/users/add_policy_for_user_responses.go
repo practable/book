@@ -57,8 +57,7 @@ func NewAddPolicyForUserNoContent() *AddPolicyForUserNoContent {
 	return &AddPolicyForUserNoContent{}
 }
 
-/*
-AddPolicyForUserNoContent describes a response with status code 204, with default header values.
+/* AddPolicyForUserNoContent describes a response with status code 204, with default header values.
 
 OK - No Content
 */
@@ -108,8 +107,7 @@ func NewAddPolicyForUserUnauthorized() *AddPolicyForUserUnauthorized {
 	return &AddPolicyForUserUnauthorized{}
 }
 
-/*
-AddPolicyForUserUnauthorized describes a response with status code 401, with default header values.
+/* AddPolicyForUserUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -171,8 +169,7 @@ func NewAddPolicyForUserNotFound() *AddPolicyForUserNotFound {
 	return &AddPolicyForUserNotFound{}
 }
 
-/*
-AddPolicyForUserNotFound describes a response with status code 404, with default header values.
+/* AddPolicyForUserNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -234,8 +231,7 @@ func NewAddPolicyForUserInternalServerError() *AddPolicyForUserInternalServerErr
 	return &AddPolicyForUserInternalServerError{}
 }
 
-/*
-AddPolicyForUserInternalServerError describes a response with status code 500, with default header values.
+/* AddPolicyForUserInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

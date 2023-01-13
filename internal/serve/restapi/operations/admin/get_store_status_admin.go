@@ -29,12 +29,12 @@ func NewGetStoreStatusAdmin(ctx *middleware.Context, handler GetStoreStatusAdmin
 	return &GetStoreStatusAdmin{Context: ctx, Handler: handler}
 }
 
-/*
-	GetStoreStatusAdmin swagger:route GET /admin/status admin getStoreStatusAdmin
+/* GetStoreStatusAdmin swagger:route GET /admin/status admin getStoreStatusAdmin
 
-# Get current store status
+Get current store status
 
 Gets a count of the number of elements in the store, e.g. Bookings, Descriptions etc to facilitate a necessary but not sufficient check that replace manifest and replace bookings have produced the correct results.
+
 */
 type GetStoreStatusAdmin struct {
 	Context *middleware.Context

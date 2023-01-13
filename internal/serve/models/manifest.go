@@ -16,7 +16,7 @@ import (
 
 // Manifest manifest
 //
-// # Represents resources that can be booked
+// Represents resources that can be booked
 //
 // swagger:model Manifest
 type Manifest struct {

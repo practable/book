@@ -1165,6 +1165,8 @@ definitions:
   Policy:
     type: object
     properties:
+      allow_start_in_past_within:
+        type: string
       book_ahead:
         type: string
       description:
@@ -1173,6 +1175,8 @@ definitions:
         type: array
         items:
           type: string
+      enforce_allow_start_in_past:
+        type: boolean
       enforce_book_ahead:
         type: boolean
       enforce_grace_period:
@@ -1184,6 +1188,12 @@ definitions:
       enforce_min_duration:
         type: boolean
       enforce_max_usage:
+        type: boolean
+      enforce_next_available:
+        type: boolean
+      enforce_starts_within:
+        type: boolean
+      enforce_unlimited_users:
         type: boolean
       grace_period:
         type: string
@@ -1197,10 +1207,14 @@ definitions:
         type: string
       max_usage:
         type: string
+      next_available:
+        type: string
       slots:
         type: array
         items:
           type: string
+      starts_within:
+        type: string
     required:
       - description
       - slots
@@ -1208,6 +1222,8 @@ definitions:
   PolicyDescribed:
     type: object
     properties:
+      allow_start_in_past_within:
+        type: string
       book_ahead:
         type: string
       description:
@@ -1216,6 +1232,8 @@ definitions:
         type: object
         additionalProperties:
           $ref: '#/definitions/DisplayGuide'
+      enforce_allow_start_in_past:
+        type: boolean    
       enforce_book_ahead:
         type: boolean
       enforce_grace_period:
@@ -1227,6 +1245,12 @@ definitions:
       enforce_min_duration:
         type: boolean
       enforce_max_usage:
+        type: boolean
+      enforce_next_available:
+        type: boolean
+      enforce_starts_within:
+        type: boolean
+      enforce_unlimited_users:
         type: boolean
       grace_period:
         type: string
@@ -1240,10 +1264,14 @@ definitions:
         type: string
       max_usage:
         type: string
+      next_available:
+         type: string       
       slots:
         type: array
         items:
           type: string
+      starts_within:
+        type: string
     required:
       - description
       - slots

@@ -2,6 +2,7 @@ package serve
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -161,54 +162,97 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 	for k, v := range mm.Policies {
 		m := v
 
-		ba, err := time.ParseDuration(m.BookAhead)
-		if err != nil {
-			return store.Manifest{}, err
-		}
-		nd, err := time.ParseDuration(m.MinDuration)
-		if err != nil {
-			return store.Manifest{}, err
-		}
-		xd, err := time.ParseDuration(m.MaxDuration)
-		if err != nil {
-			return store.Manifest{}, err
-		}
-		mu, err := time.ParseDuration(m.MaxUsage)
-		if err != nil {
-			return store.Manifest{}, err
+		var ba, gpd, gpy, nd, xd, mu, na, sp, sw time.Duration
+		var err error
+
+		if m.EnforceBookAhead { //&& m.BookAhead != "" {
+			ba, err = time.ParseDuration(m.BookAhead)
+			if err != nil {
+				return store.Manifest{}, errors.New("error parsing duration book_ahead in policy " + k + " is " + err.Error())
+			}
 		}
 
-		var gpd, gpy time.Duration
+		if m.EnforceMinDuration {
+			nd, err = time.ParseDuration(m.MinDuration)
+			if err != nil {
+				return store.Manifest{}, errors.New("error parsing duration min_duration in policy " + k + " is " + err.Error())
+			}
+		}
 
-		if m.GracePeriod != "" {
+		if m.EnforceMaxDuration { //&& m.MaxDuration != "" {
+			xd, err = time.ParseDuration(m.MaxDuration)
+			if err != nil {
+				return store.Manifest{}, errors.New("error parsing duration max_duration in policy " + k + " is " + err.Error())
+			}
+		}
+		if m.EnforceMaxUsage { // && m.MaxUsage != "" {
+			mu, err = time.ParseDuration(m.MaxUsage)
+			if err != nil {
+				return store.Manifest{}, errors.New("error parsing duration max_usage in policy " + k + " is " + err.Error())
+			}
+		}
+
+		if m.EnforceNextAvailable { // && m.NextAvailable != "" {
+			na, err = time.ParseDuration(m.NextAvailable)
+			if err != nil {
+				return store.Manifest{}, errors.New("error parsing duration next_available in policy " + k + " is " + err.Error())
+			}
+		}
+
+		if m.EnforceAllowStartInPast { //&& m.AllowStartInPastWithin != "" {
+			sp, err = time.ParseDuration(m.AllowStartInPastWithin)
+			if err != nil {
+				return store.Manifest{}, errors.New("error parsing duration allow_start_in_past_within in policy " + k + " is " + err.Error())
+			}
+		}
+
+		if m.EnforceStartsWithin { //&& m.StartsWithin != "" {
+			sw, err = time.ParseDuration(m.StartsWithin)
+			if err != nil {
+				return store.Manifest{}, errors.New("error parsing duration starts_within in policy " + k + " is " + err.Error())
+			}
+		}
+
+		if m.EnforceGracePeriod {
+
+			//if m.GracePeriod != "" {
 			gpd, err = time.ParseDuration(m.GracePeriod)
 			if err != nil {
-				return store.Manifest{}, err
+				return store.Manifest{}, errors.New("error parsing duration grace_period in policy " + k + " is " + err.Error())
 			}
-		}
-		if m.GracePenalty != "" {
+			//}
+
+			//if m.GracePenalty != "" {
 			gpy, err = time.ParseDuration(m.GracePenalty)
 			if err != nil {
-				return store.Manifest{}, err
+				return store.Manifest{}, errors.New("error parsing duration grace_penalty in policy " + k + " is " + err.Error())
 			}
+			//}
 		}
 		pm[k] = store.Policy{
-			BookAhead:          ba,
-			Description:        *(m.Description),
-			DisplayGuides:      m.DisplayGuides,
-			EnforceBookAhead:   m.EnforceBookAhead,
-			EnforceGracePeriod: m.EnforceGracePeriod,
-			EnforceMaxBookings: m.EnforceMaxBookings,
-			EnforceMaxDuration: m.EnforceMaxDuration,
-			EnforceMinDuration: m.EnforceMinDuration,
-			EnforceMaxUsage:    m.EnforceMaxUsage,
-			GracePenalty:       gpy,
-			GracePeriod:        gpd,
-			MaxBookings:        m.MaxBookings,
-			MaxDuration:        xd,
-			MinDuration:        nd,
-			MaxUsage:           mu,
-			Slots:              m.Slots,
+			AllowStartInPastWithin:  sp,
+			BookAhead:               ba,
+			Description:             *(m.Description),
+			DisplayGuides:           m.DisplayGuides,
+			EnforceAllowStartInPast: m.EnforceAllowStartInPast,
+			EnforceBookAhead:        m.EnforceBookAhead,
+			EnforceGracePeriod:      m.EnforceGracePeriod,
+			EnforceMaxBookings:      m.EnforceMaxBookings,
+			EnforceMaxDuration:      m.EnforceMaxDuration,
+			EnforceMinDuration:      m.EnforceMinDuration,
+			EnforceMaxUsage:         m.EnforceMaxUsage,
+			EnforceNextAvailable:    m.EnforceNextAvailable,
+			EnforceStartsWithin:     m.EnforceStartsWithin,
+			EnforceUnlimitedUsers:   m.EnforceUnlimitedUsers,
+			GracePenalty:            gpy,
+			GracePeriod:             gpd,
+			MaxBookings:             m.MaxBookings,
+			MaxDuration:             xd,
+			MinDuration:             nd,
+			MaxUsage:                mu,
+			NextAvailable:           na,
+			Slots:                   m.Slots,
+			StartsWithin:            sw,
 		}
 	}
 
@@ -434,22 +478,29 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 			s := v
 
 			pm[k] = models.Policy{
-				BookAhead:          s.BookAhead.String(),
-				Description:        gog.Ptr(s.Description),
-				DisplayGuides:      s.DisplayGuides,
-				EnforceBookAhead:   s.EnforceBookAhead,
-				EnforceGracePeriod: s.EnforceGracePeriod,
-				EnforceMaxBookings: s.EnforceMaxBookings,
-				EnforceMaxDuration: s.EnforceMaxDuration,
-				EnforceMinDuration: s.EnforceMinDuration,
-				EnforceMaxUsage:    s.EnforceMaxUsage,
-				GracePenalty:       s.GracePenalty.String(),
-				GracePeriod:        s.GracePeriod.String(),
-				MaxBookings:        s.MaxBookings,
-				MaxDuration:        s.MaxDuration.String(),
-				MinDuration:        s.MinDuration.String(),
-				MaxUsage:           s.MaxUsage.String(),
-				Slots:              s.Slots,
+				AllowStartInPastWithin:  s.AllowStartInPastWithin.String(),
+				BookAhead:               s.BookAhead.String(),
+				Description:             gog.Ptr(s.Description),
+				DisplayGuides:           s.DisplayGuides,
+				EnforceAllowStartInPast: s.EnforceAllowStartInPast,
+				EnforceBookAhead:        s.EnforceBookAhead,
+				EnforceGracePeriod:      s.EnforceGracePeriod,
+				EnforceMaxBookings:      s.EnforceMaxBookings,
+				EnforceMaxDuration:      s.EnforceMaxDuration,
+				EnforceMinDuration:      s.EnforceMinDuration,
+				EnforceMaxUsage:         s.EnforceMaxUsage,
+				EnforceNextAvailable:    s.EnforceNextAvailable,
+				EnforceStartsWithin:     s.EnforceStartsWithin,
+				EnforceUnlimitedUsers:   s.EnforceUnlimitedUsers,
+				GracePenalty:            s.GracePenalty.String(),
+				GracePeriod:             s.GracePeriod.String(),
+				MaxBookings:             s.MaxBookings,
+				MaxDuration:             s.MaxDuration.String(),
+				MinDuration:             s.MinDuration.String(),
+				MaxUsage:                s.MaxUsage.String(),
+				NextAvailable:           s.NextAvailable.String(),
+				Slots:                   s.Slots,
+				StartsWithin:            s.StartsWithin.String(),
 			}
 		}
 

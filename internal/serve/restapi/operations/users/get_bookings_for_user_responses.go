@@ -16,8 +16,7 @@ import (
 // GetBookingsForUserOKCode is the HTTP code returned for type GetBookingsForUserOK
 const GetBookingsForUserOKCode int = 200
 
-/*
-GetBookingsForUserOK OK
+/*GetBookingsForUserOK OK
 
 swagger:response getBookingsForUserOK
 */
@@ -64,8 +63,7 @@ func (o *GetBookingsForUserOK) WriteResponse(rw http.ResponseWriter, producer ru
 // GetBookingsForUserUnauthorizedCode is the HTTP code returned for type GetBookingsForUserUnauthorized
 const GetBookingsForUserUnauthorizedCode int = 401
 
-/*
-GetBookingsForUserUnauthorized Unauthorized
+/*GetBookingsForUserUnauthorized Unauthorized
 
 swagger:response getBookingsForUserUnauthorized
 */
@@ -109,8 +107,7 @@ func (o *GetBookingsForUserUnauthorized) WriteResponse(rw http.ResponseWriter, p
 // GetBookingsForUserNotFoundCode is the HTTP code returned for type GetBookingsForUserNotFound
 const GetBookingsForUserNotFoundCode int = 404
 
-/*
-GetBookingsForUserNotFound The specified resource was not found
+/*GetBookingsForUserNotFound The specified resource was not found
 
 swagger:response getBookingsForUserNotFound
 */
@@ -154,8 +151,7 @@ func (o *GetBookingsForUserNotFound) WriteResponse(rw http.ResponseWriter, produ
 // GetBookingsForUserInternalServerErrorCode is the HTTP code returned for type GetBookingsForUserInternalServerError
 const GetBookingsForUserInternalServerErrorCode int = 500
 
-/*
-GetBookingsForUserInternalServerError Internal Error
+/*GetBookingsForUserInternalServerError Internal Error
 
 swagger:response getBookingsForUserInternalServerError
 */

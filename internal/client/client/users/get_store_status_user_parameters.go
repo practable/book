@@ -52,12 +52,10 @@ func NewGetStoreStatusUserParamsWithHTTPClient(client *http.Client) *GetStoreSta
 	}
 }
 
-/*
-GetStoreStatusUserParams contains all the parameters to send to the API endpoint
+/* GetStoreStatusUserParams contains all the parameters to send to the API endpoint
+   for the get store status user operation.
 
-	for the get store status user operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type GetStoreStatusUserParams struct {
 	timeout    time.Duration

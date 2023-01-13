@@ -58,9 +58,9 @@ type ClientService interface {
 }
 
 /*
-CheckManifest checks a manifest
+  CheckManifest checks a manifest
 
-Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).
+  Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).
 */
 func (a *Client) CheckManifest(params *CheckManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CheckManifestNoContent, error) {
 	// TODO: Validate the params before sending
@@ -99,9 +99,9 @@ func (a *Client) CheckManifest(params *CheckManifestParams, authInfo runtime.Cli
 }
 
 /*
-ExportBookings exports a copy of all current bookings
+  ExportBookings exports a copy of all current bookings
 
-Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
+  Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
 */
 func (a *Client) ExportBookings(params *ExportBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportBookingsOK, error) {
 	// TODO: Validate the params before sending
@@ -140,9 +140,9 @@ func (a *Client) ExportBookings(params *ExportBookingsParams, authInfo runtime.C
 }
 
 /*
-ExportManifest exports the manifest
+  ExportManifest exports the manifest
 
-Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users
+  Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users
 */
 func (a *Client) ExportManifest(params *ExportManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportManifestOK, error) {
 	// TODO: Validate the params before sending
@@ -181,9 +181,9 @@ func (a *Client) ExportManifest(params *ExportManifestParams, authInfo runtime.C
 }
 
 /*
-ExportOldBookings exports a copy of all old bookings
+  ExportOldBookings exports a copy of all old bookings
 
-Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
+  Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
 */
 func (a *Client) ExportOldBookings(params *ExportOldBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportOldBookingsOK, error) {
 	// TODO: Validate the params before sending
@@ -222,9 +222,9 @@ func (a *Client) ExportOldBookings(params *ExportOldBookingsParams, authInfo run
 }
 
 /*
-ExportUsers exports users
+  ExportUsers exports users
 
-Export bookings and usage data for each user
+  Export bookings and usage data for each user
 */
 func (a *Client) ExportUsers(params *ExportUsersParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportUsersOK, error) {
 	// TODO: Validate the params before sending
@@ -263,9 +263,9 @@ func (a *Client) ExportUsers(params *ExportUsersParams, authInfo runtime.ClientA
 }
 
 /*
-GetSlotIsAvailable gets the availability of the slot
+  GetSlotIsAvailable gets the availability of the slot
 
-Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
+  Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
 */
 func (a *Client) GetSlotIsAvailable(params *GetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetSlotIsAvailableOK, error) {
 	// TODO: Validate the params before sending
@@ -304,9 +304,9 @@ func (a *Client) GetSlotIsAvailable(params *GetSlotIsAvailableParams, authInfo r
 }
 
 /*
-ReplaceBookings replaces current bookings
+  ReplaceBookings replaces current bookings
 
-Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.
+  Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.
 */
 func (a *Client) ReplaceBookings(params *ReplaceBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceBookingsOK, error) {
 	// TODO: Validate the params before sending
@@ -345,9 +345,9 @@ func (a *Client) ReplaceBookings(params *ReplaceBookingsParams, authInfo runtime
 }
 
 /*
-ReplaceManifest replaces the manifest
+  ReplaceManifest replaces the manifest
 
-Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)
+  Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)
 */
 func (a *Client) ReplaceManifest(params *ReplaceManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceManifestOK, error) {
 	// TODO: Validate the params before sending
@@ -386,9 +386,9 @@ func (a *Client) ReplaceManifest(params *ReplaceManifestParams, authInfo runtime
 }
 
 /*
-ReplaceOldBookings replaces old bookings
+  ReplaceOldBookings replaces old bookings
 
-Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.
+  Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.
 */
 func (a *Client) ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceOldBookingsOK, error) {
 	// TODO: Validate the params before sending
@@ -427,9 +427,9 @@ func (a *Client) ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo r
 }
 
 /*
-SetSlotIsAvailable sets the availability of the slot
+  SetSlotIsAvailable sets the availability of the slot
 
-Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
+  Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
 */
 func (a *Client) SetSlotIsAvailable(params *SetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetSlotIsAvailableNoContent, error) {
 	// TODO: Validate the params before sending
@@ -468,9 +468,9 @@ func (a *Client) SetSlotIsAvailable(params *SetSlotIsAvailableParams, authInfo r
 }
 
 /*
-GetStoreStatusAdmin gets current store status
+  GetStoreStatusAdmin gets current store status
 
-Gets a count of the number of elements in the store, e.g. Bookings, Descriptions etc to facilitate a necessary but not sufficient check that replace manifest and replace bookings have produced the correct results.
+  Gets a count of the number of elements in the store, e.g. Bookings, Descriptions etc to facilitate a necessary but not sufficient check that replace manifest and replace bookings have produced the correct results.
 */
 func (a *Client) GetStoreStatusAdmin(params *GetStoreStatusAdminParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetStoreStatusAdminOK, error) {
 	// TODO: Validate the params before sending
@@ -509,9 +509,9 @@ func (a *Client) GetStoreStatusAdmin(params *GetStoreStatusAdminParams, authInfo
 }
 
 /*
-SetLock sets release booking lock
+  SetLock sets release booking lock
 
-Set whether the booking system is locked for users
+  Set whether the booking system is locked for users
 */
 func (a *Client) SetLock(params *SetLockParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetLockOK, error) {
 	// TODO: Validate the params before sending

@@ -57,8 +57,7 @@ func NewGetPolicyOK() *GetPolicyOK {
 	return &GetPolicyOK{}
 }
 
-/*
-GetPolicyOK describes a response with status code 200, with default header values.
+/* GetPolicyOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -120,8 +119,7 @@ func NewGetPolicyUnauthorized() *GetPolicyUnauthorized {
 	return &GetPolicyUnauthorized{}
 }
 
-/*
-GetPolicyUnauthorized describes a response with status code 401, with default header values.
+/* GetPolicyUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -183,8 +181,7 @@ func NewGetPolicyNotFound() *GetPolicyNotFound {
 	return &GetPolicyNotFound{}
 }
 
-/*
-GetPolicyNotFound describes a response with status code 404, with default header values.
+/* GetPolicyNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -246,8 +243,7 @@ func NewGetPolicyInternalServerError() *GetPolicyInternalServerError {
 	return &GetPolicyInternalServerError{}
 }
 
-/*
-GetPolicyInternalServerError describes a response with status code 500, with default header values.
+/* GetPolicyInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */

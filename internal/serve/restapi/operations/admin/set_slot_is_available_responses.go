@@ -16,8 +16,7 @@ import (
 // SetSlotIsAvailableNoContentCode is the HTTP code returned for type SetSlotIsAvailableNoContent
 const SetSlotIsAvailableNoContentCode int = 204
 
-/*
-SetSlotIsAvailableNoContent OK
+/*SetSlotIsAvailableNoContent OK
 
 swagger:response setSlotIsAvailableNoContent
 */
@@ -41,8 +40,7 @@ func (o *SetSlotIsAvailableNoContent) WriteResponse(rw http.ResponseWriter, prod
 // SetSlotIsAvailableUnauthorizedCode is the HTTP code returned for type SetSlotIsAvailableUnauthorized
 const SetSlotIsAvailableUnauthorizedCode int = 401
 
-/*
-SetSlotIsAvailableUnauthorized Unauthorized
+/*SetSlotIsAvailableUnauthorized Unauthorized
 
 swagger:response setSlotIsAvailableUnauthorized
 */
@@ -86,8 +84,7 @@ func (o *SetSlotIsAvailableUnauthorized) WriteResponse(rw http.ResponseWriter, p
 // SetSlotIsAvailableNotFoundCode is the HTTP code returned for type SetSlotIsAvailableNotFound
 const SetSlotIsAvailableNotFoundCode int = 404
 
-/*
-SetSlotIsAvailableNotFound The specified resource was not found
+/*SetSlotIsAvailableNotFound The specified resource was not found
 
 swagger:response setSlotIsAvailableNotFound
 */
@@ -131,8 +128,7 @@ func (o *SetSlotIsAvailableNotFound) WriteResponse(rw http.ResponseWriter, produ
 // SetSlotIsAvailableInternalServerErrorCode is the HTTP code returned for type SetSlotIsAvailableInternalServerError
 const SetSlotIsAvailableInternalServerErrorCode int = 500
 
-/*
-SetSlotIsAvailableInternalServerError Internal Error
+/*SetSlotIsAvailableInternalServerError Internal Error
 
 swagger:response setSlotIsAvailableInternalServerError
 */

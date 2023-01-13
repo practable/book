@@ -54,12 +54,10 @@ func NewReplaceBookingsParamsWithHTTPClient(client *http.Client) *ReplaceBooking
 	}
 }
 
-/*
-ReplaceBookingsParams contains all the parameters to send to the API endpoint
+/* ReplaceBookingsParams contains all the parameters to send to the API endpoint
+   for the replace bookings operation.
 
-	for the replace bookings operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type ReplaceBookingsParams struct {
 

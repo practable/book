@@ -16,8 +16,7 @@ import (
 // GetAccessTokenOKCode is the HTTP code returned for type GetAccessTokenOK
 const GetAccessTokenOKCode int = 200
 
-/*
-GetAccessTokenOK OK
+/*GetAccessTokenOK OK
 
 swagger:response getAccessTokenOK
 */
@@ -61,8 +60,7 @@ func (o *GetAccessTokenOK) WriteResponse(rw http.ResponseWriter, producer runtim
 // GetAccessTokenUnauthorizedCode is the HTTP code returned for type GetAccessTokenUnauthorized
 const GetAccessTokenUnauthorizedCode int = 401
 
-/*
-GetAccessTokenUnauthorized Unauthorized
+/*GetAccessTokenUnauthorized Unauthorized
 
 swagger:response getAccessTokenUnauthorized
 */
@@ -106,8 +104,7 @@ func (o *GetAccessTokenUnauthorized) WriteResponse(rw http.ResponseWriter, produ
 // GetAccessTokenNotFoundCode is the HTTP code returned for type GetAccessTokenNotFound
 const GetAccessTokenNotFoundCode int = 404
 
-/*
-GetAccessTokenNotFound The specified resource was not found
+/*GetAccessTokenNotFound The specified resource was not found
 
 swagger:response getAccessTokenNotFound
 */
@@ -151,8 +148,7 @@ func (o *GetAccessTokenNotFound) WriteResponse(rw http.ResponseWriter, producer 
 // GetAccessTokenInternalServerErrorCode is the HTTP code returned for type GetAccessTokenInternalServerError
 const GetAccessTokenInternalServerErrorCode int = 500
 
-/*
-GetAccessTokenInternalServerError Internal Error
+/*GetAccessTokenInternalServerError Internal Error
 
 swagger:response getAccessTokenInternalServerError
 */

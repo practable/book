@@ -198,7 +198,8 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 		}
 
 		pm := models.PolicyDescribed{
-			BookAhead: store.HumaniseDuration(p.BookAhead),
+			AllowStartInPastWithin: store.HumaniseDuration(p.AllowStartInPastWithin),
+			BookAhead:              store.HumaniseDuration(p.BookAhead),
 			Description: gog.Ptr(models.Description{
 				Name:    &descr.Name,
 				Type:    &descr.Type,
@@ -208,17 +209,23 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 				Thumb:   descr.Thumb,
 				Image:   descr.Image,
 			}),
-			DisplayGuides:      dgm,
-			EnforceBookAhead:   p.EnforceBookAhead,
-			EnforceMaxBookings: p.EnforceMaxBookings,
-			EnforceMaxDuration: p.EnforceMaxDuration,
-			EnforceMinDuration: p.EnforceMinDuration,
-			EnforceMaxUsage:    p.EnforceMaxUsage,
-			MaxBookings:        p.MaxBookings,
-			MaxDuration:        store.HumaniseDuration(p.MaxDuration),
-			MinDuration:        store.HumaniseDuration(p.MinDuration),
-			MaxUsage:           store.HumaniseDuration(p.MaxUsage),
-			Slots:              p.Slots,
+			DisplayGuides:           dgm,
+			EnforceAllowStartInPast: p.EnforceAllowStartInPast,
+			EnforceBookAhead:        p.EnforceBookAhead,
+			EnforceMaxBookings:      p.EnforceMaxBookings,
+			EnforceMaxDuration:      p.EnforceMaxDuration,
+			EnforceMinDuration:      p.EnforceMinDuration,
+			EnforceMaxUsage:         p.EnforceMaxUsage,
+			EnforceNextAvailable:    p.EnforceNextAvailable,
+			EnforceStartsWithin:     p.EnforceStartsWithin,
+			EnforceUnlimitedUsers:   p.EnforceUnlimitedUsers,
+			MaxBookings:             p.MaxBookings,
+			MaxDuration:             store.HumaniseDuration(p.MaxDuration),
+			MinDuration:             store.HumaniseDuration(p.MinDuration),
+			MaxUsage:                store.HumaniseDuration(p.MaxUsage),
+			NextAvailable:           store.HumaniseDuration(p.NextAvailable),
+			Slots:                   p.Slots,
+			StartsWithin:            store.HumaniseDuration(p.StartsWithin),
 		}
 
 		return users.NewGetPolicyOK().WithPayload(&pm)

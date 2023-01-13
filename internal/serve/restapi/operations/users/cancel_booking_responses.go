@@ -16,8 +16,7 @@ import (
 // CancelBookingUnauthorizedCode is the HTTP code returned for type CancelBookingUnauthorized
 const CancelBookingUnauthorizedCode int = 401
 
-/*
-CancelBookingUnauthorized Unauthorized
+/*CancelBookingUnauthorized Unauthorized
 
 swagger:response cancelBookingUnauthorized
 */
@@ -61,8 +60,7 @@ func (o *CancelBookingUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 // CancelBookingNotFoundCode is the HTTP code returned for type CancelBookingNotFound
 const CancelBookingNotFoundCode int = 404
 
-/*
-CancelBookingNotFound The specified resource was not found
+/*CancelBookingNotFound The specified resource was not found
 
 swagger:response cancelBookingNotFound
 */
@@ -106,8 +104,7 @@ func (o *CancelBookingNotFound) WriteResponse(rw http.ResponseWriter, producer r
 // CancelBookingInternalServerErrorCode is the HTTP code returned for type CancelBookingInternalServerError
 const CancelBookingInternalServerErrorCode int = 500
 
-/*
-CancelBookingInternalServerError Internal Error
+/*CancelBookingInternalServerError Internal Error
 
 swagger:response cancelBookingInternalServerError
 */

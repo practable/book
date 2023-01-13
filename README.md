@@ -930,7 +930,24 @@ AllowStartInPastWithin time.Duration
 support next available mode
 ```
 EnforceNextAvailable    bool 
-NextAvailableStartsWithin time.Duration 
+NextAvailable time.Duration 
 ```
 
+in api spec format:
+```
+  allow_start_in_past_within:
+    type: string
+  enforce_allow_start_in_past:
+    type: boolean
+  enforce_next_available:
+    type: boolean
+  enforce_starts_within:
+    type: boolean
+  enforce_unlimited_users:
+    type: boolean
+  next_available:
+    type: string
+  starts_within:
+    type: string
 
+```

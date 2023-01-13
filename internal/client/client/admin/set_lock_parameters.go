@@ -53,12 +53,10 @@ func NewSetLockParamsWithHTTPClient(client *http.Client) *SetLockParams {
 	}
 }
 
-/*
-SetLockParams contains all the parameters to send to the API endpoint
+/* SetLockParams contains all the parameters to send to the API endpoint
+   for the set lock operation.
 
-	for the set lock operation.
-
-	Typically these are written to a http.Request.
+   Typically these are written to a http.Request.
 */
 type SetLockParams struct {
 
