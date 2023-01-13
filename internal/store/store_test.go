@@ -29,7 +29,11 @@ var manifestYAML = []byte(`descriptions:
   d-p-instant:
     name: policy-instant
     type: policy
-    short: instant
+    short: instant 
+  d-p-next-available:
+    name: policy-next-available
+    type: policy
+    short: next-available  
   d-p-simulation:
     name: policy-simulation
     type: policy
@@ -65,7 +69,11 @@ var manifestYAML = []byte(`descriptions:
   d-sl-instant:
     name: slot-instant
     type: slot
-    short: instant
+    short: instant 
+  d-sl-next-available:
+    name: slot-next-available
+    type: slot
+    short: next-available  
   d-sl-simulation:
     name: slot-simulation
     type: slot
@@ -150,6 +158,25 @@ policies:
     slots:
     - sl-instant
     starts_within: 1m
+  p-next-available:
+    book_ahead: 2h0m0s
+    description: d-p-next-available
+    display_guides:
+      - 6m
+      - 8m
+    enforce_book_ahead: true
+    enforce_max_bookings: true
+    enforce_max_duration: true
+    enforce_min_duration: true
+    enforce_max_usage: true
+    enforce_next_available: true
+    max_bookings: 2
+    max_duration: 10m0s
+    min_duration: 5m0s
+    max_usage: 30m0s
+    next_available: 1m
+    slots:
+    - sl-next-available
   p-simulation:
     book_ahead: 2h0m0s
     description: d-p-simulation
@@ -245,6 +272,12 @@ slots:
     resource: r-b
     ui_set: us-b
     window: w-b
+  sl-next-available:
+    description: d-sl-next-available
+    policy: p-next-available
+    resource: r-a
+    ui_set: us-a
+    window: w-a
   sl-simulation:
     description: d-sl-simulation
     policy: p-simulation
@@ -1764,12 +1797,12 @@ func TestStoreStatusAdminUser(t *testing.T) {
 		Message:      "Welcome to the interval booking store",
 		Now:          time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		Bookings:     2,
-		Descriptions: 18,
+		Descriptions: 20,
 		Filters:      2,
 		OldBookings:  0,
-		Policies:     6,
+		Policies:     7,
 		Resources:    3,
-		Slots:        6,
+		Slots:        7,
 		Streams:      3,
 		UIs:          3,
 		UISets:       3,
@@ -2575,6 +2608,93 @@ func TestStartWithin(t *testing.T) {
 	}
 
 	b, err := s.MakeBooking(policy, slot, user, when)
+
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "", b.Name) //non null name
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
+
+}
+
+func TestNextAvailable(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	policy := "p-next-available"
+	slot := "sl-next-available"
+	user := "user-0"
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC), //requesting start 30sec in future from now
+		End:   time.Date(2022, 11, 5, 0, 10, 30, 0, time.UTC),
+	}
+
+	// setup a "prior booking" we want to test against
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "", b.Name) //non null name
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
+
+	// move forward in time past the unbooked 30sec before this test booking
+	// into the middle-ish of the first booking
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 6, 0, 0, time.UTC) }
+
+	// now try booking too far into the future after this earlier booking
+	user = "user-1"
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 0, 13, 0, 0, time.UTC), //requesting start 2m30s after last booking ends
+		End:   time.Date(2022, 11, 5, 0, 23, 0, 0, time.UTC),
+	}
+	_, err = s.MakeBooking(policy, slot, user, when)
+
+	assert.Error(t, err)
+
+	expected := "due to next available policy setting, booking cannot start more than 1m0s after the last booking ends, i.e. 2022-11-05 00:11:30.000000001 +0000 UTC"
+	assert.Equal(t, expected, err.Error())
+
+	if expected != err.Error() {
+		p, err := s.GetPolicy(policy)
+		assert.NoError(t, err)
+		pretty, err := json.Marshal(p)
+		assert.NoError(t, err)
+		t.Log(string(pretty))
+
+	}
+
+	// respect the next_available interval, and booking must succeed
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 0, 11, 0, 0, time.UTC), //now 59 sec in the future
+		End:   time.Date(2022, 11, 5, 0, 21, 0, 0, time.UTC),
+	}
+
+	b, err = s.MakeBooking(policy, slot, user, when)
 
 	if err != nil {
 		t.Log(err.Error())

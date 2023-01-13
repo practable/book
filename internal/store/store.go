@@ -147,16 +147,16 @@ type Policy struct {
 	MaxDuration  time.Duration `json:"max_duration"  yaml:"max_duration"`
 	MinDuration  time.Duration `json:"min_duration"  yaml:"min_duration"`
 	MaxUsage     time.Duration `json:"max_usage"  yaml:"max_usage"`
-	// NextAvailableStartsWithin allows for a small gap in bookings to give some flex in case the availability windows are presented with reduced resolution at some point in the system
+	// NextAvailable allows for a small gap in bookings to give some flex in case the availability windows are presented with reduced resolution at some point in the system
 	// i.e. set to 2min to allow a request that is rounded up to start at the next minute after the last booking ends, instead of expecting ms precision from everyone
 	// Leaving this to default to zero requires the booking UI to return the exact figure given in the availability list, which probably works for now but might not later when other developers
 	// working on other features maybe don't realise how strict the calculation is without this allowance, or we change the precision somewhere in the system for human-readability and lose the
 	// exact value that the system would expect due to loss of precision - resulting in a rejected booking that is otherwise within the spirit of the policy.
 	// Also, some use cases might actually let this be say 15min or 30min - we can't predict the use cases, but can expect them to vary within the same booking system,
 	// so don't make this a system-wide parameter.
-	NextAvailableStartsWithin time.Duration   `json:"next_available_starts_within"  yaml:"next_available_starts_within"`
-	Slots                     []string        `json:"slots" yaml:"slots"`
-	SlotMap                   map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
+	NextAvailable time.Duration   `json:"next_available"  yaml:"next_available"`
+	Slots         []string        `json:"slots" yaml:"slots"`
+	SlotMap       map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
 	// booking must start within this duration from now, if enforced
 	StartsWithin time.Duration `json:"starts_within"  yaml:"starts_within"`
 }
@@ -896,6 +896,13 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 		log.Trace(where + " released Rlock")
 	}()
 
+	return s.getAvailability(policy, slot)
+
+}
+
+// getAvailability is for internal use only (e.g. in MakeBooking)
+func (s *Store) getAvailability(policy, slot string) ([]interval.Interval, error) {
+
 	p, ok := s.Policies[policy]
 
 	if !ok {
@@ -1526,6 +1533,27 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 		if when.Start.After(now) {
 			return Booking{}, errors.New("booking cannot start more than " + HumaniseDuration(p.StartsWithin) + " in the future")
 		}
+	}
+
+	if p.EnforceNextAvailable {
+
+		// check if booking is starting soon enough after the earliest current booking, or now, if there is no booking, if NextAvailable is enforced
+		a, err := s.getAvailability(policy, slot)
+
+		if err != nil {
+			return Booking{}, errors.New("enforcing next available policy setting failed because " + err.Error())
+		}
+
+		if len(a) < 1 {
+			return Booking{}, errors.New("enforcing next available policy setting because availability list was empty")
+		}
+
+		latest := a[0].Start.Add(p.NextAvailable)
+
+		if when.Start.After(latest) {
+			return Booking{}, errors.New("due to next available policy setting, booking cannot start more than " + HumaniseDuration(p.NextAvailable) + " after the last booking ends, i.e. " + latest.String())
+		}
+
 	}
 
 	now = s.Now() // return now to the current value in case we use it again and overlook that we have adjusted it in the checks above
