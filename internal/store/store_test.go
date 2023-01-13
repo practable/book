@@ -118,6 +118,7 @@ policies:
     enforce_max_duration: true
     enforce_min_duration: true
     enforce_max_usage: true
+    enforce_unlimited_users: true
     max_bookings: 2
     max_duration: 10m0s
     min_duration: 5m0s
@@ -2265,4 +2266,106 @@ func TestCalculateUsage(t *testing.T) {
 		})
 	}
 
+}
+
+func TestEnforceUnlimitedUsers(t *testing.T) {
+
+	// derived from TestGetActivity, modified to have second user book at same time as first user
+	// both should be able to get Activity successfully at the same time.
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+
+	policy := "p-simulation"
+	slot := "sl-simulation"
+	user := "sim-user-0"
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
+		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	b0, err := s.MakeBooking(policy, slot, user, when)
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, policy, b0.Policy)
+	assert.Equal(t, slot, b0.Slot)
+	assert.Equal(t, user, b0.User)
+	assert.Equal(t, when, b0.When)
+	assert.NotEqual(t, "", b0.Name) //non null name
+	assert.False(t, b0.Cancelled)
+	assert.False(t, b0.Started)
+	assert.False(t, b0.Unfulfilled)
+
+	// make second booking at same time for different user
+	user = "sim-user-1"
+	b1, err := s.MakeBooking(policy, slot, user, when)
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, policy, b1.Policy)
+	assert.Equal(t, slot, b1.Slot)
+	assert.Equal(t, user, b1.User)
+	assert.Equal(t, when, b1.When)
+	assert.NotEqual(t, "", b1.Name) //non null name
+	assert.False(t, b1.Cancelled)
+	assert.False(t, b1.Started)
+	assert.False(t, b1.Unfulfilled)
+
+	// shift to time within booking
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 02, 0, 0, time.UTC) }
+
+	a0, err := s.GetActivity(b0)
+	assert.NoError(t, err)
+	a1, err := s.GetActivity(b1)
+	assert.NoError(t, err)
+
+	exp := Activity{
+		Description: Description{
+			Name:    "slot-simulation",
+			Type:    "slot",
+			Short:   "simulation",
+			Long:    "",
+			Further: "",
+			Thumb:   "",
+			Image:   ""},
+		ConfigURL: "",
+		Streams: map[string]Stream{
+			"st-log": Stream{
+				Audience:       "some_audience",
+				ConnectionType: "session",
+				For:            "log",
+				Scopes:         []string{"r", "w"},
+				Topic:          "simu00-st-log",
+				URL:            "some_url"}},
+		UIs: []UIDescribed{
+			UIDescribed{
+				Description: Description{
+					Name:    "ui-simulation",
+					Type:    "ui",
+					Short:   "simulation",
+					Long:    "",
+					Further: "",
+					Thumb:   "",
+					Image:   ""},
+				URL:             "https://some_url.org",
+				StreamsRequired: []string{"st-log"},
+			}},
+		NotBefore: time.Date(2022, time.November, 5, 2, 0, 0, 0, time.UTC),
+		ExpiresAt: time.Date(2022, time.November, 5, 2, 10, 0, 0, time.UTC),
+	}
+
+	assert.Equal(t, exp, a0)
+	assert.Equal(t, exp, a1)
 }
