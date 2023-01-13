@@ -89,6 +89,7 @@ type Description struct {
 // to offer, how many, and how far in the future. This is to allow course staff
 // to influence the offerings to students in a way that might better suit their
 // teaching views.
+// remember to update UnmarshalJSON if adding fields
 type DisplayGuide struct {
 	BookAhead time.Duration `json:"book_ahead" yaml:"book_ahead"`
 	Duration  time.Duration `json:"duration" yaml:"duration"`
@@ -112,6 +113,7 @@ type Manifest struct {
 
 // Policy represents what a user can book, and any limits on bookings/usage
 // Unmarshaling of time.Duration works in yaml.v3, https://play.golang.org/p/-6y0zq96gVz"
+// remember to update UnmarshalJSON if adding fields
 type Policy struct {
 	// AllowStartInPastWithin gives some latitude to accept a booking starting now that gets delayed on the way to the server. A bookng at minimum acceptable duration will be reduced to as much as this duration, so that there is no need to include logic about how to handle a shift in the end time. Typically values might be 10s or 1m.
 	AllowStartInPastWithin time.Duration `json:"allow_start_in_past_within"  yaml:"allow_start_in_past_within"`
@@ -2666,21 +2668,28 @@ func (p *Policy) UnmarshalJSON(data []byte) (err error) {
 
 	var tmp struct {
 		// durations are set to string for now
-		BookAhead   string `json:"book_ahead"  yaml:"book_ahead"`
-		MaxDuration string `json:"max_duration"  yaml:"max_duration"`
-		MinDuration string `json:"min_duration"  yaml:"min_duration"`
-		MaxUsage    string `json:"max_usage"  yaml:"max_usage"`
+		AllowStartInPastWithin string `json:"allow_start_in_past_within"  yaml:"allow_start_in_past_within"`
+		BookAhead              string `json:"book_ahead"  yaml:"book_ahead"`
+		MaxDuration            string `json:"max_duration"  yaml:"max_duration"`
+		MinDuration            string `json:"min_duration"  yaml:"min_duration"`
+		MaxUsage               string `json:"max_usage"  yaml:"max_usage"`
+		NextAvailable          string `json:"next_available"  yaml:"next_available"`
+		StartsWithin           string `json:"starts_within"  yaml:"starts_within"`
 
 		// other fields stay the same
-		Description        string   `json:"description"  yaml:"description"`
-		DisplayGuides      []string `json:"display_guides"  yaml:"display_guides"`
-		EnforceBookAhead   bool     `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
-		EnforceMaxBookings bool     `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
-		EnforceMaxDuration bool     `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
-		EnforceMinDuration bool     `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
-		EnforceMaxUsage    bool     `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
-		MaxBookings        int64    `json:"max_bookings"  yaml:"max_bookings"`
-		Slots              []string `json:"slots" yaml:"slots"`
+		Description             string   `json:"description"  yaml:"description"`
+		DisplayGuides           []string `json:"display_guides"  yaml:"display_guides"`
+		EnforceAllowStartInPast bool     `json:"enforce_allow_start_in_past"  yaml:"enforce_allow_start_in_past"`
+		EnforceBookAhead        bool     `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
+		EnforceMaxBookings      bool     `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
+		EnforceMaxDuration      bool     `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
+		EnforceMinDuration      bool     `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
+		EnforceMaxUsage         bool     `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
+		EnforceNextAvailable    bool     `json:"enforce_next_available"  yaml:"enforce_next_available"`
+		EnforceStartsWithin     bool     `json:"enforce_starts_within"  yaml:"enforce_starts_within"`
+		EnforceUnlimitedUsers   bool     `json:"enforce_unlimited_users"  yaml:"enforce_unlimited_users"`
+		MaxBookings             int64    `json:"max_bookings"  yaml:"max_bookings"`
+		Slots                   []string `json:"slots" yaml:"slots"`
 	}
 
 	if err = json.Unmarshal(data, &tmp); err != nil {
@@ -2688,7 +2697,6 @@ func (p *Policy) UnmarshalJSON(data []byte) (err error) {
 	}
 
 	// parse durations
-
 	ba, err := time.ParseDuration(tmp.BookAhead)
 	if err != nil {
 		return err
@@ -2697,7 +2705,19 @@ func (p *Policy) UnmarshalJSON(data []byte) (err error) {
 	if err != nil {
 		return err
 	}
+	na, err := time.ParseDuration(tmp.NextAvailable)
+	if err != nil {
+		return err
+	}
 	nd, err := time.ParseDuration(tmp.MinDuration)
+	if err != nil {
+		return err
+	}
+	sp, err := time.ParseDuration(tmp.AllowStartInPastWithin)
+	if err != nil {
+		return err
+	}
+	sw, err := time.ParseDuration(tmp.StartsWithin)
 	if err != nil {
 		return err
 	}
@@ -2706,18 +2726,25 @@ func (p *Policy) UnmarshalJSON(data []byte) (err error) {
 		return err
 	}
 
+	p.AllowStartInPastWithin = sp
 	p.BookAhead = ba
 	p.MaxDuration = xd
+	p.NextAvailable = na
 	p.MinDuration = nd
 	p.MaxUsage = xu
+	p.StartsWithin = sw
 
 	p.Description = tmp.Description
 	p.DisplayGuides = tmp.DisplayGuides
+	p.EnforceAllowStartInPast = tmp.EnforceAllowStartInPast
 	p.EnforceBookAhead = tmp.EnforceBookAhead
 	p.EnforceMaxBookings = tmp.EnforceMaxBookings
 	p.EnforceMaxDuration = tmp.EnforceMaxDuration
 	p.EnforceMinDuration = tmp.EnforceMinDuration
 	p.EnforceMaxUsage = tmp.EnforceMaxUsage
+	p.EnforceNextAvailable = tmp.EnforceNextAvailable
+	p.EnforceStartsWithin = tmp.EnforceStartsWithin
+	p.EnforceUnlimitedUsers = tmp.EnforceUnlimitedUsers
 	p.MaxBookings = tmp.MaxBookings
 	p.Slots = tmp.Slots
 

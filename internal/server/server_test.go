@@ -923,6 +923,8 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 	// for troubleshooting when adding p-modes to manifest
 	if !reflect.DeepEqual(expectedManifest, exportedManifest) {
 
+		t.Log(string(body))
+
 		auth := httptransport.APIKeyAuth("Authorization", "header", stoken)
 		c := apiclient.DefaultTransportConfig().WithHost(ch).WithSchemes([]string{cs})
 		bc := apiclient.NewHTTPClientWithConfig(nil, c)
@@ -1050,12 +1052,12 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 		Message:      "Welcome to the interval booking store",
 		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
 		Bookings:     0,
-		Descriptions: 8,
+		Descriptions: 10,
 		Filters:      2,
 		OldBookings:  2,
-		Policies:     2,
+		Policies:     3,
 		Resources:    2,
-		Slots:        2,
+		Slots:        3,
 		Streams:      2,
 		UIs:          2,
 		UISets:       2,
@@ -1106,12 +1108,12 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 		Message:      "Welcome to the interval booking store",
 		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
 		Bookings:     0,
-		Descriptions: 8,
+		Descriptions: 10,
 		Filters:      2,
 		OldBookings:  0, // no old bookings
-		Policies:     2,
+		Policies:     3,
 		Resources:    2,
-		Slots:        2,
+		Slots:        3,
 		Streams:      2,
 		UIs:          2,
 		UISets:       2,
@@ -1159,12 +1161,12 @@ func TestSetLock(t *testing.T) {
 		Message:      "Locked for maintenance",
 		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
 		Bookings:     0,
-		Descriptions: 8,
+		Descriptions: 10,
 		Filters:      2,
 		OldBookings:  0,
-		Policies:     2,
+		Policies:     3,
 		Resources:    2,
-		Slots:        2,
+		Slots:        3,
 		Streams:      2,
 		UIs:          2,
 		UISets:       2,
@@ -1204,12 +1206,12 @@ func TestSetLock(t *testing.T) {
 		Message:      "Open for bookings",
 		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
 		Bookings:     0,
-		Descriptions: 8,
+		Descriptions: 10,
 		Filters:      2,
 		OldBookings:  0,
-		Policies:     2,
+		Policies:     3,
 		Resources:    2,
-		Slots:        2,
+		Slots:        3,
 		Streams:      2,
 		UIs:          2,
 		UISets:       2,
@@ -1339,7 +1341,7 @@ func TestGetPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
-	expected := `{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}` + "\n"
+	expected := `{"allow_start_in_past_within":"0s","book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","next_available":"0s","slots":["sl-a"],"starts_within":"0s"}` + "\n"
 	assert.Equal(t, expected, string(body))
 	resp.Body.Close()
 
