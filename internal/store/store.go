@@ -158,7 +158,7 @@ type Policy struct {
 	Slots                     []string        `json:"slots" yaml:"slots"`
 	SlotMap                   map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
 	// booking must start within this duration from now, if enforced
-	StartsWithin time.Duration `json:"starts_withhin"  yaml:"starts_within"`
+	StartsWithin time.Duration `json:"starts_within"  yaml:"starts_within"`
 }
 
 type PolicyStatus struct {
@@ -1445,22 +1445,6 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 		return Booking{}, errors.New("resource " + sl.Resource + " not found")
 	}
 
-	// check if booking requested starts in past
-
-	now := s.Now()
-
-	if p.EnforceAllowStartInPast { //make allowance for delays in receiving request, if policy permits
-		now = now.Add(-1 * p.AllowStartInPastWithin)
-	}
-
-	if when.Start.Before(now) {
-		if p.EnforceAllowStartInPast {
-			return Booking{}, errors.New("booking cannot start more than " + HumaniseDuration(p.AllowStartInPastWithin) + " in the past")
-		} else {
-			return Booking{}, errors.New("booking cannot start in the past")
-		}
-	}
-
 	u, ok := s.Users[user]
 
 	if !ok { //not found, create new user
@@ -1517,6 +1501,34 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 				" ahead of the current time")
 		}
 	}
+
+	// check if booking requested starts in past
+
+	now := s.Now()
+
+	if p.EnforceAllowStartInPast { //make allowance for delays in receiving request, if policy permits
+		now = now.Add(-1 * p.AllowStartInPastWithin) //adjust the now value to perform the check required by the policy
+	}
+
+	if when.Start.Before(now) {
+		if p.EnforceAllowStartInPast {
+			return Booking{}, errors.New("booking cannot start more than " + HumaniseDuration(p.AllowStartInPastWithin) + " in the past")
+		} else {
+			return Booking{}, errors.New("booking cannot start in the past")
+		}
+	}
+
+	// check if booking is starting soon enough, if policy enforces StartsWithin
+	if p.EnforceStartsWithin {
+
+		now = s.Now().Add(p.StartsWithin) //get fresh, undjusted, value of now to avoid incorrect policy decisions, and adjust as required to make the check
+
+		if when.Start.After(now) {
+			return Booking{}, errors.New("booking cannot start more than " + HumaniseDuration(p.StartsWithin) + " in the future")
+		}
+	}
+
+	now = s.Now() // return now to the current value in case we use it again and overlook that we have adjusted it in the checks above
 
 	// check for existing usage tracker for this policy?
 	_, ok = u.Usage[policy]

@@ -3,6 +3,7 @@ package store
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
@@ -37,6 +38,10 @@ var manifestYAML = []byte(`descriptions:
     name: policy-start-in-past
     type: policy
     short: start-in-past
+  d-p-start-within:
+    name: policy-start-within
+    type: policy
+    short: start-within
   d-r-a:
     name: resource-a
     type: resource
@@ -69,6 +74,10 @@ var manifestYAML = []byte(`descriptions:
     name: slot-start-in-past
     type: slot
     short: start-in-past
+  d-sl-start-within:
+    name: slot-start-within
+    type: slot
+    short: start-within
   d-ui-a:
     name: ui-a
     type: ui
@@ -178,6 +187,27 @@ policies:
     max_usage: 30m0s
     slots:
     - sl-start-in-past
+  p-starts-within:
+    allow_start_in_past_within: 1m
+    book_ahead: 2h0m0s
+    description: d-p-start-within
+    display_guides:
+      - 6m
+      - 8m
+    enforce_allow_start_in_past: true
+    enforce_book_ahead: true
+    enforce_max_bookings: true
+    enforce_max_duration: true
+    enforce_min_duration: true
+    enforce_max_usage: true
+    enforce_starts_within: true
+    max_bookings: 2
+    max_duration: 10m0s
+    min_duration: 5m0s
+    max_usage: 30m0s
+    slots:
+    - sl-starts-within
+    starts_within: 1m
 resources:
   r-a:
     description: d-r-a
@@ -224,6 +254,12 @@ slots:
   sl-start-in-past:
     description: d-sl-start-in-past
     policy: p-start-in-past
+    resource: r-a
+    ui_set: us-a
+    window: w-a
+  sl-starts-within:
+    description: d-sl-start-within
+    policy: p-starts-within
     resource: r-a
     ui_set: us-a
     window: w-a
@@ -1728,12 +1764,12 @@ func TestStoreStatusAdminUser(t *testing.T) {
 		Message:      "Welcome to the interval booking store",
 		Now:          time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		Bookings:     2,
-		Descriptions: 16,
+		Descriptions: 18,
 		Filters:      2,
 		OldBookings:  0,
-		Policies:     5,
+		Policies:     6,
 		Resources:    3,
-		Slots:        5,
+		Slots:        6,
 		Streams:      3,
 		UIs:          3,
 		UISets:       3,
@@ -2437,9 +2473,6 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 
 func TestAllowStartInPast(t *testing.T) {
 
-	// derived from TestGetActivity, modified to have second user book at same time as first user
-	// both should be able to get Activity successfully at the same time.
-
 	s := New()
 
 	// fix time for ease of checking results
@@ -2494,5 +2527,66 @@ func TestAllowStartInPast(t *testing.T) {
 	assert.Error(t, err)
 
 	assert.Equal(t, "booking cannot start more than 1m0s in the past", err.Error())
+
+}
+
+func TestStartWithin(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	policy := "p-starts-within"
+	slot := "sl-starts-within"
+	user := "user-0"
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 0, 5, 0, 0, time.UTC), //requesting start 5min into the future
+		End:   time.Date(2022, 11, 5, 0, 15, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+
+	assert.Error(t, err)
+
+	expected := "booking cannot start more than 1m0s in the future"
+	assert.Equal(t, expected, err.Error())
+
+	if expected != err.Error() {
+		p, err := s.GetPolicy(policy)
+		assert.NoError(t, err)
+		pretty, err := json.Marshal(p)
+		assert.NoError(t, err)
+		t.Log(string(pretty))
+
+	}
+
+	// respect the start_within interval, and booking must succeed
+	when = interval.Interval{
+		Start: time.Date(2022, 11, 5, 0, 0, 59, 0, time.UTC), //now 59 sec in the future
+		End:   time.Date(2022, 11, 5, 0, 10, 0, 0, time.UTC),
+	}
+
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "", b.Name) //non null name
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
 
 }
