@@ -25,6 +25,10 @@ var manifestYAML = []byte(`descriptions:
     name: policy-b
     type: policy
     short: b
+  d-p-simulation:
+    name: policy-simulation
+    type: policy
+    short: simulation
   d-r-a:
     name: resource-a
     type: resource
@@ -33,6 +37,10 @@ var manifestYAML = []byte(`descriptions:
     name: resource-b
     type: resource
     short: b
+  d-r-simulation:
+    name: resource-simulation
+    type: resource
+    short: simulation
   d-sl-a:
     name: slot-a
     type: slot
@@ -41,6 +49,10 @@ var manifestYAML = []byte(`descriptions:
     name: slot-b
     type: slot
     short: b
+  d-sl-simulation:
+    name: slot-simulation
+    type: slot
+    short: simulation
   d-ui-a:
     name: ui-a
     type: ui
@@ -48,7 +60,12 @@ var manifestYAML = []byte(`descriptions:
   d-ui-b:
     name: ui-b
     type: ui
-    short: b        
+    short: b 
+  d-ui-simulation:
+    name: ui-simulation
+    type: ui
+    short: simulation   
+     
 display_guides:
   6m:
     book_ahead: 1h
@@ -90,6 +107,23 @@ policies:
     max_usage: 30m0s
     slots:
     - sl-b
+  p-simulation:
+    book_ahead: 2h0m0s
+    description: d-p-simulation
+    display_guides:
+      - 6m
+      - 8m
+    enforce_book_ahead: true
+    enforce_max_bookings: true
+    enforce_max_duration: true
+    enforce_min_duration: true
+    enforce_max_usage: true
+    max_bookings: 2
+    max_duration: 10m0s
+    min_duration: 5m0s
+    max_usage: 30m0s
+    slots:
+    - sl-simulation
 resources:
   r-a:
     description: d-r-a
@@ -103,6 +137,11 @@ resources:
     - st-a
     - st-b
     topic_stub: bbbb00
+  r-simulation:
+    description: d-r-simulation
+    streams:
+    - st-log
+    topic_stub: simu00
 slots:
   sl-a:
     description: d-sl-a
@@ -115,6 +154,12 @@ slots:
     policy: p-b
     resource: r-b
     ui_set: us-b
+    window: w-b
+  sl-simulation:
+    description: d-sl-simulation
+    policy: p-simulation
+    resource: r-simulation
+    ui_set: us-simulation
     window: w-b
 streams:
   st-a:
@@ -135,6 +180,15 @@ streams:
     - w
     topic: b
     url: b
+  st-log:
+    audience: some_audience
+    connection_type: session
+    for: log
+    scopes:
+    - r
+    - w
+    topic: some_topic
+    url: some_url
 uis:
   ui-a:
     description: d-ui-a
@@ -148,6 +202,11 @@ uis:
     streams_required:
     - st-a
     - st-b
+  ui-simulation:
+    description: d-ui-simulation
+    url: https://some_url.org
+    streams_required:
+    - st-log
 ui_sets:
   us-a:
     uis:
@@ -156,6 +215,9 @@ ui_sets:
     uis:
     - ui-a
     - ui-b
+  us-simulation:
+    uis:
+    - ui-simulation
 windows:
   w-a:
     allowed:
@@ -259,6 +321,12 @@ func TestReplaceManifestFromYAML(t *testing.T) {
 	s := New()
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
+	if err != nil { //print errors (useful during manifest evolution to add new tests)
+		_, list := checkManifest(m) //err same as before
+		for _, item := range list {
+			t.Log(item)
+		}
+	}
 }
 
 func TestAvailability(t *testing.T) {
@@ -1594,15 +1662,15 @@ func TestStoreStatusAdminUser(t *testing.T) {
 		Message:      "Welcome to the interval booking store",
 		Now:          time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		Bookings:     2,
-		Descriptions: 8,
+		Descriptions: 12,
 		Filters:      2,
 		OldBookings:  0,
-		Policies:     2,
-		Resources:    2,
-		Slots:        2,
-		Streams:      2,
-		UIs:          2,
-		UISets:       2,
+		Policies:     3,
+		Resources:    3,
+		Slots:        3,
+		Streams:      3,
+		UIs:          3,
+		UISets:       3,
 		Users:        2,
 		Windows:      2}
 	assert.Equal(t, esa, sa)

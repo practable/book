@@ -113,26 +113,50 @@ type Manifest struct {
 // Policy represents what a user can book, and any limits on bookings/usage
 // Unmarshaling of time.Duration works in yaml.v3, https://play.golang.org/p/-6y0zq96gVz"
 type Policy struct {
-	BookAhead          time.Duration           `json:"book_ahead"  yaml:"book_ahead"`
-	Description        string                  `json:"description"  yaml:"description"`
-	DisplayGuides      []string                `json:"display_guides"  yaml:"display_guides"`
-	DisplayGuidesMap   map[string]DisplayGuide `json:"-"  yaml:"-"` //local copy so that exported policies are complete
-	EnforceBookAhead   bool                    `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
-	EnforceGracePeriod bool                    `json:"enforce_grace_period"  yaml:"enforce_grace_period"`
-	EnforceMaxBookings bool                    `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
-	EnforceMaxDuration bool                    `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
-	EnforceMinDuration bool                    `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
-	EnforceMaxUsage    bool                    `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
+	//booking must finish within the book_ahead duration, if enforced
+	BookAhead     time.Duration `json:"book_ahead"  yaml:"book_ahead"`
+	Description   string        `json:"description"  yaml:"description"`
+	DisplayGuides []string      `json:"display_guides"  yaml:"display_guides"`
+	// In the manifest, we will refer to display guides by reference
+	// For users, we want to send policy descriptions that are complete
+	// so store a local copy of the displayguides to ease the process of fulfilling GET policy_name requests
+	// but don't include this local copy of information in any manifests
+	DisplayGuidesMap map[string]DisplayGuide `json:"-"  yaml:"-"` //local copy so that exported policies are complete but exclude from json/yaml so not duplicated in manifests
+	// EnforceAllowStartInPast lets a request starting before now (e.g. due to delayed communication of request) be accepted if other policies are still met.
+	EnforceAllowStartInPast bool `json:"enforce_allow_start_in_past"  yaml:"enforce_allow_start_in_past"`
+	EnforceBookAhead        bool `json:"enforce_book_ahead"  yaml:"enforce_book_ahead"`
+	EnforceGracePeriod      bool `json:"enforce_grace_period"  yaml:"enforce_grace_period"`
+	EnforceMaxBookings      bool `json:"enforce_max_bookings"  yaml:"enforce_max_bookings"`
+	EnforceMaxDuration      bool `json:"enforce_max_duration"  yaml:"enforce_max_duration"`
+	EnforceMinDuration      bool `json:"enforce_min_duration"  yaml:"enforce_min_duration"`
+	EnforceMaxUsage         bool `json:"enforce_max_usage"  yaml:"enforce_max_usage"`
+	EnforceNextAvailable    bool `json:"enforce_next_available"  yaml:"enforce_next_available"`
+	EnforceStartsWithin     bool `json:"enforce_starts_within"  yaml:"enforce_starts_within"`
+	//EnforceUnlimitedUsers if true, bookings are not checked, and the token is granted if otherwise within policy. This supports hardware-less simulations to be
+	// included without needing to specify multiple slots. We don't set a finite limit here to avoid having to track multiple overlapping bookings when usually simulations
+	// run entirely in client-side code - if a simulation has a resource limit e.g. due to using some central heavyweight server to crunch data, then slots should be specified
+	// same as for hardware, and this option left as false.
+	EnforceUnlimitedUsers bool `json:"enforce_unlimited_users"  yaml:"enforce_unlimited_users"`
 	// GracePeriod is how long after When.Start that the booking will be kept
 	GracePeriod time.Duration `json:"grace_period" yaml:"grace_period"`
 	// GracePenalty represents the time lost to finding a new user after auto-cancellation
-	GracePenalty time.Duration   `json:"grace_penalty" yaml:"grace_penalty"`
-	MaxBookings  int64           `json:"max_bookings"  yaml:"max_bookings"`
-	MaxDuration  time.Duration   `json:"max_duration"  yaml:"max_duration"`
-	MinDuration  time.Duration   `json:"min_duration"  yaml:"min_duration"`
-	MaxUsage     time.Duration   `json:"max_usage"  yaml:"max_usage"`
-	Slots        []string        `json:"slots" yaml:"slots"`
-	SlotMap      map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
+	GracePenalty time.Duration `json:"grace_penalty" yaml:"grace_penalty"`
+	MaxBookings  int64         `json:"max_bookings"  yaml:"max_bookings"`
+	MaxDuration  time.Duration `json:"max_duration"  yaml:"max_duration"`
+	MinDuration  time.Duration `json:"min_duration"  yaml:"min_duration"`
+	MaxUsage     time.Duration `json:"max_usage"  yaml:"max_usage"`
+	// NextAvailableStartsWithin allows for a small gap in bookings to give some flex in case the availability windows are presented with reduced resolution at some point in the system
+	// i.e. set to 2min to allow a request that is rounded up to start at the next minute after the last booking ends, instead of expecting ms precision from everyone
+	// Leaving this to default to zero requires the booking UI to return the exact figure given in the availability list, which probably works for now but might not later when other developers
+	// working on other features maybe don't realise how strict the calculation is without this allowance, or we change the precision somewhere in the system for human-readability and lose the
+	// exact value that the system would expect due to loss of precision - resulting in a rejected booking that is otherwise within the spirit of the policy.
+	// Also, some use cases might actually let this be say 15min or 30min - we can't predict the use cases, but can expect them to vary within the same booking system,
+	// so don't make this a system-wide parameter.
+	NextAvailableStartsWithin time.Duration   `json:"next_available_starts_within"  yaml:"next_available_starts_within"`
+	Slots                     []string        `json:"slots" yaml:"slots"`
+	SlotMap                   map[string]bool `json:"-" yaml:"-"` // internal usage, do not populate from file
+	// booking must start within this duration from now, if enforced
+	StartsWithin time.Duration `json:"starts_withhin"  yaml:"starts_within"`
 }
 
 type PolicyStatus struct {
@@ -1520,15 +1544,20 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 			HumaniseDuration(p.MaxDuration))
 	}
 
-	// see if the booking can be made ....
+	// If this is a simulation with no hardware or other resource constraints, we don't make bookings in the diary, we just grant access
+	// seeing as other policy aspects have been satisfied
 
-	err := r.Diary.Request(when, name)
+	if !p.EnforceUnlimitedUsers { //skip booking if we allow unlimited users
 
-	if err != nil {
-		return Booking{}, err
+		// see if the booking can be made ....
+		err := r.Diary.Request(when, name)
+
+		if err != nil {
+			return Booking{}, err
+		}
 	}
 
-	// successful, so update usage tracker with value we calculated earlier
+	// successful (or skipped) booking, so update usage tracker with value we calculated earlier
 	u.Usage[policy] = &newUsage
 
 	booking := Booking{
@@ -1549,7 +1578,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 	if p.EnforceGracePeriod {
 		checkTime := when.Start.Add(p.GracePeriod)
 		log.Debugf("makebooking: requesting grace check %s at %s", name, checkTime.String())
-		err = s.Checker.Push(checkTime, name)
+		err := s.Checker.Push(checkTime, name)
 		if err != nil {
 			log.Errorf("makebooking failed to request grace check for %s at %s because %s", name, checkTime.String(), err.Error())
 		}

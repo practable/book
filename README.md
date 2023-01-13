@@ -906,3 +906,15 @@ When a booking becomes due, submit the booking to the server for streaming stuff
 In this first version, don't allow session cancellation / i.e. can't cancel booking after launching it, to save having to re-do the user interfaces at this stage.
 
 
+#### Implementation of booking modes
+
+The following parameters have been added to store.Policy
+
+```
+	EnforceAllowStartInPast bool `json:"enforce_allow_start_in_past"  yaml:"enforce_allow_start_in_past"`
+	EnforceNextAvailable    bool `json:"enforce_next_available"  yaml:"enforce_next_available"`
+	EnforceStartsWithin     bool `json:"enforce_starts_within"  yaml:"enforce_starts_within"`
+	EnforceUnlimitedUsers bool `json:"enforce_unlimited_users"  yaml:"enforce_unlimited_users"`
+	NextAvailableStartsWithin time.Duration   `json:"next_available_starts_within"  yaml:"next_available_starts_within"`
+	StartsWithin time.Duration `json:"starts_withhin"  yaml:"starts_within"`
+```
