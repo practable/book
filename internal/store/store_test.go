@@ -24,11 +24,19 @@ var manifestYAML = []byte(`descriptions:
   d-p-b:
     name: policy-b
     type: policy
-    short: b
+    short: b  
+  d-p-instant:
+    name: policy-instant
+    type: policy
+    short: instant
   d-p-simulation:
     name: policy-simulation
     type: policy
     short: simulation
+  d-p-start-in-past:
+    name: policy-start-in-past
+    type: policy
+    short: start-in-past
   d-r-a:
     name: resource-a
     type: resource
@@ -48,11 +56,19 @@ var manifestYAML = []byte(`descriptions:
   d-sl-b:
     name: slot-b
     type: slot
-    short: b
+    short: b  
+  d-sl-instant:
+    name: slot-instant
+    type: slot
+    short: instant
   d-sl-simulation:
     name: slot-simulation
     type: slot
     short: simulation
+  d-sl-start-in-past:
+    name: slot-start-in-past
+    type: slot
+    short: start-in-past
   d-ui-a:
     name: ui-a
     type: ui
@@ -65,7 +81,6 @@ var manifestYAML = []byte(`descriptions:
     name: ui-simulation
     type: ui
     short: simulation   
-     
 display_guides:
   6m:
     book_ahead: 1h
@@ -107,6 +122,25 @@ policies:
     max_usage: 30m0s
     slots:
     - sl-b
+  p-instant:
+    book_ahead: 2h0m0s
+    description: d-p-b
+    display_guides:
+      - 6m
+      - 8m
+    enforce_book_ahead: true
+    enforce_max_bookings: true
+    enforce_max_duration: true
+    enforce_min_duration: true
+    enforce_max_usage: true
+    enforce_starts_within: true
+    max_bookings: 2
+    max_duration: 10m0s
+    min_duration: 5m0s
+    max_usage: 30m0s
+    slots:
+    - sl-instant
+    starts_within: 1m
   p-simulation:
     book_ahead: 2h0m0s
     description: d-p-simulation
@@ -125,6 +159,25 @@ policies:
     max_usage: 30m0s
     slots:
     - sl-simulation
+  p-start-in-past:
+    allow_start_in_past_within: 1m
+    book_ahead: 2h0m0s
+    description: d-p-start-in-past
+    display_guides:
+      - 6m
+      - 8m
+    enforce_allow_start_in_past: true
+    enforce_book_ahead: true
+    enforce_max_bookings: true
+    enforce_max_duration: true
+    enforce_min_duration: true
+    enforce_max_usage: true
+    max_bookings: 2
+    max_duration: 10m0s
+    min_duration: 5m0s
+    max_usage: 30m0s
+    slots:
+    - sl-start-in-past
 resources:
   r-a:
     description: d-r-a
@@ -156,12 +209,24 @@ slots:
     resource: r-b
     ui_set: us-b
     window: w-b
+  sl-instant:
+    description: d-sl-instant
+    policy: p-instant
+    resource: r-b
+    ui_set: us-b
+    window: w-b
   sl-simulation:
     description: d-sl-simulation
     policy: p-simulation
     resource: r-simulation
     ui_set: us-simulation
     window: w-b
+  sl-start-in-past:
+    description: d-sl-start-in-past
+    policy: p-start-in-past
+    resource: r-a
+    ui_set: us-a
+    window: w-a
 streams:
   st-a:
     audience: a
@@ -1663,12 +1728,12 @@ func TestStoreStatusAdminUser(t *testing.T) {
 		Message:      "Welcome to the interval booking store",
 		Now:          time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		Bookings:     2,
-		Descriptions: 12,
+		Descriptions: 16,
 		Filters:      2,
 		OldBookings:  0,
-		Policies:     3,
+		Policies:     5,
 		Resources:    3,
-		Slots:        3,
+		Slots:        5,
 		Streams:      3,
 		UIs:          3,
 		UISets:       3,
@@ -2368,4 +2433,66 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 
 	assert.Equal(t, exp, a0)
 	assert.Equal(t, exp, a1)
+}
+
+func TestAllowStartInPast(t *testing.T) {
+
+	// derived from TestGetActivity, modified to have second user book at same time as first user
+	// both should be able to get Activity successfully at the same time.
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC) } // move forward 30sec in time
+
+	policy := "p-instant"
+	slot := "sl-instant"
+	user := "user-0"
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC), //now 30 sec in the past
+		End:   time.Date(2022, 11, 5, 0, 10, 0, 0, time.UTC),
+	}
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, "booking cannot start in the past", err.Error())
+
+	policy = "p-start-in-past"
+	slot = "sl-start-in-past"
+	user = "user-0"
+
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "", b.Name) //non null name
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
+
+	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 2, 0, 0, time.UTC) } // move forward 2min  in time, outside allowed window for starting booking in the past
+
+	_, err = s.MakeBooking(policy, slot, user, when)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, "booking cannot start more than 1m0s in the past", err.Error())
+
 }

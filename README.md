@@ -910,11 +910,27 @@ In this first version, don't allow session cancellation / i.e. can't cancel book
 
 The following parameters have been added to store.Policy
 
+support simulations
 ```
-	EnforceAllowStartInPast bool `json:"enforce_allow_start_in_past"  yaml:"enforce_allow_start_in_past"`
-	EnforceNextAvailable    bool `json:"enforce_next_available"  yaml:"enforce_next_available"`
-	EnforceStartsWithin     bool `json:"enforce_starts_within"  yaml:"enforce_starts_within"`
-	EnforceUnlimitedUsers bool `json:"enforce_unlimited_users"  yaml:"enforce_unlimited_users"`
-	NextAvailableStartsWithin time.Duration   `json:"next_available_starts_within"  yaml:"next_available_starts_within"`
-	StartsWithin time.Duration `json:"starts_withhin"  yaml:"starts_within"`
+EnforceUnlimitedUsers bool 
 ```
+
+support instant use only
+```
+EnforceStartsWithin bool
+StartsWithin time.Duration 
+```
+
+Give some latitude if there are delays in processing requests for bookings starting "now"
+```
+EnforceAllowStartInPast bool
+AllowStartInPastWithin time.Duration
+```
+
+support next available mode
+```
+EnforceNextAvailable    bool 
+NextAvailableStartsWithin time.Duration 
+```
+
+

@@ -113,6 +113,8 @@ type Manifest struct {
 // Policy represents what a user can book, and any limits on bookings/usage
 // Unmarshaling of time.Duration works in yaml.v3, https://play.golang.org/p/-6y0zq96gVz"
 type Policy struct {
+	// AllowStartInPastWithin gives some latitude to accept a booking starting now that gets delayed on the way to the server. A bookng at minimum acceptable duration will be reduced to as much as this duration, so that there is no need to include logic about how to handle a shift in the end time. Typically values might be 10s or 1m.
+	AllowStartInPastWithin time.Duration `json:"allow_start_in_past_within"  yaml:"allow_start_in_past_within"`
 	//booking must finish within the book_ahead duration, if enforced
 	BookAhead     time.Duration `json:"book_ahead"  yaml:"book_ahead"`
 	Description   string        `json:"description"  yaml:"description"`
@@ -1441,6 +1443,22 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 
 	if !ok {
 		return Booking{}, errors.New("resource " + sl.Resource + " not found")
+	}
+
+	// check if booking requested starts in past
+
+	now := s.Now()
+
+	if p.EnforceAllowStartInPast { //make allowance for delays in receiving request, if policy permits
+		now = now.Add(-1 * p.AllowStartInPastWithin)
+	}
+
+	if when.Start.Before(now) {
+		if p.EnforceAllowStartInPast {
+			return Booking{}, errors.New("booking cannot start more than " + HumaniseDuration(p.AllowStartInPastWithin) + " in the past")
+		} else {
+			return Booking{}, errors.New("booking cannot start in the past")
+		}
 	}
 
 	u, ok := s.Users[user]
