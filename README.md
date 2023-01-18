@@ -1,4 +1,4 @@
-# interval
+# book
 This package implements bookings with arbitrary durations
 
 ## Features
