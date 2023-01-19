@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -19,12 +20,14 @@ type Server struct {
 // so as to permit testing, e.g. mocking time in the store
 func New(config config.ServerConfig) *Server {
 
+	// TODO add in deny and connect the channel to the store
+	fmt.Println("Deny not connected to Store, cancel after use not yet implemented")
+
 	st := store.New().
 		WithNow(config.Now).
 		WithRelaySecret(string(config.RelaySecret)).
 		WithRequestTimeout(config.RequestTimeout).
-		WithDisableCancelAfterUse(config.DisableCancelAfterUse).
-		WithDenyRequests(config.DenyRequests)
+		WithDisableCancelAfterUse(config.DisableCancelAfterUse)
 
 	if config.GraceRebound != time.Duration(0) {
 		st.WithGraceRebound(config.GraceRebound)

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -221,6 +222,8 @@ type Store struct {
 	// Bookings represents all the live bookings, indexed by booking id
 	Bookings map[string]*Booking
 
+	denyClient *deny.Client
+
 	denyRequests chan deny.Request
 
 	// Descriptions represents all the descriptions of various entities, indexed by description name
@@ -387,11 +390,13 @@ type Window struct {
 
 // New returns an empty store
 func New() *Store {
+	denyClient := deny.New()
 	return &Store{
 		&sync.RWMutex{},
 		check.New().WithNow(func() time.Time { return time.Now() }).WithName("forStore"),
 		make(map[string]*Booking),
-		nil,
+		denyClient,
+		denyClient.Request, //can be overwritten for testing using WithDenyRequests()
 		make(map[string]Description),
 		false,
 		make(map[string]DisplayGuide),
@@ -414,9 +419,11 @@ func New() *Store {
 	}
 }
 
+// for testing purposes, otherwise deny channel set to that of the deny.Client
 func (s *Store) WithDenyRequests(d chan deny.Request) *Store {
 	s.Lock()
 	defer s.Unlock()
+	log.Warn("Overriding denyRequests, preventing normal operation - do not use in production")
 	s.denyRequests = d
 	return s
 }
@@ -437,6 +444,16 @@ func (s *Store) WithNow(now func() time.Time) *Store {
 	defer s.Unlock()
 	s.now = now
 	s.Checker.SetNow(now)
+	s.denyClient.SetNow(now)
+	return s
+}
+
+// SetRelaySecret sets the relay secret
+func (s *Store) SetRelaySecret(secret string) *Store {
+	s.Lock()
+	defer s.Unlock()
+	s.relaySecret = secret
+	s.denyClient.SetSecret(secret)
 	return s
 }
 
@@ -445,6 +462,16 @@ func (s *Store) WithRelaySecret(secret string) *Store {
 	s.Lock()
 	defer s.Unlock()
 	s.relaySecret = secret
+	s.denyClient.SetSecret(secret)
+	return s
+}
+
+// SetRequestTimeout sets how long to wait for external API requests, e.g. deny requests to relay
+func (s *Store) SetRequestTimeout(timeout time.Duration) *Store {
+	s.Lock()
+	defer s.Unlock()
+	s.requestTimeout = timeout
+	s.denyClient.SetTimeout(timeout)
 	return s
 }
 
@@ -453,6 +480,7 @@ func (s *Store) WithRequestTimeout(timeout time.Duration) *Store {
 	s.Lock()
 	defer s.Unlock()
 	s.requestTimeout = timeout
+	s.denyClient.SetTimeout(timeout)
 	return s
 }
 
@@ -473,6 +501,7 @@ func (s *Store) SetNow(now func() time.Time) *Store {
 	defer s.Unlock()
 	s.now = now
 	s.Checker.SetNow(now)
+	s.denyClient.SetNow(now)
 	return s
 }
 
@@ -639,7 +668,7 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 			c := make(chan string)
 			s.denyRequests <- deny.Request{
 				Result:    c,
-				URL:       URL,
+				URL:       strings.TrimPrefix(URL, "http://"), //deny.Client scheme must be http
 				BookingID: b.Name,
 				ExpiresAt: b.When.End.Unix(),
 			}
@@ -2241,6 +2270,9 @@ func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
 
 // Run handles the regular pruning of bookings and autocancellation checks
 func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery time.Duration) {
+
+	go s.denyClient.Run(ctx) //setup already done in the With/Set functions
+
 	go func() {
 
 		expired := make(chan []string)
