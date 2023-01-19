@@ -211,7 +211,8 @@ $ book serve
 			PruneEvery:          tidyEveryDuration,
 		}
 
-		server.Run(ctx, cfg)
+		s := server.New(cfg)
+		s.Run(ctx)
 
 	},
 }
