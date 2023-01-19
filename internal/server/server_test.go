@@ -763,9 +763,11 @@ func removeAllBookings(t *testing.T) {
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
 	req.Header.Add("Content-Type", "application/json")
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	resp.Body.Close()
 }
 
 func addBookings(t *testing.T) {
@@ -780,11 +782,12 @@ func addBookings(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
-
+	resp.Body.Close()
 	if debug {
 		b := getBookings(t)
 		fmt.Printf("BOOKINGS: %+v\n", b)
 	}
+
 }
 
 // TestManifestOK lets us know if our test manifest is correct
@@ -975,7 +978,7 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 	// check our comparison is working - this test should fail
 	err = yaml.Unmarshal(oneBookingYAML, &expectedBookings)
 	assert.False(t, reflect.DeepEqual(expectedBookings, status.Payload))
-
+	resp.Body.Close()
 	// export users (now there are bookings we will have users)
 	client = &http.Client{}
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/users", nil)
@@ -1008,6 +1011,7 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	resp.Body.Close()
 
 	// move time forward
 	ct := time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC)
@@ -1097,6 +1101,7 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/status", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -1149,6 +1154,7 @@ func TestSetLock(t *testing.T) {
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/status", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1195,6 +1201,7 @@ func TestSetLock(t *testing.T) {
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/status", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -1383,6 +1390,7 @@ func TestGetAvailability(t *testing.T) {
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
@@ -1587,6 +1595,7 @@ func TestGetStoreStatus(t *testing.T) {
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/status", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1637,6 +1646,7 @@ func TestGetCancelBookingsGetOldBookings(t *testing.T) {
 	client = &http.Client{}
 	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/login/user-g", nil)
 	assert.NoError(t, err)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1676,6 +1686,7 @@ func TestGetCancelBookingsGetOldBookings(t *testing.T) {
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/bookings", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -1750,6 +1761,7 @@ func TestGetActivity(t *testing.T) {
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/bookings", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1810,6 +1822,7 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/policies", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err := ioutil.ReadAll(resp.Body)
@@ -1837,6 +1850,7 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/users/user-g/policies/p-a", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
+	resp.Body.Close()
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	body, err = ioutil.ReadAll(resp.Body)
@@ -2134,7 +2148,9 @@ func TestLockedToUser(t *testing.T) {
 			assert.Equal(t, 200, resp.StatusCode) //should be ok!
 			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
 			return string(body), err
+
 		} else {
 			//ct := time.Date(2022, 11, 7, 0, 0, 0, 0, time.UTC)
 			//currentTime = &ct
@@ -2309,7 +2325,7 @@ func TestAutoCancellation(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
-
+	resp.Body.Close()
 	ct = time.Date(2022, 11, 5, 0, 4, 0, 0, time.UTC)
 	currentTime = &ct
 
