@@ -1420,6 +1420,14 @@ func HumaniseDuration(t time.Duration) string {
 // APIs for users should call this version
 // do not use mutex, because it calls function that handles that
 func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error) {
+	where := "store.MakeBooking"
+	log.Trace(where + " awaiting lock")
+	s.Lock()
+	log.Trace(where + " has lock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released lock")
+	}()
 	name := uuid.New().String()
 	return s.makeBookingWithName(policy, slot, user, when, name)
 
@@ -2099,7 +2107,7 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery ti
 				log.Trace("store pruning stopped permanently")
 				return
 			case <-time.After(pruneEvery):
-				log.Trace("store pruning all bookings & diaries at time " + s.now().String())
+				log.Trace("store pruning all bookings & diaries at time " + s.Now().String()) //must be mutexed version because Run does not take the lock
 				s.PruneAll()
 			}
 		}
