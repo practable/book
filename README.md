@@ -1,6 +1,8 @@
 # book
 This package implements bookings with arbitrary durations
 
+((This package is under active development and is not yet ready for use))
+
 ## Features
 
 - Advance bookings 
