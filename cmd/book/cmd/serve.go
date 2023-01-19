@@ -80,12 +80,13 @@ $ book serve
 
 		viper.SetEnvPrefix("BOOK")
 		viper.AutomaticEnv()
-
+		viper.SetDefault("disable_cancel_after_use", "false")
 		viper.SetDefault("access_token_ttl", "1h")
 		viper.SetDefault("fqdn", "https://book.practable.io")
 		viper.SetDefault("log_file", "/var/log/book/book.log")
 		viper.SetDefault("persist_dir", "/var/lib/book/")
 		viper.SetDefault("port", 4000)
+		viper.SetDefault("request_timeout", "1m")
 		viper.SetDefault("tidy_every", "1h")
 		viper.SetDefault("log_level", "warn")
 		viper.SetDefault("log_stderr", false)
@@ -94,6 +95,7 @@ $ book serve
 
 		accessTokenTTL := viper.GetString("access_token_ttl")
 		adminSecret := viper.GetString("admin_secret")
+		disableCancelAfterUse := viper.GetBool("disable_cancel_after_use")
 		logLevel := viper.GetString("log_level")
 		fqdn := viper.GetString("fqdn")
 		logFile := viper.GetString("log_file")
@@ -101,6 +103,7 @@ $ book serve
 		persistDir := viper.GetString("persist_dir")
 		port := viper.GetInt("port")
 		relaySecret := viper.GetString("relay_secret")
+		requestTimeout := viper.GetString("request_timeout")
 		tidyEvery := viper.GetString("tidy_every")
 		minUsernameLength := viper.GetInt("min_username_length")
 
@@ -114,10 +117,16 @@ $ book serve
 		accessTokenTTLDuration, err := time.ParseDuration(accessTokenTTL)
 
 		if err != nil {
-			fmt.Println("Specify BOOK_ACCESS_TOKEN_TTL duration as string, e.g. 1h, 30m etc")
+			fmt.Println("Specify BOOK_ACCESS_TOKEN_TTL duration as string, e.g. 5m, 1h etc")
 			os.Exit(1)
 		}
 
+		requestTimeoutDuration, err := time.ParseDuration(requestTimeout)
+
+		if err != nil {
+			fmt.Println("Specify BOOK_REQUEST_TIMEOUT duration as string, e.g. 30s, 1m etc")
+			os.Exit(1)
+		}
 		tidyEveryDuration, err := time.ParseDuration(tidyEvery)
 
 		if err != nil {
@@ -174,12 +183,14 @@ $ book serve
 		// Report useful info
 
 		log.Infof("book version: %s\n", versionString())
+		log.Infof("disable_cancel_after_use: %t\n", disableCancelAfterUse)
 		log.Infof("FQDN:[%s]\n", fqdn)
 		log.Infof("Listening port: %d\n", port)
 		log.Infof("Persistance Directory: [%s]\n", persistDir)
 		log.Infof("Persistance NOT IMPLEMENTED\n")
 		log.Debugf("Admin secret=[%s...%s]\n", adminSecret[:2], adminSecret[len(adminSecret)-2:])
 		log.Debugf("Relay secret=[%s...%s]\n", relaySecret[:2], relaySecret[len(relaySecret)-2:])
+		log.Infof("Request timeout=[%s]\n", requestTimeout)
 		log.Infof("Access token TTL=[%s]\n", accessTokenTTL)
 		log.Infof("Tidy every=[%s]\n", tidyEvery)
 		log.Infof("Log file=[%s]\n", logFile)
@@ -201,14 +212,16 @@ $ book serve
 			}
 		}()
 		cfg := config.ServerConfig{
-			Host:                fqdn,
-			Port:                port,
-			StoreSecret:         []byte(adminSecret),
-			RelaySecret:         []byte(relaySecret),
-			MinUserNameLength:   minUsernameLength,
-			AccessTokenLifetime: accessTokenTTLDuration,
-			Now:                 func() time.Time { return time.Now() },
-			PruneEvery:          tidyEveryDuration,
+			AccessTokenLifetime:   accessTokenTTLDuration,
+			DisableCancelAfterUse: disableCancelAfterUse,
+			Host:                  fqdn,
+			MinUserNameLength:     minUsernameLength,
+			Now:                   func() time.Time { return time.Now() },
+			Port:                  port,
+			PruneEvery:            tidyEveryDuration,
+			StoreSecret:           []byte(adminSecret),
+			RelaySecret:           []byte(relaySecret),
+			RequestTimeout:        requestTimeoutDuration,
 		}
 
 		s := server.New(cfg)

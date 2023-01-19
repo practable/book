@@ -27,6 +27,7 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/timdrysdale/interval/internal/check"
+	"github.com/timdrysdale/interval/internal/deny"
 	"github.com/timdrysdale/interval/internal/diary"
 	"github.com/timdrysdale/interval/internal/filter"
 	"github.com/timdrysdale/interval/internal/interval"
@@ -34,6 +35,7 @@ import (
 
 // Activity represents connection details for a live booking
 type Activity struct {
+	BookingID   string            `json:"booking_id" yaml:"booking_id"`
 	Description Description       `json:"description" yaml:"description"`
 	ConfigURL   string            `json:"config_url,omitempty"  yaml:"config_url,omitempty"`
 	Streams     map[string]Stream `json:"streams" yaml:"streams"`
@@ -219,8 +221,12 @@ type Store struct {
 	// Bookings represents all the live bookings, indexed by booking id
 	Bookings map[string]*Booking
 
+	denyRequests chan deny.Request
+
 	// Descriptions represents all the descriptions of various entities, indexed by description name
 	Descriptions map[string]Description
+
+	DisableCancelAfterUse bool
 
 	DisplayGuides map[string]DisplayGuide
 
@@ -251,6 +257,13 @@ type Store struct {
 
 	// TimePolicies represents all the TimePolicy(ies) in use
 	Policies map[string]Policy
+
+	// relaySecret holds the secret for the relays (all relays served by a book instance must share the same secret)
+	// Don't expose secret unnecessarily, so don't include when serialising (not that we currently serialise the store anyway)
+	relaySecret string `json:"-" yaml:"-"`
+
+	// how long to wait when making requests to external API (e.g. for deny)
+	requestTimeout time.Duration
 
 	// Resources represent all the actual physical experiments, indexed by name
 	Resources map[string]Resource
@@ -378,7 +391,9 @@ func New() *Store {
 		&sync.RWMutex{},
 		check.New().WithNow(func() time.Time { return time.Now() }).WithName("forStore"),
 		make(map[string]*Booking),
+		nil,
 		make(map[string]Description),
+		false,
 		make(map[string]DisplayGuide),
 		make(map[string]*filter.Filter),
 		time.Duration(time.Minute),
@@ -387,6 +402,8 @@ func New() *Store {
 		func() time.Time { return time.Now() },
 		make(map[string]*Booking),
 		make(map[string]Policy),
+		"replaceme",
+		time.Second,
 		make(map[string]Resource),
 		make(map[string]Slot),
 		make(map[string]Stream),
@@ -397,6 +414,23 @@ func New() *Store {
 	}
 }
 
+func (s *Store) WithDenyRequests(d chan deny.Request) *Store {
+	s.Lock()
+	defer s.Unlock()
+	s.denyRequests = d
+	return s
+}
+
+// WithDisableCancelAfterUse stops users from cancelling bookings they already started using
+// this is provided in case external API calls to relay cannot be supported (e.g. due to relay version)
+// note all relays need to have the same secret!
+func (s *Store) WithDisableCancelAfterUse(d bool) *Store {
+	s.Lock()
+	defer s.Unlock()
+	s.DisableCancelAfterUse = d
+	return s
+}
+
 // WithNow sets the time function
 func (s *Store) WithNow(now func() time.Time) *Store {
 	s.Lock()
@@ -404,6 +438,31 @@ func (s *Store) WithNow(now func() time.Time) *Store {
 	s.now = now
 	s.Checker.SetNow(now)
 	return s
+}
+
+// WithRelaySecret sets the relay secret
+func (s *Store) WithRelaySecret(secret string) *Store {
+	s.Lock()
+	defer s.Unlock()
+	s.relaySecret = secret
+	return s
+}
+
+// WithRequestTimeout sets how long to wait for external API requests, e.g. deny requests to relay
+func (s *Store) WithRequestTimeout(timeout time.Duration) *Store {
+	s.Lock()
+	defer s.Unlock()
+	s.requestTimeout = timeout
+	return s
+}
+
+// RelaySecret returns the relay secret
+// don't use in internal functions because it will hang waiting for lock
+// just use s.relaySecret directly in internal functions
+func (s *Store) RelaySecret() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.relaySecret
 }
 
 // SetNow sets the time function (useful for mocking in tests)
@@ -533,9 +592,77 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 		return errors.New("cannot cancel booking that has already ended")
 	}
 
-	if b.Started { //TODO - allow cancelling started bookings by deny-listing the stream tokens
-		//s.DenyList(b)
-		return errors.New("cannot cancel booking that has already been used")
+	if b.Started {
+
+		if s.DisableCancelAfterUse {
+			return errors.New("cannot cancel booking that has already been used")
+		}
+
+		// Booking has started so we will need to POST a deny request to the relay(s)
+		// assume a manifest may have more than one relay
+		// and that therefore even an experiment may have more than one relay
+		// although that is more of an edge case.
+		// task: map all the relay urls being used
+		// slot -> resource -> streams -> url
+
+		msg := "cancelling a started booking failed because "
+
+		sl, ok := s.Slots[b.Slot]
+
+		if !ok { //won't happen unless manifest and bookings out of sync
+			return errors.New(msg + "slot " + b.Slot + " not found")
+		}
+
+		r, ok := s.Resources[sl.Resource]
+
+		if !ok { //won't happen unless manifest and bookings out of sync
+			return errors.New(msg + "resource " + sl.Resource + " not found")
+		}
+
+		um := make(map[string]bool) //map of URLs from streams (this de-duplicates urls)
+
+		// streams
+		for _, k := range r.Streams {
+			st, ok := s.Streams[k]
+			if !ok { //won't happen unless manifest and bookings out of sync
+				return errors.New(msg + "stream " + k + " not found")
+			}
+
+			um[st.URL] = true
+		}
+
+		for URL, _ := range um {
+
+			if s.denyRequests == nil {
+				return errors.New(msg + "deny requests channel is nil")
+			}
+			c := make(chan string)
+			s.denyRequests <- deny.Request{
+				Result:    c,
+				URL:       URL,
+				BookingID: b.Name,
+				ExpiresAt: b.When.End.Unix(),
+			}
+
+		DONE:
+			for {
+				select {
+				case result, ok := <-c:
+					if ok && result == "ok" {
+						// deny request was successful
+						break DONE
+					} else {
+						return errors.New(msg + " error cancelling access at relay " + result)
+					}
+				case <-time.After(s.requestTimeout):
+					return errors.New(msg + " timed out cancelling access at relay " + URL)
+				}
+			}
+
+		}
+
+		// ok to cancel if get to here
+
 	}
 
 	delete(s.Bookings, b.Name)
@@ -862,6 +989,7 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 	}
 
 	a := Activity{
+		BookingID:   b.Name,
 		Description: d,
 		ConfigURL:   r.ConfigURL,
 		NotBefore:   b.When.Start,

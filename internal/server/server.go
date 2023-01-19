@@ -19,7 +19,12 @@ type Server struct {
 // so as to permit testing, e.g. mocking time in the store
 func New(config config.ServerConfig) *Server {
 
-	st := store.New().WithNow(config.Now)
+	st := store.New().
+		WithNow(config.Now).
+		WithRelaySecret(string(config.RelaySecret)).
+		WithRequestTimeout(config.RequestTimeout).
+		WithDisableCancelAfterUse(config.DisableCancelAfterUse).
+		WithDenyRequests(config.DenyRequests)
 
 	if config.GraceRebound != time.Duration(0) {
 		st.WithGraceRebound(config.GraceRebound)

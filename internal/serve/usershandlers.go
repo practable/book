@@ -20,9 +20,10 @@ import (
 )
 
 type Permission struct {
-	Topic  string
-	Prefix string
-	Scopes []string
+	BookingID string   `json:"booking_id"`
+	Topic     string   `json:"topic"`
+	Prefix    string   `json:"prefix"`
+	Scopes    []string `json:"scopes"`
 	jwt.RegisteredClaims
 }
 
@@ -629,9 +630,10 @@ func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams
 			later := jwt.NewNumericDate(b.When.End)
 
 			permission := Permission{
-				Topic:  st.Topic,
-				Prefix: st.ConnectionType,
-				Scopes: st.Scopes,
+				BookingID: b.Name,
+				Topic:     st.Topic,
+				Prefix:    st.ConnectionType,
+				Scopes:    st.Scopes,
 				RegisteredClaims: jwt.RegisteredClaims{
 					IssuedAt:  now,
 					NotBefore: now,

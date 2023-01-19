@@ -1796,12 +1796,46 @@ func TestGetActivity(t *testing.T) {
 	body, err = ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	//Order might change
-	expected1 := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1hIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.B2jdYIYf6YHV1rSK6RkMyrGX2eQAPFg6QYwc6siVpb4","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1iIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIl0sInN1YiI6InVzZXItZyIsImF1ZCI6WyJodHRwczovL3JlbGF5LWFjY2Vzcy5wcmFjdGFibGUuaW8iXSwiZXhwIjoxNjY3NjExMjAwLCJuYmYiOjE2Njc2MTA5MDAsImlhdCI6MTY2NzYxMDkwMH0.9A-5zGLjB3Dw2PpGHfYNoapfrt-VKa8BmRVaggF4oAk","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
-	expected2 := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1iIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIl0sInN1YiI6InVzZXItZyIsImF1ZCI6WyJodHRwczovL3JlbGF5LWFjY2Vzcy5wcmFjdGFibGUuaW8iXSwiZXhwIjoxNjY3NjExMjAwLCJuYmYiOjE2Njc2MTA5MDAsImlhdCI6MTY2NzYxMDkwMH0.9A-5zGLjB3Dw2PpGHfYNoapfrt-VKa8BmRVaggF4oAk","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJUb3BpYyI6ImJiYmIwMC1zdC1hIiwiUHJlZml4Ijoic2Vzc2lvbiIsIlNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.B2jdYIYf6YHV1rSK6RkMyrGX2eQAPFg6QYwc6siVpb4","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
+	//Order might change. Note tokens now include BookingID field
+	expected1 := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWIiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.uu76zhbEw0ycSuUMEYkgeeADev2GTR-NNW3O2ulx6ZQ","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWEiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiLCJ3cml0ZSJdLCJzdWIiOiJ1c2VyLWciLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY2NzYxMTIwMCwibmJmIjoxNjY3NjEwOTAwLCJpYXQiOjE2Njc2MTA5MDB9.Y_6UhVu1roW-rIKPlLce7qNUHek6dQ0WXwO4boxFyFQ","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
+	expected2 := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWEiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiLCJ3cml0ZSJdLCJzdWIiOiJ1c2VyLWciLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY2NzYxMTIwMCwibmJmIjoxNjY3NjEwOTAwLCJpYXQiOjE2Njc2MTA5MDB9.Y_6UhVu1roW-rIKPlLce7qNUHek6dQ0WXwO4boxFyFQ","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWIiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.uu76zhbEw0ycSuUMEYkgeeADev2GTR-NNW3O2ulx6ZQ","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
 	assert.True(t, expected1 == string(body) || expected2 == string(body))
 
 }
+
+/* Example URL from booking system v0.2.2
+https://static.practable.io/ui/penduino-1.0/?streams=%5B%7B%22for%22%3A%22video%22%2C%22permission%22%3A%7B%22audience%22%3A%22https%3A%2F%2Frelay-access.practable.io%22%2C%22connection_type%22%3A%22session%22%2C%22scopes%22%3A%5B%22read%22%5D%2C%22topic%22%3A%22pend13-video%22%7D%2C%22token%22%3A%22eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b3BpYyI6InBlbmQxMy12aWRlbyIsInByZWZpeCI6InNlc3Npb24iLCJzY29wZXMiOlsicmVhZCJdLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY3NDE2Njc3MiwibmJmIjoxNjc0MTY2NDcxLCJpYXQiOjE2NzQxNjY0NzF9.0VFqicdsTobjNnYwg8wkETmbR0YhC8Mw4lfss4iqF1c%22%2C%22url%22%3A%22https%3A%2F%2Frelay-access.practable.io%2Fsession%2Fpend13-video%22%2C%22verb%22%3A%22POST%22%7D%2C%7B%22for%22%3A%22data%22%2C%22permission%22%3A%7B%22audience%22%3A%22https%3A%2F%2Frelay-access.practable.io%22%2C%22connection_type%22%3A%22session%22%2C%22scopes%22%3A%5B%22read%22%2C%22write%22%5D%2C%22topic%22%3A%22pend13-data%22%7D%2C%22token%22%3A%22eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b3BpYyI6InBlbmQxMy1kYXRhIiwicHJlZml4Ijoic2Vzc2lvbiIsInNjb3BlcyI6WyJyZWFkIiwid3JpdGUiXSwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2NzQxNjY3NzIsIm5iZiI6MTY3NDE2NjQ3MSwiaWF0IjoxNjc0MTY2NDcxfQ.HQb-E6HpZheFwN9b_oD6nJmWktKZx5PfFdVBX9BuJfQ%22%2C%22url%22%3A%22https%3A%2F%2Frelay-access.practable.io%2Fsession%2Fpend13-data%22%2C%22verb%22%3A%22POST%22%7D%5D&exp=1674166772
+
+One of the stream tokens is:
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b3BpYyI6InBlbmQxMy12aWRlbyIsInByZWZpeCI6InNlc3Npb24iLCJzY29wZXMiOlsicmVhZCJdLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY3NDE2Njc3MiwibmJmIjoxNjc0MTY2NDcxLCJpYXQiOjE2NzQxNjY0NzF9.0VFqicdsTobjNnYwg8wkETmbR0YhC8Mw4lfss4iqF1c
+
+It decodes as:
+
+  "alg": "HS256",
+  "typ": "JWT"
+}
+{
+  "topic": "pend13-video",
+  "prefix": "session",
+  "scopes": [
+    "read"
+  ],
+  "aud": [
+    "https://relay-access.practable.io"
+  ],
+  "exp": 1674166772,
+  "nbf": 1674166471,
+  "iat": 1674166471
+}
+exp: Thu 19 Jan 22:19:32 GMT 2023
+iat: Thu 19 Jan 22:14:31 GMT 2023
+nbf: Thu 19 Jan 22:14:31 GMT 2023
+
+
+Note the lower case topic, prefix, scopes
+
+*/
 
 func TestAddGetPoliciesAndStatus(t *testing.T) {
 

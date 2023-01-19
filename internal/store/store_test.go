@@ -909,7 +909,7 @@ func TestPolicyChecks(t *testing.T) {
 
 func TestGetActivity(t *testing.T) {
 
-	s := New()
+	s := New().WithDisableCancelAfterUse(true)
 
 	// fix time for ease of checking results
 	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
@@ -981,6 +981,7 @@ func TestGetActivity(t *testing.T) {
 
 	assert.NoError(t, err)
 	exp := Activity{
+		BookingID: b.Name,
 		Description: Description{
 			Name:    "slot-b",
 			Type:    "slot",
@@ -2466,6 +2467,7 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 	assert.NoError(t, err)
 
 	exp := Activity{
+		BookingID: "see below",
 		Description: Description{
 			Name:    "slot-simulation",
 			Type:    "slot",
@@ -2500,7 +2502,9 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 		ExpiresAt: time.Date(2022, time.November, 5, 2, 10, 0, 0, time.UTC),
 	}
 
+	exp.BookingID = b0.Name
 	assert.Equal(t, exp, a0)
+	exp.BookingID = b1.Name
 	assert.Equal(t, exp, a1)
 }
 
