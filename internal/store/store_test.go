@@ -2532,7 +2532,7 @@ func TestAllowStartInPast(t *testing.T) {
 
 	assert.Error(t, err)
 
-	assert.Equal(t, "booking cannot start in the past", err.Error())
+	assert.Equal(t, "booking cannot start in the past (start: 2022-11-05 00:00:00 +0000 UTC, now:2022-11-05 00:00:30 +0000 UTC)", err.Error())
 
 	policy = "p-start-in-past"
 	slot = "sl-start-in-past"
