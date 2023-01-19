@@ -2806,3 +2806,155 @@ func TestCancelAfterUse(t *testing.T) {
 
 	close(closed)
 }
+
+func TestCancelAfterUseRelayError(t *testing.T) {
+
+	drc := make(chan deny.Request, 2) //
+
+	req := []deny.Request{}
+
+	closed := make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-closed:
+				return
+			case r, ok := <-drc:
+				if ok {
+					req = append(req, r)
+					r.Result <- "mock fail" //mock successful denial
+				}
+			}
+		}
+	}()
+
+	s := New().
+		WithRequestTimeout(time.Second).
+		WithDisableCancelAfterUse(false).
+		WithDenyRequests(drc)
+
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	policy := "p-next-available"
+	slot := "sl-next-available"
+	user := "user-0"
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC), //requesting start 30sec in future from now
+		End:   time.Date(2022, 11, 5, 0, 10, 30, 0, time.UTC),
+	}
+
+	// setup a "prior booking" we want to test against
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "", b.Name) //non null name
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
+
+	// move forward in time to the middle-ish of the first booking
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 6, 0, 0, time.UTC) })
+
+	// get an activity
+	_, err = s.GetActivity(b)
+
+	// now cancel it
+	err = s.CancelBooking(b, "test")
+
+	assert.Error(t, err)
+
+	assert.Equal(t, "cancelling a started booking failed because  error cancelling access at relay mock fail", err.Error())
+
+	close(closed)
+}
+
+func TestCancelAfterUseRelayDelay(t *testing.T) {
+
+	drc := make(chan deny.Request, 2) //
+
+	req := []deny.Request{}
+
+	closed := make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-closed:
+				return
+			case r, ok := <-drc:
+				if ok {
+					req = append(req, r)
+					// don't reply, cause timeout
+				}
+			}
+		}
+	}()
+
+	s := New().
+		WithRequestTimeout(time.Second).
+		WithDisableCancelAfterUse(false).
+		WithDenyRequests(drc)
+
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	policy := "p-next-available"
+	slot := "sl-next-available"
+	user := "user-0"
+	when := interval.Interval{
+		Start: time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC), //requesting start 30sec in future from now
+		End:   time.Date(2022, 11, 5, 0, 10, 30, 0, time.UTC),
+	}
+
+	// setup a "prior booking" we want to test against
+	b, err := s.MakeBooking(policy, slot, user, when)
+
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	assert.Equal(t, policy, b.Policy)
+	assert.Equal(t, slot, b.Slot)
+	assert.Equal(t, user, b.User)
+	assert.Equal(t, when, b.When)
+	assert.NotEqual(t, "", b.Name) //non null name
+	assert.False(t, b.Cancelled)
+	assert.False(t, b.Started)
+	assert.False(t, b.Unfulfilled)
+
+	// move forward in time to the middle-ish of the first booking
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 6, 0, 0, time.UTC) })
+
+	// get an activity
+	_, err = s.GetActivity(b)
+
+	// now cancel it
+	err = s.CancelBooking(b, "test")
+
+	assert.Error(t, err)
+
+	// result could end in "relay a" or "relay b" so just test prefix
+	exp := "cancelling a started booking failed because  timed out cancelling access at relay"
+	assert.Equal(t, exp, err.Error()[:len(exp)])
+
+	close(closed)
+}
