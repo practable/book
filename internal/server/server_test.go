@@ -898,23 +898,19 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 	err = json.Unmarshal(body, &ssa)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	esa := store.StoreStatusAdmin{
-		Locked:       false,
-		Message:      "Welcome to the interval booking store",
-		Now:          time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC),
-		Bookings:     0,
-		Descriptions: 10,
-		Filters:      2,
-		OldBookings:  0,
-		Policies:     3,
-		Resources:    2,
-		Slots:        3,
-		Streams:      2,
-		UIs:          2,
-		UISets:       2,
-		Users:        0,
-		Windows:      2}
-	assert.Equal(t, esa, ssa)
+
+	// the manifest does not reset all aspects of the store status
+	// avoid errors when go test -count=N with N >1 by only checking
+	// what uploading the manifest affects
+	assert.Equal(t, int64(10), ssa.Descriptions)
+	assert.Equal(t, int64(2), ssa.Filters)
+	assert.Equal(t, int64(3), ssa.Policies)
+	assert.Equal(t, int64(2), ssa.Resources)
+	assert.Equal(t, int64(3), ssa.Slots)
+	assert.Equal(t, int64(2), ssa.Streams)
+	assert.Equal(t, int64(2), ssa.UIs)
+	assert.Equal(t, int64(2), ssa.UISets)
+	assert.Equal(t, int64(2), ssa.Windows)
 
 	// export manifest
 	client = &http.Client{}
@@ -987,6 +983,7 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 	err = yaml.Unmarshal(oneBookingYAML, &expectedBookings)
 	assert.False(t, reflect.DeepEqual(expectedBookings, status.Payload))
 	resp.Body.Close()
+
 	// export users (now there are bookings we will have users)
 	client = &http.Client{}
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/admin/users", nil)
@@ -1000,23 +997,48 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 	err = yaml.Unmarshal(usersYAML, &expectedUsers)
 	err = yaml.Unmarshal(body, &exportedUsers)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedUsers, exportedUsers)
+	// we have extra users if we run tests over and over,
+	// so only check for the presence of users that we know MUST exist
+	// and do not fail if other users are present
+	for n, ue := range expectedUsers {
+		if ua, ok := exportedUsers[n]; ok {
+			assert.Equal(t, ue, ua)
+		} else {
+			t.Errorf("missing user " + n)
+		}
+	}
+
 	resp.Body.Close()
-	//fmt.Println("USERS: " + string(body))
+
 }
 
 func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 
 	stoken := loadTestManifest(t)
 
-	// replace bookings
+	// Replace our old bookings (in this case, remove them)
+	// so that other old bookings are not causing test fails when
+	// we count how many old bookings we have
 	client := &http.Client{}
-	bodyReader := bytes.NewReader(bookingsJSON)
-	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	bodyReader := bytes.NewReader(noBookingsJSON)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/oldbookings", bodyReader)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", stoken)
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	resp.Body.Close()
+
+	// replace bookings
+	client = &http.Client{}
+	bodyReader = bytes.NewReader(bookingsJSON)
+	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	resp.Body.Close()
@@ -1054,28 +1076,16 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	req.Header.Add("Authorization", stoken)
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err = ioutil.ReadAll(resp.Body)
 	var ssa store.StoreStatusAdmin
 	err = json.Unmarshal(body, &ssa)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	esa := store.StoreStatusAdmin{
-		Locked:       false,
-		Message:      "Welcome to the interval booking store",
-		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
-		Bookings:     0,
-		Descriptions: 10,
-		Filters:      2,
-		OldBookings:  2,
-		Policies:     3,
-		Resources:    2,
-		Slots:        3,
-		Streams:      2,
-		UIs:          2,
-		UISets:       2,
-		Users:        2,
-		Windows:      2}
-	assert.Equal(t, esa, ssa)
+
+	// check only the store status elements that are side-effects of this test,
+	assert.Equal(t, int64(0), ssa.Bookings)
+	assert.Equal(t, int64(2), ssa.OldBookings)
+	assert.Equal(t, int64(2), ssa.Users)
 
 	// export users (now there are bookings we will have users)
 	client = &http.Client{}
@@ -1090,8 +1100,20 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	err = yaml.Unmarshal(oldUsersYAML, &expectedUsers)
 	err = yaml.Unmarshal(body, &exportedUsers)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedUsers, exportedUsers)
 	resp.Body.Close()
+
+	// we have extra users if we run tests over and over,
+	// so only check for the presence of users that we know MUST exist
+	// and do not fail if other users are present
+	// although TODO perhaps in this test it should be strict equality
+	// since we remove the oldBookings at the start...
+	for n, ue := range expectedUsers {
+		if ua, ok := exportedUsers[n]; ok {
+			assert.Equal(t, ue, ua)
+		} else {
+			t.Errorf("missing user " + n)
+		}
+	}
 
 	// Replace our old bookings (in this case, remove them)
 	client = &http.Client{}
@@ -1116,23 +1138,11 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 	err = json.Unmarshal(body, &ssa)
 	assert.NoError(t, err)
 	resp.Body.Close()
-	esa = store.StoreStatusAdmin{
-		Locked:       false,
-		Message:      "Welcome to the interval booking store",
-		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
-		Bookings:     0,
-		Descriptions: 10,
-		Filters:      2,
-		OldBookings:  0, // no old bookings
-		Policies:     3,
-		Resources:    2,
-		Slots:        3,
-		Streams:      2,
-		UIs:          2,
-		UISets:       2,
-		Users:        0, // no users - these are wiped when the old bookings are wiped
-		Windows:      2}
-	assert.Equal(t, esa, ssa)
+
+	// check only the store status elements that are side-effects of this test,
+	assert.Equal(t, int64(0), ssa.Bookings)
+	assert.Equal(t, int64(0), ssa.OldBookings)
+	assert.Equal(t, int64(0), ssa.Users)
 
 }
 
