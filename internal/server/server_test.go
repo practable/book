@@ -41,7 +41,6 @@ var cs, ch string //client scheme and host
 var timeout time.Duration
 var aa, ua rt.ClientAuthInfoWriter
 var s *Server
-var mu *sync.Mutex
 
 // Are you thinking about making a models.Manifest object
 // to compare responses to? Don't. Tried it.
@@ -569,8 +568,6 @@ func setNow(s *Server, now time.Time) {
 
 func TestMain(m *testing.M) {
 
-	mu = &sync.Mutex{}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -802,8 +799,6 @@ func addBookings(t *testing.T) {
 
 // TestManifestOK lets us know if our test manifest is correct
 func TestManifestOK(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	var m store.Manifest
 
@@ -821,8 +816,6 @@ func TestManifestOK(t *testing.T) {
 }
 
 func TestReplaceManifestWithClient(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	var manifest cmodels.Manifest
 	err := json.Unmarshal(manifestJSON, &manifest)
@@ -840,8 +833,6 @@ func TestReplaceManifestWithClient(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", cfg.Host+"/api/v1/login/someuser", nil)
@@ -875,8 +866,6 @@ func TestLogin(t *testing.T) {
 }
 
 func TestCheckReplaceExportManifest(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	// make admin token
 	stoken, err := signedAdminToken()
@@ -963,8 +952,6 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 }
 
 func TestReplaceExportBookingsExportUsers(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	stoken := loadTestManifest(t)
 
@@ -1025,8 +1012,6 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 }
 
 func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	stoken := loadTestManifest(t)
 
@@ -1161,9 +1146,6 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 }
 
 func TestSetLock(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
-
 	stoken := loadTestManifest(t)
 	removeAllBookings(t) // ensure consistent state
 
@@ -1263,8 +1245,6 @@ func TestSetLock(t *testing.T) {
 }
 
 func TestSetGetSlotIsAvailable(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	stoken := loadTestManifest(t)
 
@@ -1347,8 +1327,6 @@ func TestSetGetSlotIsAvailable(t *testing.T) {
 }
 
 func TestGetDescription(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	loadTestManifest(t)
 
@@ -1371,8 +1349,6 @@ func TestGetDescription(t *testing.T) {
 }
 
 func TestGetPolicy(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	loadTestManifest(t)
 
@@ -1394,9 +1370,6 @@ func TestGetPolicy(t *testing.T) {
 
 }
 func TestGetAvailability(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
-
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
 	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
@@ -1544,8 +1517,6 @@ func TestGetAvailability(t *testing.T) {
 }
 
 func TestMakeBooking(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1603,8 +1574,6 @@ func TestMakeBooking(t *testing.T) {
 }
 
 func TestGetStoreStatus(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1658,8 +1627,6 @@ func TestGetStoreStatus(t *testing.T) {
 
 // Test GetBookings, CancelBookings, GetOldBookings
 func TestGetCancelBookingsGetOldBookings(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1777,8 +1744,6 @@ func TestGetCancelBookingsGetOldBookings(t *testing.T) {
 }
 
 func TestGetActivity(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1839,8 +1804,6 @@ func TestGetActivity(t *testing.T) {
 }
 
 func TestAddGetPoliciesAndStatus(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1942,8 +1905,6 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 
 // TestRestrictedToAdmin checks that users cannot access admin endpoints
 func TestRestrictedToAdmin(t *testing.T) {
-	mu.Lock()
-	defer mu.Unlock()
 
 	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 	setNow(s, ct)
