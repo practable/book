@@ -11,6 +11,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -40,6 +41,7 @@ var cs, ch string //client scheme and host
 var timeout time.Duration
 var aa, ua rt.ClientAuthInfoWriter
 var s *Server
+var mu *sync.Mutex
 
 // Are you thinking about making a models.Manifest object
 // to compare responses to? Don't. Tried it.
@@ -226,9 +228,6 @@ windows:
     - start: 2022-11-04T00:00:00Z
       end: 2022-11-06T00:00:00Z
     denied: []`)
-
-// var manifestJSON = []byte(`{"descriptions":{"d-p-a":{"name":"policy-a","type":"policy","short":"a"},"d-p-b":{"name":"policy-b","type":"policy","short":"b"},"d-r-a":{"name":"resource-a","type":"resource","short":"a"},"d-r-b":{"name":"resource-b","type":"resource","short":"b"},"d-sl-a":{"name":"slot-a","type":"slot","short":"a"},"d-sl-b":{"name":"slot-b","type":"slot","short":"b"},"d-ui-a":{"name":"ui-a","type":"ui","short":"a"},"d-ui-b":{"name":"ui-b","type":"ui","short":"b"}},"display_guides":{"1mFor20m":{"book_ahead":"20m","duration":"1m","max_slots":15,"label":"1m"}},"policies":{"p-a":{"book_ahead":"1h","description":"d-p-a","display_guides":["1mFor20m"],"enforce_book_ahead":true,"enforce_max_bookings":false,"enforce_max_duration":false,"enforce_min_duration":false,"enforce_max_usage":false,"max_bookings":0,"max_duration":"0s","min_duration":"0s","max_usage":"0s","slots":["sl-a"]},"p-b":{"book_ahead":"2h0m0s","description":"d-p-b","enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","slots":["sl-b"]}},"resources":{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"topic_stub":"bbbb00"}},"slots":{"sl-a":{"description":"d-sl-a","policy":"p-a","resource":"r-a","ui_set":"us-a","window":"w-a"},"sl-b":{"description":"d-sl-b","policy":"p-b","resource":"r-b","ui_set":"us-b","window":"w-b"}},"streams":{"st-a":{"url":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"topic":"tbc"},"st-b":{"url":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"topic":"tbc"}},"uis":{"ui-a":{"description":"d-ui-a","url":"a","streams_required":["st-a","st-b"]},"ui-b":{"description":"d-ui-b","url":"b","streams_required":["st-a","st-b"]}},"ui_sets":{"us-a":{"uis":["ui-a"]},"us-b":{"uis":["ui-a","ui-b"]}},"windows":{"w-a":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]},"w-b":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]}}}`)
-//var manifestJSON = []byte(`{"descriptions":{"d-p-a":{"name":"policy-a","type":"policy","short":"a"},"d-p-b":{"name":"policy-b","type":"policy","short":"b"},"d-r-a":{"name":"resource-a","type":"resource","short":"a"},"d-r-b":{"name":"resource-b","type":"resource","short":"b"},"d-sl-a":{"name":"slot-a","type":"slot","short":"a"},"d-sl-b":{"name":"slot-b","type":"slot","short":"b"},"d-sl-modes":{"name":"slot-modes","type":"slot","short":"modes"},"d-ui-a":{"name":"ui-a","type":"ui","short":"a"},"d-ui-b":{"name":"ui-b","type":"ui","short":"b"}},"display_guides":{"1mFor20m":{"book_ahead":"20m","duration":"1m","max_slots":15,"label":"1m"}},"policies":{"p-a":{"book_ahead":"1h","description":"d-p-a","display_guides":["1mFor20m"],"enforce_book_ahead":true,"enforce_max_bookings":false,"enforce_max_duration":false,"enforce_min_duration":false,"enforce_max_usage":false,"max_bookings":0,"max_duration":"0s","min_duration":"0s","max_usage":"0s","slots":["sl-a"]},"p-b":{"book_ahead":"2h0m0s","description":"d-p-b","enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","slots":["sl-b"]},"p-modes":{"allow_start_in_past_within":"1m0s","book_ahead":"2h0m0s","description":"d-p-b","enforce_allow_start_in_past":true,"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"enforce_next_available":true,"enforce_starts_within":true,"enforce_unlimited_users":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","next_available":"1m0s","slots":["sl-modes"],"starts_within":"1m0s"}},"resources":{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"topic_stub":"bbbb00"}},"slots":{"sl-a":{"description":"d-sl-a","policy":"p-a","resource":"r-a","ui_set":"us-a","window":"w-a"},"sl-b":{"description":"d-sl-b","policy":"p-b","resource":"r-b","ui_set":"us-b","window":"w-b"},"sl-modes":{"description":"d-sl-modes","policy":"p-modes","resource":"r-b","ui_set":"us-b","window":"w-b"}},"streams":{"st-a":{"url":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"topic":"tbc"},"st-b":{"url":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"topic":"tbc"}},"uis":{"ui-a":{"description":"d-ui-a","url":"a","streams_required":["st-a","st-b"]},"ui-b":{"description":"d-ui-b","url":"b","streams_required":["st-a","st-b"]}},"ui_sets":{"us-a":{"uis":["ui-a"]},"us-b":{"uis":["ui-a","ui-b"]}},"windows":{"w-a":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]},"w-b":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]}}}`)
 
 var manifestJSON = []byte(`{"descriptions":{"d-p-a":{"name":"policy-a","type":"policy","short":"a"},"d-p-b":{"name":"policy-b","type":"policy","short":"b"},"d-p-modes":{"name":"policy-modes","type":"policy","short":"modes"},"d-r-a":{"name":"resource-a","type":"resource","short":"a"},"d-r-b":{"name":"resource-b","type":"resource","short":"b"},"d-sl-a":{"name":"slot-a","type":"slot","short":"a"},"d-sl-b":{"name":"slot-b","type":"slot","short":"b"},"d-sl-modes":{"name":"slot-modes","type":"slot","short":"modes"},"d-ui-a":{"name":"ui-a","type":"ui","short":"a"},"d-ui-b":{"name":"ui-b","type":"ui","short":"b"}},"display_guides":{"1mFor20m":{"book_ahead":"20m","duration":"1m","max_slots":15,"label":"1m"}},"policies":{"p-a":{"book_ahead":"1h","description":"d-p-a","display_guides":["1mFor20m"],"enforce_book_ahead":true,"enforce_max_bookings":false,"enforce_max_duration":false,"enforce_min_duration":false,"enforce_max_usage":false,"max_bookings":0,"max_duration":"0s","min_duration":"0s","max_usage":"0s","slots":["sl-a"]},"p-b":{"book_ahead":"2h0m0s","description":"d-p-b","enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","slots":["sl-b"]},"p-modes":{"allow_start_in_past_within":"1m0s","book_ahead":"2h0m0s","description":"d-p-modes","enforce_allow_start_in_past":true,"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"enforce_next_available":true,"enforce_starts_within":true,"enforce_unlimited_users":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","next_available":"1m0s","slots":["sl-modes"],"starts_within":"1m0s"}},"resources":{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"topic_stub":"bbbb00"}},"slots":{"sl-a":{"description":"d-sl-a","policy":"p-a","resource":"r-a","ui_set":"us-a","window":"w-a"},"sl-b":{"description":"d-sl-b","policy":"p-b","resource":"r-b","ui_set":"us-b","window":"w-b"},"sl-modes":{"description":"d-sl-modes","policy":"p-modes","resource":"r-b","ui_set":"us-b","window":"w-b"}},"streams":{"st-a":{"url":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"topic":"tbc"},"st-b":{"url":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"topic":"tbc"}},"uis":{"ui-a":{"description":"d-ui-a","url":"a","streams_required":["st-a","st-b"]},"ui-b":{"description":"d-ui-b","url":"b","streams_required":["st-a","st-b"]}},"ui_sets":{"us-a":{"uis":["ui-a"]},"us-b":{"uis":["ui-a","ui-b"]}},"windows":{"w-a":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]},"w-b":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]}}}`)
 
@@ -570,6 +569,8 @@ func setNow(s *Server, now time.Time) {
 
 func TestMain(m *testing.M) {
 
+	mu = &sync.Mutex{}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -791,8 +792,9 @@ func addBookings(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	resp.Body.Close()
+	b := getBookings(t)
+	assert.Equal(t, 8, len(b))
 	if debug {
-		b := getBookings(t)
 		fmt.Printf("BOOKINGS: %+v\n", b)
 	}
 
@@ -800,6 +802,8 @@ func addBookings(t *testing.T) {
 
 // TestManifestOK lets us know if our test manifest is correct
 func TestManifestOK(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	var m store.Manifest
 
@@ -817,6 +821,8 @@ func TestManifestOK(t *testing.T) {
 }
 
 func TestReplaceManifestWithClient(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	var manifest cmodels.Manifest
 	err := json.Unmarshal(manifestJSON, &manifest)
@@ -834,6 +840,8 @@ func TestReplaceManifestWithClient(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", cfg.Host+"/api/v1/login/someuser", nil)
@@ -867,6 +875,8 @@ func TestLogin(t *testing.T) {
 }
 
 func TestCheckReplaceExportManifest(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	// make admin token
 	stoken, err := signedAdminToken()
@@ -953,6 +963,8 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 }
 
 func TestReplaceExportBookingsExportUsers(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	stoken := loadTestManifest(t)
 
@@ -1013,6 +1025,8 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 }
 
 func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	stoken := loadTestManifest(t)
 
@@ -1147,6 +1161,8 @@ func TestReplaceExportOldBookingsExportUsers(t *testing.T) {
 }
 
 func TestSetLock(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	stoken := loadTestManifest(t)
 	removeAllBookings(t) // ensure consistent state
@@ -1247,6 +1263,8 @@ func TestSetLock(t *testing.T) {
 }
 
 func TestSetGetSlotIsAvailable(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	stoken := loadTestManifest(t)
 
@@ -1329,6 +1347,8 @@ func TestSetGetSlotIsAvailable(t *testing.T) {
 }
 
 func TestGetDescription(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	loadTestManifest(t)
 
@@ -1351,6 +1371,8 @@ func TestGetDescription(t *testing.T) {
 }
 
 func TestGetPolicy(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	loadTestManifest(t)
 
@@ -1372,6 +1394,8 @@ func TestGetPolicy(t *testing.T) {
 
 }
 func TestGetAvailability(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1520,6 +1544,8 @@ func TestGetAvailability(t *testing.T) {
 }
 
 func TestMakeBooking(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1577,6 +1603,8 @@ func TestMakeBooking(t *testing.T) {
 }
 
 func TestGetStoreStatus(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1630,6 +1658,8 @@ func TestGetStoreStatus(t *testing.T) {
 
 // Test GetBookings, CancelBookings, GetOldBookings
 func TestGetCancelBookingsGetOldBookings(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1747,6 +1777,8 @@ func TestGetCancelBookingsGetOldBookings(t *testing.T) {
 }
 
 func TestGetActivity(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1807,6 +1839,8 @@ func TestGetActivity(t *testing.T) {
 }
 
 func TestAddGetPoliciesAndStatus(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	// make sure our pre-prepared bookings are in the future
 	// other tests may have advanced time
@@ -1908,6 +1942,8 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 
 // TestRestrictedToAdmin checks that users cannot access admin endpoints
 func TestRestrictedToAdmin(t *testing.T) {
+	mu.Lock()
+	defer mu.Unlock()
 
 	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 	setNow(s, ct)
@@ -2071,18 +2107,21 @@ func TestLockedToUser(t *testing.T) {
 	assert.NoError(t, err)
 
 	unlocked := func() {
+		ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) //set time before adding bookings
+		setNow(s, ct)
 		loadTestManifest(t)
+		removeAllBookings(t) //else tests fail if run many times
 		addBookings(t)
 		setLock(t, false, "unlocked")
-		ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
-		setNow(s, ct)
 	}
 	locked := func() {
+		ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) //set time before adding bookings
+		setNow(s, ct)
 		loadTestManifest(t)
+		removeAllBookings(t) //else tests fail if run many times
 		addBookings(t)
 		setLock(t, true, "locked")
-		ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
-		setNow(s, ct)
+
 	}
 
 	cancelBooking := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
@@ -2093,6 +2132,7 @@ func TestLockedToUser(t *testing.T) {
 		return nil, bc.Users.CancelBooking(p, auth) //this method only returns error codes
 	}
 	getActivity := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+
 		ct := time.Date(2022, 11, 5, 0, 10, 1, 0, time.UTC)
 		setNow(s, ct)
 		p := users.NewGetActivityParams().
@@ -2267,8 +2307,13 @@ func TestLockedToUser(t *testing.T) {
 		"AddPolicyForUserUnlockedUserAllowed":        {unlocked, addPolicyForUser, authUser, true, `[POST /users/{user_name}/policies/{policy_name}][204] addPolicyForUserNoContent`},
 	}
 
+	//enforce sequential runs of these tests (note, did not remove issue with getActivity sometimes failing to get it's booking)
+	mm := &sync.Mutex{}
+
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			mm.Lock()
+			defer mm.Unlock()
 
 			tc.setup()
 

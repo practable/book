@@ -1429,7 +1429,18 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 		log.Trace(where + " released lock")
 	}()
 	name := uuid.New().String()
-	return s.makeBookingWithName(policy, slot, user, when, name)
+
+	b, err := s.makeBookingWithName(policy, slot, user, when, name)
+
+	msg := "successful booking"
+
+	if err != nil {
+		msg = "failed booking because " + err.Error()
+	}
+
+	log.WithFields(log.Fields{"policy": policy, "slot": slot, "user": user, "start": when.Start.String(), "end": when.End.String(), "name": name}).Info(msg)
+
+	return b, err
 
 }
 
@@ -1447,7 +1458,17 @@ func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Int
 		log.Trace(where + " released lock")
 	}()
 
-	return s.makeBookingWithName(policy, slot, user, when, name)
+	b, err := s.makeBookingWithName(policy, slot, user, when, name)
+
+	msg := "successful booking"
+
+	if err != nil {
+		msg = "failed booking because " + err.Error()
+	}
+
+	log.WithFields(log.Fields{"policy": policy, "slot": slot, "user": user, "start": when.Start.String(), "end": when.End.String(), "name": name}).Info(msg)
+
+	return b, err
 }
 
 // MakeBookingWithID makes bookings for users, according to the policy
@@ -1459,7 +1480,9 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 	p, ok := s.Policies[policy]
 
 	if !ok {
-		return Booking{}, errors.New("policy " + policy + " not found")
+		msg := "policy " + policy + " not found"
+		log.Warnf("makebooking: %s %s %s %v %s: %s", policy, slot, user, when, name, msg)
+		return Booking{}, errors.New(msg)
 	}
 
 	_, ok = p.SlotMap[slot]
@@ -1549,7 +1572,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 		if p.EnforceAllowStartInPast {
 			return Booking{}, errors.New("booking cannot start more than " + HumaniseDuration(p.AllowStartInPastWithin) + " in the past")
 		} else {
-			return Booking{}, errors.New("booking cannot start in the past")
+			return Booking{}, errors.New("booking cannot start in the past (start: " + when.Start.String() + ", now:" + now.String() + ")")
 		}
 	}
 
@@ -1669,7 +1692,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 			log.Errorf("makebooking failed to request grace check for %s at %s because %s", name, checkTime.String(), err.Error())
 		}
 	} else {
-		log.Debugf("makebooking: manual cancellation only for %s", name)
+		log.Debugf("makebooking: grace period is not being enforced for %s", name)
 	}
 
 	return booking, nil
@@ -1834,6 +1857,14 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	// Now make the bookings, respecting policy and usage
 	for _, v := range bm {
 		_, err := s.makeBookingWithName(v.Policy, v.Slot, v.User, v.When, v.Name)
+
+		lm := "successful booking"
+
+		if err != nil {
+			lm = "failed booking because " + err.Error()
+		}
+
+		log.WithFields(log.Fields{"policy": v.Policy, "slot": v.Slot, "user": v.User, "start": v.When.Start.String(), "end": v.When.End.String(), "name": v.Name}).Info(lm)
 
 		if err != nil {
 			msg = append(msg, "booking "+v.Name+" failed because "+err.Error())
