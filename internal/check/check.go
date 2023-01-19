@@ -14,7 +14,7 @@ type Checker struct {
 	*sync.Mutex `json:"-" yaml:"-"`
 	Times       []time.Time
 	Values      map[time.Time][]string
-	Now         func() time.Time
+	now         func() time.Time
 	Name        string
 }
 
@@ -29,12 +29,29 @@ func New() *Checker {
 	}
 }
 
+func (c *Checker) SetNow(now func() time.Time) {
+	c.Lock()
+	defer c.Unlock()
+	c.now = now
+}
+
+// For external use only
+func (c *Checker) Now() time.Time {
+	c.Lock()
+	defer c.Unlock()
+	return c.now()
+}
+
 func (c *Checker) Clean() {
+	c.Lock()
+	defer c.Unlock()
 	c.Times = []time.Time{}
 	c.Values = make(map[time.Time][]string)
 }
 
 func (c *Checker) WithName(name string) *Checker {
+	c.Lock()
+	defer c.Unlock()
 	c.Name = name
 	return c
 }
@@ -63,7 +80,9 @@ func (c *Checker) Run(ctx context.Context, checkEvery time.Duration, expired cha
 }
 
 func (c *Checker) WithNow(now func() time.Time) *Checker {
-	c.Now = now
+	c.Lock()
+	defer c.Unlock()
+	c.now = now
 	return c
 }
 
@@ -73,7 +92,7 @@ func (c *Checker) Push(t time.Time, v string) error {
 	defer c.Unlock()
 	log.Debugf("adding booking %s to cancellation check list", v)
 	// time must be in the future
-	if t.Before(c.Now()) {
+	if t.Before(c.now()) { //use internal version to avoid hang over locks
 		return errors.New("time is in the past")
 	}
 
@@ -104,8 +123,8 @@ func (c *Checker) GetExpired() []string {
 	expiredIdx := -1
 
 	for idx, t := range c.Times {
-		if t.Before(c.Now()) {
-			log.Debugf("checker: index %d is expired at time %s", idx, c.Now())
+		if t.Before(c.now()) { //use internal version to avoid hang over locks
+			log.Debugf("checker: index %d is expired at time %s", idx, c.now())
 			expiredIdx = idx
 			if values, ok := c.Values[t]; ok {
 				for _, v := range values {
@@ -115,7 +134,7 @@ func (c *Checker) GetExpired() []string {
 			}
 		} else {
 
-			log.Debugf("checker: index %d is ok at time %s", idx, c.Now())
+			log.Debugf("checker: index %d is ok at time %s", idx, c.now())
 
 		}
 	}

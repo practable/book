@@ -241,8 +241,9 @@ type Store struct {
 	// Message represents our message of the day, to send to users (e.g. to explain system is locked)
 	Message string
 
-	// Now is a function for getting the time - useful for mocking in test
-	Now func() time.Time `json:"-" yaml:"-"`
+	// now is a function for getting the time - useful for mocking in test
+	// to avoid races, we must use a setter and a getter with a mutex
+	now func() time.Time `json:"-" yaml:"-"`
 
 	//useful for admin dashboard - don't need to also parse logs if keep old bookings
 	// Old Bookings represents the
@@ -396,13 +397,30 @@ func New() *Store {
 	}
 }
 
-// WithNow sets the time function (useful for mocking in tests)
+// WithNow sets the time function
 func (s *Store) WithNow(now func() time.Time) *Store {
 	s.Lock()
 	defer s.Unlock()
-	s.Now = now
-	s.Checker.Now = now
+	s.now = now
+	s.Checker.SetNow(now)
 	return s
+}
+
+// SetNow sets the time function (useful for mocking in tests)
+// Alternative named version for readability when updating the time
+// function multiple times in a test
+func (s *Store) SetNow(now func() time.Time) *Store {
+	s.Lock()
+	defer s.Unlock()
+	s.now = now
+	s.Checker.SetNow(now)
+	return s
+}
+
+func (s *Store) Now() time.Time {
+	s.Lock()
+	defer s.Unlock()
+	return s.now()
 }
 
 func (s *Store) WithGraceRebound(d time.Duration) *Store {
@@ -511,7 +529,7 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 		return errors.New("could not verify booking details")
 	}
 
-	if b.When.End.Before(s.Now()) {
+	if b.When.End.Before(s.now()) {
 		return errors.New("cannot cancel booking that has already ended")
 	}
 
@@ -523,7 +541,7 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 	delete(s.Bookings, b.Name)
 
 	b.Cancelled = true
-	b.CancelledAt = s.Now()
+	b.CancelledAt = s.now()
 	b.CancelledBy = cancelledBy
 
 	s.OldBookings[b.Name] = b
@@ -929,8 +947,8 @@ func (s *Store) getAvailability(policy, slot string) ([]interval.Interval, error
 		return []interval.Interval{}, err
 	}
 
-	start := s.Now()
-	end := s.Now().Add(interval.Century) //interval.Infinity causes parsing problems in API, so choose something saner (from a parsing point of view)
+	start := s.now()
+	end := s.now().Add(interval.Century) //interval.Infinity causes parsing problems in API, so choose something saner (from a parsing point of view)
 
 	if p.EnforceBookAhead {
 		end = start.Add(p.BookAhead)
@@ -1322,7 +1340,7 @@ func (s *Store) GetStoreStatusAdmin() StoreStatusAdmin {
 	return StoreStatusAdmin{
 		Locked:       s.Locked,
 		Message:      s.Message,
-		Now:          s.Now(),
+		Now:          s.now(),
 		Bookings:     int64(len(s.Bookings)),
 		Descriptions: int64(len(s.Descriptions)),
 		Filters:      int64(len(s.Filters)),
@@ -1353,7 +1371,7 @@ func (s *Store) GetStoreStatusUser() StoreStatusUser {
 	return StoreStatusUser{
 		Locked:  s.Locked,
 		Message: s.Message,
-		Now:     s.Now(),
+		Now:     s.now(),
 	}
 }
 
@@ -1504,7 +1522,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 
 	// check if booking is within bookahead window
 	if p.EnforceBookAhead {
-		if when.End.After(s.Now().Add(p.BookAhead)) {
+		if when.End.After(s.now().Add(p.BookAhead)) {
 			return Booking{}, errors.New("bookings cannot be made more than " +
 				HumaniseDuration(p.BookAhead) +
 				" ahead of the current time")
@@ -1513,7 +1531,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 
 	// check if booking requested starts in past
 
-	now := s.Now()
+	now := s.now()
 
 	if p.EnforceAllowStartInPast { //make allowance for delays in receiving request, if policy permits
 		now = now.Add(-1 * p.AllowStartInPastWithin) //adjust the now value to perform the check required by the policy
@@ -1530,7 +1548,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 	// check if booking is starting soon enough, if policy enforces StartsWithin
 	if p.EnforceStartsWithin {
 
-		now = s.Now().Add(p.StartsWithin) //get fresh, undjusted, value of now to avoid incorrect policy decisions, and adjust as required to make the check
+		now = s.now().Add(p.StartsWithin) //get fresh, undjusted, value of now to avoid incorrect policy decisions, and adjust as required to make the check
 
 		if when.Start.After(now) {
 			return Booking{}, errors.New("booking cannot start more than " + HumaniseDuration(p.StartsWithin) + " in the future")
@@ -1558,7 +1576,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 
 	}
 
-	now = s.Now() // return now to the current value in case we use it again and overlook that we have adjusted it in the checks above
+	now = s.now() // return now to the current value in case we use it again and overlook that we have adjusted it in the checks above
 
 	// check for existing usage tracker for this policy?
 	_, ok = u.Usage[policy]
@@ -1677,7 +1695,7 @@ func (s *Store) pruneBookings() {
 	stale := make(map[string]*Booking)
 
 	for k, v := range s.Bookings {
-		if s.Now().After(v.When.End) {
+		if s.now().After(v.When.End) {
 			stale[k] = v
 		}
 	}
@@ -1696,7 +1714,7 @@ func (s *Store) pruneBookings() {
 // that already have the mutex
 func (s *Store) pruneDiaries() {
 	for _, r := range s.Resources {
-		r.Diary.ClearBefore(s.Now())
+		r.Diary.ClearBefore(s.now())
 	}
 }
 
@@ -1717,7 +1735,7 @@ func (s *Store) pruneUserBookings(user string) {
 	stale := make(map[string]*Booking)
 
 	for k, v := range u.Bookings {
-		if s.Now().After(v.When.End) {
+		if s.now().After(v.When.End) {
 			stale[k] = v
 		} else if v.Cancelled { //TODO test we release bookings ok
 			stale[k] = v
@@ -1870,7 +1888,7 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 	s.UISets = m.UISets
 	s.Windows = m.Windows
 
-	status := "Loaded at " + s.Now().Format(time.RFC3339)
+	status := "Loaded at " + s.now().Format(time.RFC3339)
 
 	// SlotMap is used for checking if slots are listed in policy
 	// DisplayGuidesMap is used for exporting complete policies
@@ -2081,7 +2099,7 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery ti
 				log.Trace("store pruning stopped permanently")
 				return
 			case <-time.After(pruneEvery):
-				log.Trace("store pruning all bookings & diaries at time " + s.Now().String())
+				log.Trace("store pruning all bookings & diaries at time " + s.now().String())
 				s.PruneAll()
 			}
 		}
@@ -2144,11 +2162,11 @@ func (s *Store) validateBooking(booking Booking) error {
 		return errors.New("could not verify booking details")
 	}
 
-	if b.When.Start.After(s.Now()) {
+	if b.When.Start.After(s.now()) {
 		return errors.New("too early")
 	}
 
-	if b.When.End.Before(s.Now()) {
+	if b.When.End.Before(s.now()) {
 		return errors.New("too late")
 	}
 

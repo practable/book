@@ -10,13 +10,19 @@ import (
 	"github.com/timdrysdale/interval/internal/store"
 )
 
-// Run starts API server and an interval store to support it
-func Run(ctx context.Context, config config.ServerConfig) {
+type Server struct {
+	Config config.ServerConfig
+	Store  *store.Store
+}
 
-	s := store.New().WithNow(config.Now)
+// New Creates a new server, and provides a pointer to underlying store
+// so as to permit testing, e.g. mocking time in the store
+func New(config config.ServerConfig) *Server {
+
+	st := store.New().WithNow(config.Now)
 
 	if config.GraceRebound != time.Duration(0) {
-		s.WithGraceRebound(config.GraceRebound)
+		st.WithGraceRebound(config.GraceRebound)
 	}
 
 	if config.Now == nil {
@@ -28,11 +34,24 @@ func Run(ctx context.Context, config config.ServerConfig) {
 		config.PruneEvery = time.Duration(time.Hour)
 	}
 
-	go s.Run(ctx, config.PruneEvery, config.CheckEvery)
+	config.Store = st
 
-	config.Store = s
+	s := &Server{
+		Config: config,
+		Store:  st,
+	}
 
-	go serve.API(ctx, config)
+	return s
+
+}
+
+// Run API server and an interval store to support it
+
+func (s *Server) Run(ctx context.Context) {
+
+	go s.Store.Run(ctx, s.Config.PruneEvery, s.Config.CheckEvery)
+
+	go serve.API(ctx, s.Config)
 
 	<-ctx.Done()
 }

@@ -408,7 +408,7 @@ func TestReplaceManifest(t *testing.T) {
 	assert.Equal(t, []string{}, msg)
 
 	s := New()
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	err = s.ReplaceManifest(testManifest.Manifest)
 
@@ -556,7 +556,7 @@ func TestGetSlotIsAvailable(t *testing.T) {
 	s := New()
 
 	// fix time for ease of testing reason string
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -578,7 +578,7 @@ func TestSetSlotIsAvailable(t *testing.T) {
 	s := New()
 
 	// fix time for ease of testing reason string
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -616,7 +616,7 @@ func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -665,7 +665,7 @@ func TestMakeBooking(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -674,7 +674,7 @@ func TestMakeBooking(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-b"
 	slot := "sl-b"
@@ -703,7 +703,7 @@ func TestDenyBookingOfUnavailable(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -714,7 +714,7 @@ func TestDenyBookingOfUnavailable(t *testing.T) {
 
 	s.SetSlotIsAvailable("sl-b", false, "foo")
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-b"
 	slot := "sl-b"
@@ -736,7 +736,7 @@ func TestPolicyChecks(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -745,7 +745,7 @@ func TestPolicyChecks(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	// Check denied outside slot's window
 	policy := "p-a"
@@ -803,7 +803,7 @@ func TestPolicyChecks(t *testing.T) {
 	assert.Equal(t, "you currently have 2 current/future bookings which is at or exceeds the limit of 2 for policy p-b", err.Error())
 
 	// advance time to after both previous bookings
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 3, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 3, 0, 0, 0, time.UTC) })
 
 	// a further booking must now succeed
 	when = interval.Interval{
@@ -857,7 +857,7 @@ func TestPolicyChecks(t *testing.T) {
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 4, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 4, 0, 0, 0, time.UTC) })
 
 	when = interval.Interval{
 		Start: time.Date(2022, 11, 5, 4, 10, 0, 1, time.UTC),
@@ -882,7 +882,7 @@ func TestPolicyChecks(t *testing.T) {
 
 	// indirect check on remaining usage, to ensure cancellation refund was accurate amount
 	// move forward in time to avoid limit on current/future bookings
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC) })
 
 	when = interval.Interval{
 		Start: time.Date(2022, 11, 5, 6, 45, 0, 1, time.UTC),
@@ -912,7 +912,7 @@ func TestGetActivity(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -921,7 +921,7 @@ func TestGetActivity(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-b"
 	slot := "sl-b"
@@ -945,14 +945,14 @@ func TestGetActivity(t *testing.T) {
 	assert.False(t, b.Unfulfilled)
 
 	// advance time, but still before booking is live
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 59, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 59, 0, 0, time.UTC) })
 
 	_, err = s.GetActivity(b)
 	assert.Error(t, err)
 	assert.Equal(t, "too early", err.Error())
 
 	// advance time, but after booking is finished (edge case where booking not pruned yet)
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 11, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 2, 11, 0, 0, time.UTC) })
 
 	_, err = s.GetActivity(b)
 	assert.Error(t, err)
@@ -967,7 +967,7 @@ func TestGetActivity(t *testing.T) {
 	assert.Equal(t, "could not verify booking details", err.Error())
 
 	// shift to time within booking, but make resource unavailable.
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 02, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 2, 02, 0, 0, time.UTC) })
 	s.SetSlotIsAvailable("sl-b", false, "test")
 
 	_, err = s.GetActivity(b)
@@ -1049,7 +1049,7 @@ func TestCheckBooking(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -1124,7 +1124,7 @@ func TestExportBookings(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -1173,7 +1173,7 @@ func TestReplaceBookings(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -1273,7 +1273,7 @@ func TestOldBookings(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -1316,7 +1316,7 @@ func TestOldBookings(t *testing.T) {
 	assert.Equal(t, exp, bm)
 
 	// Now move time forward to make these old bookings
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC) })
 
 	s.pruneBookings()
 
@@ -1387,7 +1387,7 @@ func TestExportUsers(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -1396,7 +1396,7 @@ func TestExportUsers(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	when := interval.Interval{
 		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
@@ -1442,7 +1442,7 @@ func TestReplaceBookingsUsageRefunded(t *testing.T) {
 
 	// make a booking
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-b"
 	slot := "sl-b"
@@ -1527,7 +1527,7 @@ func TestReplaceOldBookings(t *testing.T) {
 
 	// make a booking
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-b"
 	slot := "sl-b"
@@ -1566,7 +1566,7 @@ func TestReplaceOldBookings(t *testing.T) {
 	assert.Equal(t, "10m0s", utb.Usage["p-b"])
 
 	// Move one day to the future, to make the booking old
-	s.Now = func() time.Time { return time.Date(2022, 12, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 12, 5, 1, 0, 0, 0, time.UTC) })
 
 	s.pruneBookings()
 
@@ -1625,7 +1625,7 @@ func TestGetBookingsForGetOldBookingsFor(t *testing.T) {
 
 	// make a booking
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-a"
 	slot := "sl-a"
@@ -1667,7 +1667,7 @@ func TestGetBookingsForGetOldBookingsFor(t *testing.T) {
 	assert.Equal(t, 0, len(bm))
 
 	// move forward a day to make bookings old
-	s.Now = func() time.Time { return time.Date(2022, 12, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 12, 5, 1, 0, 0, 0, time.UTC) })
 	s.pruneBookings()
 
 	bm, err = s.GetBookingsFor("u-a")
@@ -1701,7 +1701,7 @@ func TestGetPolicyStatusFor(t *testing.T) {
 
 	// make a booking
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-b"
 	slot := "sl-b"
@@ -1761,7 +1761,7 @@ func TestGetPoliciesFor(t *testing.T) {
 	assert.Equal(t, "user not found", err.Error())
 
 	// make a booking
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.NoError(t, err)
 
@@ -1781,7 +1781,7 @@ func TestStoreStatusAdminUser(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	when := interval.Interval{
 		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
@@ -2110,7 +2110,7 @@ func TestDeletePolicyAddPolicy(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -2119,7 +2119,7 @@ func TestDeletePolicyAddPolicy(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	when := interval.Interval{
 		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
@@ -2185,7 +2185,7 @@ func TestPruneDiaries(t *testing.T) {
 	s.pruneDiaries()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -2202,7 +2202,7 @@ func TestGetPolicy(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -2256,7 +2256,7 @@ func TestGetBooking(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -2265,7 +2265,7 @@ func TestGetBooking(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-b"
 	slot := "sl-b"
@@ -2410,7 +2410,7 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -2419,7 +2419,7 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
 
 	policy := "p-simulation"
 	slot := "sl-simulation"
@@ -2458,7 +2458,7 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 	assert.False(t, b1.Unfulfilled)
 
 	// shift to time within booking
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 2, 02, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 2, 02, 0, 0, time.UTC) })
 
 	a0, err := s.GetActivity(b0)
 	assert.NoError(t, err)
@@ -2509,7 +2509,7 @@ func TestAllowStartInPast(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -2518,7 +2518,7 @@ func TestAllowStartInPast(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC) } // move forward 30sec in time
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC) }) // move forward 30sec in time
 
 	policy := "p-instant"
 	slot := "sl-instant"
@@ -2553,7 +2553,7 @@ func TestAllowStartInPast(t *testing.T) {
 	assert.False(t, b.Started)
 	assert.False(t, b.Unfulfilled)
 
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 2, 0, 0, time.UTC) } // move forward 2min  in time, outside allowed window for starting booking in the past
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 2, 0, 0, time.UTC) }) // move forward 2min  in time, outside allowed window for starting booking in the past
 
 	_, err = s.MakeBooking(policy, slot, user, when)
 
@@ -2568,7 +2568,7 @@ func TestStartWithin(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -2629,7 +2629,7 @@ func TestNextAvailable(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -2664,7 +2664,7 @@ func TestNextAvailable(t *testing.T) {
 
 	// move forward in time past the unbooked 30sec before this test booking
 	// into the middle-ish of the first booking
-	s.Now = func() time.Time { return time.Date(2022, 11, 5, 0, 6, 0, 0, time.UTC) }
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 6, 0, 0, time.UTC) })
 
 	// now try booking too far into the future after this earlier booking
 	user = "user-1"
