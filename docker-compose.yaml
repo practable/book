@@ -1,0 +1,9 @@
+services:
+  book:
+    build:
+      context: .
+      target: book
+    env_file:
+      - book.env
+
+      

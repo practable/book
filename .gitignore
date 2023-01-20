@@ -1,3 +1,6 @@
+# epheremal docker env file with secrets
+book.env
+
 #emacs backups
 *.go~
 *.md~
