@@ -564,7 +564,30 @@ paths:
           schema: {}
         500:
           $ref: '#/responses/InternalError'
-
+          
+  /users/unique:
+    post:
+      summary: Request a new, unique username
+      description: Generates a unique username that meets the minimum length requirements for the booking system
+      tags:
+      - users
+      operationId: UniqueName
+      deprecated: false
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/UserName'
+        401:
+          $ref: '#/responses/Unauthorized'
+        500:
+          $ref: '#/responses/InternalError'
+          
+    
   /users/status:
     get:
       description: Gets the current store status from a user perspective (e.g. is it locked? what is the reason?)
@@ -1416,10 +1439,6 @@ definitions:
       - message
       - now
 
-
-    
-
-
   UI:
     title: User Interface
     type: object
@@ -1493,6 +1512,12 @@ definitions:
         additionalProperties:
           type: string
           
+  UserName:
+    type: object
+    properties:
+      user_name:
+        type: string
+        
   Users:
     title: set of Users (export only)
     type: object
