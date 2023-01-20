@@ -164,6 +164,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation admin.SetSlotIsAvailable has not yet been implemented")
 		})
 	}
+	if api.UsersUniqueNameHandler == nil {
+		api.UsersUniqueNameHandler = users.UniqueNameHandlerFunc(func(params users.UniqueNameParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.UniqueName has not yet been implemented")
+		})
+	}
 	if api.AdminGetStoreStatusAdminHandler == nil {
 		api.AdminGetStoreStatusAdminHandler = admin.GetStoreStatusAdminHandlerFunc(func(params admin.GetStoreStatusAdminParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetStoreStatusAdmin has not yet been implemented")

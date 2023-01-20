@@ -837,6 +837,38 @@ func init() {
         }
       }
     },
+    "/users/unique": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Generates a unique username that meets the minimum length requirements for the booking system",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Request a new, unique username",
+        "operationId": "UniqueName",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UserName"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/users/{user_name}/bookings": {
       "get": {
         "security": [
@@ -2049,6 +2081,14 @@ func init() {
           "additionalProperties": {
             "type": "string"
           }
+        }
+      }
+    },
+    "UserName": {
+      "type": "object",
+      "properties": {
+        "user_name": {
+          "type": "string"
         }
       }
     },
@@ -3112,6 +3152,44 @@ func init() {
         }
       }
     },
+    "/users/unique": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Generates a unique username that meets the minimum length requirements for the booking system",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Request a new, unique username",
+        "operationId": "UniqueName",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UserName"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/users/{user_name}/bookings": {
       "get": {
         "security": [
@@ -4387,6 +4465,14 @@ func init() {
           "additionalProperties": {
             "type": "string"
           }
+        }
+      }
+    },
+    "UserName": {
+      "type": "object",
+      "properties": {
+        "user_name": {
+          "type": "string"
         }
       }
     },

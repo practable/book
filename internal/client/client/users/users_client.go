@@ -54,6 +54,8 @@ type ClientService interface {
 
 	MakeBooking(params *MakeBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeBookingNoContent, error)
 
+	UniqueName(params *UniqueNameParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UniqueNameOK, error)
+
 	GetStoreStatusUser(params *GetStoreStatusUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetStoreStatusUserOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
@@ -540,6 +542,47 @@ func (a *Client) MakeBooking(params *MakeBookingParams, authInfo runtime.ClientA
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for MakeBooking: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  UniqueName requests a new unique username
+
+  Generates a unique username that meets the minimum length requirements for the booking system
+*/
+func (a *Client) UniqueName(params *UniqueNameParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UniqueNameOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewUniqueNameParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "UniqueName",
+		Method:             "POST",
+		PathPattern:        "/users/unique",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &UniqueNameReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UniqueNameOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for UniqueName: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

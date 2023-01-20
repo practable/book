@@ -113,6 +113,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminSetSlotIsAvailableHandler: admin.SetSlotIsAvailableHandlerFunc(func(params admin.SetSlotIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.SetSlotIsAvailable has not yet been implemented")
 		}),
+		UsersUniqueNameHandler: users.UniqueNameHandlerFunc(func(params users.UniqueNameParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.UniqueName has not yet been implemented")
+		}),
 		AdminGetStoreStatusAdminHandler: admin.GetStoreStatusAdminHandlerFunc(func(params admin.GetStoreStatusAdminParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetStoreStatusAdmin has not yet been implemented")
 		}),
@@ -222,6 +225,8 @@ type ServeAPI struct {
 	AdminReplaceOldBookingsHandler admin.ReplaceOldBookingsHandler
 	// AdminSetSlotIsAvailableHandler sets the operation handler for the set slot is available operation
 	AdminSetSlotIsAvailableHandler admin.SetSlotIsAvailableHandler
+	// UsersUniqueNameHandler sets the operation handler for the unique name operation
+	UsersUniqueNameHandler users.UniqueNameHandler
 	// AdminGetStoreStatusAdminHandler sets the operation handler for the get store status admin operation
 	AdminGetStoreStatusAdminHandler admin.GetStoreStatusAdminHandler
 	// UsersGetStoreStatusUserHandler sets the operation handler for the get store status user operation
@@ -380,6 +385,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.AdminSetSlotIsAvailableHandler == nil {
 		unregistered = append(unregistered, "admin.SetSlotIsAvailableHandler")
+	}
+	if o.UsersUniqueNameHandler == nil {
+		unregistered = append(unregistered, "users.UniqueNameHandler")
 	}
 	if o.AdminGetStoreStatusAdminHandler == nil {
 		unregistered = append(unregistered, "admin.GetStoreStatusAdminHandler")
@@ -579,6 +587,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/admin/slots/{slot_name}"] = admin.NewSetSlotIsAvailable(o.context, o.AdminSetSlotIsAvailableHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/users/unique"] = users.NewUniqueName(o.context, o.UsersUniqueNameHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
