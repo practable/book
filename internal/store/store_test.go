@@ -417,15 +417,15 @@ func TestReplaceManifest(t *testing.T) {
 
 	// note we are adding manifest elements during ReplaceManifest
 	// to support unique username generation
-	assert.Equal(t, 9, len(s.Descriptions))
-	assert.Equal(t, 3, len(s.Filters))
-	assert.Equal(t, 3, len(s.Policies))
-	assert.Equal(t, 3, len(s.Resources))
-	assert.Equal(t, 3, len(s.Slots))
+	assert.Equal(t, 8, len(s.Descriptions))
+	assert.Equal(t, 2, len(s.Filters))
+	assert.Equal(t, 2, len(s.Policies))
+	assert.Equal(t, 2, len(s.Resources))
+	assert.Equal(t, 2, len(s.Slots))
 	assert.Equal(t, 2, len(s.Streams))
 	assert.Equal(t, 2, len(s.UIs))
-	assert.Equal(t, 3, len(s.UISets))
-	assert.Equal(t, 3, len(s.Windows))
+	assert.Equal(t, 2, len(s.UISets))
+	assert.Equal(t, 2, len(s.Windows))
 
 	// check Diaries
 	for _, v := range s.Resources {
@@ -445,9 +445,8 @@ func TestReplaceManifest(t *testing.T) {
 		sml[k] = len(v.SlotMap)
 	}
 	exp := map[string]int{
-		"p-a":             1,
-		"p-b":             1,
-		"p-system-unique": 1,
+		"p-a": 1,
+		"p-b": 1,
 	}
 	assert.Equal(t, exp, sml)
 
@@ -1802,17 +1801,17 @@ func TestStoreStatusAdminUser(t *testing.T) {
 		Message:      "Welcome to the interval booking store",
 		Now:          time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		Bookings:     2,
-		Descriptions: 21,
-		Filters:      3,
+		Descriptions: 20,
+		Filters:      2,
 		OldBookings:  0,
-		Policies:     8,
-		Resources:    4,
-		Slots:        8,
+		Policies:     7,
+		Resources:    3,
+		Slots:        7,
 		Streams:      3,
 		UIs:          3,
-		UISets:       4,
+		UISets:       3,
 		Users:        2,
-		Windows:      3}
+		Windows:      2}
 	assert.Equal(t, esa, sa)
 
 	su := s.GetStoreStatusUser()

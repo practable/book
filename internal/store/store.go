@@ -528,86 +528,6 @@ func NewUser() *User {
 	}
 }
 
-// for internal use only
-// add a booking to persist a new unique username in the store
-// and prevent it being given to more than one user
-func (s *Store) addUniqueGenerationToManifest(status string) error {
-
-	dn := "d-system-unique"
-	pn := "p-system-unique"
-	rn := "r-system-unique"
-	sn := "sl-system-unique"
-	un := "uiset-system-nil"
-	wn := "w-system-unique"
-
-	d := Description{
-		Name:  dn,
-		Type:  "system",
-		Short: "system use only - for generating unique usernames",
-	}
-
-	p := Policy{
-		Description:           dn,
-		EnforceUnlimitedUsers: true,
-		Slots:                 []string{sn},
-		SlotMap:               make(map[string]bool),
-	}
-
-	p.SlotMap[sn] = true
-
-	r := Resource{
-		Description: dn,
-		Diary:       diary.New(rn), //won't use it, but avoid possible nil pointer deref error
-		TopicStub:   "unique",
-		Streams:     []string{},
-	}
-
-	r.Diary.SetAvailable(status)
-
-	sl := Slot{
-		Description: dn,
-		Policy:      pn,
-		Resource:    rn,
-		UISet:       un,
-		Window:      wn,
-	}
-
-	u := UISet{
-		UIs: []string{},
-	}
-
-	w := Window{
-		Allowed: []interval.Interval{
-			interval.Interval{
-				Start: interval.ZeroTime,
-				End:   interval.ZeroTime.Add(interval.Century),
-				// if you are reading this in 2123, hello from 100yrs ago
-				// https://www.imdb.com/title/tt14186678/
-			},
-		},
-	}
-
-	// make filter from window
-	f := filter.New()
-	err := f.SetAllowed(w.Allowed)
-
-	if err != nil {
-		return errors.New("filter creation failed because " + err.Error())
-	}
-
-	// add our manifest elements to the store
-	s.Descriptions[dn] = d
-	s.Filters[wn] = f
-	s.Policies[pn] = p  // we did the slot map already
-	s.Resources[rn] = r // we did the diary initialisation already
-	s.Slots[sn] = sl
-	s.UISets[un] = u
-	s.Windows[wn] = w
-
-	return nil
-
-}
-
 // AddPolicyFor adds a policy to a user so they can book with it
 func (s *Store) AddPolicyFor(user, policy string) error {
 	where := "store.AddPolicyFor"
@@ -647,6 +567,20 @@ func (s *Store) AddPolicyFor(user, policy string) error {
 
 	return nil
 
+}
+
+func (s *Store) AddUniqueUser(minlength int) (string, error) {
+
+	//TODO - add random generator to store
+	//TODO call it here to generate codes with lower, upper and digits
+	//TODO check if already exists in user list, repeat if it does
+	//TODO make a booking on p-system-unique now, for 1 second to persist the user name
+	//TODO return the user name
+
+	//Notes - don't limit the length - if we get spammed, we can delay falling over a bit ...
+	//Will require rate-limited connections in production
+	//Probably cannot throttle this route separately, but TODO check that out.
+	return "not implemented", nil
 }
 
 // CancelBooking cancels a booking or returns an error if not found
@@ -2208,7 +2142,7 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 		s.UIs[k] = uid
 	}
 
-	return s.addUniqueGenerationToManifest(status) //we need a policy to make bookings against, to secure user names
+	return nil
 
 }
 
