@@ -54,7 +54,7 @@ type ClientService interface {
 
 	MakeBooking(params *MakeBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeBookingNoContent, error)
 
-	UniqueName(params *UniqueNameParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UniqueNameOK, error)
+	UniqueName(params *UniqueNameParams, opts ...ClientOption) (*UniqueNameOK, error)
 
 	GetStoreStatusUser(params *GetStoreStatusUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetStoreStatusUserOK, error)
 
@@ -548,9 +548,9 @@ func (a *Client) MakeBooking(params *MakeBookingParams, authInfo runtime.ClientA
 /*
   UniqueName requests a new unique username
 
-  Generates a unique username that meets the minimum length requirements for the booking system
+  Generates a unique username that meets the minimum length requirements for the booking system. No security/token needed, because users needs a/this name to login
 */
-func (a *Client) UniqueName(params *UniqueNameParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UniqueNameOK, error) {
+func (a *Client) UniqueName(params *UniqueNameParams, opts ...ClientOption) (*UniqueNameOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewUniqueNameParams()
@@ -564,7 +564,6 @@ func (a *Client) UniqueName(params *UniqueNameParams, authInfo runtime.ClientAut
 		Schemes:            []string{"http"},
 		Params:             params,
 		Reader:             &UniqueNameReader{formats: a.formats},
-		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
 	}

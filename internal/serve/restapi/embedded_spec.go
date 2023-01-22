@@ -839,12 +839,7 @@ func init() {
     },
     "/users/unique": {
       "post": {
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
-        "description": "Generates a unique username that meets the minimum length requirements for the booking system",
+        "description": "Generates a unique username that meets the minimum length requirements for the booking system. No security/token needed, because users needs a/this name to login",
         "produces": [
           "application/json"
         ],
@@ -3154,12 +3149,7 @@ func init() {
     },
     "/users/unique": {
       "post": {
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
-        "description": "Generates a unique username that meets the minimum length requirements for the booking system",
+        "description": "Generates a unique username that meets the minimum length requirements for the booking system. No security/token needed, because users needs a/this name to login",
         "produces": [
           "application/json"
         ],

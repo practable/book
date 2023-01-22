@@ -113,7 +113,7 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminSetSlotIsAvailableHandler: admin.SetSlotIsAvailableHandlerFunc(func(params admin.SetSlotIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.SetSlotIsAvailable has not yet been implemented")
 		}),
-		UsersUniqueNameHandler: users.UniqueNameHandlerFunc(func(params users.UniqueNameParams, principal interface{}) middleware.Responder {
+		UsersUniqueNameHandler: users.UniqueNameHandlerFunc(func(params users.UniqueNameParams) middleware.Responder {
 			return middleware.NotImplemented("operation users.UniqueName has not yet been implemented")
 		}),
 		AdminGetStoreStatusAdminHandler: admin.GetStoreStatusAdminHandlerFunc(func(params admin.GetStoreStatusAdminParams, principal interface{}) middleware.Responder {

@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/xid"
 	log "github.com/sirupsen/logrus"
 	"github.com/timdrysdale/interval/internal/check"
 	"github.com/timdrysdale/interval/internal/deny"
@@ -282,7 +283,7 @@ type Store struct {
 	// UISets represents the lists of user interfaces for particular slots
 	UISets map[string]UISet
 
-	// UsagePolicies represents all the UsagePolicy(ies) in use
+	// Users maps all users.
 	Users map[string]*User
 
 	// Window represents allowed and denied time periods for slots
@@ -569,18 +570,11 @@ func (s *Store) AddPolicyFor(user, policy string) error {
 
 }
 
-func (s *Store) AddUniqueUser(minlength int) (string, error) {
+func (s *Store) GenerateUniqueUser() string {
 
-	//TODO - add random generator to store
-	//TODO call it here to generate codes with lower, upper and digits
-	//TODO check if already exists in user list, repeat if it does
-	//TODO make a booking on p-system-unique now, for 1 second to persist the user name
-	//TODO return the user name
+	return xid.New().String() //Unicity guaranteed for 16,777,216 (24 bits) unique ids per second and per host/process
+	// but could be predicted i.e. not cryptographically secure
 
-	//Notes - don't limit the length - if we get spammed, we can delay falling over a bit ...
-	//Will require rate-limited connections in production
-	//Probably cannot throttle this route separately, but TODO check that out.
-	return "not implemented", nil
 }
 
 // CancelBooking cancels a booking or returns an error if not found

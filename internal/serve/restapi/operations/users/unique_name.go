@@ -12,16 +12,16 @@ import (
 )
 
 // UniqueNameHandlerFunc turns a function with the right signature into a unique name handler
-type UniqueNameHandlerFunc func(UniqueNameParams, interface{}) middleware.Responder
+type UniqueNameHandlerFunc func(UniqueNameParams) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn UniqueNameHandlerFunc) Handle(params UniqueNameParams, principal interface{}) middleware.Responder {
-	return fn(params, principal)
+func (fn UniqueNameHandlerFunc) Handle(params UniqueNameParams) middleware.Responder {
+	return fn(params)
 }
 
 // UniqueNameHandler interface for that can handle valid unique name params
 type UniqueNameHandler interface {
-	Handle(UniqueNameParams, interface{}) middleware.Responder
+	Handle(UniqueNameParams) middleware.Responder
 }
 
 // NewUniqueName creates a new http.Handler for the unique name operation
@@ -33,7 +33,7 @@ func NewUniqueName(ctx *middleware.Context, handler UniqueNameHandler) *UniqueNa
 
 Request a new, unique username
 
-Generates a unique username that meets the minimum length requirements for the booking system
+Generates a unique username that meets the minimum length requirements for the booking system. No security/token needed, because users needs a/this name to login
 
 */
 type UniqueName struct {
@@ -47,25 +47,12 @@ func (o *UniqueName) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		*r = *rCtx
 	}
 	var Params = NewUniqueNameParams()
-	uprinc, aCtx, err := o.Context.Authorize(r, route)
-	if err != nil {
-		o.Context.Respond(rw, r, route.Produces, route, err)
-		return
-	}
-	if aCtx != nil {
-		*r = *aCtx
-	}
-	var principal interface{}
-	if uprinc != nil {
-		principal = uprinc.(interface{}) // this is really a interface{}, I promise
-	}
-
 	if err := o.Context.BindValidRequest(r, route, &Params); err != nil { // bind params
 		o.Context.Respond(rw, r, route.Produces, route, err)
 		return
 	}
 
-	res := o.Handler.Handle(Params, principal) // actually handle the request
+	res := o.Handler.Handle(Params) // actually handle the request
 	o.Context.Respond(rw, r, route.Produces, route, res)
 
 }

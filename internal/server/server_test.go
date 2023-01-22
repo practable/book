@@ -2416,3 +2416,62 @@ func TestAutoCancellation(t *testing.T) {
 	assert.Equal(t, eb, bn)
 
 }
+
+func TestUniqueName(t *testing.T) {
+
+	// test does not depend on store state
+
+	// get first username
+
+	client := &http.Client{}
+	req, err := http.NewRequest("POST", cfg.Host+"/api/v1/users/unique", nil)
+	assert.NoError(t, err)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if debug {
+		t.Log(string(body))
+	}
+
+	var u0 models.UserName
+	err = json.Unmarshal(body, &u0)
+	assert.NoError(t, err)
+
+	// get second username
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if debug {
+		t.Log(string(body))
+	}
+
+	var u1 models.UserName
+	err = json.Unmarshal(body, &u1)
+	assert.NoError(t, err)
+
+	// check they are 20 chars long (as expected of xid) but different to each other
+
+	assert.Equal(t, 20, len(u0.UserName))
+	assert.Equal(t, 20, len(u1.UserName))
+
+	assert.NotEqual(t, u0.UserName, u1.UserName)
+
+	// Note that xids are quite similar to each other
+	// different test runs a few seconds apart
+	// cf6lmusbig7in9ndtht0
+	// cf6ln7cbig7ivol56uo0
+	// cf6lnfsbig7iom1croqg
+	// cf6loacbig7jff43q4v0
+
+	// Within the same test run:
+	// server_test.go:2434: {"user_name":"cf6lnfsbig7iom1croq0"}
+	// server_test.go:2447: {"user_name":"cf6lnfsbig7iom1croqg"}
+	// And again later:
+	// server_test.go:2434: {"user_name":"cf6loacbig7jff43q4v0"}
+	// server_test.go:2447: {"user_name":"cf6loacbig7jff43q4vg"}
+
+}

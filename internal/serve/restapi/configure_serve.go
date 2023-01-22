@@ -165,7 +165,7 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 		})
 	}
 	if api.UsersUniqueNameHandler == nil {
-		api.UsersUniqueNameHandler = users.UniqueNameHandlerFunc(func(params users.UniqueNameParams, principal interface{}) middleware.Responder {
+		api.UsersUniqueNameHandler = users.UniqueNameHandlerFunc(func(params users.UniqueNameParams) middleware.Responder {
 			return middleware.NotImplemented("operation users.UniqueName has not yet been implemented")
 		})
 	}

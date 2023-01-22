@@ -309,6 +309,16 @@ func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabili
 	}
 }
 
+func uniqueNameHandler(config config.ServerConfig) func(users.UniqueNameParams) middleware.Responder {
+	return func(params users.UniqueNameParams) middleware.Responder {
+
+		u := models.UserName{
+			UserName: config.Store.GenerateUniqueUser(),
+		}
+		return users.NewUniqueNameOK().WithPayload(&u)
+	}
+}
+
 // makeBookingHandler
 func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams, interface{}) middleware.Responder {
 	return func(params users.MakeBookingParams, principal interface{}) middleware.Responder {

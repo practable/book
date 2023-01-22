@@ -61,19 +61,20 @@ func API(ctx context.Context, config config.ServerConfig) {
 	api.AdminSetSlotIsAvailableHandler = admin.SetSlotIsAvailableHandlerFunc(setSlotIsAvailableHandler(config))
 
 	// *** USERS *** //
-	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))
-	api.UsersGetDescriptionHandler = users.GetDescriptionHandlerFunc(getDescriptionHandler(config))
-	api.UsersGetPolicyHandler = users.GetPolicyHandlerFunc(getPolicyHandler(config))
-	api.UsersGetAvailabilityHandler = users.GetAvailabilityHandlerFunc(getAvailabilityHandler(config))
-	api.UsersMakeBookingHandler = users.MakeBookingHandlerFunc(makeBookingHandler(config))
-	api.UsersGetStoreStatusUserHandler = users.GetStoreStatusUserHandlerFunc(getStoreStatusUserHandler(config))
-	api.UsersGetBookingsForUserHandler = users.GetBookingsForUserHandlerFunc(getBookingsForUserHandler(config))
+	api.UsersAddPolicyForUserHandler = users.AddPolicyForUserHandlerFunc(addPolicyForUserHandler(config))
 	api.UsersCancelBookingHandler = users.CancelBookingHandlerFunc(cancelBookingHandler(config))
+	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))
 	api.UsersGetActivityHandler = users.GetActivityHandlerFunc(getActivityHandler(config))
+	api.UsersGetAvailabilityHandler = users.GetAvailabilityHandlerFunc(getAvailabilityHandler(config))
+	api.UsersGetBookingsForUserHandler = users.GetBookingsForUserHandlerFunc(getBookingsForUserHandler(config))
+	api.UsersGetDescriptionHandler = users.GetDescriptionHandlerFunc(getDescriptionHandler(config))
 	api.UsersGetOldBookingsForUserHandler = users.GetOldBookingsForUserHandlerFunc(getOldBookingsForUserHandler(config))
 	api.UsersGetPoliciesForUserHandler = users.GetPoliciesForUserHandlerFunc(getPoliciesForUserHandler(config))
+	api.UsersGetPolicyHandler = users.GetPolicyHandlerFunc(getPolicyHandler(config))
 	api.UsersGetPolicyStatusForUserHandler = users.GetPolicyStatusForUserHandlerFunc(getPolicyStatusForUserHandler(config))
-	api.UsersAddPolicyForUserHandler = users.AddPolicyForUserHandlerFunc(addPolicyForUserHandler(config))
+	api.UsersGetStoreStatusUserHandler = users.GetStoreStatusUserHandlerFunc(getStoreStatusUserHandler(config))
+	api.UsersMakeBookingHandler = users.MakeBookingHandlerFunc(makeBookingHandler(config))
+	api.UsersUniqueNameHandler = users.UniqueNameHandlerFunc(uniqueNameHandler(config))
 
 	go func() {
 		<-ctx.Done()

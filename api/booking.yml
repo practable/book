@@ -568,15 +568,13 @@ paths:
   /users/unique:
     post:
       summary: Request a new, unique username
-      description: Generates a unique username that meets the minimum length requirements for the booking system
+      description: Generates a unique username that meets the minimum length requirements for the booking system. No security/token needed, because users needs a/this name to login
       tags:
       - users
       operationId: UniqueName
       deprecated: false
       produces:
       - application/json
-      security:
-        - Bearer: []
       responses:
         200:
           description: 'OK'
