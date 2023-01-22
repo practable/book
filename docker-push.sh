@@ -1,6 +1,18 @@
 #!/bin/bash
-#echo "images for v0.0.1 have alreay been pushed - update push script!"
-#exit
-docker tag book_book:latest practable/book:0.0.1-alpine
-echo "You probably need to do $docker login -u practable #enter password for account admin@practable.io at prompt"
-docker push practable/book:0.0.1-alpine
+#we strip the first char (usually a v from the tag), because we typically tag with command like $ git tag v0.1.0
+tag=$(git describe --tags --abbrev=0)
+dockertag="practable/book:${tag:1}-alpine"
+
+read -p "Will push with tag ${dockertag}, proceed? (y/n) " yn
+
+case $yn in 
+	[yY] ) echo ok, we will proceed;;
+	[nN] ) echo exiting...;
+		exit;;
+	* ) echo invalid response;
+		exit 1;;
+esac
+
+docker tag book_book:latest $dockertag
+#echo "You probably need to do $docker login -u practable #enter password for account admin@practable.io at prompt"
+docker push $dockertag
