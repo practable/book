@@ -1,5 +1,5 @@
 /*
-Copyright © 2020 Tim Drysdale <timothy.d.drysdale@gmail.com>
+Copyright © 2021 Tim Drysdale <timothy.d.drysdale@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -14,95 +14,111 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
-
 package cmd
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"time"
 
 	"github.com/ory/viper"
-	"github.com/practable/book/internal/login"
 	"github.com/spf13/cobra"
+	"github.com/practable/book/internal/login"
 )
 
-// hostCmd represents the host command
+// tokenCmd represents the token command
 var tokenCmd = &cobra.Command{
 	Use:   "token",
-	Short: "relay token generates a new token for authenticating to a relay",
+	Short: "session token generates a new token for authenticating to book",
 	Long: `Set the operating paramters with environment variables, for example
 
-export BOOK_TOKEN_LIFETIME=60
-export BOOK_TOKEN_SECRET=some_secret
-export BOOK_TOKEN_ADMIN=false
-export BOOK_TOKEN_SUBJECT=some_user
-export BOOK_TOKEN_AUDIENCE=https://example.org/book
+export BOOK_CLIENT_SECRET=somesecret
+export BOOK_CLIENT_TOKEN_TTL=300
+export BOOK_CLIENT_TOKEN_ADMIN=true
+export BOOK_CLIENT_TOKEN_AUD=https://book.example.io
+export BOOK_CLIENT_TOKEN_SUB=someuser
 bearer=$(book token)
+
+If you want to set a future NBF date, then specify the NBF in RFC3339 format
+export BOOK_CLIENT_TOKEN_NBF=2022-10-12T07:20:50Z
 `,
 
 	Run: func(cmd *cobra.Command, args []string) {
 
-		viper.SetEnvPrefix("BOOK_TOKEN")
+		viper.SetEnvPrefix("BOOK_CLIENT")
 		viper.AutomaticEnv()
 
-		viper.SetDefault("lifetime", "1m")
-		viper.SetDefault("admin", "false") // default to safest option
-		viper.SetDefault("subject", "book-token-cli")
+		viper.SetDefault("token_ttl", "1m")
+		viper.SetDefault("token_admin", "false")
+		viper.SetDefault("token_aud", "https://book.practable.io")
 
-		audience := viper.GetString("audience")
-		admin := viper.GetBool("admin")
-		lifetimeStr := viper.GetString("lifetime")
+		admin := viper.GetBool("token_admin")
+		aud := viper.GetString("token_aud")
+		ttl := viper.GetString("token_ttl")
+		nbfstr := viper.GetString("token_nbf")
 		secret := viper.GetString("secret")
-		subject := viper.GetString("subject")
+		sub := viper.GetString("token_sub")
 
 		// check inputs
-		ok := true
 
-		if audience == "" {
-			fmt.Println("BOOK_TOKEN_AUDIENCE not set")
-			ok = false
+		if aud == "" {
+			fmt.Println("BOOK_CLIENT_TOKEN_AUD not set")
+			os.Exit(1)
 		}
-
+		if sub == "" {
+			fmt.Println("BOOK_CLIENT_TOKEN_SUB not set")
+			os.Exit(1)
+		}
 		if secret == "" {
-			fmt.Println("BOOK_TOKEN_SECRET not set")
-			ok = false
+			fmt.Println("BOOK_CLIENT_SECRET not set")
+			os.Exit(1)
 		}
+		if ttl == "" {
+			fmt.Println("BOOK_CLIENT_TOKEN_TTL not set")
+			os.Exit(1)
+		}
+
+		iat := time.Now().Unix() - 1 // need immediately usable tokens for testing
+		nbf := iat                   //update below if NBF is specified
+
+		if nbfstr != "" {
+			t, e := time.Parse(
+				time.RFC3339,
+				nbfstr)
+			if e != nil {
+				fmt.Printf("BOOK_CLIENT_TOKEN_NBF time format error: %s\n", e.Error())
+			}
+			// ensure future date
+			if t.After(time.Now()) {
+				nbf = t.Unix()
+			}
+		}
+
+		d, err := time.ParseDuration(ttl)
+
+		if err != nil {
+			fmt.Printf("BOOK_CLIENT_TOKEN_TTL duration format error: %s\n", err.Error())
+		}
+
+		exp := nbf + int64(d/time.Second)
 
 		var scopes []string
 
 		if admin {
-			scopes = append(scopes, "book:admin")
+			scopes = []string{"booking:admin"}
 		} else {
-			scopes = append(scopes, "book:user")
+			scopes = []string{"booking:user"}
 		}
 
-		lifetime, err := time.ParseDuration(lifetimeStr)
-
-		if err != nil {
-			fmt.Print("cannot parse duration in BOOK_LIFETIME=" + lifetimeStr)
-			ok = false
-		}
-
-		if !ok {
-			os.Exit(1)
-		}
-
-		iat := time.Now().Unix() - 1 //ensure immediately usable
-		nbf := iat
-		exp := iat + int64(math.Round(lifetime.Seconds()))
-
-		token := login.New(audience, subject, scopes, iat, nbf, exp)
-
-		bearer, err := login.Sign(token, secret)
+		token := login.New(aud, sub, scopes, iat, nbf, exp)
+		stoken, err := login.Sign(token, secret)
 
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		fmt.Println(bearer)
+		fmt.Println(stoken)
 		os.Exit(0)
 
 	},
@@ -111,4 +127,13 @@ bearer=$(book token)
 func init() {
 	rootCmd.AddCommand(tokenCmd)
 
+	// Here you will define your flags and configuration settings.
+
+	// Cobra supports Persistent Flags which will work for this command
+	// and all subcommands, e.g.:
+	// tokenCmd.PersistentFlags().String("foo", "", "A help for foo")
+
+	// Cobra supports local flags which will only run when this command
+	// is called directly, e.g.:
+	// tokenCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
