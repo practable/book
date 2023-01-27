@@ -19,14 +19,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof" //ok in production https://medium.com/google-cloud/continuous-profiling-of-go-programs-96d4416af77b
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"time"
-
-	"net/http"
-	_ "net/http/pprof" //ok in production, probably? https://medium.com/google-cloud/continuous-profiling-of-go-programs-96d4416af77b
 
 	"github.com/ory/viper"
 	"github.com/practable/book/internal/config"
@@ -44,7 +43,7 @@ Set configuration parameters with environment variables.
 
 The main parameters have these defaults:
 
-export BOOK_FQDN=https://book.practable.io
+export BOOK_AUDIENCE=https://book.practable.io
 export BOOK_PORT=4000
 export BOOK_LOG_FILE=/some/logging/location/book.log
 export BOOK_PERSIST_DIR=/var/lib/book/
@@ -75,6 +74,8 @@ but they are available to change if you know what you are doing:
 export BOOK_ACCESS_TOKEN_TTL=1h
 export BOOK_TIDY_EVERY=1h
 export BOOK_MIN_USERNAME_LENGTH=6
+export BOOK_PROFILE=true
+export BOOK_PROFILE_PORT=6060
 
 After setting the env vars and permissions as required, run with:
 
@@ -88,7 +89,7 @@ $ book serve
 		viper.SetDefault("access_token_ttl", "1h")
 		viper.SetDefault("check_every", "1m")
 		viper.SetDefault("disable_cancel_after_use", "false")
-		viper.SetDefault("fqdn", "https://book.practable.io")
+		viper.SetDefault("audience", "")
 		viper.SetDefault("log_file", "/var/log/book/book.log")
 		viper.SetDefault("log_level", "warn")
 		viper.SetDefault("log_format", "json")
@@ -102,12 +103,12 @@ $ book serve
 
 		accessTokenTTL := viper.GetString("access_token_ttl")
 		adminSecret := viper.GetString("admin_secret")
+		audience := viper.GetString("audience")
 		checkEvery := viper.GetString("check_every")
 		disableCancelAfterUse := viper.GetBool("disable_cancel_after_use")
-		logLevel := viper.GetString("log_level")
-		fqdn := viper.GetString("fqdn")
 		logFile := viper.GetString("log_file")
 		logFormat := viper.GetString("log_format")
+		logLevel := viper.GetString("log_level")
 		persistDir := viper.GetString("persist_dir")
 		port := viper.GetInt("port")
 		profile := viper.GetBool("profile")
@@ -119,11 +120,23 @@ $ book serve
 		minUsernameLength := viper.GetInt("min_username_length")
 
 		// Sanity checks
+		ok := true
+
+		if audience == "" {
+			fmt.Println("You must set BOOK_AUDIENCE")
+			ok = false
+		}
 
 		if adminSecret == "" || relaySecret == "" {
 			fmt.Println("You must set both BOOK_ADMIN_SECRET and BOOK_RELAY_SECRET")
+			ok = false
+		}
+
+		if !ok {
 			os.Exit(1)
 		}
+
+		// parse durations
 
 		accessTokenTTLDuration, err := time.ParseDuration(accessTokenTTL)
 
@@ -203,9 +216,9 @@ $ book serve
 		log.Debugf("Admin secret: [%s...%s]", adminSecret[:4], adminSecret[len(adminSecret)-4:]) // partial reveal of secret in our logs
 		log.Debugf("Relay secret: [%s...%s]", relaySecret[:4], relaySecret[len(relaySecret)-4:]) // at debug level only
 		log.Infof("Access token TTL: [%s]", accessTokenTTL)
+		log.Infof("Audience: [%s]", audience)
 		log.Infof("Check grace period expiries every [%s]", checkEvery)
 		log.Infof("Disable cancel after use: %t", disableCancelAfterUse)
-		log.Infof("FQDN: [%s]\n", fqdn)
 		log.Infof("Listening port: %d", port)
 		log.Infof("Log file: [%s]", logFile)
 		log.Infof("Log level: [%s]", logLevel)
@@ -246,7 +259,7 @@ $ book serve
 			AccessTokenLifetime:   accessTokenTTLDuration,
 			CheckEvery:            checkEveryDuration,
 			DisableCancelAfterUse: disableCancelAfterUse,
-			Host:                  fqdn,
+			Host:                  audience,
 			MinUserNameLength:     minUsernameLength,
 			Now:                   func() time.Time { return time.Now() },
 			Port:                  port,
