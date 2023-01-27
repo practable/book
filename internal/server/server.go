@@ -37,6 +37,10 @@ func New(config config.ServerConfig) *Server {
 		log.Warning("pruneEvery not set, setting to 1h")
 		config.PruneEvery = time.Duration(time.Hour)
 	}
+	if config.CheckEvery == time.Duration(0) {
+		log.Warning("checkEvery not set, setting to 1h")
+		config.CheckEvery = time.Duration(time.Hour)
+	}
 
 	config.Store = st
 

@@ -24,6 +24,9 @@ import (
 	"strings"
 	"time"
 
+	"net/http"
+	_ "net/http/pprof" //ok in production, probably? https://medium.com/google-cloud/continuous-profiling-of-go-programs-96d4416af77b
+
 	"github.com/ory/viper"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -87,6 +90,7 @@ $ book serve
 		viper.SetDefault("persist_dir", "/var/lib/book/")
 		viper.SetDefault("port", 4000)
 		viper.SetDefault("request_timeout", "1m")
+		viper.SetDefault("check_every", "1m")
 		viper.SetDefault("tidy_every", "1h")
 		viper.SetDefault("log_level", "warn")
 		viper.SetDefault("log_stderr", false)
@@ -95,6 +99,7 @@ $ book serve
 
 		accessTokenTTL := viper.GetString("access_token_ttl")
 		adminSecret := viper.GetString("admin_secret")
+		checkEvery := viper.GetString("check_every")
 		disableCancelAfterUse := viper.GetBool("disable_cancel_after_use")
 		logLevel := viper.GetString("log_level")
 		fqdn := viper.GetString("fqdn")
@@ -104,6 +109,7 @@ $ book serve
 		port := viper.GetInt("port")
 		relaySecret := viper.GetString("relay_secret")
 		requestTimeout := viper.GetString("request_timeout")
+
 		tidyEvery := viper.GetString("tidy_every")
 		minUsernameLength := viper.GetInt("min_username_length")
 
@@ -118,6 +124,13 @@ $ book serve
 
 		if err != nil {
 			fmt.Println("Specify BOOK_ACCESS_TOKEN_TTL duration as string, e.g. 5m, 1h etc")
+			os.Exit(1)
+		}
+
+		checkEveryDuration, err := time.ParseDuration(checkEvery)
+
+		if err != nil {
+			fmt.Println("Specify BOOK_CHECK_EVERY duration as string, e.g. 30s, 1m etc")
 			os.Exit(1)
 		}
 
@@ -192,9 +205,20 @@ $ book serve
 		log.Debugf("Relay secret=[%s...%s]\n", relaySecret[:2], relaySecret[len(relaySecret)-2:])
 		log.Infof("Request timeout=[%s]\n", requestTimeout)
 		log.Infof("Access token TTL=[%s]\n", accessTokenTTL)
+		log.Infof("Check grace period expiries every [%s]\n", checkEvery)
 		log.Infof("Tidy every=[%s]\n", tidyEvery)
 		log.Infof("Log file=[%s]\n", logFile)
 		log.Infof("Log level=[%s]\n", logLevel)
+
+		// Start the profiling server
+
+		go func() {
+
+			err := http.ListenAndServe("localhost:6060", nil)
+			if err != nil {
+				log.Errorf(err.Error())
+			}
+		}()
 
 		// Start the server
 
@@ -213,6 +237,7 @@ $ book serve
 		}()
 		cfg := config.ServerConfig{
 			AccessTokenLifetime:   accessTokenTTLDuration,
+			CheckEvery:            checkEveryDuration,
 			DisableCancelAfterUse: disableCancelAfterUse,
 			Host:                  fqdn,
 			MinUserNameLength:     minUsernameLength,

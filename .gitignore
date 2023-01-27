@@ -1,3 +1,6 @@
+#profiles
+pprof/
+
 # epheremal docker env file with secrets
 book.env
 
