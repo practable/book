@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,19 +84,21 @@ $ book serve
 
 		viper.SetEnvPrefix("BOOK")
 		viper.AutomaticEnv()
-		viper.SetDefault("disable_cancel_after_use", "false")
+
 		viper.SetDefault("access_token_ttl", "1h")
+		viper.SetDefault("check_every", "1m")
+		viper.SetDefault("disable_cancel_after_use", "false")
 		viper.SetDefault("fqdn", "https://book.practable.io")
 		viper.SetDefault("log_file", "/var/log/book/book.log")
-		viper.SetDefault("persist_dir", "/var/lib/book/")
-		viper.SetDefault("port", 4000)
-		viper.SetDefault("request_timeout", "1m")
-		viper.SetDefault("check_every", "1m")
-		viper.SetDefault("tidy_every", "1h")
 		viper.SetDefault("log_level", "warn")
-		viper.SetDefault("log_stderr", false)
 		viper.SetDefault("log_format", "json")
 		viper.SetDefault("min_username_length", 6)
+		viper.SetDefault("persist_dir", "/var/lib/book/")
+		viper.SetDefault("port", 4000)
+		viper.SetDefault("profile", "true")
+		viper.SetDefault("profile_port", 6060)
+		viper.SetDefault("request_timeout", "1m")
+		viper.SetDefault("tidy_every", "1h")
 
 		accessTokenTTL := viper.GetString("access_token_ttl")
 		adminSecret := viper.GetString("admin_secret")
@@ -107,6 +110,8 @@ $ book serve
 		logFormat := viper.GetString("log_format")
 		persistDir := viper.GetString("persist_dir")
 		port := viper.GetInt("port")
+		profile := viper.GetBool("profile")
+		profilePort := viper.GetInt("profile_port")
 		relaySecret := viper.GetString("relay_secret")
 		requestTimeout := viper.GetString("request_timeout")
 
@@ -194,31 +199,33 @@ $ book serve
 		}
 
 		// Report useful info
+		log.Infof("book version: %s", versionString())
+		log.Debugf("Admin secret: [%s...%s]", adminSecret[:4], adminSecret[len(adminSecret)-4:]) // partial reveal of secret in our logs
+		log.Debugf("Relay secret: [%s...%s]", relaySecret[:4], relaySecret[len(relaySecret)-4:]) // at debug level only
+		log.Infof("Access token TTL: [%s]", accessTokenTTL)
+		log.Infof("Check grace period expiries every [%s]", checkEvery)
+		log.Infof("Disable cancel after use: %t", disableCancelAfterUse)
+		log.Infof("FQDN: [%s]\n", fqdn)
+		log.Infof("Listening port: %d", port)
+		log.Infof("Log file: [%s]", logFile)
+		log.Infof("Log level: [%s]", logLevel)
+		log.Infof("Persistance Directory: [%s]", persistDir)
+		log.Infof("Persistance NOT IMPLEMENTED")
+		log.Infof("Profiling on: [%t]", profile)
+		log.Infof("Profile port: [%d]", profilePort)
+		log.Infof("Request timeout: [%s]", requestTimeout)
+		log.Infof("Tidy every: [%s]", tidyEvery)
 
-		log.Infof("book version: %s\n", versionString())
-		log.Infof("disable_cancel_after_use: %t\n", disableCancelAfterUse)
-		log.Infof("FQDN:[%s]\n", fqdn)
-		log.Infof("Listening port: %d\n", port)
-		log.Infof("Persistance Directory: [%s]\n", persistDir)
-		log.Infof("Persistance NOT IMPLEMENTED\n")
-		log.Debugf("Admin secret=[%s...%s]\n", adminSecret[:2], adminSecret[len(adminSecret)-2:])
-		log.Debugf("Relay secret=[%s...%s]\n", relaySecret[:2], relaySecret[len(relaySecret)-2:])
-		log.Infof("Request timeout=[%s]\n", requestTimeout)
-		log.Infof("Access token TTL=[%s]\n", accessTokenTTL)
-		log.Infof("Check grace period expiries every [%s]\n", checkEvery)
-		log.Infof("Tidy every=[%s]\n", tidyEvery)
-		log.Infof("Log file=[%s]\n", logFile)
-		log.Infof("Log level=[%s]\n", logLevel)
-
-		// Start the profiling server
-
-		go func() {
-
-			err := http.ListenAndServe("localhost:6060", nil)
-			if err != nil {
-				log.Errorf(err.Error())
-			}
-		}()
+		// Optionally start the profiling server
+		if profile {
+			go func() {
+				url := "localhost:" + strconv.Itoa(profilePort)
+				err := http.ListenAndServe(url, nil)
+				if err != nil {
+					log.Errorf(err.Error())
+				}
+			}()
+		}
 
 		// Start the server
 
