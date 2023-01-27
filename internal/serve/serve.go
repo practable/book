@@ -7,11 +7,11 @@ import (
 
 	"github.com/go-openapi/loads"
 	log "github.com/sirupsen/logrus"
-	"github.com/timdrysdale/interval/internal/config"
-	"github.com/timdrysdale/interval/internal/serve/restapi"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
+	"github.com/practable/book/internal/config"
+	"github.com/practable/book/internal/serve/restapi"
+	"github.com/practable/book/internal/serve/restapi/operations"
+	"github.com/practable/book/internal/serve/restapi/operations/admin"
+	"github.com/practable/book/internal/serve/restapi/operations/users"
 )
 
 // API starts the API

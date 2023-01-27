@@ -13,7 +13,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/timdrysdale/interval/internal/utils"
+	"github.com/practable/book/internal/utils"
 )
 
 // Tree holds elements of the AVL tree.

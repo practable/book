@@ -10,13 +10,13 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/icza/gog"
 	log "github.com/sirupsen/logrus"
-	"github.com/timdrysdale/interval/internal/config"
-	dt "github.com/timdrysdale/interval/internal/datetime"
-	"github.com/timdrysdale/interval/internal/interval"
-	lit "github.com/timdrysdale/interval/internal/login"
-	"github.com/timdrysdale/interval/internal/serve/models"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
-	"github.com/timdrysdale/interval/internal/store"
+	"github.com/practable/book/internal/config"
+	dt "github.com/practable/book/internal/datetime"
+	"github.com/practable/book/internal/interval"
+	lit "github.com/practable/book/internal/login"
+	"github.com/practable/book/internal/serve/models"
+	"github.com/practable/book/internal/serve/restapi/operations/users"
+	"github.com/practable/book/internal/store"
 )
 
 type Permission struct {
@@ -43,7 +43,7 @@ func convertStoreStatusUserToModel(s store.StoreStatusUser) (models.StoreStatusU
 
 }
 
-// dt "github.com/timdrysdale/interval/internal/datetime
+// dt "github.com/practable/book/internal/datetime
 // getAccessTokenHandler
 func getAccessTokenHandler(config config.ServerConfig) func(users.GetAccessTokenParams) middleware.Responder {
 	return func(params users.GetAccessTokenParams) middleware.Responder {

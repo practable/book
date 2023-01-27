@@ -15,10 +15,10 @@ package filter
 import (
 	"sync"
 
-	avl "github.com/timdrysdale/interval/internal/trees/avltree"
+	avl "github.com/practable/book/internal/trees/avltree"
 
 	"github.com/google/uuid"
-	"github.com/timdrysdale/interval/internal/interval"
+	"github.com/practable/book/internal/interval"
 )
 
 // Filter represents an allowed interval, with a list of denied sub-intervals

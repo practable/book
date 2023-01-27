@@ -12,7 +12,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/timdrysdale/interval/internal/client/models"
+	"github.com/practable/book/internal/client/models"
 )
 
 // GetPoliciesForUserReader is a Reader for the GetPoliciesForUser structure.

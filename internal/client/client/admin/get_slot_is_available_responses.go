@@ -12,7 +12,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/timdrysdale/interval/internal/client/models"
+	"github.com/practable/book/internal/client/models"
 )
 
 // GetSlotIsAvailableReader is a Reader for the GetSlotIsAvailable structure.

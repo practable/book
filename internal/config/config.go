@@ -3,8 +3,8 @@ package config
 import (
 	"time"
 
-	"github.com/timdrysdale/interval/internal/deny"
-	"github.com/timdrysdale/interval/internal/store"
+	"github.com/practable/book/internal/deny"
+	"github.com/practable/book/internal/store"
 )
 
 type ServerConfig struct {

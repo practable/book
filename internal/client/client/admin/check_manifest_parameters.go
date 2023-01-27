@@ -15,7 +15,7 @@ import (
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/timdrysdale/interval/internal/client/models"
+	"github.com/practable/book/internal/client/models"
 )
 
 // NewCheckManifestParams creates a new CheckManifestParams object,

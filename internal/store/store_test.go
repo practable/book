@@ -12,9 +12,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/timdrysdale/interval/internal/deny"
-	"github.com/timdrysdale/interval/internal/diary"
-	"github.com/timdrysdale/interval/internal/interval"
+	"github.com/practable/book/internal/deny"
+	"github.com/practable/book/internal/diary"
+	"github.com/practable/book/internal/interval"
 	"gopkg.in/yaml.v2"
 )
 

@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/validate"
 
-	"github.com/timdrysdale/interval/internal/serve/models"
+	"github.com/practable/book/internal/serve/models"
 )
 
 // NewCheckManifestParams creates a new CheckManifestParams object

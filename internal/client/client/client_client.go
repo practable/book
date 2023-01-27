@@ -10,8 +10,8 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 
-	"github.com/timdrysdale/interval/internal/client/client/admin"
-	"github.com/timdrysdale/interval/internal/client/client/users"
+	"github.com/practable/book/internal/client/client/admin"
+	"github.com/practable/book/internal/client/client/users"
 )
 
 // Default client HTTP client.

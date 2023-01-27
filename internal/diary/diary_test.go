@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/timdrysdale/interval/internal/interval"
+	"github.com/practable/book/internal/interval"
 )
 
 var w = time.Now()

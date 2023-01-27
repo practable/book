@@ -10,9 +10,9 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
+	"github.com/practable/book/internal/serve/restapi/operations"
+	"github.com/practable/book/internal/serve/restapi/operations/admin"
+	"github.com/practable/book/internal/serve/restapi/operations/users"
 )
 
 //go:generate swagger generate server --target ../../serve --name Serve --spec ../../../api/booking.yml --principal interface{} --exclude-main

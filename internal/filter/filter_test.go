@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/timdrysdale/interval/internal/interval"
+	"github.com/practable/book/internal/interval"
 )
 
 // Graphical representation of the intervals used in this test (a = allowed, d = denied, s = session to try)

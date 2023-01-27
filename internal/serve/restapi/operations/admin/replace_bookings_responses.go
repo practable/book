@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-openapi/runtime"
 
-	"github.com/timdrysdale/interval/internal/serve/models"
+	"github.com/practable/book/internal/serve/models"
 )
 
 // ReplaceBookingsOKCode is the HTTP code returned for type ReplaceBookingsOK

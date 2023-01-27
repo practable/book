@@ -5,9 +5,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/timdrysdale/interval/internal/config"
-	"github.com/timdrysdale/interval/internal/serve"
-	"github.com/timdrysdale/interval/internal/store"
+	"github.com/practable/book/internal/config"
+	"github.com/practable/book/internal/serve"
+	"github.com/practable/book/internal/store"
 )
 
 type Server struct {

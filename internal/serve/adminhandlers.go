@@ -11,12 +11,12 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/icza/gog"
 	log "github.com/sirupsen/logrus"
-	"github.com/timdrysdale/interval/internal/config"
-	dt "github.com/timdrysdale/interval/internal/datetime"
-	"github.com/timdrysdale/interval/internal/interval"
-	"github.com/timdrysdale/interval/internal/serve/models"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
-	"github.com/timdrysdale/interval/internal/store"
+	"github.com/practable/book/internal/config"
+	dt "github.com/practable/book/internal/datetime"
+	"github.com/practable/book/internal/interval"
+	"github.com/practable/book/internal/serve/models"
+	"github.com/practable/book/internal/serve/restapi/operations/admin"
+	"github.com/practable/book/internal/store"
 	"gopkg.in/yaml.v2"
 )
 

@@ -9,9 +9,9 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	log "github.com/sirupsen/logrus"
-	ac "github.com/timdrysdale/interval/internal/ac/client"
-	ao "github.com/timdrysdale/interval/internal/ac/client/operations"
-	"github.com/timdrysdale/interval/internal/login"
+	ac "github.com/practable/book/internal/ac/client"
+	ao "github.com/practable/book/internal/ac/client/operations"
+	"github.com/practable/book/internal/login"
 )
 
 type Request struct {

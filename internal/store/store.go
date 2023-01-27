@@ -28,11 +28,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/xid"
 	log "github.com/sirupsen/logrus"
-	"github.com/timdrysdale/interval/internal/check"
-	"github.com/timdrysdale/interval/internal/deny"
-	"github.com/timdrysdale/interval/internal/diary"
-	"github.com/timdrysdale/interval/internal/filter"
-	"github.com/timdrysdale/interval/internal/interval"
+	"github.com/practable/book/internal/check"
+	"github.com/practable/book/internal/deny"
+	"github.com/practable/book/internal/diary"
+	"github.com/practable/book/internal/filter"
+	"github.com/practable/book/internal/interval"
 )
 
 // Activity represents connection details for a live booking

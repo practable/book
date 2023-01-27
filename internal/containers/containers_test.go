@@ -9,7 +9,7 @@ package containers
 import (
 	"testing"
 
-	"github.com/timdrysdale/interval/internal/utils"
+	"github.com/practable/book/internal/utils"
 )
 
 // For testing purposes

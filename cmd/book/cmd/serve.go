@@ -29,10 +29,10 @@ import (
 	_ "net/http/pprof" //ok in production, probably? https://medium.com/google-cloud/continuous-profiling-of-go-programs-96d4416af77b
 
 	"github.com/ory/viper"
+	"github.com/practable/book/internal/config"
+	"github.com/practable/book/internal/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/timdrysdale/interval/internal/config"
-	"github.com/timdrysdale/interval/internal/server"
 )
 
 // serveCmd represents the serve command

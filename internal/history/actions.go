@@ -3,7 +3,7 @@ package history
 import (
 	"time"
 
-	"github.com/timdrysdale/interval/internal/interval"
+	"github.com/practable/book/internal/interval"
 )
 
 //UserCommands represents commands that users will send to the system

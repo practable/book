@@ -16,7 +16,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 package main
 
-import "github.com/timdrysdale/interval/cmd/book/cmd"
+import "github.com/practable/book/cmd/book/cmd"
 
 func main() {
 	cmd.Execute()

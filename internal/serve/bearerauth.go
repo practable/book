@@ -7,7 +7,7 @@ import (
 	"github.com/go-openapi/runtime/security"
 	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
-	lit "github.com/timdrysdale/interval/internal/login"
+	lit "github.com/practable/book/internal/login"
 )
 
 func claimsCheck(principal interface{}) (*lit.Token, error) {

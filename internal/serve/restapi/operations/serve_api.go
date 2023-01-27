@@ -19,8 +19,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/admin"
-	"github.com/timdrysdale/interval/internal/serve/restapi/operations/users"
+	"github.com/practable/book/internal/serve/restapi/operations/admin"
+	"github.com/practable/book/internal/serve/restapi/operations/users"
 )
 
 // NewServeAPI creates a new Serve instance

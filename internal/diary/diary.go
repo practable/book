@@ -7,9 +7,9 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	avl "github.com/timdrysdale/interval/internal/trees/avltree"
+	avl "github.com/practable/book/internal/trees/avltree"
 
-	"github.com/timdrysdale/interval/internal/interval"
+	"github.com/practable/book/internal/interval"
 )
 
 // Diary represents the bookings of a resources

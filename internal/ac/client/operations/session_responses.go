@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 
-	"github.com/timdrysdale/interval/internal/ac/models"
+	"github.com/practable/book/internal/ac/models"
 )
 
 // SessionReader is a Reader for the Session structure.

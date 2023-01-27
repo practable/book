@@ -9,7 +9,7 @@ import (
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
-	"github.com/timdrysdale/interval/internal/ac/client/operations"
+	"github.com/practable/book/internal/ac/client/operations"
 )
 
 // Default ac HTTP client.
