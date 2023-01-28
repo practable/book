@@ -26,13 +26,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/xid"
-	log "github.com/sirupsen/logrus"
 	"github.com/practable/book/internal/check"
 	"github.com/practable/book/internal/deny"
 	"github.com/practable/book/internal/diary"
 	"github.com/practable/book/internal/filter"
 	"github.com/practable/book/internal/interval"
+	"github.com/rs/xid"
+	log "github.com/sirupsen/logrus"
 )
 
 // Activity represents connection details for a live booking
@@ -2921,6 +2921,29 @@ func (p *Policy) UnmarshalJSON(data []byte) (err error) {
 		return err
 	}
 
+	// insert default durations if required
+	if tmp.BookAhead == "" {
+		tmp.BookAhead = "0s"
+	}
+	if tmp.MaxDuration == "" {
+		tmp.MaxDuration = "0s"
+	}
+	if tmp.MinDuration == "" {
+		tmp.MinDuration = "0s"
+	}
+	if tmp.NextAvailable == "" {
+		tmp.NextAvailable = "0s"
+	}
+	if tmp.AllowStartInPastWithin == "" {
+		tmp.AllowStartInPastWithin = "0s"
+	}
+	if tmp.StartsWithin == "" {
+		tmp.StartsWithin = "0s"
+	}
+	if tmp.MaxUsage == "" {
+		tmp.MaxUsage = "0s"
+	}
+
 	// parse durations
 	ba, err := time.ParseDuration(tmp.BookAhead)
 	if err != nil {
@@ -2991,6 +3014,14 @@ func (d *DisplayGuide) UnmarshalJSON(data []byte) (err error) {
 
 	if err = json.Unmarshal(data, &tmp); err != nil {
 		return err
+	}
+
+	// set default durations
+	if tmp.BookAhead == "" {
+		tmp.BookAhead = "0s"
+	}
+	if tmp.Duration == "" {
+		tmp.Duration = "0s"
 	}
 
 	// parse durations

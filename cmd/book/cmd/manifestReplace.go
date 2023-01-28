@@ -42,7 +42,11 @@ var manifestReplaceCmd = &cobra.Command{
 
 example usage:
 
-book manifest replace manifest.json
+export BOOK_CLIENT_TOKEN=$SECRET
+export BOOK_CLIENT_HOST=example.org/book
+export BOOK_CLIENT_SCHEME=https
+export BOOK_CLIENT_FORMAT=YAML
+book manifest replace manifest.yaml
 
 The manifest must be in a file, default is json. Yaml not currently available
 `,

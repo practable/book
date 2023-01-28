@@ -7,12 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// the p-blank policy tests for errors on default intervals, which should become 0s
 var manifestYAML = []byte(`
 display_guides:
   1mFor20m:
     book_ahead: 20m
     duration: 1m
     label: 1m
+  dg-blank:
 policies:
   p-modes:
     allow_start_in_past_within: 1m0s
@@ -22,6 +24,7 @@ policies:
     max_usage: 30m0s
     next_available: 1m0s
     starts_within: 1m0s
+  p-blank:
 windows:
   w-a:
     allowed:
@@ -63,4 +66,5 @@ func TestYAMLToManifests(t *testing.T) {
 
 	assert.Equal(t, time.Duration(1*time.Minute), s.Policies["p-modes"].StartsWithin)
 	assert.Equal(t, "1m0s", m.Policies["p-modes"].StartsWithin)
+
 }
