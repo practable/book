@@ -25,9 +25,9 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/ory/viper"
-	"github.com/spf13/cobra"
 	apiclient "github.com/practable/book/internal/client/client"
 	"github.com/practable/book/internal/client/client/admin"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
@@ -50,8 +50,8 @@ The exported manifest is printed to stdout, and can be piped to a file if requir
 
 		viper.SetEnvPrefix("BOOK_CLIENT")
 		viper.AutomaticEnv()
-		viper.SetDefault("host", "book.practable.io")
-		viper.SetDefault("scheme", "https")
+		viper.SetDefault("host", "localhost")
+		viper.SetDefault("scheme", "http")
 		viper.SetDefault("format", "yaml")
 
 		host := viper.GetString("host")

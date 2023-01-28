@@ -17,7 +17,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -27,12 +26,12 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/ory/viper"
-	"github.com/spf13/cobra"
 	apiclient "github.com/practable/book/internal/client/client"
 	"github.com/practable/book/internal/client/client/admin"
 	cmodels "github.com/practable/book/internal/client/models"
+	"github.com/practable/book/internal/convert"
 	"github.com/practable/book/internal/store"
-	"gopkg.in/yaml.v2"
+	"github.com/spf13/cobra"
 )
 
 // checkCmd represents the check command
@@ -51,8 +50,8 @@ The manifest must be in a file, default is json. Yaml not currently available
 
 		viper.SetEnvPrefix("BOOK_CLIENT")
 		viper.AutomaticEnv()
-		viper.SetDefault("host", "book.practable.io")
-		viper.SetDefault("scheme", "https")
+		viper.SetDefault("host", "localhost")
+		viper.SetDefault("scheme", "http")
 		viper.SetDefault("format", "json")
 
 		host := viper.GetString("host")
@@ -86,39 +85,24 @@ The manifest must be in a file, default is json. Yaml not currently available
 			os.Exit(1)
 		}
 
-		storeManifest := store.Manifest{}
 		clientManifest := cmodels.Manifest{}
+		storeManifest := store.Manifest{}
 
 		switch format {
-		case "json":
-
-			err = json.Unmarshal(mfest, &storeManifest)
-			if err != nil {
-				fmt.Printf("Error: failed to unmarshal manifest into store format for checking because: %s\n", err.Error())
-				os.Exit(1)
-			}
-			err = json.Unmarshal(mfest, &clientManifest)
-			if err != nil {
-				fmt.Printf("Error: failed to unmarshal manifest into client format for uploading because: %s\n", err.Error())
-				os.Exit(1)
-			}
 
 		case "yaml", "yml":
 
-			fmt.Println("YAML format unavailable at present")
+			clientManifest, storeManifest, err = convert.YAMLToManifests(mfest)
+
+		case "json":
+
+			clientManifest, storeManifest, err = convert.JSONToManifests(mfest)
+
+		}
+
+		if err != nil {
+			fmt.Printf("Error: failed to unmarshal manifest into client format for uploading because %s\n", err.Error())
 			os.Exit(1)
-
-			err = yaml.Unmarshal(mfest, &storeManifest)
-			if err != nil {
-				fmt.Printf("Error: failed to unmarshal manifest into store format for checking because: %s\n", err.Error())
-				os.Exit(1)
-			}
-			err = yaml.Unmarshal(mfest, &clientManifest)
-			if err != nil {
-				fmt.Printf("Error: failed to unmarshal manifest into client format for uploading because: %s\n", err.Error())
-				os.Exit(1)
-			}
-
 		}
 
 		// check manifest before uploading

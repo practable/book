@@ -24,6 +24,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	golang.org/x/net v0.5.0
 	gopkg.in/yaml.v2 v2.4.0
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
