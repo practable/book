@@ -14,18 +14,18 @@ func claimsCheck(principal interface{}) (*lit.Token, error) {
 
 	token, ok := principal.(*jwt.Token)
 	if !ok {
-		return nil, errors.New("Token Not JWT")
+		return nil, errors.New("token Not JWT")
 	}
 
 	// save checking for key existence individually by checking all at once
 	claims, ok := token.Claims.(*lit.Token)
 
 	if !ok {
-		return nil, errors.New("Token Claims Incorrect Type")
+		return nil, errors.New("token claims incorrect type")
 	}
 
 	if !lit.HasRequiredClaims(*claims) {
-		return nil, errors.New("Token Missing Required Claims")
+		return nil, errors.New("token missing required claims")
 	}
 
 	return claims, nil
@@ -37,6 +37,7 @@ func isAdmin(principal interface{}) (*lit.Token, error) {
 	claims, err := claimsCheck(principal)
 
 	if err != nil {
+		log.WithFields(log.Fields{"token": principal, "error": err.Error()}).Info("token failed claimsCheck")
 		return nil, err
 	}
 
@@ -61,6 +62,7 @@ func isUser(principal interface{}) (*lit.Token, error) {
 	claims, err := claimsCheck(principal)
 
 	if err != nil {
+		log.WithFields(log.Fields{"token": principal, "error": err.Error()}).Info("token failed claimsCheck")
 		return nil, err
 	}
 
@@ -84,6 +86,7 @@ func isAdminOrUser(principal interface{}) (bool, *lit.Token, error) {
 	claims, err := claimsCheck(principal)
 
 	if err != nil {
+		log.WithFields(log.Fields{"token": principal, "error": err.Error()}).Info("token failed claimsCheck")
 		return false, nil, err
 	}
 
@@ -117,33 +120,36 @@ func validateHeader(secret []byte, host string) security.TokenAuthentication {
 
 		token, err := jwt.ParseWithClaims(bearerToken, claims, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				log.WithFields(log.Fields{"alg": token.Header["alg"], "token": token}).Info("wrong signing method")
 				return nil, fmt.Errorf("unexpected signing method was %v", token.Header["alg"])
 			}
 			return secret, nil
 		})
 
 		if err != nil {
+			log.WithFields(log.Fields{"error": err.Error(), "token": token}).Info("error parsing claims")
 			return nil, errors.New("error parsing claims was " + err.Error())
 		}
 
 		if token == nil {
+			log.Info("nil token")
 			return nil, fmt.Errorf("nil token")
 		}
 
 		if !token.Valid { //checks iat, nbf, exp
-			log.Info("Token invalid")
+			log.WithFields(log.Fields{"token": token}).Info("token invalid")
 			return nil, fmt.Errorf("token invalid")
 		}
 
 		if cc, ok := token.Claims.(*lit.Token); ok {
 
 			if !cc.RegisteredClaims.VerifyAudience(host, true) {
-				log.WithFields(log.Fields{"aud": cc.RegisteredClaims.Audience, "host": host}).Info("aud does not match this host")
+				log.WithFields(log.Fields{"aud": cc.RegisteredClaims.Audience, "host": host}).Info("token aud does not match this host")
 				return nil, fmt.Errorf("aud %s does not match this host %s", cc.RegisteredClaims.Audience, host)
 			}
 
 		} else {
-			log.WithFields(log.Fields{"token": bearerToken, "host": host}).Info("Error parsing token")
+			log.WithFields(log.Fields{"token": bearerToken, "host": host}).Info("error parsing token")
 			return nil, err
 		}
 
