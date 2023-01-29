@@ -22,7 +22,6 @@ import (
 	"net/http"
 	_ "net/http/pprof" //ok in production https://medium.com/google-cloud/continuous-profiling-of-go-programs-96d4416af77b
 	"os"
-	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -232,6 +231,10 @@ $ book serve
 		// Optionally start the profiling server
 		if profile {
 			go func() {
+				log.Trace("profiler starting")
+				defer func() {
+					log.Trace("profiler stopped")
+				}()
 				url := "localhost:" + strconv.Itoa(profilePort)
 				err := http.ListenAndServe(url, nil)
 				if err != nil {
@@ -242,23 +245,6 @@ $ book serve
 
 		// Start the server
 
-		c := make(chan os.Signal, 1)
-
-		signal.Notify(c, os.Interrupt)
-
-		ctx, cancel := context.WithCancel(context.Background())
-
-		go func() {
-			log.Trace("starting interrupt signal handler")
-			for range c {
-				log.Trace("interrupt signal received")
-				cancel()
-				log.Trace("cancel() called")
-				<-ctx.Done()
-				log.Trace("context is done")
-				os.Exit(0)
-			}
-		}()
 		cfg := config.ServerConfig{
 			AccessTokenLifetime:   accessTokenTTLDuration,
 			CheckEvery:            checkEveryDuration,
@@ -274,7 +260,7 @@ $ book serve
 		}
 
 		s := server.New(cfg)
-		s.Run(ctx)
+		s.Run(context.Background()) //serve.API handles shutdown, so pass dummy background (we keep it for testing purposes though)
 
 	},
 }

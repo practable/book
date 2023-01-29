@@ -24,7 +24,10 @@ import (
 // @secret- HMAC shared secret which incoming tokens will be signed with
 // @cs - pointer to the CodeStore this API shares with the shellbar websocket relay
 // @options - for future backwards compatibility (no options currently available)
-func API(ctx context.Context, config config.ServerConfig) {
+func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
+	defer func() {
+		log.Trace("serve.API stopped")
+	}()
 
 	swaggerSpec, err := loads.Analyzed(restapi.SwaggerJSON, "")
 	if err != nil {
@@ -76,12 +79,23 @@ func API(ctx context.Context, config config.ServerConfig) {
 	api.UsersMakeBookingHandler = users.MakeBookingHandlerFunc(makeBookingHandler(config))
 	api.UsersUniqueNameHandler = users.UniqueNameHandlerFunc(uniqueNameHandler(config))
 
+	c := make(chan struct{})
+
 	go func() {
-		log.Trace("serve(api) awaiting context cancellation")
-		<-ctx.Done()
-		log.Trace("serve(api) context cancelled")
-		if err := server.Shutdown(); err != nil {
-			log.Fatalln(err)
+		defer func() {
+			log.Trace("serve.API cancel checker goro stopped")
+		}()
+		log.Trace("serve API awaiting context cancellation")
+		select {
+		case <-ctx.Done():
+			log.Trace("serve API context cancelled")
+			if err := server.Shutdown(); err != nil {
+				log.Fatalln(err)
+			}
+		case <-c:
+			// clean up this goro when we stop
+			// for another reason
+			return
 		}
 
 	}()
@@ -90,6 +104,12 @@ func API(ctx context.Context, config config.ServerConfig) {
 	if err := server.Serve(); err != nil {
 		log.Fatalln(err)
 	}
-	log.Trace("serve(api): stopped without error")
+	log.Trace("serve API stopped without error")
+
+	close(c) // clean up the goro checking for cancellation of our own context
+
+	cancelOthers()
+
+	log.Trace("serve API called cancelOthers")
 
 }

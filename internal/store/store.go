@@ -2282,7 +2282,9 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery ti
 	go s.denyClient.Run(ctx) //setup already done in the With/Set functions
 
 	go func() { //This needs to run more often than the pruning operation, because it frees unused bookings for others. Suggest one minute (balance CPU usage and timeliness of checks)
-
+		defer func() {
+			log.Trace("store.Run checking goro stopped")
+		}()
 		expired := make(chan []string)
 		s.Checker.Run(ctx, checkEvery, expired)
 		log.Debug("store will grace check bookings every " + checkEvery.String())
@@ -2299,6 +2301,9 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery ti
 	}()
 	go func() { //this is a routine maintenance operation to keep data structures free of stale data, and can run as infrequently, suggest 1 hour if most bookings are 30min+ sessions.
 		log.Debug("store will prune bookings & diaries every " + pruneEvery.String())
+		defer func() {
+			log.Trace("store.Run pruning goro stopped")
+		}()
 		for {
 
 			select {

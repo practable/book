@@ -8,10 +8,10 @@ import (
 	"time"
 
 	httptransport "github.com/go-openapi/runtime/client"
-	log "github.com/sirupsen/logrus"
 	ac "github.com/practable/book/internal/ac/client"
 	ao "github.com/practable/book/internal/ac/client/operations"
 	"github.com/practable/book/internal/login"
+	log "github.com/sirupsen/logrus"
 )
 
 type Request struct {
@@ -91,16 +91,21 @@ func (c *Client) WithScheme(scheme string) *Client {
 }*/
 
 func (c *Client) Run(ctx context.Context) {
-
+	log.Trace("deny.Run started")
+	defer func() {
+		log.Trace("deny.Run stopped")
+	}()
 	for {
 	NEXT:
 		select {
 
 		case <-ctx.Done():
+			log.Trace("deny.Run context cancelled")
 			return
 		case req, ok := <-c.Request:
 
 			if !ok {
+				log.Trace("deny.Run request channel closed")
 				return //our request channel is closed, so no more to do
 			}
 

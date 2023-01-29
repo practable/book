@@ -57,11 +57,25 @@ func New(config config.ServerConfig) *Server {
 
 func (s *Server) Run(ctx context.Context) {
 
-	go s.Store.Run(ctx, s.Config.PruneEvery, s.Config.CheckEvery)
+	log.Trace("server.Run started")
 
-	go serve.API(ctx, s.Config)
+	defer func() {
+		log.Trace("server.Run stopped")
 
-	log.Trace("server started, awaiting context cancellation")
-	<-ctx.Done()
-	log.Trace("server context cancelled")
+	}()
+
+	// serve.API captures the interrupt signal, so let it cancel other goro
+	// provide other goro with new context, and pass the cancel() to serve.API
+	// so it can call it when shutdown
+
+	ctxStore, cancelStore := context.WithCancel(context.Background())
+
+	go s.Store.Run(ctxStore, s.Config.PruneEvery, s.Config.CheckEvery)
+
+	go serve.API(ctx, s.Config, cancelStore)
+
+	log.Trace("server.Runs started, awaiting context cancellation")
+
+	<-ctxStore.Done() //cannot use ctx.Done() because will leave hanging process when used with book/cmd where there is no cancellation of ctx
+
 }
