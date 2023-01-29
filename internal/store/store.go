@@ -671,7 +671,9 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 		for URL, _ := range um {
 
 			if s.denyRequests == nil {
-				return errors.New(msg + "deny requests channel is nil")
+				msg = msg + "deny requests channel is nil"
+				log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
+				return errors.New(msg)
 			}
 			c := make(chan string)
 			s.denyRequests <- deny.Request{
@@ -687,12 +689,17 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 				case result, ok := <-c:
 					if ok && result == "ok" {
 						// deny request was successful
+						log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Info("access cancelled at relay")
 						break DONE
 					} else {
-						return errors.New(msg + " error cancelling access at relay " + result)
+						msg = msg + " error cancelling access at relay " + result
+						log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
+						return errors.New(msg)
 					}
 				case <-time.After(s.requestTimeout):
-					return errors.New(msg + " timed out cancelling access at relay " + URL)
+					msg = msg + " timed out cancelling access at relay " + URL
+					log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
+					return errors.New(msg)
 				}
 			}
 
@@ -715,13 +722,17 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 	originalCharge := b.When.End.Sub(b.When.Start)
 	p, err := s.getPolicy(b.Policy)
 	if err != nil {
-		return errors.New("cannot cancel booking because cannot get policy: " + err.Error())
+		msg := "cannot cancel booking because cannot get policy: " + err.Error()
+		log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
+		return errors.New(msg)
 	}
 
 	usage, err := calculateUsage(*b, p)
 
 	if err != nil {
-		return errors.New("cannot cancel booking because cannot calculate usage to refund: " + err.Error())
+		msg := "cannot cancel booking because cannot calculate usage to refund: " + err.Error()
+		log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
+		return errors.New(msg)
 	}
 
 	refund := originalCharge - usage
@@ -731,13 +742,16 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 
 	if !ok { //might happen if server is restarted, old booking restored but user has not made any new bookings yet
 		// could be a prompt to create users for restored bookings ....
-		return errors.New("cancelled but could not refund usage to unknown user " + b.User)
+		msg := "cancelled but could not refund usage to unknown user " + b.User
+		log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
+		return errors.New(msg)
 	}
 
 	*u.Usage[b.Policy] = *u.Usage[b.Policy] - refund //refund reduces usage
 
 	s.Users[b.User] = u
 
+	log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Info("booking cancelled")
 	return nil
 
 }
