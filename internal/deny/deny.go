@@ -144,9 +144,16 @@ func (c *Client) Run(ctx context.Context) {
 
 			host := strings.TrimPrefix(req.URL, URL.Scheme+"://")
 
-			log.Debugf("scheme: %s, host: %s", URL.Scheme, host)
+			host, basePath, hasBasePath := strings.Cut(host, "/")
 
-			trans := ac.DefaultTransportConfig().WithHost(host).WithSchemes([]string{URL.Scheme})
+			log.Debugf("scheme: %s, host: %s, basePath: %s, hasBasePath: %t", URL.Scheme, host, basePath, hasBasePath)
+
+			trans := ac.DefaultTransportConfig().WithSchemes([]string{URL.Scheme}).WithHost(host)
+
+			if hasBasePath {
+				trans = ac.DefaultTransportConfig().WithSchemes([]string{URL.Scheme}).WithHost(host).WithBasePath(basePath)
+			}
+
 			client := ac.NewHTTPClientWithConfig(nil, trans)
 			param := ao.NewDenyParams().WithTimeout(c.Timeout).WithBid(req.BookingID).WithExp(req.ExpiresAt)
 			payload, err := client.Operations.Deny(param, auth)
