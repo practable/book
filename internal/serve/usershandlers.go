@@ -559,6 +559,7 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 		}
 
 		// Use NotFound to indicate successful deletion. Repeat calls will return NotFound
+		log.WithFields(log.Fields{"user": params.UserName, "booking": params.BookingName}).Info("booking cancelled successfully")
 		c := "404"
 		m := "cancelled"
 		return users.NewCancelBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
@@ -715,7 +716,7 @@ func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams
 			Uis:     uids,
 		}
 
-		// NotFound indicates the booking has been cancelled as desired
+		log.WithFields(log.Fields{"user": params.UserName, "booking": params.BookingName}).Info("get activity from booking successful")
 		return users.NewGetActivityOK().WithPayload(&am)
 
 	}
