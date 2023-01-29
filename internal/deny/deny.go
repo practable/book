@@ -104,12 +104,15 @@ func (c *Client) Run(ctx context.Context) {
 			return
 		case req, ok := <-c.Request:
 
+			log.WithFields(log.Fields{"request": req}).Debug("deny request received")
+
 			if !ok {
-				log.Trace("deny.Run request channel closed")
+				log.Info("deny stopping permanently because request channel closed")
 				return //our request channel is closed, so no more to do
 			}
 
 			if req.Result == nil {
+				log.WithFields(log.Fields{"request": req}).Error("no results channel supplied to deny")
 				break NEXT //user forgot to send us a result channel, so do nothing
 			}
 
@@ -126,13 +129,17 @@ func (c *Client) Run(ctx context.Context) {
 			stoken, err := login.Sign(token, c.Secret)
 
 			if err != nil { //token should generate ok, unless secret is blank?
-				req.Result <- "signing admin token failed because" + err.Error()
+				msg := "signing admin token failed because" + err.Error()
+				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
+				req.Result <- msg
 			}
 
 			auth := httptransport.APIKeyAuth("Authorization", "header", stoken)
 			URL, err := url.Parse(req.URL)
 			if err != nil {
-				req.Result <- "relay deny request failed because url parsing error" + err.Error()
+				msg := "relay deny request failed because url parsing error" + err.Error()
+				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
+				req.Result <- msg
 			}
 
 			host := strings.TrimPrefix(req.URL, URL.Scheme+"://")
@@ -145,13 +152,18 @@ func (c *Client) Run(ctx context.Context) {
 			payload, err := client.Operations.Deny(param, auth)
 
 			if err != nil {
-				req.Result <- "relay deny request failed because" + err.Error()
+				msg := "relay deny request failed because" + err.Error()
+				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
+				req.Result <- msg
 			}
 
 			if !payload.IsSuccess() {
-				req.Result <- "relay deny request failed because" + payload.String()
+				msg := "relay deny request failed because" + payload.String()
+				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
+				req.Result <- msg
 			}
 
+			log.WithFields(log.Fields{"request": req}).Info("deny successful at cancelling session at relay")
 			req.Result <- "ok"
 		}
 
