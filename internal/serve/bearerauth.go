@@ -6,8 +6,8 @@ import (
 
 	"github.com/go-openapi/runtime/security"
 	"github.com/golang-jwt/jwt/v4"
-	log "github.com/sirupsen/logrus"
 	lit "github.com/practable/book/internal/login"
+	log "github.com/sirupsen/logrus"
 )
 
 func claimsCheck(principal interface{}) (*lit.Token, error) {
@@ -121,6 +121,14 @@ func validateHeader(secret []byte, host string) security.TokenAuthentication {
 			}
 			return secret, nil
 		})
+
+		if err != nil {
+			return nil, errors.New("error parsing claims was " + err.Error())
+		}
+
+		if token == nil {
+			return nil, fmt.Errorf("nil token")
+		}
 
 		if !token.Valid { //checks iat, nbf, exp
 			log.Info("Token invalid")
