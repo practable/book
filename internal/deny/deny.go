@@ -132,6 +132,7 @@ func (c *Client) Run(ctx context.Context) {
 				msg := "signing admin token failed because" + err.Error()
 				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
 				req.Result <- msg
+				break NEXT
 			}
 
 			auth := httptransport.APIKeyAuth("Authorization", "header", stoken)
@@ -140,6 +141,7 @@ func (c *Client) Run(ctx context.Context) {
 				msg := "relay deny request failed because url parsing error" + err.Error()
 				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
 				req.Result <- msg
+				break NEXT
 			}
 
 			host := strings.TrimPrefix(req.URL, URL.Scheme+"://")
@@ -162,12 +164,14 @@ func (c *Client) Run(ctx context.Context) {
 				msg := "relay deny request failed because" + err.Error()
 				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
 				req.Result <- msg
+				break NEXT
 			}
 
 			if !payload.IsSuccess() {
 				msg := "relay deny request failed because" + payload.String()
 				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
 				req.Result <- msg
+				break NEXT
 			}
 
 			log.WithFields(log.Fields{"request": req}).Info("deny successful at cancelling session at relay")
