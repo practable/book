@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/practable/book/internal/config"
 	"github.com/practable/book/internal/serve"
 	"github.com/practable/book/internal/store"
+	log "github.com/sirupsen/logrus"
 )
 
 type Server struct {
@@ -61,5 +61,7 @@ func (s *Server) Run(ctx context.Context) {
 
 	go serve.API(ctx, s.Config)
 
+	log.Trace("server started, awaiting context cancellation")
 	<-ctx.Done()
+	log.Trace("server context cancelled")
 }

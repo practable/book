@@ -249,9 +249,13 @@ $ book serve
 		ctx, cancel := context.WithCancel(context.Background())
 
 		go func() {
+			log.Trace("starting interrupt signal handler")
 			for range c {
+				log.Trace("interrupt signal received")
 				cancel()
+				log.Trace("cancel() called")
 				<-ctx.Done()
+				log.Trace("context is done")
 				os.Exit(0)
 			}
 		}()

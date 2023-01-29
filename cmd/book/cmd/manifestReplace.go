@@ -43,8 +43,9 @@ var manifestReplaceCmd = &cobra.Command{
 example usage:
 
 export BOOK_CLIENT_TOKEN=$SECRET
-export BOOK_CLIENT_HOST=example.org/book
 export BOOK_CLIENT_SCHEME=https
+export BOOK_CLIENT_HOST=example.org
+export BOOK_CLIENT_BASEPATH=/book/api/v1
 export BOOK_CLIENT_FORMAT=YAML
 book manifest replace manifest.yaml
 
@@ -57,7 +58,9 @@ The manifest must be in a file, default is json. Yaml not currently available
 		viper.SetDefault("host", "localhost")
 		viper.SetDefault("scheme", "http")
 		viper.SetDefault("format", "json")
+		viper.SetDefault("base_path", "/api/v1")
 
+		basePath := viper.GetString("base_path")
 		host := viper.GetString("host")
 		scheme := viper.GetString("scheme")
 		token := viper.GetString("token")
@@ -122,15 +125,14 @@ The manifest must be in a file, default is json. Yaml not currently available
 
 		// upload
 
-		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme})
+		cfg := apiclient.DefaultTransportConfig().WithSchemes([]string{scheme}).WithHost(host).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
 		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
 		params := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(&clientManifest)
-		status, err := bc.Admin.ReplaceManifest(params, auth)
+		_, err = bc.Admin.ReplaceManifest(params, auth)
 		if err != nil {
 			fmt.Printf("Error: failed to replace manifest because %s\n", err.Error())
-			fmt.Println(status.Payload)
 			os.Exit(1)
 		}
 

@@ -6,12 +6,12 @@ import (
 	"flag"
 
 	"github.com/go-openapi/loads"
-	log "github.com/sirupsen/logrus"
 	"github.com/practable/book/internal/config"
 	"github.com/practable/book/internal/serve/restapi"
 	"github.com/practable/book/internal/serve/restapi/operations"
 	"github.com/practable/book/internal/serve/restapi/operations/admin"
 	"github.com/practable/book/internal/serve/restapi/operations/users"
+	log "github.com/sirupsen/logrus"
 )
 
 // API starts the API
@@ -77,7 +77,9 @@ func API(ctx context.Context, config config.ServerConfig) {
 	api.UsersUniqueNameHandler = users.UniqueNameHandlerFunc(uniqueNameHandler(config))
 
 	go func() {
+		log.Trace("serve(api) awaiting context cancellation")
 		<-ctx.Done()
+		log.Trace("serve(api) context cancelled")
 		if err := server.Shutdown(); err != nil {
 			log.Fatalln(err)
 		}
@@ -88,5 +90,6 @@ func API(ctx context.Context, config config.ServerConfig) {
 	if err := server.Serve(); err != nil {
 		log.Fatalln(err)
 	}
+	log.Trace("serve(api): stopped without error")
 
 }
