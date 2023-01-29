@@ -9,7 +9,6 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/icza/gog"
-	log "github.com/sirupsen/logrus"
 	"github.com/practable/book/internal/config"
 	dt "github.com/practable/book/internal/datetime"
 	"github.com/practable/book/internal/interval"
@@ -17,6 +16,7 @@ import (
 	"github.com/practable/book/internal/serve/models"
 	"github.com/practable/book/internal/serve/restapi/operations/users"
 	"github.com/practable/book/internal/store"
+	log "github.com/sirupsen/logrus"
 )
 
 type Permission struct {
@@ -328,6 +328,7 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 		if err != nil {
 			c := "401"
 			m := err.Error()
+			log.WithFields(log.Fields{"token": principal, "error": err.Error()}).Debug("make booking unauthorized")
 			return users.NewMakeBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -340,6 +341,7 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in query"
+			log.Debug("make booking no user_name in query")
 			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 

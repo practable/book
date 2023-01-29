@@ -103,6 +103,7 @@ func isAdminOrUser(principal interface{}) (bool, *lit.Token, error) {
 	}
 
 	if !hasAdminScope && !hasUserScope {
+		log.WithFields(log.Fields{"token": principal}).Info("Missing booking:admin or booking:user scope")
 		return false, nil, errors.New("Missing booking:admin or booking:user Scope")
 	}
 
