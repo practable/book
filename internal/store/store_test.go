@@ -10,15 +10,28 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 	"github.com/practable/book/internal/deny"
 	"github.com/practable/book/internal/diary"
 	"github.com/practable/book/internal/interval"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
 
-var manifestYAML = []byte(`descriptions:
+var manifestYAML = []byte(`---
+descriptions:
+  d-g-a:
+    name: group-a
+    type: group
+    short: a
+  d-g-b:
+    name: group-b
+    type: group
+    short: b  
+  d-g-c:
+    name: group-c
+    type: group
+    short: c
   d-p-a:
     name: policy-a
     type: policy
@@ -108,6 +121,23 @@ display_guides:
     book_ahead: 2h
     duration: 8m
     max_slots: 8
+groups:
+  g-a:
+    description: d-g-a
+    policies: 
+      - p-a
+  g-b:
+    description: d-g-b
+    policies: 
+      - p-b
+  g-c:
+    description: d-g-c
+    policies: 
+      - p-instant
+      - p-next-available
+      - p-simulation
+      - p-start-in-past
+      - p-starts-within
 policies:
   p-a:
     book_ahead: 0s
@@ -687,8 +717,17 @@ func TestMakeBooking(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
-	b, err := s.MakeBookingWithName(policy, slot, user, when, "test00")
+	s.AddGroupForUser(user, "g-a") // wrong group, booking must fail
 
+	b, err := s.MakeBookingWithName(policy, slot, user, when, "test00", true)
+
+	assert.Error(t, err)
+
+	assert.Equal(t, "user test belongs to no group that includes this policy", err.Error())
+
+	s.AddGroupForUser(user, "g-b") //right group, booking must succeed
+
+	b, err = s.MakeBookingWithName(policy, slot, user, when, "test00", true)
 	assert.NoError(t, err)
 
 	assert.Equal(t, policy, b.Policy)
@@ -727,6 +766,8 @@ func TestDenyBookingOfUnavailable(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
+	s.AddGroupForUser(user, "g-b")
+
 	_, err = s.MakeBooking(policy, slot, user, when)
 
 	assert.Error(t, err)
@@ -759,7 +800,7 @@ func TestPolicyChecks(t *testing.T) {
 		Start: time.Date(2022, 11, 20, 2, 0, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 20, 2, 10, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-a")
 	_, err = s.MakeBooking(policy, slot, user, when)
 
 	assert.Error(t, err)
@@ -774,6 +815,8 @@ func TestPolicyChecks(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 12, 0, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 12, 10, 0, 0, time.UTC),
 	}
+
+	s.AddGroupForUser(user, "g-b")
 
 	_, err = s.MakeBooking(policy, slot, user, when)
 
@@ -831,6 +874,8 @@ func TestPolicyChecks(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 3, 30, 0, 1, time.UTC),
 		End:   time.Date(2022, 11, 5, 3, 36, 0, 0, time.UTC),
 	}
+
+	s.AddGroupForUser(user, "g-b")
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.NoError(t, err)
 
@@ -898,6 +943,7 @@ func TestPolicyChecks(t *testing.T) {
 
 	// make a booking then try to cancel it with incomplete information, must fail
 	user = "test1"
+	s.AddGroupForUser(user, "g-b")
 	b, err := s.MakeBooking(policy, slot, user, when)
 	assert.NoError(t, err)
 
@@ -934,6 +980,7 @@ func TestGetActivity(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
+	s.AddGroupForUser(user, "g-b")
 	b, err := s.MakeBooking(policy, slot, user, when)
 
 	assert.NoError(t, err)
@@ -1069,7 +1116,7 @@ func TestCheckBooking(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 1, 10, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-b")
 	b, err := s.MakeBooking(policy, slot, user, when)
 
 	assert.NoError(t, err)
@@ -1144,7 +1191,7 @@ func TestExportBookings(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 1, 10, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user0, "g-a")
 	b0, err := s.MakeBooking(policy0, slot0, user0, when0)
 
 	assert.NoError(t, err)
@@ -1156,7 +1203,7 @@ func TestExportBookings(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 1, 5, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 1, 15, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user1, "g-b")
 	b1, err := s.MakeBooking(policy1, slot1, user1, when1)
 
 	assert.NoError(t, err)
@@ -1194,6 +1241,7 @@ func TestReplaceBookings(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 1, 10, 0, 0, time.UTC),
 	}
 
+	s.AddGroupForUser(user0, "g-a")
 	b0, err := s.MakeBooking(policy0, slot0, user0, when0)
 
 	assert.NoError(t, err)
@@ -1205,7 +1253,7 @@ func TestReplaceBookings(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 1, 5, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 1, 15, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user1, "g-b")
 	b1, err := s.MakeBooking(policy1, slot1, user1, when1)
 
 	assert.NoError(t, err)
@@ -1293,7 +1341,7 @@ func TestOldBookings(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 1, 10, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user0, "g-a")
 	b0, err := s.MakeBooking(policy0, slot0, user0, when0)
 
 	assert.NoError(t, err)
@@ -1305,7 +1353,7 @@ func TestOldBookings(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 1, 5, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 1, 15, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user1, "g-b")
 	b1, err := s.MakeBooking(policy1, slot1, user1, when1)
 
 	assert.NoError(t, err)
@@ -1407,8 +1455,12 @@ func TestExportUsers(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
-	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00")
-	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01")
+	s.AddGroupForUser("user-a", "g-a")
+	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00", true)
+	assert.NoError(t, err)
+	s.AddGroupForUser("user-b", "g-b")
+	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01", true)
+	assert.NoError(t, err)
 
 	um := s.ExportUsers()
 
@@ -1416,16 +1468,16 @@ func TestExportUsers(t *testing.T) {
 
 	exp["user-a"] = UserExternal{
 		Bookings:    []string{"test00"},
+		Groups:      []string{"g-a"},
 		OldBookings: []string{},
-		Policies:    []string{"p-a"},
 		Usage: map[string]string{
 			"p-a": "10m0s",
 		},
 	}
 	exp["user-b"] = UserExternal{
 		Bookings:    []string{"test01"},
+		Groups:      []string{"g-b"},
 		OldBookings: []string{},
-		Policies:    []string{"p-b"},
 		Usage: map[string]string{
 			"p-b": "10m0s",
 		},
@@ -1456,6 +1508,7 @@ func TestReplaceBookingsUsageRefunded(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
+	s.AddGroupForUser(user, "g-b")
 	b, err := s.MakeBooking(policy, slot, user, when)
 
 	assert.NoError(t, err)
@@ -1541,6 +1594,7 @@ func TestReplaceOldBookings(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
+	s.AddGroupForUser(user, "g-b")
 	b, err := s.MakeBooking(policy, slot, user, when)
 
 	assert.NoError(t, err)
@@ -1639,6 +1693,7 @@ func TestGetBookingsForGetOldBookingsFor(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
+	s.AddGroupForUser(user, "g-a")
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.NoError(t, err)
 
@@ -1649,6 +1704,7 @@ func TestGetBookingsForGetOldBookingsFor(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
+	s.AddGroupForUser(user, "g-b")
 	_, err = s.MakeBooking(policy, slot, user, when)
 	assert.NoError(t, err)
 
@@ -1714,7 +1770,7 @@ func TestGetPolicyStatusFor(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-b")
 	b, err := s.MakeBooking(policy, slot, user, when)
 
 	assert.NoError(t, err)
@@ -1741,7 +1797,7 @@ func TestGetPolicyStatusFor(t *testing.T) {
 
 }
 
-func TestGetPoliciesFor(t *testing.T) {
+func TestGetGroupsFor(t *testing.T) {
 
 	m := Manifest{}
 	err := yaml.Unmarshal(manifestYAML, &m)
@@ -1750,29 +1806,18 @@ func TestGetPoliciesFor(t *testing.T) {
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	// booking details
-	policy := "p-b"
-	slot := "sl-b"
-	user := "u-b" //does not yet exist in store
-	when := interval.Interval{
-		Start: time.Date(2022, 11, 5, 2, 0, 0, 0, time.UTC),
-		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
-	}
-
-	// before we book, user does not exist
-	_, err = s.GetPoliciesFor(user)
+	// user does not exist yet
+	_, err = s.GetGroupsFor("test-user")
 	assert.Error(t, err)
 	assert.Equal(t, "user not found", err.Error())
 
-	// make a booking
-	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC) })
-	_, err = s.MakeBooking(policy, slot, user, when)
-	assert.NoError(t, err)
+	// add a group for the user
+	s.AddGroupForUser("test-user", "g-a")
 
 	// check policy now listed for user
-	p, err := s.GetPoliciesFor(user)
+	g, err := s.GetGroupsFor("test-user")
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"p-b"}, p)
+	assert.Equal(t, []string{"g-a"}, g)
 
 }
 
@@ -1792,16 +1837,19 @@ func TestStoreStatusAdminUser(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
-	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00")
-	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01")
-
+	s.AddGroupForUser("user-a", "g-a")
+	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00", true)
+	assert.NoError(t, err)
+	s.AddGroupForUser("user-b", "g-b")
+	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01", true)
+	assert.NoError(t, err)
 	sa := s.GetStoreStatusAdmin()
 	esa := StoreStatusAdmin{
 		Locked:       false,
 		Message:      "Welcome to the interval booking store",
 		Now:          time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC),
 		Bookings:     2,
-		Descriptions: 20,
+		Descriptions: 23,
 		Filters:      2,
 		OldBookings:  0,
 		Policies:     7,
@@ -2130,26 +2178,34 @@ func TestDeletePolicyAddPolicy(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
-	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00")
+	// being a member of a group is required to make the booking
+	err = s.AddGroupForUser("user-a", "g-a")
 	assert.NoError(t, err)
 
-	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01")
+	err = s.AddGroupForUser("user-b", "g-b")
+	assert.NoError(t, err)
+
+	// making bookings
+	_, err = s.MakeBookingWithName("p-a", "sl-a", "user-a", when, "test00", true)
+	assert.NoError(t, err)
+
+	_, err = s.MakeBookingWithName("p-b", "sl-b", "user-b", when, "test01", true)
 	assert.NoError(t, err)
 
 	bm := s.ExportBookings()
 	assert.Equal(t, 2, len(bm))
 
-	// check that deleting an unused policy and does not affect bookings
-	// note that policy is known to store, so no error because delete from
+	// check that deleting an unused policy in a group does not affect bookings
+	// note that group is known to store, so no error because delete from
 	// map operation does not care whether item to be deleted existed
-	err = s.DeletePolicyFor("user-a", "p-b")
+	err = s.DeleteGroupFor("user-a", "g-b")
 	assert.NoError(t, err)
 
 	bm = s.ExportBookings()
 	assert.Equal(t, 2, len(bm))
 
-	// check that deleting a used policy deletes associated booking test00 but keeps test01
-	err = s.DeletePolicyFor("user-a", "p-a")
+	// check that deleting a group holding the only access to a used policy deletes associated booking test00 but keeps for the other booking test01
+	err = s.DeleteGroupFor("user-a", "g-a")
 	assert.NoError(t, err)
 
 	bm = s.ExportBookings()
@@ -2158,26 +2214,27 @@ func TestDeletePolicyAddPolicy(t *testing.T) {
 	assert.True(t, ok)
 
 	um := s.ExportUsers()
-	assert.Equal(t, []string{"p-b"}, um["user-b"].Policies)
+	assert.Equal(t, []string{"g-b"}, um["user-b"].Groups)
 
-	err = s.AddPolicyFor("user-b", "p-a")
+	err = s.AddGroupForUser("user-b", "g-a")
 	assert.NoError(t, err)
 	um = s.ExportUsers()
 	assert.NoError(t, err)
 
 	//make a map of the responses to avoid ordering issues in checking the test
 	epm := make(map[string]bool)
-	epm["p-a"] = true
-	epm["p-b"] = true
+	epm["g-a"] = true
+	epm["g-b"] = true
 
 	apm := make(map[string]bool)
-	for _, v := range um["user-b"].Policies {
+	for _, v := range um["user-b"].Groups {
 		apm[v] = true
 	}
 
 	assert.Equal(t, epm, apm)
 
 	// check the usage tracker has been initialised
+	// TODO is this still relevant?
 	ps, err := s.GetPolicyStatusFor("user-b", "p-a")
 	assert.NoError(t, err)
 	assert.Equal(t, time.Duration(0), ps.Usage)
@@ -2279,7 +2336,8 @@ func TestGetBooking(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
-	b, err := s.MakeBookingWithName(policy, slot, user, when, "test00")
+	s.AddGroupForUser(user, "g-b")
+	b, err := s.MakeBookingWithName(policy, slot, user, when, "test00", true)
 	assert.NoError(t, err)
 
 	b2, err := s.GetBooking("test00")
@@ -2433,6 +2491,7 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 		End:   time.Date(2022, 11, 5, 2, 10, 0, 0, time.UTC),
 	}
 
+	s.AddGroupForUser(user, "g-c")
 	b0, err := s.MakeBooking(policy, slot, user, when)
 
 	assert.NoError(t, err)
@@ -2448,6 +2507,7 @@ func TestEnforceUnlimitedUsers(t *testing.T) {
 
 	// make second booking at same time for different user
 	user = "sim-user-1"
+	s.AddGroupForUser(user, "g-c")
 	b1, err := s.MakeBooking(policy, slot, user, when)
 
 	assert.NoError(t, err)
@@ -2534,7 +2594,7 @@ func TestAllowStartInPast(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC), //now 30 sec in the past
 		End:   time.Date(2022, 11, 5, 0, 10, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-c")
 	_, err = s.MakeBooking(policy, slot, user, when)
 
 	assert.Error(t, err)
@@ -2561,7 +2621,7 @@ func TestAllowStartInPast(t *testing.T) {
 	assert.False(t, b.Unfulfilled)
 
 	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 2, 0, 0, time.UTC) }) // move forward 2min  in time, outside allowed window for starting booking in the past
-
+	s.AddGroupForUser(user, "g-c")
 	_, err = s.MakeBooking(policy, slot, user, when)
 
 	assert.Error(t, err)
@@ -2591,7 +2651,7 @@ func TestStartWithin(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 0, 5, 0, 0, time.UTC), //requesting start 5min into the future
 		End:   time.Date(2022, 11, 5, 0, 15, 0, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-c")
 	_, err = s.MakeBooking(policy, slot, user, when)
 
 	assert.Error(t, err)
@@ -2652,7 +2712,7 @@ func TestNextAvailable(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC), //requesting start 30sec in future from now
 		End:   time.Date(2022, 11, 5, 0, 10, 30, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-c")
 	// setup a "prior booking" we want to test against
 	b, err := s.MakeBooking(policy, slot, user, when)
 
@@ -2679,6 +2739,7 @@ func TestNextAvailable(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 0, 13, 0, 0, time.UTC), //requesting start 2m30s after last booking ends
 		End:   time.Date(2022, 11, 5, 0, 23, 0, 0, time.UTC),
 	}
+	s.AddGroupForUser(user, "g-c")
 	_, err = s.MakeBooking(policy, slot, user, when)
 
 	assert.Error(t, err)
@@ -2760,7 +2821,7 @@ func TestCancelAfterUse(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC), //requesting start 30sec in future from now
 		End:   time.Date(2022, 11, 5, 0, 10, 30, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-c")
 	// setup a "prior booking" we want to test against
 	b, err := s.MakeBooking(policy, slot, user, when)
 
@@ -2851,7 +2912,7 @@ func TestCancelAfterUseRelayError(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC), //requesting start 30sec in future from now
 		End:   time.Date(2022, 11, 5, 0, 10, 30, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-c")
 	// setup a "prior booking" we want to test against
 	b, err := s.MakeBooking(policy, slot, user, when)
 
@@ -2926,7 +2987,7 @@ func TestCancelAfterUseRelayDelay(t *testing.T) {
 		Start: time.Date(2022, 11, 5, 0, 0, 30, 0, time.UTC), //requesting start 30sec in future from now
 		End:   time.Date(2022, 11, 5, 0, 10, 30, 0, time.UTC),
 	}
-
+	s.AddGroupForUser(user, "g-c")
 	// setup a "prior booking" we want to test against
 	b, err := s.MakeBooking(policy, slot, user, when)
 
@@ -2959,4 +3020,19 @@ func TestCancelAfterUseRelayDelay(t *testing.T) {
 	assert.Equal(t, exp, err.Error()[:len(exp)])
 
 	close(closed)
+}
+
+func TestAddGroupForNewUser(t *testing.T) {
+
+	s := New().
+		WithRequestTimeout(time.Second).
+		WithDisableCancelAfterUse(true)
+
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	s.AddGroupForUser("user-a", "a")
+
 }

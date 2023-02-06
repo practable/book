@@ -55,6 +55,8 @@ type Booking struct {
 	CancelledAt time.Time `json:"cancelled_at" yaml:"cancelled_at"`
 	// CancelledBy indicates who cancelled e.g. auto-grace-period, admin or user
 	CancelledBy string `json:"cancelled_by" yaml:"cancelled_by"`
+	// Group
+	Group string `json:"group" yaml:"group"`
 	// booking unique reference
 	Name string `json:"name" yaml:"name"`
 	// reference to policy it was booked under
@@ -89,7 +91,7 @@ type Description struct {
 	Image   string `json:"image,omitempty" yaml:"image,omitempty"`
 }
 
-// DsiplayGuidance represents guidance to the booking app on what length slots
+// DisplayGuide represents guidance to the booking app on what length slots
 // to offer, how many, and how far in the future. This is to allow course staff
 // to influence the offerings to students in a way that might better suit their
 // teaching views.
@@ -101,11 +103,29 @@ type DisplayGuide struct {
 	MaxSlots  int           `json:"max_slots" yaml:"max_slots"`
 }
 
+// Group represents a list of policies for ease of sharing multiple policies with users
+// and being able to change the policies that are supplied to a user without having to
+// update all the links the user has (important if user is a course organiser on a large course!)
+type Group struct {
+	Description string   `json:"description" yaml:"description"`
+	Policies    []string `json:"policies" yaml:"policies"`
+}
+
+// GroupDescribed includes the description to save some overhead, since it will always be
+// requested by the user with the description included.
+type GroupDescribed struct {
+	Description Description `json:"description"  yaml:"description"`
+	// keep track of the description reference, needed for manifest export
+	DescriptionReference string   `json:"-" yaml:"-"`
+	Policies             []string `json:"policies" yaml:"policies"`
+}
+
 // Manifest represents all the available equipment and how to access it
 // Slots are the primary entities, so reference checking starts with them
 type Manifest struct {
 	Descriptions  map[string]Description  `json:"descriptions" yaml:"descriptions"`
 	DisplayGuides map[string]DisplayGuide `json:"display_guides" yaml:"display_guides"`
+	Groups        map[string]Group        `json:"groups" yaml:"groups"`
 	Policies      map[string]Policy       `json:"policies" yaml:"policies"`
 	Resources     map[string]Resource     `json:"resources" yaml:"resources"`
 	Slots         map[string]Slot         `json:"slots" yaml:"slots"`
@@ -237,6 +257,9 @@ type Store struct {
 	// Filters are how the windows are checked, mapped by window name (populated after loading window info from manifest)
 	Filters map[string]*filter.Filter
 
+	// Groups represent groups of policies - we bake in the description to reduce overhead on this common operation
+	Groups map[string]GroupDescribed
+
 	// Locked is true when we want to stop making bookings or getting info while we do uploads/maintenance
 	// The API handler has to check this, e.g. if locked, do not make bookings or check availability on
 	// behalf of users. We can't do this automatically in the methods because then we'd need some sort
@@ -294,6 +317,7 @@ type StoreStatusAdmin struct {
 	Bookings     int64     `json:"bookings"  yaml:"bookings"`
 	Descriptions int64     `json:"descriptions"  yaml:"descriptions"`
 	Filters      int64     `json:"filters" yaml:"filters"`
+	Groups       int64     `json:"groups" yaml:"groups"`
 	Locked       bool      `json:"locked" yaml:"locked"`
 	Message      string    `json:"message" yaml:"message"`
 	Now          time.Time `json:"now" yaml:"now"`
@@ -371,14 +395,14 @@ type UISet struct {
 type User struct {
 	Bookings    map[string]*Booking       //map by id for retrieval
 	OldBookings map[string]*Booking       //map by id, for admin dashboards
-	Policies    map[string]bool           //map of policies that apply to the user
+	Groups      map[string]bool           //map of groups of policies that the user can access
 	Usage       map[string]*time.Duration //map by policy for checking usage
 }
 
 type UserExternal struct {
 	Bookings    []string `json:"bookings" yaml:"bookings"`
 	OldBookings []string `json:"old_bookings" yaml:"old_bookings"`
-	Policies    []string `json:"policies" yaml:"policies"`
+	Groups      []string `json:"groups" yaml:"groups"`
 	//map humanised durations by policy name
 	Usage map[string]string `json:"usage" yaml:"usage"`
 }
@@ -402,6 +426,7 @@ func New() *Store {
 		false,
 		make(map[string]DisplayGuide),
 		make(map[string]*filter.Filter),
+		make(map[string]GroupDescribed),
 		time.Duration(time.Minute),
 		false,
 		"Welcome to the interval booking store",
@@ -529,9 +554,12 @@ func NewUser() *User {
 	}
 }
 
-// AddPolicyFor adds a policy to a user so they can book with it
-func (s *Store) AddPolicyFor(user, policy string) error {
-	where := "store.AddPolicyFor"
+// AddGroupForUser adds a group for a user so they can book with it in future
+// without having to have the access code to hand
+// TODO needs a corresponding DeleteGroupFor
+func (s *Store) AddGroupForUser(user, group string) error {
+
+	where := "store.AddGroupFor"
 	log.Trace(where + " awaiting lock")
 	s.Lock()
 	log.Trace(where + " has lock")
@@ -540,29 +568,23 @@ func (s *Store) AddPolicyFor(user, policy string) error {
 		log.Trace(where + " released lock")
 	}()
 
+	_, ok := s.Groups[group]
+
+	if !ok {
+		return errors.New("group " + group + " not found")
+	}
+
 	u, ok := s.Users[user]
 
-	if !ok {
-		return errors.New("user " + user + " not found")
+	if !ok { //create user if does not exist
+		u = NewUser()
+		s.Users[user] = u
 	}
 
-	_, ok = s.Policies[policy]
+	u.Groups[group] = true
 
-	if !ok {
-		return errors.New("policy " + policy + " not found")
-	}
-
-	u.Policies[policy] = true
-
-	ut, err := time.ParseDuration("0s")
-	if err != nil { // should not get this error because "0s" is known to parse
-		return errors.New("could not initialise usage tracker " +
-			user +
-			" because " +
-			err.Error())
-	}
-
-	u.Usage[policy] = &ut
+	// no need to initialise any usage trackers, because (a) policies could change between now and the
+	// first booking, and (b) the makeBooking function initialises any trackers required at time of booking
 
 	s.Users[user] = u
 
@@ -799,10 +821,11 @@ func (s *Store) checkBooking(b Booking) (error, []string) {
 	return nil, []string{}
 }
 
-// DeletePolicyFor removes the policy from the user, and deletes any
-// current bookings they have under that policy
-func (s *Store) DeletePolicyFor(user, policy string) error {
-	where := "store.DeletePolicyFor"
+// DeleteGroupFor removes the group from the user's list of allowed groups, and deletes any
+// current bookings they have policies that are only accessible to the user via that group
+func (s *Store) DeleteGroupFor(user, group string) error {
+
+	where := "store.DeleteGroupFor"
 	log.Trace(where + " awaiting lock")
 	s.Lock()
 	log.Trace(where + " has lock")
@@ -817,17 +840,34 @@ func (s *Store) DeletePolicyFor(user, policy string) error {
 		return errors.New("user " + user + " not found")
 	}
 
-	_, ok = s.Policies[policy]
+	g, ok := s.Groups[group]
 
 	if !ok {
-		return errors.New("policy " + policy + " not found")
+		return errors.New("group " + group + " not found")
 	}
 
-	delete(u.Policies, policy)
+	delete(u.Groups, group)
 
 	s.Users[user] = u
 
-	// delete any bookings this user has under this policy
+	// delete any bookings this user has under this group
+	// that are not covered by the same policy appearing
+	// in another group the user has
+
+	current := make(map[string]bool)
+	remove := make(map[string]bool)
+
+	for k := range u.Groups {
+		current[k] = true
+	}
+
+	for _, k := range g.Policies { //remove policies not found in the policies of the remaining groups
+		if _, ok := current[k]; !ok {
+			remove[k] = true
+		}
+	}
+
+	// get bookings so we can check policies in use
 	bm, err := s.getBookingsFor(user)
 
 	if err != nil {
@@ -836,16 +876,14 @@ func (s *Store) DeletePolicyFor(user, policy string) error {
 
 	for _, v := range bm {
 
-		if policy == v.Policy {
+		if _, ok := remove[v.Policy]; ok { //remove booking since its policy is in the remove list
 
 			err = s.cancelBooking(v, "deletePolicy")
 
 			if err != nil {
 				return err
 			}
-
 		}
-
 	}
 
 	return nil
@@ -883,13 +921,25 @@ func (s *Store) ExportManifest() Manifest {
 		log.Trace(where + " released Rlock")
 	}()
 
-	uis := make(map[string]UI)
+	// We store the full description in the store for convenience
+	// but the manifest only has the name of the description in the Group
+	// as a reference to the description elsewhere in the manifest
+	// so we restore that format on export by removing all description
+	// except for the description reference
+	gm := make(map[string]Group)
+	for k, v := range s.Groups {
+		gm[k] = Group{
+			Description: v.DescriptionReference,
+			Policies:    v.Policies,
+		}
+	}
 
 	// We store the full description in the store for convenience
 	// but the manifest only has the name of the description in the UI
-	// as a reference to the description elsewhere in teh manifest
+	// as a reference to the description elsewhere in the manifest
 	// so we restore that format on export by removing all description
 	// except for the description reference
+	uis := make(map[string]UI)
 	for k, v := range s.UIs {
 		uis[k] = UI{
 			Description:     v.DescriptionReference,
@@ -912,6 +962,7 @@ func (s *Store) ExportManifest() Manifest {
 	return Manifest{
 		Descriptions:  s.Descriptions,
 		DisplayGuides: s.DisplayGuides,
+		Groups:        gm,
 		Policies:      s.Policies,
 		Resources:     rm,
 		Slots:         s.Slots,
@@ -962,7 +1013,7 @@ func (s *Store) ExportUsers() map[string]UserExternal {
 
 		bs := []string{}
 		obs := []string{}
-		ps := []string{}
+		gs := []string{}
 		ds := make(map[string]string)
 
 		for k := range v.Bookings {
@@ -974,9 +1025,9 @@ func (s *Store) ExportUsers() map[string]UserExternal {
 			ob := k
 			obs = append(obs, ob)
 		}
-		for k := range v.Policies {
-			p := k
-			ps = append(ps, p)
+		for k := range v.Groups {
+			g := k
+			gs = append(gs, g)
 		}
 		for k, v := range v.Usage {
 			ds[k] = HumaniseDuration(*v)
@@ -984,8 +1035,8 @@ func (s *Store) ExportUsers() map[string]UserExternal {
 
 		um[k] = UserExternal{
 			Bookings:    bs,
+			Groups:      gs,
 			OldBookings: obs,
-			Policies:    ps,
 			Usage:       ds,
 		}
 	}
@@ -1265,6 +1316,32 @@ func (s *Store) getDisplayGuide(name string) (DisplayGuide, error) {
 	return d, nil
 }
 
+func (s *Store) getGroup(name string) (GroupDescribed, error) {
+	g, ok := s.Groups[name]
+
+	if !ok {
+		return GroupDescribed{}, errors.New("not found")
+	}
+
+	return g, nil
+}
+
+// GetGroup returns a group if found
+// do not use internally - it takes the lock
+func (s *Store) GetGroup(name string) (GroupDescribed, error) {
+
+	where := "store.GetGroup"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
+	return s.getGroup(name)
+}
+
 // GetOldBookingsFor returns a slice of all the old bookings for the given user
 // don't use mutex because called from functions that do
 func (s *Store) GetOldBookingsFor(user string) ([]Booking, error) {
@@ -1335,10 +1412,10 @@ func (s *Store) GetPolicy(name string) (Policy, error) {
 	return s.getPolicy(name)
 }
 
-// GetPoliciesFor returns a list of policies that a user has booked with
-func (s *Store) GetPoliciesFor(user string) ([]string, error) {
+// GetGroupsFor returns a list of policies that a user has booked with
+func (s *Store) GetGroupsFor(user string) ([]string, error) {
 
-	where := "store.GetPoliciesFor"
+	where := "store.GetGroupsFor"
 	log.Trace(where + " awaiting Rlock")
 	s.Lock()
 	log.Trace(where + " has Rlock")
@@ -1351,12 +1428,12 @@ func (s *Store) GetPoliciesFor(user string) ([]string, error) {
 		return []string{}, errors.New("user not found")
 	}
 
-	p := []string{}
+	g := []string{}
 
-	for k := range s.Users[user].Policies {
-		p = append(p, k) //append policy name
+	for k := range s.Users[user].Groups {
+		g = append(g, k) //append group name
 	}
-	return p, nil
+	return g, nil
 }
 
 // GetPolicyStatusFor returns usage, and counts of current and old bookings
@@ -1609,7 +1686,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 	}()
 	name := uuid.New().String()
 
-	b, err := s.makeBookingWithName(policy, slot, user, when, name)
+	b, err := s.makeBookingWithName(policy, slot, user, when, name, true) //check groups
 
 	msg := "successful booking"
 
@@ -1627,7 +1704,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 // If a user does not exist, one is created.
 // The booking ID is set by the caller, so that bookings can be edited/replaced
 // This version should only be called by Admin users
-func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Interval, name string) (Booking, error) {
+func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Interval, name string, checkGroup bool) (Booking, error) {
 	where := "store.MakeBookingWithName"
 	log.Trace(where + " awaiting lock")
 	s.Lock()
@@ -1637,7 +1714,7 @@ func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Int
 		log.Trace(where + " released lock")
 	}()
 
-	b, err := s.makeBookingWithName(policy, slot, user, when, name)
+	b, err := s.makeBookingWithName(policy, slot, user, when, name, checkGroup) //leave up to admin to enfore group membership on this booking (e.g. might be a one off booking that is not intended to confer future access to any policies
 
 	msg := "successful booking"
 
@@ -1654,7 +1731,12 @@ func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Int
 // If a user does not exist, one is created.
 // The booking ID is set by the caller, so that bookings can be edited/replaced
 // Internal usage only - no locks
-func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Interval, name string) (Booking, error) {
+// making a booking does not confer the right to make future bookings
+// the access to a policy is determined by the groups associated with a user
+// checkGroup is for when replaceBookings is making bookings without reference to groups
+// e.g. for pre-making identities that can't be operated by the user, there is no need for groups because that would allow other bookings to be made
+// by the student, potentially
+func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Interval, name string, checkGroup bool) (Booking, error) {
 
 	p, ok := s.Policies[policy]
 
@@ -1682,15 +1764,51 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 		return Booking{}, errors.New("resource " + sl.Resource + " not found")
 	}
 
+	// to avoid replay of policies known to user, that we've revoked, but that still exist,
+	// we check if policy is covered by any current groups allocated to the user
+	// this doesn't prevent replay of joining the original group again
+	// but that can't happen if that group no longer exists.
 	u, ok := s.Users[user]
 
-	if !ok { //not found, create new user
-		u = NewUser()
-		s.Users[user] = u
+	if ok {
+
+		if checkGroup {
+
+			pm := make(map[string]bool)
+
+			for gn := range u.Groups {
+				if g, ok := s.Groups[gn]; ok {
+					for _, p := range g.Policies {
+						pm[p] = true
+					}
+				}
+			}
+
+			if _, ok := pm[policy]; !ok {
+				return Booking{}, errors.New("user " + user + " belongs to no group that includes this policy")
+			}
+		}
+
+		// pass if not checking group
+
+	} else {
+
+		if checkGroup {
+			//not found, don't create user, because will not be authorised for the group
+			return Booking{}, errors.New("user " + user + " not found")
+		} else {
+			//we're prob doing an admin task like replace bookings, so create a new user (without conferring any further rights to book - we don't know about any groups here anyway)
+			u := NewUser()
+			s.Users[user] = u
+		}
+
 	}
 
-	// (re-)add policy to user's list
-	u.Policies[policy] = true
+	// get the user again, in case we just created it
+	u, ok = s.Users[user]
+	if !ok {
+		return Booking{}, errors.New("user " + user + " was not found and creation failed")
+	}
 
 	// check if too many bookings already
 	if p.EnforceMaxBookings {
@@ -2035,7 +2153,7 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 
 	// Now make the bookings, respecting policy and usage
 	for _, v := range bm {
-		_, err := s.makeBookingWithName(v.Policy, v.Slot, v.User, v.When, v.Name)
+		_, err := s.makeBookingWithName(v.Policy, v.Slot, v.User, v.When, v.Name, false) //ignore group check on bookings
 
 		lm := "successful booking"
 
@@ -2096,7 +2214,7 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 	// we're going to do the replacement now, goodbye old manifest data.
 	s.Filters = fm
 
-	// Make new maps for our new entities
+	// Make new maps for our new entities (note this is m for manifest, not m for swagger models)
 	s.Descriptions = m.Descriptions
 	s.DisplayGuides = m.DisplayGuides
 	s.Policies = m.Policies
@@ -2150,11 +2268,32 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 		s.UIs[k] = uid
 	}
 
+	// populate the groups with the descriptions now, to save repetitively doing it later
+	s.Groups = make(map[string]GroupDescribed)
+
+	for k, v := range m.Groups {
+
+		d, err := s.getDescription(v.Description)
+
+		if err != nil {
+			return err
+		}
+
+		gd := GroupDescribed{
+			Description:          d,
+			DescriptionReference: v.Description,
+			Policies:             v.Policies,
+		}
+		s.Groups[k] = gd
+	}
+
 	return nil
 
 }
 
 // ReplaceOldBookings will replace the map of old bookings with the supplied list or return an error if the bookings have issues. All existing users are deleted, and replaced with users with usages that match the old bookings
+// use ReplaceUserGroups to add permissions for users, do not bother with old dummy bookings because these confer
+// no future booking privileges (now that we get allowed policies by checking a user's groups).
 func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 	where := "store.ReplaceOldBookings"
 	log.Trace(where + " awaiting lock")
@@ -2204,9 +2343,6 @@ func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 		// get user from map to allow editing of it
 		u := s.Users[ob.User]
 
-		// update user policies to include policy of this booking
-		u.Policies[ob.Policy] = true
-
 		// check for existing usage tracker for this policy?
 		_, ok := u.Usage[ob.Policy]
 
@@ -2248,12 +2384,12 @@ func (s *Store) ReplaceUsers(u map[string]UserExternal) (error, []string) {
 	return errors.New("not implemented"), []string{}
 }
 
-// ReplaceUsersPolicies allows administrators to add and remove policies from
+// ReplaceUsersGroups allows administrators to add and remove policies from
 // users, e.g. to add or restrict access to experiments
-// A user that does not exist, is created, and the policies added.
+// A user that does not exist, is created, and the groups added.
 // Policies must exist or an error is thrown
-func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
-	where := "store.ReplaceUserPolicies"
+func (s *Store) ReplaceUserGroups(u map[string][]string) (error, []string) {
+	where := "store.ReplaceUserGroups"
 	log.Trace(where + " awaiting lock")
 	s.Lock()
 	log.Trace(where + " has lock")
@@ -2265,25 +2401,28 @@ func (s *Store) ReplaceUserPolicies(u map[string][]string) (error, []string) {
 	msg := []string{}
 
 	for k, v := range u {
-		// check all policies exist
-		for _, p := range v {
-			if _, ok := s.Policies[p]; !ok {
-				msg = append(msg, "user "+k+" policy "+p+" does not exist")
+		// check all groups exist
+		for _, g := range v {
+			if _, ok := s.Groups[g]; !ok {
+				msg = append(msg, "user "+k+" wants group "+g+" which does not exist")
 			}
 		}
 	}
 
 	if len(msg) > 0 {
-		return errors.New("policy not found"), msg
+		return errors.New("group(s) not found"), msg
 	}
 
 	for k, v := range u {
-		u := s.Users[k]
-		pm := make(map[string]bool)
-		for _, p := range v {
-			pm[p] = true
+		if _, ok := s.Users[k]; !ok { //create new user if does not exist
+			s.Users[k] = NewUser()
 		}
-		u.Policies = pm
+		u := s.Users[k]
+		gm := make(map[string]bool)
+		for _, g := range v {
+			gm[g] = true
+		}
+		u.Groups = gm
 
 	}
 
@@ -2556,6 +2695,24 @@ func checkDisplayGuides(items map[string]DisplayGuide) (error, []string) {
 
 }
 
+func checkGroups(items map[string]Group) (error, []string) {
+
+	msg := []string{}
+
+	for k, item := range items {
+		if item.Description == "" {
+			msg = append(msg, "missing description field in group "+k)
+		}
+	}
+
+	if len(msg) > 0 {
+		return errors.New("missing field"), msg
+	}
+
+	return nil, []string{}
+
+}
+
 // CheckManifest checks for internal consistency, throwing an error
 // if there are any unresolved references by name
 func CheckManifest(m Manifest) (error, []string) {
@@ -2575,6 +2732,12 @@ func checkManifest(m Manifest) (error, []string) {
 	}
 
 	err, msg = checkDisplayGuides(m.DisplayGuides)
+
+	if err != nil {
+		return err, msg
+	}
+
+	err, msg = checkGroups(m.Groups)
 
 	if err != nil {
 		return err, msg
@@ -2625,6 +2788,20 @@ func checkManifest(m Manifest) (error, []string) {
 	// Check that all references are present
 
 	// Description -> N/A
+
+	// Group -> Description, Policies
+	for k, v := range m.Groups {
+		if _, ok := m.Descriptions[v.Description]; !ok {
+			m := "group " + k + " references non-existent description: " + v.Description
+			msg = append(msg, m)
+		}
+		for _, p := range v.Policies {
+			if _, ok := m.Policies[p]; !ok {
+				m := "group " + k + " references non-existent policy: " + p
+				msg = append(msg, m)
+			}
+		}
+	}
 
 	// Policy -> Description, DisplayGuide, Slots
 	for k, v := range m.Policies {
