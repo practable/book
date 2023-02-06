@@ -1,6 +1,6 @@
 swagger: '2.0'
 info:
-  version: '0.2'
+  version: '0.3'
   title: AdvanceBooking
   description: User API for booking slots in advance
   contact:
@@ -141,7 +141,7 @@ paths:
   /admin/manifest/check:
     get:
       summary: Check a manifest
-      description: Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).
+      description: Check a manifest is valid. Returns 204 if valid or, 200 with a list of error(s).
       tags:
       - admin
       operationId: CheckManifest
@@ -159,16 +159,16 @@ paths:
       security:
         - Bearer: []
       responses:
+        200:
+          $ref: '#/responses/ErrorList'
         204:
-          description: OK
+          description: OK - manifest is valid
         401:
           $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
-          description: InternalError
-          schema:
-            $ref: '#/responses/ErrorList'
+          $ref: '#/responses/InternalError'
             
   /admin/oldbookings:
     get:
@@ -402,6 +402,37 @@ paths:
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'  
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
+  /groups/{group_name}:
+    get:
+      summary: Get group 
+      description: Get fully described group, including described policies
+      tags:
+      - users
+      operationId: GetGroup
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: group_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/GroupDescribed'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
         404:
           $ref: '#/responses/NotFound'
         500:
@@ -710,6 +741,71 @@ paths:
         500:
           $ref: '#/responses/InternalError'
           
+  /users/{user_name}/groups:
+    get:
+      summary: Get all current groups for user
+      description: Get all current groups for user. This only returns groups that are currently listed within the user's groups.
+      tags:
+      - users
+      operationId: GetGroupsForUser
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: 'OK'
+          schema:
+            $ref: '#/definitions/Groups'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
+  /users/{user_name}/groups/{group_name}:
+
+    post:
+      summary: Add group to user account
+      description: Add group to the list of groups with which this user is allowed to make bookings
+      tags:
+      - users
+      operationId: AddGroupForUser
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+      - name: user_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      - name: group_name
+        in: path
+        required: true
+        type: string
+        description: ''
+      security:
+        - Bearer: []
+      responses:
+        204:
+          description: 'OK - No Content'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'          
+          
   /users/{user_name}/oldbookings:
     get:
       summary: Get all old bookings for the user
@@ -741,37 +837,6 @@ paths:
         500:
           $ref: '#/responses/InternalError'
           
-  /users/{user_name}/policies:
-    get:
-      summary: Get all current policies for user
-      description: Get all current policies for user
-      tags:
-      - users
-      operationId: GetPoliciesForUser
-      deprecated: false
-      produces:
-      - application/json
-      parameters:
-      - name: user_name
-        in: path
-        required: true
-        type: string
-        description: ''
-      security:
-        - Bearer: []
-      responses:
-        200:
-          description: 'OK'
-          schema:
-            $ref: '#/definitions/PoliciesDescribed'
-          headers: {}
-        401:
-          $ref: '#/responses/Unauthorized'
-        404:
-          $ref: '#/responses/NotFound'
-        500:
-          $ref: '#/responses/InternalError'
-
   /users/{user_name}/policies/{policy_name}:
     get:
       summary: Get policy status 
@@ -801,38 +866,6 @@ paths:
           schema:
             $ref: '#/definitions/PolicyStatus'
           headers: {}
-        401:
-          $ref: '#/responses/Unauthorized'
-        404:
-          $ref: '#/responses/NotFound'
-        500:
-          $ref: '#/responses/InternalError'
-
-    post:
-      summary: Add policy to user account
-      description: Add policy to the list of policies with which this user is allowed to make bookings
-      tags:
-      - users
-      operationId: AddPolicyForUser
-      deprecated: false
-      produces:
-      - application/json
-      parameters:
-      - name: user_name
-        in: path
-        required: true
-        type: string
-        description: ''
-      - name: policy_name
-        in: path
-        required: true
-        type: string
-        description: ''
-      security:
-        - Bearer: []
-      responses:
-        204:
-          description: 'OK - No Content'
         401:
           $ref: '#/responses/Unauthorized'
         404:
@@ -921,10 +954,6 @@ definitions:
   ActivityStream:
     title: stream
     description: Represents an assigned, valid booking slot for an individual piece of equipment
-    example:
-      for: video
-      url: https://relay-access.practable.io/session/abc123
-      token: ey....
     type: object
     properties:
       audience:
@@ -1089,6 +1118,40 @@ definitions:
       - code
       - message
 
+  ErrorList:
+    description: use when there is one or more errors that may need returning, e.g. manifest check issues
+    type: object
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      errors:
+        type: array
+        items:
+          type: string
+    required:
+      - code
+      - message
+      - errors
+      
+  GroupDescribed:
+    type: object
+    properties:
+      description:
+        type: object
+        $ref: '#/definitions/Description'
+      policies:
+        $ref: '#/definitions/PoliciesDescribed'
+ 
+  Groups:
+    type: object
+    properties:
+      groups:
+        type: array
+        items:
+          type: string          
+          
   Interval:
     type: object
     properties:
@@ -1184,6 +1247,7 @@ definitions:
     - url
     
   Policy:
+    description: used in uploading manifests (only includes its own description by reference)
     type: object
     properties:
       allow_start_in_past_within:
@@ -1296,12 +1360,7 @@ definitions:
     required:
       - description
       - slots
-      
-  Policies:
-    type: array
-    items:
-      $ref: '#/definitions/Policy'
-      
+     
   PoliciesDescribed:
     type: array
     items:
@@ -1551,11 +1610,9 @@ responses:
     schema:
       $ref: '#/definitions/Error'
   ErrorList:
-    description: list of errors
+    description: List of errors (e.g. errors in client-provided data such as manifest)
     schema:
-      type: array
-      items:
-        type: string
+      $ref: '#/definitions/ErrorList'
 
 tags:
 - name: admin
