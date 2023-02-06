@@ -33,7 +33,7 @@ func NewCheckManifest(ctx *middleware.Context, handler CheckManifestHandler) *Ch
 
 Check a manifest
 
-Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).
+Check a manifest is valid. Returns 204 if valid or, 200 with a list of error(s).
 
 */
 type CheckManifest struct {

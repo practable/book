@@ -38,7 +38,7 @@ func init() {
       "url": "https://practable.io",
       "email": "timothy.d.drysdale@gmail.com"
     },
-    "version": "0.2"
+    "version": "0.3"
   },
   "host": "book.practable.io",
   "basePath": "/api/v1",
@@ -212,7 +212,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
+        "description": "Check a manifest is valid. Returns 204 if valid or, 200 with a list of error(s).",
         "consumes": [
           "application/json"
         ],
@@ -235,8 +235,11 @@ func init() {
           }
         ],
         "responses": {
+          "200": {
+            "$ref": "#/responses/ErrorList"
+          },
           "204": {
-            "description": "OK"
+            "description": "OK - manifest is valid"
           },
           "401": {
             "$ref": "#/responses/Unauthorized"
@@ -245,10 +248,7 @@ func init() {
             "$ref": "#/responses/NotFound"
           },
           "500": {
-            "description": "InternalError",
-            "schema": {
-              "$ref": "#/responses/ErrorList"
-            }
+            "$ref": "#/responses/InternalError"
           }
         }
       }
@@ -574,6 +574,49 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/Description"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/groups/{group_name}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Get fully described group, including described policies",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Get group",
+        "operationId": "GetGroup",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "group_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupDescribedWithPolicies"
             }
           },
           "401": {
@@ -1000,6 +1043,95 @@ func init() {
         }
       }
     },
+    "/users/{user_name}/groups": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Get all current groups for user. This only returns groups that are currently listed within the user's groups. Group data includes a description, but not policies.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Get all current groups for user",
+        "operationId": "GetGroupsForUser",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "user_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupsDescribed"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/users/{user_name}/groups/{group_name}": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Add group to the list of groups with which this user is allowed to make bookings",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Add group to user account",
+        "operationId": "AddGroupForUser",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "user_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "group_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OK - No Content"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/users/{user_name}/oldbookings": {
       "get": {
         "security": [
@@ -1029,49 +1161,6 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/Bookings"
-            }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          },
-          "500": {
-            "$ref": "#/responses/InternalError"
-          }
-        }
-      }
-    },
-    "/users/{user_name}/policies": {
-      "get": {
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
-        "description": "Get all current policies for user",
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "users"
-        ],
-        "summary": "Get all current policies for user",
-        "operationId": "GetPoliciesForUser",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "user_name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/PoliciesDescribed"
             }
           },
           "401": {
@@ -1122,50 +1211,6 @@ func init() {
             "schema": {
               "$ref": "#/definitions/PolicyStatus"
             }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          },
-          "500": {
-            "$ref": "#/responses/InternalError"
-          }
-        }
-      },
-      "post": {
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
-        "description": "Add policy to the list of policies with which this user is allowed to make bookings",
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "users"
-        ],
-        "summary": "Add policy to user account",
-        "operationId": "AddPolicyForUser",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "user_name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "policy_name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "OK - No Content"
           },
           "401": {
             "$ref": "#/responses/Unauthorized"
@@ -1324,11 +1369,6 @@ func init() {
           "type": "string",
           "example": "https://relay-access.practable.io/session/abc123"
         }
-      },
-      "example": {
-        "for": "video",
-        "token": "ey....",
-        "url": "https://relay-access.practable.io/session/abc123"
       }
     },
     "Booking": {
@@ -1495,6 +1535,61 @@ func init() {
         }
       }
     },
+    "ErrorList": {
+      "description": "use when there is one or more errors that may need returning, e.g. manifest check issues",
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "GroupDescribed": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "object",
+          "$ref": "#/definitions/Description"
+        }
+      }
+    },
+    "GroupDescribedWithPolicies": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "object",
+          "$ref": "#/definitions/Description"
+        },
+        "policies": {
+          "$ref": "#/definitions/PoliciesDescribed"
+        }
+      }
+    },
+    "GroupsDescribed": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GroupDescribed"
+          }
+        }
+      }
+    },
     "Interval": {
       "type": "object",
       "properties": {
@@ -1621,12 +1716,6 @@ func init() {
         }
       }
     },
-    "Policies": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Policy"
-      }
-    },
     "PoliciesDescribed": {
       "type": "array",
       "items": {
@@ -1634,6 +1723,7 @@ func init() {
       }
     },
     "Policy": {
+      "description": "used in uploading manifests (only includes its own description by reference)",
       "type": "object",
       "required": [
         "description",
@@ -2117,12 +2207,9 @@ func init() {
   },
   "responses": {
     "ErrorList": {
-      "description": "list of errors",
+      "description": "List of errors (e.g. errors in client-provided data such as manifest)",
       "schema": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
+        "$ref": "#/definitions/ErrorList"
       }
     },
     "InternalError": {
@@ -2183,7 +2270,7 @@ func init() {
       "url": "https://practable.io",
       "email": "timothy.d.drysdale@gmail.com"
     },
-    "version": "0.2"
+    "version": "0.3"
   },
   "host": "book.practable.io",
   "basePath": "/api/v1",
@@ -2393,7 +2480,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Check a manifest for errors. Returns 204 if OK or, if not, returns 500 with a list of error(s).",
+        "description": "Check a manifest is valid. Returns 204 if valid or, 200 with a list of error(s).",
         "consumes": [
           "application/json"
         ],
@@ -2416,8 +2503,14 @@ func init() {
           }
         ],
         "responses": {
+          "200": {
+            "description": "List of errors (e.g. errors in client-provided data such as manifest)",
+            "schema": {
+              "$ref": "#/definitions/ErrorList"
+            }
+          },
           "204": {
-            "description": "OK"
+            "description": "OK - manifest is valid"
           },
           "401": {
             "description": "Unauthorized",
@@ -2432,15 +2525,9 @@ func init() {
             }
           },
           "500": {
-            "description": "InternalError",
+            "description": "Internal Error",
             "schema": {
-              "description": "list of errors",
-              "schema": {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              }
+              "$ref": "#/definitions/Error"
             }
           }
         }
@@ -2830,6 +2917,58 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/Description"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/groups/{group_name}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Get fully described group, including described policies",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Get group",
+        "operationId": "GetGroup",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "group_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupDescribedWithPolicies"
             }
           },
           "401": {
@@ -3343,6 +3482,113 @@ func init() {
         }
       }
     },
+    "/users/{user_name}/groups": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Get all current groups for user. This only returns groups that are currently listed within the user's groups. Group data includes a description, but not policies.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Get all current groups for user",
+        "operationId": "GetGroupsForUser",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "user_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/GroupsDescribed"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/users/{user_name}/groups/{group_name}": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Add group to the list of groups with which this user is allowed to make bookings",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Add group to user account",
+        "operationId": "AddGroupForUser",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "user_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "group_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OK - No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/users/{user_name}/oldbookings": {
       "get": {
         "security": [
@@ -3372,58 +3618,6 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/Bookings"
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "schema": {
-              "$ref": "#/definitions/Error"
-            }
-          },
-          "404": {
-            "description": "The specified resource was not found",
-            "schema": {
-              "$ref": "#/definitions/Error"
-            }
-          },
-          "500": {
-            "description": "Internal Error",
-            "schema": {
-              "$ref": "#/definitions/Error"
-            }
-          }
-        }
-      }
-    },
-    "/users/{user_name}/policies": {
-      "get": {
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
-        "description": "Get all current policies for user",
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "users"
-        ],
-        "summary": "Get all current policies for user",
-        "operationId": "GetPoliciesForUser",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "user_name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "$ref": "#/definitions/PoliciesDescribed"
             }
           },
           "401": {
@@ -3483,59 +3677,6 @@ func init() {
             "schema": {
               "$ref": "#/definitions/PolicyStatus"
             }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "schema": {
-              "$ref": "#/definitions/Error"
-            }
-          },
-          "404": {
-            "description": "The specified resource was not found",
-            "schema": {
-              "$ref": "#/definitions/Error"
-            }
-          },
-          "500": {
-            "description": "Internal Error",
-            "schema": {
-              "$ref": "#/definitions/Error"
-            }
-          }
-        }
-      },
-      "post": {
-        "security": [
-          {
-            "Bearer": []
-          }
-        ],
-        "description": "Add policy to the list of policies with which this user is allowed to make bookings",
-        "produces": [
-          "application/json"
-        ],
-        "tags": [
-          "users"
-        ],
-        "summary": "Add policy to user account",
-        "operationId": "AddPolicyForUser",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "user_name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "policy_name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "OK - No Content"
           },
           "401": {
             "description": "Unauthorized",
@@ -3703,11 +3844,6 @@ func init() {
           "type": "string",
           "example": "https://relay-access.practable.io/session/abc123"
         }
-      },
-      "example": {
-        "for": "video",
-        "token": "ey....",
-        "url": "https://relay-access.practable.io/session/abc123"
       }
     },
     "Booking": {
@@ -3874,6 +4010,61 @@ func init() {
         }
       }
     },
+    "ErrorList": {
+      "description": "use when there is one or more errors that may need returning, e.g. manifest check issues",
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "errors"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "GroupDescribed": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "object",
+          "$ref": "#/definitions/Description"
+        }
+      }
+    },
+    "GroupDescribedWithPolicies": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "object",
+          "$ref": "#/definitions/Description"
+        },
+        "policies": {
+          "$ref": "#/definitions/PoliciesDescribed"
+        }
+      }
+    },
+    "GroupsDescribed": {
+      "type": "object",
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/GroupDescribed"
+          }
+        }
+      }
+    },
     "Interval": {
       "type": "object",
       "properties": {
@@ -4000,12 +4191,6 @@ func init() {
         }
       }
     },
-    "Policies": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Policy"
-      }
-    },
     "PoliciesDescribed": {
       "type": "array",
       "items": {
@@ -4013,6 +4198,7 @@ func init() {
       }
     },
     "Policy": {
+      "description": "used in uploading manifests (only includes its own description by reference)",
       "type": "object",
       "required": [
         "description",
@@ -4496,12 +4682,9 @@ func init() {
   },
   "responses": {
     "ErrorList": {
-      "description": "list of errors",
+      "description": "List of errors (e.g. errors in client-provided data such as manifest)",
       "schema": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
+        "$ref": "#/definitions/ErrorList"
       }
     },
     "InternalError": {

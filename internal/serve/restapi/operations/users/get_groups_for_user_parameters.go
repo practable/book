@@ -13,19 +13,19 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-// NewGetPoliciesForUserParams creates a new GetPoliciesForUserParams object
+// NewGetGroupsForUserParams creates a new GetGroupsForUserParams object
 //
 // There are no default values defined in the spec.
-func NewGetPoliciesForUserParams() GetPoliciesForUserParams {
+func NewGetGroupsForUserParams() GetGroupsForUserParams {
 
-	return GetPoliciesForUserParams{}
+	return GetGroupsForUserParams{}
 }
 
-// GetPoliciesForUserParams contains all the bound params for the get policies for user operation
+// GetGroupsForUserParams contains all the bound params for the get groups for user operation
 // typically these are obtained from a http.Request
 //
-// swagger:parameters GetPoliciesForUser
-type GetPoliciesForUserParams struct {
+// swagger:parameters GetGroupsForUser
+type GetGroupsForUserParams struct {
 
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
@@ -40,8 +40,8 @@ type GetPoliciesForUserParams struct {
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
 // for simple values it will use straight method calls.
 //
-// To ensure default values, the struct must have been initialized with NewGetPoliciesForUserParams() beforehand.
-func (o *GetPoliciesForUserParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
+// To ensure default values, the struct must have been initialized with NewGetGroupsForUserParams() beforehand.
+func (o *GetGroupsForUserParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
 	var res []error
 
 	o.HTTPRequest = r
@@ -57,7 +57,7 @@ func (o *GetPoliciesForUserParams) BindRequest(r *http.Request, route *middlewar
 }
 
 // bindUserName binds and validates parameter UserName from path.
-func (o *GetPoliciesForUserParams) bindUserName(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *GetGroupsForUserParams) bindUserName(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]

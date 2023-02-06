@@ -13,19 +13,19 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-// NewAddPolicyForUserParams creates a new AddPolicyForUserParams object
+// NewAddGroupForUserParams creates a new AddGroupForUserParams object
 //
 // There are no default values defined in the spec.
-func NewAddPolicyForUserParams() AddPolicyForUserParams {
+func NewAddGroupForUserParams() AddGroupForUserParams {
 
-	return AddPolicyForUserParams{}
+	return AddGroupForUserParams{}
 }
 
-// AddPolicyForUserParams contains all the bound params for the add policy for user operation
+// AddGroupForUserParams contains all the bound params for the add group for user operation
 // typically these are obtained from a http.Request
 //
-// swagger:parameters AddPolicyForUser
-type AddPolicyForUserParams struct {
+// swagger:parameters AddGroupForUser
+type AddGroupForUserParams struct {
 
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
@@ -34,7 +34,7 @@ type AddPolicyForUserParams struct {
 	  Required: true
 	  In: path
 	*/
-	PolicyName string
+	GroupName string
 	/*
 	  Required: true
 	  In: path
@@ -45,14 +45,14 @@ type AddPolicyForUserParams struct {
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
 // for simple values it will use straight method calls.
 //
-// To ensure default values, the struct must have been initialized with NewAddPolicyForUserParams() beforehand.
-func (o *AddPolicyForUserParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
+// To ensure default values, the struct must have been initialized with NewAddGroupForUserParams() beforehand.
+func (o *AddGroupForUserParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
 	var res []error
 
 	o.HTTPRequest = r
 
-	rPolicyName, rhkPolicyName, _ := route.Params.GetOK("policy_name")
-	if err := o.bindPolicyName(rPolicyName, rhkPolicyName, route.Formats); err != nil {
+	rGroupName, rhkGroupName, _ := route.Params.GetOK("group_name")
+	if err := o.bindGroupName(rGroupName, rhkGroupName, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -66,8 +66,8 @@ func (o *AddPolicyForUserParams) BindRequest(r *http.Request, route *middleware.
 	return nil
 }
 
-// bindPolicyName binds and validates parameter PolicyName from path.
-func (o *AddPolicyForUserParams) bindPolicyName(rawData []string, hasKey bool, formats strfmt.Registry) error {
+// bindGroupName binds and validates parameter GroupName from path.
+func (o *AddGroupForUserParams) bindGroupName(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -75,13 +75,13 @@ func (o *AddPolicyForUserParams) bindPolicyName(rawData []string, hasKey bool, f
 
 	// Required: true
 	// Parameter is provided by construction from the route
-	o.PolicyName = raw
+	o.GroupName = raw
 
 	return nil
 }
 
 // bindUserName binds and validates parameter UserName from path.
-func (o *AddPolicyForUserParams) bindUserName(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *AddGroupForUserParams) bindUserName(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]

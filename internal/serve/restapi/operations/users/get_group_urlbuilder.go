@@ -12,9 +12,9 @@ import (
 	"strings"
 )
 
-// GetPoliciesForUserURL generates an URL for the get policies for user operation
-type GetPoliciesForUserURL struct {
-	UserName string
+// GetGroupURL generates an URL for the get group operation
+type GetGroupURL struct {
+	GroupName string
 
 	_basePath string
 	// avoid unkeyed usage
@@ -24,7 +24,7 @@ type GetPoliciesForUserURL struct {
 // WithBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetPoliciesForUserURL) WithBasePath(bp string) *GetPoliciesForUserURL {
+func (o *GetGroupURL) WithBasePath(bp string) *GetGroupURL {
 	o.SetBasePath(bp)
 	return o
 }
@@ -32,21 +32,21 @@ func (o *GetPoliciesForUserURL) WithBasePath(bp string) *GetPoliciesForUserURL {
 // SetBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetPoliciesForUserURL) SetBasePath(bp string) {
+func (o *GetGroupURL) SetBasePath(bp string) {
 	o._basePath = bp
 }
 
 // Build a url path and query string
-func (o *GetPoliciesForUserURL) Build() (*url.URL, error) {
+func (o *GetGroupURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/users/{user_name}/policies"
+	var _path = "/groups/{group_name}"
 
-	userName := o.UserName
-	if userName != "" {
-		_path = strings.Replace(_path, "{user_name}", userName, -1)
+	groupName := o.GroupName
+	if groupName != "" {
+		_path = strings.Replace(_path, "{group_name}", groupName, -1)
 	} else {
-		return nil, errors.New("userName is required on GetPoliciesForUserURL")
+		return nil, errors.New("groupName is required on GetGroupURL")
 	}
 
 	_basePath := o._basePath
@@ -59,7 +59,7 @@ func (o *GetPoliciesForUserURL) Build() (*url.URL, error) {
 }
 
 // Must is a helper function to panic when the url builder returns an error
-func (o *GetPoliciesForUserURL) Must(u *url.URL, err error) *url.URL {
+func (o *GetGroupURL) Must(u *url.URL, err error) *url.URL {
 	if err != nil {
 		panic(err)
 	}
@@ -70,17 +70,17 @@ func (o *GetPoliciesForUserURL) Must(u *url.URL, err error) *url.URL {
 }
 
 // String returns the string representation of the path with query string
-func (o *GetPoliciesForUserURL) String() string {
+func (o *GetGroupURL) String() string {
 	return o.Must(o.Build()).String()
 }
 
 // BuildFull builds a full url with scheme, host, path and query string
-func (o *GetPoliciesForUserURL) BuildFull(scheme, host string) (*url.URL, error) {
+func (o *GetGroupURL) BuildFull(scheme, host string) (*url.URL, error) {
 	if scheme == "" {
-		return nil, errors.New("scheme is required for a full url on GetPoliciesForUserURL")
+		return nil, errors.New("scheme is required for a full url on GetGroupURL")
 	}
 	if host == "" {
-		return nil, errors.New("host is required for a full url on GetPoliciesForUserURL")
+		return nil, errors.New("host is required for a full url on GetGroupURL")
 	}
 
 	base, err := o.Build()
@@ -94,6 +94,6 @@ func (o *GetPoliciesForUserURL) BuildFull(scheme, host string) (*url.URL, error)
 }
 
 // StringFull returns the string representation of a complete url
-func (o *GetPoliciesForUserURL) StringFull(scheme, host string) string {
+func (o *GetGroupURL) StringFull(scheme, host string) string {
 	return o.Must(o.BuildFull(scheme, host)).String()
 }

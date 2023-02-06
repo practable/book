@@ -54,9 +54,9 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	// Example:
 	// api.APIAuthorizer = security.Authorized()
 
-	if api.UsersAddPolicyForUserHandler == nil {
-		api.UsersAddPolicyForUserHandler = users.AddPolicyForUserHandlerFunc(func(params users.AddPolicyForUserParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation users.AddPolicyForUser has not yet been implemented")
+	if api.UsersAddGroupForUserHandler == nil {
+		api.UsersAddGroupForUserHandler = users.AddGroupForUserHandlerFunc(func(params users.AddGroupForUserParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.AddGroupForUser has not yet been implemented")
 		})
 	}
 	if api.UsersCancelBookingHandler == nil {
@@ -114,14 +114,19 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.GetDescription has not yet been implemented")
 		})
 	}
+	if api.UsersGetGroupHandler == nil {
+		api.UsersGetGroupHandler = users.GetGroupHandlerFunc(func(params users.GetGroupParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetGroup has not yet been implemented")
+		})
+	}
+	if api.UsersGetGroupsForUserHandler == nil {
+		api.UsersGetGroupsForUserHandler = users.GetGroupsForUserHandlerFunc(func(params users.GetGroupsForUserParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetGroupsForUser has not yet been implemented")
+		})
+	}
 	if api.UsersGetOldBookingsForUserHandler == nil {
 		api.UsersGetOldBookingsForUserHandler = users.GetOldBookingsForUserHandlerFunc(func(params users.GetOldBookingsForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetOldBookingsForUser has not yet been implemented")
-		})
-	}
-	if api.UsersGetPoliciesForUserHandler == nil {
-		api.UsersGetPoliciesForUserHandler = users.GetPoliciesForUserHandlerFunc(func(params users.GetPoliciesForUserParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation users.GetPoliciesForUser has not yet been implemented")
 		})
 	}
 	if api.UsersGetPolicyHandler == nil {

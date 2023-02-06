@@ -13,10 +13,54 @@ import (
 	"github.com/practable/book/internal/serve/models"
 )
 
+// CheckManifestOKCode is the HTTP code returned for type CheckManifestOK
+const CheckManifestOKCode int = 200
+
+/*CheckManifestOK List of errors (e.g. errors in client-provided data such as manifest)
+
+swagger:response checkManifestOK
+*/
+type CheckManifestOK struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *models.ErrorList `json:"body,omitempty"`
+}
+
+// NewCheckManifestOK creates CheckManifestOK with default headers values
+func NewCheckManifestOK() *CheckManifestOK {
+
+	return &CheckManifestOK{}
+}
+
+// WithPayload adds the payload to the check manifest o k response
+func (o *CheckManifestOK) WithPayload(payload *models.ErrorList) *CheckManifestOK {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the check manifest o k response
+func (o *CheckManifestOK) SetPayload(payload *models.ErrorList) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *CheckManifestOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(200)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}
+
 // CheckManifestNoContentCode is the HTTP code returned for type CheckManifestNoContent
 const CheckManifestNoContentCode int = 204
 
-/*CheckManifestNoContent OK
+/*CheckManifestNoContent OK - manifest is valid
 
 swagger:response checkManifestNoContent
 */
@@ -128,7 +172,7 @@ func (o *CheckManifestNotFound) WriteResponse(rw http.ResponseWriter, producer r
 // CheckManifestInternalServerErrorCode is the HTTP code returned for type CheckManifestInternalServerError
 const CheckManifestInternalServerErrorCode int = 500
 
-/*CheckManifestInternalServerError InternalError
+/*CheckManifestInternalServerError Internal Error
 
 swagger:response checkManifestInternalServerError
 */
@@ -137,7 +181,7 @@ type CheckManifestInternalServerError struct {
 	/*
 	  In: Body
 	*/
-	Payload interface{} `json:"body,omitempty"`
+	Payload *models.Error `json:"body,omitempty"`
 }
 
 // NewCheckManifestInternalServerError creates CheckManifestInternalServerError with default headers values
@@ -147,13 +191,13 @@ func NewCheckManifestInternalServerError() *CheckManifestInternalServerError {
 }
 
 // WithPayload adds the payload to the check manifest internal server error response
-func (o *CheckManifestInternalServerError) WithPayload(payload interface{}) *CheckManifestInternalServerError {
+func (o *CheckManifestInternalServerError) WithPayload(payload *models.Error) *CheckManifestInternalServerError {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the check manifest internal server error response
-func (o *CheckManifestInternalServerError) SetPayload(payload interface{}) {
+func (o *CheckManifestInternalServerError) SetPayload(payload *models.Error) {
 	o.Payload = payload
 }
 
@@ -161,8 +205,10 @@ func (o *CheckManifestInternalServerError) SetPayload(payload interface{}) {
 func (o *CheckManifestInternalServerError) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(500)
-	payload := o.Payload
-	if err := producer.Produce(rw, payload); err != nil {
-		panic(err) // let the recovery middleware deal with this
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
 	}
 }
