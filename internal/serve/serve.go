@@ -64,7 +64,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.AdminSetSlotIsAvailableHandler = admin.SetSlotIsAvailableHandlerFunc(setSlotIsAvailableHandler(config))
 
 	// *** USERS *** //
-	api.UsersAddPolicyForUserHandler = users.AddPolicyForUserHandlerFunc(addPolicyForUserHandler(config))
+	api.UsersAddGroupForUserHandler = users.AddGroupForUserHandlerFunc(addGroupForUserHandler(config))
 	api.UsersCancelBookingHandler = users.CancelBookingHandlerFunc(cancelBookingHandler(config))
 	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))
 	api.UsersGetActivityHandler = users.GetActivityHandlerFunc(getActivityHandler(config))
@@ -72,7 +72,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.UsersGetBookingsForUserHandler = users.GetBookingsForUserHandlerFunc(getBookingsForUserHandler(config))
 	api.UsersGetDescriptionHandler = users.GetDescriptionHandlerFunc(getDescriptionHandler(config))
 	api.UsersGetOldBookingsForUserHandler = users.GetOldBookingsForUserHandlerFunc(getOldBookingsForUserHandler(config))
-	api.UsersGetPoliciesForUserHandler = users.GetPoliciesForUserHandlerFunc(getPoliciesForUserHandler(config))
+	api.UsersGetGroupsForUserHandler = users.GetGroupsForUserHandlerFunc(getGroupsForUserHandler(config))
 	api.UsersGetPolicyHandler = users.GetPolicyHandlerFunc(getPolicyHandler(config))
 	api.UsersGetPolicyStatusForUserHandler = users.GetPolicyStatusForUserHandlerFunc(getPolicyStatusForUserHandler(config))
 	api.UsersGetStoreStatusUserHandler = users.GetStoreStatusUserHandlerFunc(getStoreStatusUserHandler(config))

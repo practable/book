@@ -1558,7 +1558,27 @@ func init() {
         }
       }
     },
+    "Group": {
+      "description": "group as represented in manifest replace/export operations",
+      "type": "object",
+      "required": [
+        "description",
+        "policies"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "GroupDescribed": {
+      "description": "group as reported when returning list of groups to user",
       "type": "object",
       "properties": {
         "description": {
@@ -1568,6 +1588,7 @@ func init() {
       }
     },
     "GroupDescribedWithPolicies": {
+      "description": "group description with full details of policies included",
       "type": "object",
       "properties": {
         "description": {
@@ -1634,6 +1655,12 @@ func init() {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/DisplayGuide"
+          }
+        },
+        "groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Group"
           }
         },
         "policies": {
@@ -2149,13 +2176,13 @@ func init() {
             "type": "string"
           }
         },
-        "old_bookings": {
+        "groups": {
           "type": "array",
           "items": {
             "type": "string"
           }
         },
-        "policies": {
+        "old_bookings": {
           "type": "array",
           "items": {
             "type": "string"
@@ -4033,7 +4060,27 @@ func init() {
         }
       }
     },
+    "Group": {
+      "description": "group as represented in manifest replace/export operations",
+      "type": "object",
+      "required": [
+        "description",
+        "policies"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "GroupDescribed": {
+      "description": "group as reported when returning list of groups to user",
       "type": "object",
       "properties": {
         "description": {
@@ -4043,6 +4090,7 @@ func init() {
       }
     },
     "GroupDescribedWithPolicies": {
+      "description": "group description with full details of policies included",
       "type": "object",
       "properties": {
         "description": {
@@ -4109,6 +4157,12 @@ func init() {
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/DisplayGuide"
+          }
+        },
+        "groups": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Group"
           }
         },
         "policies": {
@@ -4624,13 +4678,13 @@ func init() {
             "type": "string"
           }
         },
-        "old_bookings": {
+        "groups": {
           "type": "array",
           "items": {
             "type": "string"
           }
         },
-        "policies": {
+        "old_bookings": {
           "type": "array",
           "items": {
             "type": "string"

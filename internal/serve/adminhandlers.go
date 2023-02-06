@@ -10,13 +10,13 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/icza/gog"
-	log "github.com/sirupsen/logrus"
 	"github.com/practable/book/internal/config"
 	dt "github.com/practable/book/internal/datetime"
 	"github.com/practable/book/internal/interval"
 	"github.com/practable/book/internal/serve/models"
 	"github.com/practable/book/internal/serve/restapi/operations/admin"
 	"github.com/practable/book/internal/store"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -156,6 +156,20 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 			Label:     *(m.Label),
 		}
 	}
+
+	gm := make(map[string]store.Group)
+
+	for k, v := range mm.Groups {
+		m := v
+		gm[k] = store.Group{
+			Description: *(m.Description),
+			Policies:    m.Policies,
+		}
+	}
+
+	//debug - groups info is getting into gm ok:
+	//fmt.Printf("\n\ngroups: %+v\n\n", gm)
+	// groups: map[g-a:{Description:d-g-a Policies:[p-a]} g-b:{Description:d-g-b Policies:[p-b]}]
 
 	pm := make(map[string]store.Policy)
 
@@ -365,6 +379,7 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 	sm := store.Manifest{
 		Descriptions:  dm,
 		DisplayGuides: dgm,
+		Groups:        gm,
 		Policies:      pm,
 		Resources:     rm,
 		Slots:         slm,
@@ -469,6 +484,16 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 				Duration:  gog.Ptr(s.Duration.String()),
 				MaxSlots:  gog.Ptr(int64(s.MaxSlots)),
 				Label:     gog.Ptr(s.Label),
+			}
+		}
+
+		gm := make(map[string]models.Group)
+
+		for k, v := range sm.Groups {
+			s := v
+			gm[k] = models.Group{
+				Description: gog.Ptr(s.Description),
+				Policies:    s.Policies,
 			}
 		}
 
@@ -594,6 +619,7 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 		mm := models.Manifest{
 			Descriptions:  dm,
 			DisplayGuides: dgm,
+			Groups:        gm,
 			Policies:      pm,
 			Resources:     rm,
 			Slots:         slm,
@@ -680,8 +706,8 @@ func exportUsersHandler(config config.ServerConfig) func(admin.ExportUsersParams
 		for k, v := range su {
 
 			bs := []string{}
+			gs := []string{}
 			obs := []string{}
-			ps := []string{}
 			um := make(map[string]string)
 
 			for _, bv := range v.Bookings {
@@ -693,8 +719,8 @@ func exportUsersHandler(config config.ServerConfig) func(admin.ExportUsersParams
 			}
 
 			// ignore bool in map, has no meaning
-			for _, pv := range v.Policies {
-				ps = append(ps, pv)
+			for _, gv := range v.Groups {
+				gs = append(gs, gv)
 			}
 
 			// store format is map[string]*time.Duration
@@ -706,7 +732,7 @@ func exportUsersHandler(config config.ServerConfig) func(admin.ExportUsersParams
 
 				Bookings:    bs,
 				OldBookings: obs,
-				Policies:    ps,
+				Groups:      gs,
 				Usage:       um,
 			}
 

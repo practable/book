@@ -13,7 +13,7 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// GroupDescribed group described
+// GroupDescribed group as reported when returning list of groups to user
 //
 // swagger:model GroupDescribed
 type GroupDescribed struct {

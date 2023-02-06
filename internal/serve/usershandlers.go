@@ -783,82 +783,58 @@ func getOldBookingsForUserHandler(config config.ServerConfig) func(users.GetOldB
 	}
 }
 
-// getPoliciesForHandler
-func getPoliciesForUserHandler(config config.ServerConfig) func(users.GetPoliciesForUserParams, interface{}) middleware.Responder {
-	return func(params users.GetPoliciesForUserParams, principal interface{}) middleware.Responder {
+// getGroupsForUserHandler - includes describedGroups, but only policy names.
+func getGroupsForUserHandler(config config.ServerConfig) func(users.GetGroupsForUserParams, interface{}) middleware.Responder {
+	return func(params users.GetGroupsForUserParams, principal interface{}) middleware.Responder {
 
 		isAdmin, claims, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
 			m := err.Error()
-			return users.NewGetPoliciesForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewGetGroupsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 		if config.Store.Locked && !isAdmin {
 			c := "401"
 			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewGetGroupsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in path"
-			return users.NewGetPoliciesForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewGetGroupsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		// check username against token, unless admin (admin can check on behalf of users)
 		if (!isAdmin) && (claims.Subject != params.UserName) {
 			c := "401"
 			m := "user_name in path does not match subject in token"
-			return users.NewGetPoliciesForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewGetGroupsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		ps, err := config.Store.GetPoliciesFor(params.UserName)
+		gs, err := config.Store.GetGroupsFor(params.UserName)
 
 		if err != nil {
 			c := "404"
 			m := err.Error()
-			return users.NewGetPoliciesForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewGetGroupsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		var pm models.PoliciesDescribed
+		var gm []*models.GroupDescribed
 
-		for _, v := range ps {
+		for _, v := range gs {
 
-			p, err := config.Store.GetPolicy(v)
+			g, err := config.Store.GetGroup(v)
 
 			if err != nil {
 				c := "500"
 				m := "policy " + v + ": " + err.Error()
-				return users.NewGetPoliciesForUserInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+				return users.NewGetGroupsForUserInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 			}
 
-			if p.Description == "" {
-				c := "500"
-				m := "policy " + v + " missing description"
-				return users.NewGetPoliciesForUserInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-			}
+			d := g.Description
 
-			d, err := config.Store.GetDescription(p.Description)
-			if err != nil {
-				c := "500"
-				m := "policy " + v + " description not found because " + err.Error()
-				return users.NewGetPoliciesForUserInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
-			}
-
-			dgm := make(map[string]models.DisplayGuide)
-
-			for k, v := range p.DisplayGuidesMap {
-				dg := v // avoid pointers all pointing to last element in map
-				dgm[k] = models.DisplayGuide{
-					BookAhead: gog.Ptr(dg.BookAhead.String()),
-					Duration:  gog.Ptr(dg.Duration.String()),
-					MaxSlots:  gog.Ptr(int64(dg.MaxSlots)),
-					Label:     gog.Ptr(dg.Label),
-				}
-			}
-
-			pd := models.PolicyDescribed{
-				BookAhead: p.BookAhead.String(),
+			gd := models.GroupDescribed{
 				Description: gog.Ptr(models.Description{
 					Name:    &d.Name,
 					Type:    &d.Type,
@@ -868,22 +844,15 @@ func getPoliciesForUserHandler(config config.ServerConfig) func(users.GetPolicie
 					Thumb:   d.Thumb,
 					Image:   d.Image,
 				}),
-				DisplayGuides:      dgm,
-				EnforceBookAhead:   p.EnforceBookAhead,
-				EnforceMaxBookings: p.EnforceMaxBookings,
-				EnforceMaxDuration: p.EnforceMaxDuration,
-				EnforceMaxUsage:    p.EnforceMaxUsage,
-				EnforceMinDuration: p.EnforceMinDuration,
-				MaxBookings:        p.MaxBookings,
-				MaxDuration:        p.MaxDuration.String(),
-				MaxUsage:           p.MaxUsage.String(),
-				MinDuration:        p.MinDuration.String(),
-				Slots:              p.Slots,
 			}
-			pm = append(pm, &pd)
+			gm = append(gm, &gd)
 		}
 
-		return users.NewGetPoliciesForUserOK().WithPayload(pm)
+		gsd := models.GroupsDescribed{
+			Groups: gm,
+		}
+
+		return users.NewGetGroupsForUserOK().WithPayload(&gsd)
 	}
 }
 
@@ -940,9 +909,9 @@ func getPolicyStatusForUserHandler(config config.ServerConfig) func(users.GetPol
 	}
 }
 
-// addPolicyForHandler
-func addPolicyForUserHandler(config config.ServerConfig) func(users.AddPolicyForUserParams, interface{}) middleware.Responder {
-	return func(params users.AddPolicyForUserParams, principal interface{}) middleware.Responder {
+// addGroupForHandler
+func addGroupForUserHandler(config config.ServerConfig) func(users.AddGroupForUserParams, interface{}) middleware.Responder {
+	return func(params users.AddGroupForUserParams, principal interface{}) middleware.Responder {
 
 		isAdmin, claims, err := isAdminOrUser(principal)
 		if config.Store.Locked && !isAdmin {
@@ -953,36 +922,36 @@ func addPolicyForUserHandler(config config.ServerConfig) func(users.AddPolicyFor
 		if err != nil {
 			c := "401"
 			m := err.Error()
-			return users.NewAddPolicyForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewAddGroupForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in path"
-			return users.NewAddPolicyForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewAddGroupForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if params.PolicyName == "" {
+		if params.GroupName == "" {
 			c := "404"
-			m := "no policy_name in path"
-			return users.NewAddPolicyForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+			m := "no group_name in path"
+			return users.NewAddGroupForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		// check username against token, unless admin (admin can check on behalf of users)
 		if (!isAdmin) && (claims.Subject != params.UserName) {
 			c := "401"
 			m := "user_name in path does not match subject in token"
-			return users.NewAddPolicyForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewAddGroupForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		err = config.Store.AddPolicyFor(params.UserName, params.PolicyName)
+		err = config.Store.AddGroupForUser(params.UserName, params.GroupName)
 
 		if err != nil {
 			c := "404"
 			m := err.Error()
-			return users.NewAddPolicyForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+			return users.NewAddGroupForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		return users.NewAddPolicyForUserNoContent()
+		return users.NewAddGroupForUserNoContent()
 	}
 }
