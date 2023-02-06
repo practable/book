@@ -13,7 +13,7 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// GroupDescribedWithPolicies group described with policies
+// GroupDescribedWithPolicies group description with full details of policies included
 //
 // swagger:model GroupDescribedWithPolicies
 type GroupDescribedWithPolicies struct {

@@ -20,11 +20,11 @@ type User struct {
 	// bookings
 	Bookings []string `json:"bookings"`
 
+	// groups
+	Groups []string `json:"groups"`
+
 	// old bookings
 	OldBookings []string `json:"old_bookings"`
-
-	// policies
-	Policies []string `json:"policies"`
 
 	// usage
 	Usage map[string]string `json:"usage,omitempty"`

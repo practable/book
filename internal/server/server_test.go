@@ -20,8 +20,6 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/phayes/freeport"
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 	apiclient "github.com/practable/book/internal/client/client"
 	"github.com/practable/book/internal/client/client/admin"
 	"github.com/practable/book/internal/client/client/users"
@@ -30,8 +28,14 @@ import (
 	"github.com/practable/book/internal/login"
 	"github.com/practable/book/internal/serve/models"
 	"github.com/practable/book/internal/store"
-	"gopkg.in/yaml.v2"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"sigs.k8s.io/yaml" //see note below
 )
+
+// imports: we must use "sigs.k8s.io/yaml" to take advantage of our JSON UnMarshall extensions
+// for manifests in the Init function where we generate JSON from the YAML
+// if manifest tests are breaking unexpectedly, check that the correct import is being used
 
 var debug bool
 var cfg config.ServerConfig
@@ -49,6 +53,14 @@ var s *Server
 // useful for comparing to responses. Better just to use
 // strings, and may as well be consistent.
 var manifestYAML = []byte(`descriptions:
+  d-g-a:
+    name: group-a
+    type: group
+    short: a
+  d-g-b:
+    name: group-b
+    type: group
+    short: b
   d-p-a:
     name: policy-a
     type: policy
@@ -95,6 +107,15 @@ display_guides:
     duration: 1m
     max_slots: 15
     label: 1m
+groups:
+  g-a:
+    description: d-g-a
+    policies: 
+      - p-a
+  g-b:
+    description: d-g-b
+    policies:
+      - p-b
 policies:
   p-a:
     book_ahead: 1h
@@ -228,7 +249,7 @@ windows:
       end: 2022-11-06T00:00:00Z
     denied: []`)
 
-var manifestJSON = []byte(`{"descriptions":{"d-p-a":{"name":"policy-a","type":"policy","short":"a"},"d-p-b":{"name":"policy-b","type":"policy","short":"b"},"d-p-modes":{"name":"policy-modes","type":"policy","short":"modes"},"d-r-a":{"name":"resource-a","type":"resource","short":"a"},"d-r-b":{"name":"resource-b","type":"resource","short":"b"},"d-sl-a":{"name":"slot-a","type":"slot","short":"a"},"d-sl-b":{"name":"slot-b","type":"slot","short":"b"},"d-sl-modes":{"name":"slot-modes","type":"slot","short":"modes"},"d-ui-a":{"name":"ui-a","type":"ui","short":"a"},"d-ui-b":{"name":"ui-b","type":"ui","short":"b"}},"display_guides":{"1mFor20m":{"book_ahead":"20m","duration":"1m","max_slots":15,"label":"1m"}},"policies":{"p-a":{"book_ahead":"1h","description":"d-p-a","display_guides":["1mFor20m"],"enforce_book_ahead":true,"enforce_max_bookings":false,"enforce_max_duration":false,"enforce_min_duration":false,"enforce_max_usage":false,"max_bookings":0,"max_duration":"0s","min_duration":"0s","max_usage":"0s","slots":["sl-a"]},"p-b":{"book_ahead":"2h0m0s","description":"d-p-b","enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","slots":["sl-b"]},"p-modes":{"allow_start_in_past_within":"1m0s","book_ahead":"2h0m0s","description":"d-p-modes","enforce_allow_start_in_past":true,"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"enforce_next_available":true,"enforce_starts_within":true,"enforce_unlimited_users":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","next_available":"1m0s","slots":["sl-modes"],"starts_within":"1m0s"}},"resources":{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"topic_stub":"bbbb00"}},"slots":{"sl-a":{"description":"d-sl-a","policy":"p-a","resource":"r-a","ui_set":"us-a","window":"w-a"},"sl-b":{"description":"d-sl-b","policy":"p-b","resource":"r-b","ui_set":"us-b","window":"w-b"},"sl-modes":{"description":"d-sl-modes","policy":"p-modes","resource":"r-b","ui_set":"us-b","window":"w-b"}},"streams":{"st-a":{"url":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"topic":"tbc"},"st-b":{"url":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"topic":"tbc"}},"uis":{"ui-a":{"description":"d-ui-a","url":"a","streams_required":["st-a","st-b"]},"ui-b":{"description":"d-ui-b","url":"b","streams_required":["st-a","st-b"]}},"ui_sets":{"us-a":{"uis":["ui-a"]},"us-b":{"uis":["ui-a","ui-b"]}},"windows":{"w-a":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]},"w-b":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]}}}`)
+var manifestJSON []byte
 
 var manifestGraceYAML = []byte(`descriptions:
   d-p-a:
@@ -378,7 +399,7 @@ windows:
       end: 2022-11-06T00:00:00Z
     denied: []`)
 
-var manifestGraceJSON = []byte(`{"descriptions":{"d-p-a":{"name":"policy-a","type":"policy","short":"a"},"d-p-b":{"name":"policy-b","type":"policy","short":"b"},"d-r-a":{"name":"resource-a","type":"resource","short":"a"},"d-r-b":{"name":"resource-b","type":"resource","short":"b"},"d-sl-a":{"name":"slot-a","type":"slot","short":"a"},"d-sl-b":{"name":"slot-b","type":"slot","short":"b"},"d-ui-a":{"name":"ui-a","type":"ui","short":"a"},"d-ui-b":{"name":"ui-b","type":"ui","short":"b"}},"display_guides":{"1mFor20m":{"book_ahead":"20m","duration":"1m","max_slots":15,"label":"1m"}},"policies":{"p-a":{"book_ahead":"1h","description":"d-p-a","display_guides":["1mFor20m"],"enforce_grace_period":true,"grace_period":"2m","grace_penalty":"3m","enforce_book_ahead":true,"enforce_max_bookings":false,"enforce_max_duration":false,"enforce_min_duration":false,"enforce_max_usage":false,"max_bookings":0,"max_duration":"0s","min_duration":"0s","max_usage":"0s","slots":["sl-a"]},"p-b":{"book_ahead":"2h0m0s","description":"d-p-b","enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_min_duration":true,"enforce_max_usage":true,"max_bookings":2,"max_duration":"10m0s","min_duration":"5m0s","max_usage":"30m0s","slots":["sl-b"]}},"resources":{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"topic_stub":"bbbb00"}},"slots":{"sl-a":{"description":"d-sl-a","policy":"p-a","resource":"r-a","ui_set":"us-a","window":"w-a"},"sl-b":{"description":"d-sl-b","policy":"p-b","resource":"r-b","ui_set":"us-b","window":"w-b"}},"streams":{"st-a":{"url":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"topic":"tbc"},"st-b":{"url":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"topic":"tbc"}},"uis":{"ui-a":{"description":"d-ui-a","url":"a","streams_required":["st-a","st-b"]},"ui-b":{"description":"d-ui-b","url":"b","streams_required":["st-a","st-b"]}},"ui_sets":{"us-a":{"uis":["ui-a"]},"us-b":{"uis":["ui-a","ui-b"]}},"windows":{"w-a":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]},"w-b":{"allowed":[{"start":"2022-11-04T00:00:00.000Z","end":"2022-11-06T00:00:00.000Z"}],"denied":[]}}}`)
+var manifestGraceJSON = []byte{}
 
 var bookingsYAML = []byte(`---
 - name: bk-0
@@ -415,11 +436,42 @@ var oneBookingYAML = []byte(`---
     end: '2022-11-05T00:15:00Z'
 `)
 
-var bookingsJSON = []byte(`[{"name":"bk-0","cancelled":false,"policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"u-a","when":{"start":"2022-11-05T00:10:00Z","end":"2022-11-05T00:15:00Z"}},{"name":"bk-1","cancelled":false,"policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"u-b","when":{"start":"2022-11-05T00:20:00Z","end":"2022-11-05T00:30:00Z"}}]`)
+var bookingsJSON = []byte{}
+var bookings2JSON = []byte{}
+var bookingsGraceJSON = []byte{}
 
-var bookings2JSON = []byte(`[{"cancelled":false,"name":"bk-0","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-a","when":{"start":"2022-11-05T00:10:00Z","end":"2022-11-05T00:15:00Z"}},{"cancelled":false,"name":"bk-1","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-b","when":{"start":"2022-11-05T00:20:00Z","end":"2022-11-05T00:30:00Z"}},{"cancelled":false,"name":"bk-2","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-c","when":{"start":"2022-11-05T00:35:00Z","end":"2022-11-05T00:40:00Z"}},{"cancelled":false,"name":"bk-3","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-d","when":{"start":"2022-11-05T00:45:00Z","end":"2022-11-05T00:50:00Z"}},{"cancelled":false,"name":"bk-4","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-e","when":{"start":"2022-11-05T00:55:00Z","end":"2022-11-05T01:00:00Z"}},{"cancelled":false,"name":"bk-5","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-f","when":{"start":"2022-11-05T01:05:00Z","end":"2022-11-05T01:10:00Z"}},{"cancelled":false,"name":"bk-6","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-g","when":{"start":"2022-11-05T01:15:00Z","end":"2022-11-05T01:20:00Z"}},{"cancelled":false,"name":"bk-7","policy":"p-b","slot":"sl-b","started":false,"unfulfilled":false,"user":"user-h","when":{"start":"2022-11-05T01:25:00Z","end":"2022-11-05T01:30:00Z"}}]`)
-
-var bookingsGraceJSON = []byte(`[{"cancelled":false,"name":"bk-0","policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"user-a","when":{"start":"2022-11-05T00:01:00Z","end":"2022-11-05T00:05:00Z"}},{"cancelled":false,"name":"bk-1","policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"user-b","when":{"start":"2022-11-05T00:06:00Z","end":"2022-11-05T00:10:00Z"}},{"cancelled":false,"name":"bk-2","policy":"p-a","slot":"sl-a","started":false,"unfulfilled":false,"user":"user-c","when":{"start":"2022-11-05T00:11:00Z","end":"2022-11-05T00:15:00Z"}}]`)
+var bookingsGraceYAML = []byte(`---
+- cancelled: false
+  name: bk-0
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: user-a
+  when:
+    start: '2022-11-05T00:01:00Z'
+    end: '2022-11-05T00:05:00Z'
+- cancelled: false
+  name: bk-1
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: user-b
+  when:
+    start: '2022-11-05T00:06:00Z'
+    end: '2022-11-05T00:10:00Z'
+- cancelled: false
+  name: bk-2
+  policy: p-a
+  slot: sl-a
+  started: false
+  unfulfilled: false
+  user: user-c
+  when:
+    start: '2022-11-05T00:11:00Z'
+    end: '2022-11-05T00:15:00Z'
+`)
 
 var bookings2YAML = []byte(`---
 - cancelled: false
@@ -512,34 +564,30 @@ u-a:
   bookings:
   - bk-0
   old_bookings: []
-  policies:
-  - p-a
+  groups: []
   usage:
     p-a: 5m0s
 u-b:
   bookings:
   - bk-1
   old_bookings: []
-  policies:
-  - p-b
+  groups: []
   usage:
     p-b: 10m0s
 `)
 var oldUsersYAML = []byte(`---
 u-a:
   bookings: []
+  groups: []
   old_bookings: 
   - bk-0
-  policies:
-  - p-a
   usage:
     p-a: 5m0s
 u-b:
   bookings: []
+  groups: []
   old_bookings: 
   - bk-1
-  policies:
-  - p-b
   usage:
     p-b: 10m0s
 `)
@@ -557,6 +605,37 @@ func init() {
 		var ignore bytes.Buffer
 		logignore := bufio.NewWriter(&ignore)
 		log.SetOutput(logignore)
+	}
+
+	// create JSON versions of the manifests (using our convert functions which use the JSON tags and Unmarshal functions to handle durations)
+
+	var err error
+
+	manifestJSON, err = yaml.YAMLToJSON(manifestYAML)
+
+	if err != nil {
+		panic(err)
+	}
+
+	manifestGraceJSON, err = yaml.YAMLToJSON(manifestGraceYAML)
+
+	if err != nil {
+		panic(err)
+	}
+	bookingsJSON, err = yaml.YAMLToJSON(bookingsYAML)
+
+	if err != nil {
+		panic(err)
+	}
+	bookings2JSON, err = yaml.YAMLToJSON(bookings2YAML)
+
+	if err != nil {
+		panic(err)
+	}
+	bookingsGraceJSON, err = yaml.YAMLToJSON(bookingsGraceYAML)
+
+	if err != nil {
+		panic(err)
 	}
 
 }
@@ -901,7 +980,7 @@ func TestCheckReplaceExportManifest(t *testing.T) {
 	// the manifest does not reset all aspects of the store status
 	// avoid errors when go test -count=N with N >1 by only checking
 	// what uploading the manifest affects
-	assert.Equal(t, int64(10), ssa.Descriptions)
+	assert.Equal(t, int64(12), ssa.Descriptions)
 	assert.Equal(t, int64(2), ssa.Filters)
 	assert.Equal(t, int64(3), ssa.Policies)
 	assert.Equal(t, int64(2), ssa.Resources)
@@ -1183,7 +1262,7 @@ func TestSetLock(t *testing.T) {
 		Message:      "Locked for maintenance",
 		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
 		Bookings:     0,
-		Descriptions: 10,
+		Descriptions: 12,
 		Filters:      2,
 		OldBookings:  0,
 		Policies:     3,
@@ -1229,7 +1308,7 @@ func TestSetLock(t *testing.T) {
 		Message:      "Open for bookings",
 		Now:          time.Date(2022, 11, 5, 6, 0, 0, 0, time.UTC),
 		Bookings:     0,
-		Descriptions: 10,
+		Descriptions: 12,
 		Filters:      2,
 		OldBookings:  0,
 		Policies:     3,
@@ -1531,8 +1610,19 @@ func TestMakeBooking(t *testing.T) {
 	sutoken, err := signedUserToken()
 	assert.NoError(t, err)
 
+	// TODO add group for user!
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
+	req, err := http.NewRequest("POST", cfg.Host+"/api/v1/users/someuser/groups/g-b", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 204, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	client = &http.Client{}
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1541,10 +1631,10 @@ func TestMakeBooking(t *testing.T) {
 	q.Add("from", "2022-11-05T00:01:00Z")
 	q.Add("to", "2022-11-05T00:07:00Z")
 	req.URL.RawQuery = q.Encode()
-	resp, err := client.Do(req)
+	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 204, resp.StatusCode) //should be ok!
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err = ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 
 	//export Bookings to check...
@@ -1860,22 +1950,8 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 
-	// get policies for user u-g
 	sutoken, err := signedUserTokenFor("user-g")
 	assert.NoError(t, err)
-	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/policies", nil)
-	assert.NoError(t, err)
-	req.Header.Add("Authorization", sutoken)
-	resp.Body.Close()
-	resp, err = client.Do(req)
-	assert.NoError(t, err)
-	body, err := ioutil.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	resp.Body.Close()
-	// display_guides are omitted if empty
-	policies := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
-	assert.Equal(t, policies, string(body))
 
 	// get policy status for p-b for user u-g
 	client = &http.Client{}
@@ -1884,56 +1960,11 @@ func TestAddGetPoliciesAndStatus(t *testing.T) {
 	req.Header.Add("Authorization", sutoken)
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	resp.Body.Close()
 	status := `{"current_bookings":1,"old_bookings":0,"usage":"5m0s"}` + "\n"
 	assert.Equal(t, status, string(body))
-
-	//add policy p-a for user u-g
-	client = &http.Client{}
-	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/users/user-g/policies/p-a", nil)
-	assert.NoError(t, err)
-	req.Header.Add("Authorization", sutoken)
-	resp.Body.Close()
-	resp, err = client.Do(req)
-	assert.NoError(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	resp.Body.Close()
-	assert.Equal(t, 204, resp.StatusCode) //should be ok!
-
-	// get policies for user u-g
-	sutoken, err = signedUserTokenFor("user-g")
-	assert.NoError(t, err)
-	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-g/policies", nil)
-	assert.NoError(t, err)
-	req.Header.Add("Authorization", sutoken)
-	resp, err = client.Do(req)
-	assert.NoError(t, err)
-	body, err = ioutil.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	resp.Body.Close()
-
-	// order can change so check both possibilities
-	// unmarshalling can comparing objects did not work reliably because of the use of pointers in struct
-	policies1JSON := `[{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]},{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]}]` + "\n"
-	policies2JSON := `[{"book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","slots":["sl-a"]},{"book_ahead":"2h0m0s","description":{"name":"policy-b","short":"b","type":"policy"},"enforce_book_ahead":true,"enforce_max_bookings":true,"enforce_max_duration":true,"enforce_max_usage":true,"enforce_min_duration":true,"max_bookings":2,"max_duration":"10m0s","max_usage":"30m0s","min_duration":"5m0s","slots":["sl-b"]}]` + "\n"
-
-	assert.True(t, policies1JSON == string(body) || policies2JSON == string(body))
-
-	if !(policies1JSON == string(body) || policies2JSON == string(body)) {
-		t.Error("Policies did not match")
-		t.Log("expected either (1):\n " + policies1JSON + " or (2):\n" + policies2JSON)
-		t.Log("got: " + string(body))
-	}
-	//var actualPolicies, expectedPolicies models.PoliciesDescribed
-	//err = json.Unmarshal(policiesJSON, &expectedPolicies)
-	//assert.NoError(t, err)
-	//err = json.Unmarshal(body, &actualPolicies)
-	//assert.NoError(t, err)
-	//assert.Equal(t, expectedPolicies, actualPolicies)
 
 }
 
@@ -2210,10 +2241,10 @@ func TestLockedToUser(t *testing.T) {
 
 	}
 
-	getPoliciesForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+	getGroupsForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 
-		p := users.NewGetPoliciesForUserParams().WithTimeout(timeout).WithUserName("user-a")
-		return bc.Users.GetPoliciesForUser(p, auth)
+		g := users.NewGetGroupsForUserParams().WithTimeout(timeout).WithUserName("user-a")
+		return bc.Users.GetGroupsForUser(g, auth)
 
 	}
 
@@ -2225,9 +2256,9 @@ func TestLockedToUser(t *testing.T) {
 		p := users.NewGetPolicyStatusForUserParams().WithTimeout(timeout).WithPolicyName("p-a").WithUserName("user-a")
 		return bc.Users.GetPolicyStatusForUser(p, auth)
 	}
-	addPolicyForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
-		p := users.NewAddPolicyForUserParams().WithTimeout(timeout).WithPolicyName("p-a").WithUserName("user-a")
-		return bc.Users.AddPolicyForUser(p, auth)
+	addGroupForUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
+		p := users.NewAddGroupForUserParams().WithTimeout(timeout).WithGroupName("g-a").WithUserName("user-a")
+		return bc.Users.AddGroupForUser(p, auth)
 	}
 	getStoreStatusUser := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewGetStoreStatusUserParams().WithTimeout(timeout)
@@ -2288,18 +2319,18 @@ func TestLockedToUser(t *testing.T) {
 		"GetOldBookingsForUserLockedUserDenied":      {locked, getOldBookingsForUser, authUser, false, `[GET /users/{user_name}/oldbookings][401] getOldBookingsForUserUnauthorized`},
 		"GetOldBookingsForUserUnlockedAdminAllowed":  {unlocked, getOldBookingsForUser, authAdmin, true, `[GET /users/{user_name}/oldbookings][200] getOldBookingsForUserOK`},
 		"GetOldBookingsForUserUnlockedUserAllowed":   {unlocked, getOldBookingsForUser, authUser, true, `[GET /users/{user_name}/oldbookings][200] getOldBookingsForUserOK`},
-		"GetPoliciesForUserLockedAdminAllowed":       {locked, getPoliciesForUser, authAdmin, true, `[GET /users/{user_name}/policies][200] getPoliciesForUserOK`},
-		"GetPoliciesForUserLockedUserDenied":         {locked, getPoliciesForUser, authUser, false, `[GET /users/{user_name}/policies][401] getPoliciesForUserUnauthorized`},
-		"GetPoliciesForUserUnlockedAdminAllowed":     {unlocked, getPoliciesForUser, authAdmin, true, `[GET /users/{user_name}/policies][200] getPoliciesForUserOK`},
-		"GetPoliciesForUserUnlockedUserAllowed":      {unlocked, getPoliciesForUser, authUser, true, `[GET /users/{user_name}/policies][200] getPoliciesForUserOK`},
+		"GetGroupsForUserLockedAdminAllowed":         {locked, getGroupsForUser, authAdmin, true, `[GET /users/{user_name}/groups][200] getGroupsForUserOK`},
+		"GetGroupsForUserLockedUserDenied":           {locked, getGroupsForUser, authUser, false, `[GET /users/{user_name}/groups][401] getGroupsForUserUnauthorized`},
+		"GetGroupsForUserUnlockedAdminAllowed":       {unlocked, getGroupsForUser, authAdmin, true, `[GET /users/{user_name}/groups][200] getGroupsForUserOK`},
+		"GetGroupsForUserUnlockedUserAllowed":        {unlocked, getGroupsForUser, authUser, true, `[GET /users/{user_name}/groups][200] getGroupsForUserOK`},
 		"GetPolicyStatusForUserLockedAdminAllowed":   {locked, getPolicyStatusForUser, authAdmin, true, `[GET /users/{user_name}/policies/{policy_name}][200] getPolicyStatusForUserOK`},
 		"GetPolicyStatusForUserLockedUserDenied":     {locked, getPolicyStatusForUser, authUser, false, `[GET /users/{user_name}/policies/{policy_name}][401] getPolicyStatusForUserUnauthorized`},
 		"GetPolicyStatusForUserUnlockedAdminAllowed": {unlocked, getPolicyStatusForUser, authAdmin, true, `[GET /users/{user_name}/policies/{policy_name}][200] getPolicyStatusForUserOK`},
 		"GetPolicyStatusForUserUnlockedUserAllowed":  {unlocked, getPolicyStatusForUser, authUser, true, `[GET /users/{user_name}/policies/{policy_name}][200] getPolicyStatusForUserOK`},
-		"AddPolicyForUserLockedAdminAllowed":         {locked, addPolicyForUser, authAdmin, true, `[POST /users/{user_name}/policies/{policy_name}][204] addPolicyForUserNoContent`},
-		"AddPolicyForUserLockedUserDenied":           {locked, addPolicyForUser, authUser, false, `[POST /users/{user_name}/policies/{policy_name}][401] addPolicyForUserUnauthorized`},
-		"AddPolicyForUserUnlockedAdminAllowed":       {unlocked, addPolicyForUser, authAdmin, true, `[POST /users/{user_name}/policies/{policy_name}][204] addPolicyForUserNoContent`},
-		"AddPolicyForUserUnlockedUserAllowed":        {unlocked, addPolicyForUser, authUser, true, `[POST /users/{user_name}/policies/{policy_name}][204] addPolicyForUserNoContent`},
+		"AddGroupForUserLockedAdminAllowed":          {locked, addGroupForUser, authAdmin, true, `[POST /users/{user_name}/groups/{group_name}][204] addGroupForUserNoContent`},
+		"AddGroupForUserLockedUserDenied":            {locked, addGroupForUser, authUser, false, `[POST /users/{user_name}/groups/{group_name}][401] addGroupForUserUnauthorized`},
+		"AddGroupForUserUnlockedAdminAllowed":        {unlocked, addGroupForUser, authAdmin, true, `[POST /users/{user_name}/groups/{group_name}][204] addGroupForUserNoContent`},
+		"AddGroupForUserUnlockedUserAllowed":         {unlocked, addGroupForUser, authUser, true, `[POST /users/{user_name}/groups/{group_name}][204] addGroupForUserNoContent`},
 	}
 
 	//enforce sequential runs of these tests (note, did not remove issue with getActivity sometimes failing to get it's booking)
