@@ -429,7 +429,7 @@ paths:
         200:
           description: OK
           schema:
-            $ref: '#/definitions/GroupDescribed'
+            $ref: '#/definitions/GroupDescribedWithPolicies'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -744,7 +744,7 @@ paths:
   /users/{user_name}/groups:
     get:
       summary: Get all current groups for user
-      description: Get all current groups for user. This only returns groups that are currently listed within the user's groups.
+      description: Get all current groups for user. This only returns groups that are currently listed within the user's groups. Group data includes a description, but not policies.
       tags:
       - users
       operationId: GetGroupsForUser
@@ -763,7 +763,7 @@ paths:
         200:
           description: 'OK'
           schema:
-            $ref: '#/definitions/Groups'
+            $ref: '#/definitions/GroupsDescribed'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -1141,16 +1141,23 @@ definitions:
       description:
         type: object
         $ref: '#/definitions/Description'
+        
+  GroupDescribedWithPolicies:
+    type: object
+    properties:
+      description:
+        type: object
+        $ref: '#/definitions/Description'
       policies:
         $ref: '#/definitions/PoliciesDescribed'
- 
-  Groups:
+        
+  GroupsDescribed:
     type: object
     properties:
       groups:
         type: array
         items:
-          type: string          
+          $ref: '#/definitions/GroupDescribed'
           
   Interval:
     type: object
