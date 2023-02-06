@@ -1134,8 +1134,23 @@ definitions:
       - code
       - message
       - errors
-      
+
+  Group:
+    description: group as represented in manifest replace/export operations
+    type: object
+    properties:
+      description:
+        type: string
+      policies:
+        type: array
+        items:
+          type: string
+    required:
+      - description
+      - policies
+        
   GroupDescribed:
+    description: group as reported when returning list of groups to user
     type: object
     properties:
       description:
@@ -1143,6 +1158,7 @@ definitions:
         $ref: '#/definitions/Description'
         
   GroupDescribedWithPolicies:
+    description: group description with full details of policies included
     type: object
     properties:
       description:
@@ -1186,7 +1202,11 @@ definitions:
       display_guides:
         type: object
         additionalProperties:
-          $ref: '#/definitions/DisplayGuide'       
+          $ref: '#/definitions/DisplayGuide'
+      groups:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/Group'       
       policies:
         type: object
         additionalProperties:
@@ -1563,11 +1583,11 @@ definitions:
         type: array
         items:
           type: string
-      old_bookings:
+      groups:
         type: array
         items:
           type: string
-      policies:
+      old_bookings:
         type: array
         items:
           type: string
