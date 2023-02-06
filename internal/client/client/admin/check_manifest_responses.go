@@ -23,6 +23,12 @@ type CheckManifestReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *CheckManifestReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
+	case 200:
+		result := NewCheckManifestOK()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return result, nil
 	case 204:
 		result := NewCheckManifestNoContent()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
@@ -52,6 +58,68 @@ func (o *CheckManifestReader) ReadResponse(response runtime.ClientResponse, cons
 	}
 }
 
+// NewCheckManifestOK creates a CheckManifestOK with default headers values
+func NewCheckManifestOK() *CheckManifestOK {
+	return &CheckManifestOK{}
+}
+
+/* CheckManifestOK describes a response with status code 200, with default header values.
+
+List of errors (e.g. errors in client-provided data such as manifest)
+*/
+type CheckManifestOK struct {
+	Payload *models.ErrorList
+}
+
+// IsSuccess returns true when this check manifest o k response has a 2xx status code
+func (o *CheckManifestOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this check manifest o k response has a 3xx status code
+func (o *CheckManifestOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this check manifest o k response has a 4xx status code
+func (o *CheckManifestOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this check manifest o k response has a 5xx status code
+func (o *CheckManifestOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this check manifest o k response a status code equal to that given
+func (o *CheckManifestOK) IsCode(code int) bool {
+	return code == 200
+}
+
+func (o *CheckManifestOK) Error() string {
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestOK  %+v", 200, o.Payload)
+}
+
+func (o *CheckManifestOK) String() string {
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestOK  %+v", 200, o.Payload)
+}
+
+func (o *CheckManifestOK) GetPayload() *models.ErrorList {
+	return o.Payload
+}
+
+func (o *CheckManifestOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(models.ErrorList)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
 // NewCheckManifestNoContent creates a CheckManifestNoContent with default headers values
 func NewCheckManifestNoContent() *CheckManifestNoContent {
 	return &CheckManifestNoContent{}
@@ -59,7 +127,7 @@ func NewCheckManifestNoContent() *CheckManifestNoContent {
 
 /* CheckManifestNoContent describes a response with status code 204, with default header values.
 
-OK
+OK - manifest is valid
 */
 type CheckManifestNoContent struct {
 }
@@ -233,10 +301,10 @@ func NewCheckManifestInternalServerError() *CheckManifestInternalServerError {
 
 /* CheckManifestInternalServerError describes a response with status code 500, with default header values.
 
-InternalError
+Internal Error
 */
 type CheckManifestInternalServerError struct {
-	Payload interface{}
+	Payload *models.Error
 }
 
 // IsSuccess returns true when this check manifest internal server error response has a 2xx status code
@@ -272,14 +340,16 @@ func (o *CheckManifestInternalServerError) String() string {
 	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestInternalServerError  %+v", 500, o.Payload)
 }
 
-func (o *CheckManifestInternalServerError) GetPayload() interface{} {
+func (o *CheckManifestInternalServerError) GetPayload() *models.Error {
 	return o.Payload
 }
 
 func (o *CheckManifestInternalServerError) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
+	o.Payload = new(models.Error)
+
 	// response payload
-	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
 		return err
 	}
 

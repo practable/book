@@ -17,7 +17,6 @@ import (
 // ActivityStream stream
 //
 // Represents an assigned, valid booking slot for an individual piece of equipment
-// Example: {"for":"video","token":"ey....","url":"https://relay-access.practable.io/session/abc123"}
 //
 // swagger:model ActivityStream
 type ActivityStream struct {

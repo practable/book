@@ -30,7 +30,7 @@ type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
-	AddPolicyForUser(params *AddPolicyForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AddPolicyForUserNoContent, error)
+	AddGroupForUser(params *AddGroupForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AddGroupForUserNoContent, error)
 
 	CancelBooking(params *CancelBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error
 
@@ -44,9 +44,11 @@ type ClientService interface {
 
 	GetDescription(params *GetDescriptionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetDescriptionOK, error)
 
-	GetOldBookingsForUser(params *GetOldBookingsForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOldBookingsForUserOK, error)
+	GetGroup(params *GetGroupParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetGroupOK, error)
 
-	GetPoliciesForUser(params *GetPoliciesForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetPoliciesForUserOK, error)
+	GetGroupsForUser(params *GetGroupsForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetGroupsForUserOK, error)
+
+	GetOldBookingsForUser(params *GetOldBookingsForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOldBookingsForUserOK, error)
 
 	GetPolicy(params *GetPolicyParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetPolicyOK, error)
 
@@ -62,24 +64,24 @@ type ClientService interface {
 }
 
 /*
-  AddPolicyForUser adds policy to user account
+  AddGroupForUser adds group to user account
 
-  Add policy to the list of policies with which this user is allowed to make bookings
+  Add group to the list of groups with which this user is allowed to make bookings
 */
-func (a *Client) AddPolicyForUser(params *AddPolicyForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AddPolicyForUserNoContent, error) {
+func (a *Client) AddGroupForUser(params *AddGroupForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AddGroupForUserNoContent, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
-		params = NewAddPolicyForUserParams()
+		params = NewAddGroupForUserParams()
 	}
 	op := &runtime.ClientOperation{
-		ID:                 "AddPolicyForUser",
+		ID:                 "AddGroupForUser",
 		Method:             "POST",
-		PathPattern:        "/users/{user_name}/policies/{policy_name}",
+		PathPattern:        "/users/{user_name}/groups/{group_name}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json", "text/plain"},
 		Schemes:            []string{"http"},
 		Params:             params,
-		Reader:             &AddPolicyForUserReader{formats: a.formats},
+		Reader:             &AddGroupForUserReader{formats: a.formats},
 		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
@@ -92,13 +94,13 @@ func (a *Client) AddPolicyForUser(params *AddPolicyForUserParams, authInfo runti
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*AddPolicyForUserNoContent)
+	success, ok := result.(*AddGroupForUserNoContent)
 	if ok {
 		return success, nil
 	}
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for AddPolicyForUser: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	msg := fmt.Sprintf("unexpected success response for AddGroupForUser: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -341,6 +343,88 @@ func (a *Client) GetDescription(params *GetDescriptionParams, authInfo runtime.C
 }
 
 /*
+  GetGroup gets group
+
+  Get fully described group, including described policies
+*/
+func (a *Client) GetGroup(params *GetGroupParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetGroupOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetGroupParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "GetGroup",
+		Method:             "GET",
+		PathPattern:        "/groups/{group_name}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetGroupReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetGroupOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for GetGroup: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  GetGroupsForUser gets all current groups for user
+
+  Get all current groups for user. This only returns groups that are currently listed within the user's groups. Group data includes a description, but not policies.
+*/
+func (a *Client) GetGroupsForUser(params *GetGroupsForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetGroupsForUserOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetGroupsForUserParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "GetGroupsForUser",
+		Method:             "GET",
+		PathPattern:        "/users/{user_name}/groups",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetGroupsForUserReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetGroupsForUserOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for GetGroupsForUser: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
   GetOldBookingsForUser gets all old bookings for the user
 
   Get all old bookings for the user. It's assumed that no pagination will be required due to likely policy limits including usage limits and users typically having only a couple of policies, although in practice pagination may be useful for heavy users.
@@ -378,47 +462,6 @@ func (a *Client) GetOldBookingsForUser(params *GetOldBookingsForUserParams, auth
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for GetOldBookingsForUser: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-  GetPoliciesForUser gets all current policies for user
-
-  Get all current policies for user
-*/
-func (a *Client) GetPoliciesForUser(params *GetPoliciesForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetPoliciesForUserOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewGetPoliciesForUserParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "GetPoliciesForUser",
-		Method:             "GET",
-		PathPattern:        "/users/{user_name}/policies",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json", "text/plain"},
-		Schemes:            []string{"http"},
-		Params:             params,
-		Reader:             &GetPoliciesForUserReader{formats: a.formats},
-		AuthInfo:           authInfo,
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		opt(op)
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*GetPoliciesForUserOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for GetPoliciesForUser: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

@@ -14,7 +14,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// Policy policy
+// Policy used in uploading manifests (only includes its own description by reference)
 //
 // swagger:model Policy
 type Policy struct {
