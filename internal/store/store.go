@@ -1412,7 +1412,7 @@ func (s *Store) GetPolicy(name string) (Policy, error) {
 	return s.getPolicy(name)
 }
 
-// GetGroupsFor returns a list of policies that a user has booked with
+// GetGroupsFor returns a list of groups that a user has access to
 func (s *Store) GetGroupsFor(user string) ([]string, error) {
 
 	where := "store.GetGroupsFor"

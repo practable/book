@@ -953,3 +953,63 @@ in api spec format:
     type: string
 
 ```
+
+
+There are no pools now - this needs updating 
+
+```mermaid
+erDiagram
+    POOL ||--o{ EQUIPMENT: accesses
+    EQUIPMENT {
+        string name
+    }
+    EQUIPMENT ||--|{ AVAILABILITY_POLICY : using 
+    AVAILABILITY_POLICY {
+        string name
+    }
+    AVAILABILITY_POLICY ||--o{ ALLOWED_INTERVAL : contains
+    ALLOWED_INTERVAL {
+        time nbf
+        time exp
+    }
+    AVAILABILITY_POLICY ||--o{ DENIED_INTERVAL : contains
+    DENIED_INTERVAL {
+        time nbf
+        time exp
+    }
+
+
+```
+tateDiagram-v2
+    [*] --> LocalStoreUserName 
+    LocalStoreUserName --> FetchUserName
+    FetchUserName --> AwaitUserNameResponse
+    AwaitUserNameResponse --> UserNameResponseError
+    AwaitUserNameResponse --> UserNameResponseOK
+    UserNameResponseError --> UserNameBackoffWait
+    UserNameBackoffWait --> FetchUserName
+    UserNameResponseOK --> FetchLoginToken
+    FetchLoginToken --> AwaitLoginTokenResponse
+    AwaitLoginTokenResponse --> LoginTokenResponseError
+    AwaitLoginTokenResponse --> LoginTokenResponseOK
+    LoginTokenResponseError --> LoginTokenBackoff
+    LoginTokenBackoff --> FetchLoginToken
+    LocalStoreUserName -->  FetchLoginToken
+    FetchLoginToken --> FetchGroups
+    FetchGroups --> AwaitFetchGroupsResponse
+    AwaitFetchGroupsResponse --> FetchGroupsResponseError
+    AwaitFetchGroupsResponse --> FetchGroupsResponseOK
+    FetchGroupsResponseError
+    GetGroups --> Wait
+	Wait --> GetGroupPolicies
+    GetGroupPolicies --> GetAvailability
+    GetAvailability --> CalculateSlots
+    CalculateSlots --> Wait
+    WaitRequestBooking
+    RequestBooking --> AwaitResponse
+    AwaitResponse --> OK
+    AwaitResponse --> Error
+
+    
+    Crash --> [*]
+```

@@ -2506,3 +2506,61 @@ func TestUniqueName(t *testing.T) {
 	// server_test.go:2447: {"user_name":"cf6loacbig7jff43q4vg"}
 
 }
+
+func TestGroups(t *testing.T) {
+
+	// test DOES depend on store state (whether user present)
+	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	setNow(s, ct)
+
+	_ = loadTestManifest(t)
+	removeAllBookings(t)
+	setLock(t, false, "unlocked")
+	sutoken, err := signedUserTokenFor("user-a") //to match bookings2JSON
+	assert.NoError(t, err)
+
+	// getGroups
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/users/user-a/groups", nil)
+	req.Header.Add("Authorization", sutoken)
+	assert.NoError(t, err)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 404, resp.StatusCode) //should be "not found"
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if debug {
+		t.Log(string(body))
+	}
+
+	// AddGroupForUser
+	client = &http.Client{}
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/users/user-a/groups/g-a", nil)
+	req.Header.Add("Authorization", sutoken)
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 204, resp.StatusCode) //should be OK No Content
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if debug {
+		t.Log(string(body))
+	}
+
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-a/groups", nil)
+	req.Header.Add("Authorization", sutoken)
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be OK
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if debug {
+		t.Log(string(body))
+	}
+	assert.Equal(t, `{"groups":[{"description":{"name":"group-a","short":"a","type":"group"}}]}`+"\n", string(body))
+
+	// TODO test DeleteGroup
+
+}
