@@ -45,11 +45,11 @@ example usage:
 export BOOK_CLIENT_TOKEN=$SECRET
 export BOOK_CLIENT_SCHEME=https
 export BOOK_CLIENT_HOST=example.org
-export BOOK_CLIENT_BASEPATH=/book/api/v1
+export BOOK_CLIENT_BASE_PATH=/book/api/v1
 export BOOK_CLIENT_FORMAT=YAML
 book manifest replace manifest.yaml
 
-The manifest must be in a file, default is json. Yaml not currently available
+The manifest must be in a file, default type is YAML.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 
@@ -57,7 +57,7 @@ The manifest must be in a file, default is json. Yaml not currently available
 		viper.AutomaticEnv()
 		viper.SetDefault("host", "localhost")
 		viper.SetDefault("scheme", "http")
-		viper.SetDefault("format", "json")
+		viper.SetDefault("format", "yaml")
 		viper.SetDefault("base_path", "/api/v1")
 
 		basePath := viper.GetString("base_path")

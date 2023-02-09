@@ -71,6 +71,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.UsersGetAvailabilityHandler = users.GetAvailabilityHandlerFunc(getAvailabilityHandler(config))
 	api.UsersGetBookingsForUserHandler = users.GetBookingsForUserHandlerFunc(getBookingsForUserHandler(config))
 	api.UsersGetDescriptionHandler = users.GetDescriptionHandlerFunc(getDescriptionHandler(config))
+	api.UsersGetGroupHandler = users.GetGroupHandlerFunc(getGroupHandler(config))
 	api.UsersGetOldBookingsForUserHandler = users.GetOldBookingsForUserHandlerFunc(getOldBookingsForUserHandler(config))
 	api.UsersGetGroupsForUserHandler = users.GetGroupsForUserHandlerFunc(getGroupsForUserHandler(config))
 	api.UsersGetPolicyHandler = users.GetPolicyHandlerFunc(getPolicyHandler(config))

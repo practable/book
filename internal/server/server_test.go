@@ -2547,6 +2547,7 @@ func TestGroups(t *testing.T) {
 		t.Log(string(body))
 	}
 
+	// get groups again
 	client = &http.Client{}
 	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/users/user-a/groups", nil)
 	req.Header.Add("Authorization", sutoken)
@@ -2560,6 +2561,35 @@ func TestGroups(t *testing.T) {
 		t.Log(string(body))
 	}
 	assert.Equal(t, `{"groups":[{"description":{"name":"group-a","short":"a","type":"group"}}]}`+"\n", string(body))
+
+	// Get group details
+	client = &http.Client{}
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/groups/g-a", nil)
+	req.Header.Add("Authorization", sutoken)
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be OK
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if debug {
+		t.Log(string(body))
+	}
+	assert.Equal(t, `{"description":{"name":"group-a","short":"a","type":"group"},"policies":[{"allow_start_in_past_within":"0s","book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","next_available":"0s","slots":["sl-a"],"starts_within":"0s"}]}`+"\n", string(body))
+
+	// Add nonexistent group - needs to return a 404 not 500
+	client = &http.Client{}
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/users/user-a/groups/neverheardofit", nil)
+	req.Header.Add("Authorization", sutoken)
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 404, resp.StatusCode) //should be OK No Content
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if debug {
+		t.Log(string(body))
+	}
 
 	// TODO test DeleteGroup
 

@@ -145,6 +145,126 @@ func getDescriptionHandler(config config.ServerConfig) func(users.GetDescription
 	}
 }
 
+// getGroupHandler
+func getGroupHandler(config config.ServerConfig) func(users.GetGroupParams, interface{}) middleware.Responder {
+	return func(params users.GetGroupParams, principal interface{}) middleware.Responder {
+
+		isAdmin, _, err := isAdminOrUser(principal)
+
+		if err != nil {
+			c := "401"
+			m := err.Error()
+			return users.NewGetGroupUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if config.Store.Locked && !isAdmin {
+			c := "401"
+			m := "store locked to users: " + config.Store.Message
+			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		if params.GroupName == "" {
+			c := "404"
+			m := "no group_name in path"
+			return users.NewGetGroupNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		g, err := config.Store.GetGroup(params.GroupName)
+
+		if err != nil {
+			c := "500"
+			m := err.Error()
+			return users.NewGetGroupInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		d := g.Description
+
+		gd := models.GroupDescribedWithPolicies{
+			Description: gog.Ptr(models.Description{
+				Name:    &d.Name,
+				Type:    &d.Type,
+				Short:   d.Short,
+				Long:    d.Long,
+				Further: d.Further,
+				Thumb:   d.Thumb,
+				Image:   d.Image,
+			}),
+		}
+
+		pms := models.PoliciesDescribed{}
+
+		for _, pn := range g.Policies {
+
+			p, err := config.Store.GetPolicy(pn)
+
+			if err != nil {
+				c := "500"
+				m := err.Error()
+				return users.NewGetGroupInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+
+			dgm := make(map[string]models.DisplayGuide)
+
+			for k, v := range p.DisplayGuidesMap {
+
+				dg := v // avoid pointers to last element problem
+
+				dgm[k] = models.DisplayGuide{
+					Duration:  gog.Ptr(store.HumaniseDuration(dg.Duration)),
+					MaxSlots:  gog.Ptr(int64(dg.MaxSlots)),
+					BookAhead: gog.Ptr(store.HumaniseDuration(dg.BookAhead)),
+					Label:     gog.Ptr(dg.Label),
+				}
+			}
+
+			descr, err := config.Store.GetDescription(p.Description)
+			if err != nil {
+				c := "500"
+				m := err.Error()
+				return users.NewGetGroupInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+
+			pm := models.PolicyDescribed{
+				AllowStartInPastWithin: store.HumaniseDuration(p.AllowStartInPastWithin),
+				BookAhead:              store.HumaniseDuration(p.BookAhead),
+				Description: gog.Ptr(models.Description{
+					Name:    &descr.Name,
+					Type:    &descr.Type,
+					Short:   descr.Short,
+					Long:    descr.Long,
+					Further: descr.Further,
+					Thumb:   descr.Thumb,
+					Image:   descr.Image,
+				}),
+				DisplayGuides:           dgm,
+				EnforceAllowStartInPast: p.EnforceAllowStartInPast,
+				EnforceBookAhead:        p.EnforceBookAhead,
+				EnforceMaxBookings:      p.EnforceMaxBookings,
+				EnforceMaxDuration:      p.EnforceMaxDuration,
+				EnforceMinDuration:      p.EnforceMinDuration,
+				EnforceMaxUsage:         p.EnforceMaxUsage,
+				EnforceNextAvailable:    p.EnforceNextAvailable,
+				EnforceStartsWithin:     p.EnforceStartsWithin,
+				EnforceUnlimitedUsers:   p.EnforceUnlimitedUsers,
+				MaxBookings:             p.MaxBookings,
+				MaxDuration:             store.HumaniseDuration(p.MaxDuration),
+				MinDuration:             store.HumaniseDuration(p.MinDuration),
+				MaxUsage:                store.HumaniseDuration(p.MaxUsage),
+				NextAvailable:           store.HumaniseDuration(p.NextAvailable),
+				Slots:                   p.Slots,
+				StartsWithin:            store.HumaniseDuration(p.StartsWithin),
+			}
+
+			pms = append(pms, &pm)
+		}
+
+		gd.Policies = pms
+
+		return users.NewGetGroupOK().WithPayload(&gd)
+
+	}
+}
+
 // getPolicytHandler
 func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, interface{}) middleware.Responder {
 	return func(params users.GetPolicyParams, principal interface{}) middleware.Responder {

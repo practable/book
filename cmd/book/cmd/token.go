@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/ory/viper"
-	"github.com/spf13/cobra"
 	"github.com/practable/book/internal/login"
+	"github.com/spf13/cobra"
 )
 
 // tokenCmd represents the token command
@@ -33,7 +33,7 @@ var tokenCmd = &cobra.Command{
 	Long: `Set the operating paramters with environment variables, for example
 
 export BOOK_CLIENT_SECRET=somesecret
-export BOOK_CLIENT_TOKEN_TTL=300
+export BOOK_CLIENT_TOKEN_TTL=5m
 export BOOK_CLIENT_TOKEN_ADMIN=true
 export BOOK_CLIENT_TOKEN_AUD=https://book.example.io
 export BOOK_CLIENT_TOKEN_SUB=someuser
