@@ -2575,7 +2575,7 @@ func TestGroups(t *testing.T) {
 	if debug {
 		t.Log(string(body))
 	}
-	assert.Equal(t, `{"description":{"name":"group-a","short":"a","type":"group"},"policies":[{"allow_start_in_past_within":"0s","book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","next_available":"0s","slots":["sl-a"],"starts_within":"0s"}]}`+"\n", string(body))
+	assert.Equal(t, `{"description":{"name":"group-a","short":"a","type":"group"},"policies":{"p-a":{"allow_start_in_past_within":"0s","book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","next_available":"0s","slots":["sl-a"],"starts_within":"0s"}}}`+"\n", string(body))
 
 	// Add nonexistent group - needs to return a 404 not 500
 	client = &http.Client{}

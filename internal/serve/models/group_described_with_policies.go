@@ -67,13 +67,15 @@ func (m *GroupDescribedWithPolicies) validatePolicies(formats strfmt.Registry) e
 		return nil
 	}
 
-	if err := m.Policies.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("policies")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("policies")
+	if m.Policies != nil {
+		if err := m.Policies.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("policies")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("policies")
+			}
+			return err
 		}
-		return err
 	}
 
 	return nil

@@ -1386,8 +1386,8 @@ definitions:
       - slots
      
   PoliciesDescribed:
-    type: array
-    items:
+    type: object
+    additionalProperties:
       $ref: '#/definitions/PolicyDescribed'
 
   PolicyStatus:

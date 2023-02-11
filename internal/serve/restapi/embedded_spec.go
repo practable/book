@@ -1739,8 +1739,8 @@ func init() {
       }
     },
     "PoliciesDescribed": {
-      "type": "array",
-      "items": {
+      "type": "object",
+      "additionalProperties": {
         "$ref": "#/definitions/PolicyDescribed"
       }
     },
@@ -4236,8 +4236,8 @@ func init() {
       }
     },
     "PoliciesDescribed": {
-      "type": "array",
-      "items": {
+      "type": "object",
+      "additionalProperties": {
         "$ref": "#/definitions/PolicyDescribed"
       }
     },

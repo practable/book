@@ -7,33 +7,32 @@ package models
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // PoliciesDescribed policies described
 //
 // swagger:model PoliciesDescribed
-type PoliciesDescribed []*PolicyDescribed
+type PoliciesDescribed map[string]PolicyDescribed
 
 // Validate validates this policies described
 func (m PoliciesDescribed) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	for i := 0; i < len(m); i++ {
-		if swag.IsZero(m[i]) { // not required
-			continue
-		}
+	for k := range m {
 
-		if m[i] != nil {
-			if err := m[i].Validate(formats); err != nil {
+		if err := validate.Required(k, "body", m[k]); err != nil {
+			return err
+		}
+		if val, ok := m[k]; ok {
+			if err := val.Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
+					return ve.ValidateName(k)
 				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(strconv.Itoa(i))
+					return ce.ValidateName(k)
 				}
 				return err
 			}
@@ -51,15 +50,10 @@ func (m PoliciesDescribed) Validate(formats strfmt.Registry) error {
 func (m PoliciesDescribed) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
-	for i := 0; i < len(m); i++ {
+	for k := range m {
 
-		if m[i] != nil {
-			if err := m[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(strconv.Itoa(i))
-				}
+		if val, ok := m[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
 				return err
 			}
 		}

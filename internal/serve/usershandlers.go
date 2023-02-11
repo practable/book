@@ -255,7 +255,7 @@ func getGroupHandler(config config.ServerConfig) func(users.GetGroupParams, inte
 				StartsWithin:            store.HumaniseDuration(p.StartsWithin),
 			}
 
-			pms = append(pms, &pm)
+			pms[pn] = pm
 		}
 
 		gd.Policies = pms
