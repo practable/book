@@ -7,52 +7,32 @@ package models
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // GroupsDescribed groups described
 //
 // swagger:model GroupsDescribed
-type GroupsDescribed struct {
-
-	// groups
-	Groups []*GroupDescribed `json:"groups"`
-}
+type GroupsDescribed map[string]GroupDescribed
 
 // Validate validates this groups described
-func (m *GroupsDescribed) Validate(formats strfmt.Registry) error {
+func (m GroupsDescribed) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateGroups(formats); err != nil {
-		res = append(res, err)
-	}
+	for k := range m {
 
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *GroupsDescribed) validateGroups(formats strfmt.Registry) error {
-	if swag.IsZero(m.Groups) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.Groups); i++ {
-		if swag.IsZero(m.Groups[i]) { // not required
-			continue
+		if err := validate.Required(k, "body", m[k]); err != nil {
+			return err
 		}
-
-		if m.Groups[i] != nil {
-			if err := m.Groups[i].Validate(formats); err != nil {
+		if val, ok := m[k]; ok {
+			if err := val.Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("groups" + "." + strconv.Itoa(i))
+					return ve.ValidateName(k)
 				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("groups" + "." + strconv.Itoa(i))
+					return ce.ValidateName(k)
 				}
 				return err
 			}
@@ -60,57 +40,28 @@ func (m *GroupsDescribed) validateGroups(formats strfmt.Registry) error {
 
 	}
 
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 
 // ContextValidate validate this groups described based on the context it is used
-func (m *GroupsDescribed) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+func (m GroupsDescribed) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.contextValidateGroups(ctx, formats); err != nil {
-		res = append(res, err)
-	}
+	for k := range m {
 
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *GroupsDescribed) contextValidateGroups(ctx context.Context, formats strfmt.Registry) error {
-
-	for i := 0; i < len(m.Groups); i++ {
-
-		if m.Groups[i] != nil {
-			if err := m.Groups[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("groups" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("groups" + "." + strconv.Itoa(i))
-				}
+		if val, ok := m[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
 				return err
 			}
 		}
 
 	}
 
-	return nil
-}
-
-// MarshalBinary interface implementation
-func (m *GroupsDescribed) MarshalBinary() ([]byte, error) {
-	if m == nil {
-		return nil, nil
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
 	}
-	return swag.WriteJSON(m)
-}
-
-// UnmarshalBinary interface implementation
-func (m *GroupsDescribed) UnmarshalBinary(b []byte) error {
-	var res GroupsDescribed
-	if err := swag.ReadJSON(b, &res); err != nil {
-		return err
-	}
-	*m = res
 	return nil
 }

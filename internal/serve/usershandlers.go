@@ -940,7 +940,7 @@ func getGroupsForUserHandler(config config.ServerConfig) func(users.GetGroupsFor
 			return users.NewGetGroupsForUserNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		var gm []*models.GroupDescribed
+		gm := make(map[string]models.GroupDescribed)
 
 		for _, v := range gs {
 
@@ -965,14 +965,10 @@ func getGroupsForUserHandler(config config.ServerConfig) func(users.GetGroupsFor
 					Image:   d.Image,
 				}),
 			}
-			gm = append(gm, &gd)
+			gm[v] = gd
 		}
 
-		gsd := models.GroupsDescribed{
-			Groups: gm,
-		}
-
-		return users.NewGetGroupsForUserOK().WithPayload(&gsd)
+		return users.NewGetGroupsForUserOK().WithPayload(gm)
 	}
 }
 

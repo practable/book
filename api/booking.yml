@@ -1169,12 +1169,9 @@ definitions:
         
   GroupsDescribed:
     type: object
-    properties:
-      groups:
-        type: array
-        items:
-          $ref: '#/definitions/GroupDescribed'
-          
+    additionalProperties:
+      $ref: '#/definitions/GroupDescribed'
+         
   Interval:
     type: object
     properties:

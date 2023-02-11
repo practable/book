@@ -1602,13 +1602,8 @@ func init() {
     },
     "GroupsDescribed": {
       "type": "object",
-      "properties": {
-        "groups": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/GroupDescribed"
-          }
-        }
+      "additionalProperties": {
+        "$ref": "#/definitions/GroupDescribed"
       }
     },
     "Interval": {
@@ -4104,13 +4099,8 @@ func init() {
     },
     "GroupsDescribed": {
       "type": "object",
-      "properties": {
-        "groups": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/GroupDescribed"
-          }
-        }
+      "additionalProperties": {
+        "$ref": "#/definitions/GroupDescribed"
       }
     },
     "Interval": {

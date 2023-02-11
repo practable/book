@@ -2560,7 +2560,7 @@ func TestGroups(t *testing.T) {
 	if debug {
 		t.Log(string(body))
 	}
-	assert.Equal(t, `{"groups":[{"description":{"name":"group-a","short":"a","type":"group"}}]}`+"\n", string(body))
+	assert.Equal(t, `{"g-a":{"description":{"name":"group-a","short":"a","type":"group"}}}`+"\n", string(body))
 
 	// Get group details
 	client = &http.Client{}
