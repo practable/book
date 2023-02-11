@@ -64,9 +64,6 @@ type MakeBookingParams struct {
 	// Format: date-time
 	From strfmt.DateTime
 
-	// PolicyName.
-	PolicyName string
-
 	// SlotName.
 	SlotName string
 
@@ -142,17 +139,6 @@ func (o *MakeBookingParams) SetFrom(from strfmt.DateTime) {
 	o.From = from
 }
 
-// WithPolicyName adds the policyName to the make booking params
-func (o *MakeBookingParams) WithPolicyName(policyName string) *MakeBookingParams {
-	o.SetPolicyName(policyName)
-	return o
-}
-
-// SetPolicyName adds the policyName to the make booking params
-func (o *MakeBookingParams) SetPolicyName(policyName string) {
-	o.PolicyName = policyName
-}
-
 // WithSlotName adds the slotName to the make booking params
 func (o *MakeBookingParams) WithSlotName(slotName string) *MakeBookingParams {
 	o.SetSlotName(slotName)
@@ -202,11 +188,6 @@ func (o *MakeBookingParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.R
 		if err := r.SetQueryParam("from", qFrom); err != nil {
 			return err
 		}
-	}
-
-	// path param policy_name
-	if err := r.SetPathParam("policy_name", o.PolicyName); err != nil {
-		return err
 	}
 
 	// path param slot_name

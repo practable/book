@@ -29,7 +29,7 @@ func NewMakeBooking(ctx *middleware.Context, handler MakeBookingHandler) *MakeBo
 	return &MakeBooking{Context: ctx, Handler: handler}
 }
 
-/* MakeBooking swagger:route POST /policies/{policy_name}/slots/{slot_name} users makeBooking
+/* MakeBooking swagger:route POST /slots/{slot_name} users makeBooking
 
 Request a booking
 

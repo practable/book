@@ -33,7 +33,7 @@ func NewGetGroup(ctx *middleware.Context, handler GetGroupHandler) *GetGroup {
 
 Get group
 
-Get fully described group, including described policies
+Get fully described group, including described policies, and described slots
 
 */
 type GetGroup struct {

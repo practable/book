@@ -44,11 +44,6 @@ type GetAvailabilityParams struct {
 	  Required: true
 	  In: path
 	*/
-	PolicyName string
-	/*
-	  Required: true
-	  In: path
-	*/
 	SlotName string
 }
 
@@ -70,11 +65,6 @@ func (o *GetAvailabilityParams) BindRequest(r *http.Request, route *middleware.M
 
 	qOffset, qhkOffset, _ := qs.GetOK("offset")
 	if err := o.bindOffset(qOffset, qhkOffset, route.Formats); err != nil {
-		res = append(res, err)
-	}
-
-	rPolicyName, rhkPolicyName, _ := route.Params.GetOK("policy_name")
-	if err := o.bindPolicyName(rPolicyName, rhkPolicyName, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -130,20 +120,6 @@ func (o *GetAvailabilityParams) bindOffset(rawData []string, hasKey bool, format
 		return errors.InvalidType("offset", "query", "int64", raw)
 	}
 	o.Offset = &value
-
-	return nil
-}
-
-// bindPolicyName binds and validates parameter PolicyName from path.
-func (o *GetAvailabilityParams) bindPolicyName(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	var raw string
-	if len(rawData) > 0 {
-		raw = rawData[len(rawData)-1]
-	}
-
-	// Required: true
-	// Parameter is provided by construction from the route
-	o.PolicyName = raw
 
 	return nil
 }

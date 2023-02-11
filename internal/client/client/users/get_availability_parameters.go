@@ -66,9 +66,6 @@ type GetAvailabilityParams struct {
 	// Offset.
 	Offset *int64
 
-	// PolicyName.
-	PolicyName string
-
 	// SlotName.
 	SlotName string
 
@@ -147,17 +144,6 @@ func (o *GetAvailabilityParams) SetOffset(offset *int64) {
 	o.Offset = offset
 }
 
-// WithPolicyName adds the policyName to the get availability params
-func (o *GetAvailabilityParams) WithPolicyName(policyName string) *GetAvailabilityParams {
-	o.SetPolicyName(policyName)
-	return o
-}
-
-// SetPolicyName adds the policyName to the get availability params
-func (o *GetAvailabilityParams) SetPolicyName(policyName string) {
-	o.PolicyName = policyName
-}
-
 // WithSlotName adds the slotName to the get availability params
 func (o *GetAvailabilityParams) WithSlotName(slotName string) *GetAvailabilityParams {
 	o.SetSlotName(slotName)
@@ -209,11 +195,6 @@ func (o *GetAvailabilityParams) WriteToRequest(r runtime.ClientRequest, reg strf
 				return err
 			}
 		}
-	}
-
-	// path param policy_name
-	if err := r.SetPathParam("policy_name", o.PolicyName); err != nil {
-		return err
 	}
 
 	// path param slot_name

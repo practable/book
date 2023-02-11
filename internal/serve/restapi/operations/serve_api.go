@@ -546,7 +546,7 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
-	o.handlers["GET"]["/policies/{policy_name}/slots/{slot_name}"] = users.NewGetAvailability(o.context, o.UsersGetAvailabilityHandler)
+	o.handlers["GET"]["/slots/{slot_name}"] = users.NewGetAvailability(o.context, o.UsersGetAvailabilityHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -582,7 +582,7 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
-	o.handlers["POST"]["/policies/{policy_name}/slots/{slot_name}"] = users.NewMakeBooking(o.context, o.UsersMakeBookingHandler)
+	o.handlers["POST"]["/slots/{slot_name}"] = users.NewMakeBooking(o.context, o.UsersMakeBookingHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

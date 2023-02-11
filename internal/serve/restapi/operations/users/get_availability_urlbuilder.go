@@ -16,8 +16,7 @@ import (
 
 // GetAvailabilityURL generates an URL for the get availability operation
 type GetAvailabilityURL struct {
-	PolicyName string
-	SlotName   string
+	SlotName string
 
 	Limit  *int64
 	Offset *int64
@@ -46,14 +45,7 @@ func (o *GetAvailabilityURL) SetBasePath(bp string) {
 func (o *GetAvailabilityURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/policies/{policy_name}/slots/{slot_name}"
-
-	policyName := o.PolicyName
-	if policyName != "" {
-		_path = strings.Replace(_path, "{policy_name}", policyName, -1)
-	} else {
-		return nil, errors.New("policyName is required on GetAvailabilityURL")
-	}
+	var _path = "/slots/{slot_name}"
 
 	slotName := o.SlotName
 	if slotName != "" {

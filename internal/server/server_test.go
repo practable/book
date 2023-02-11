@@ -1443,7 +1443,7 @@ func TestGetPolicy(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
-	expected := `{"allow_start_in_past_within":"0s","book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","next_available":"0s","slots":["sl-a"],"starts_within":"0s"}` + "\n"
+	expected := `{"allow_start_in_past_within":"0s","book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","next_available":"0s","slots":{"sl-a":{"description":{"name":"slot-a","short":"a","type":"slot"},"policy":"p-a"}},"starts_within":"0s"}` + "\n"
 	assert.Equal(t, expected, string(body))
 	resp.Body.Close()
 
@@ -1480,7 +1480,7 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	resp.Body.Close()
@@ -1502,7 +1502,7 @@ func TestGetAvailability(t *testing.T) {
 
 	// Try pagination using limit
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1525,7 +1525,7 @@ func TestGetAvailability(t *testing.T) {
 
 	// Try pagination using limit, checking specifying offset=0 works as expected
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1549,7 +1549,7 @@ func TestGetAvailability(t *testing.T) {
 
 	// Try pagination using limit, checking specifying offset=<n*limit> works as expected
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1572,7 +1572,7 @@ func TestGetAvailability(t *testing.T) {
 	resp.Body.Close()
 
 	client = &http.Client{}
-	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
+	req, err = http.NewRequest("GET", cfg.Host+"/api/v1/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -1622,7 +1622,7 @@ func TestMakeBooking(t *testing.T) {
 	resp.Body.Close()
 
 	client = &http.Client{}
-	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/policies/p-b/slots/sl-b", nil)
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/slots/sl-b", nil)
 	assert.NoError(t, err)
 	req.Header.Add("Authorization", sutoken)
 	// add query params
@@ -2168,7 +2168,7 @@ func TestLockedToUser(t *testing.T) {
 		return bc.Users.GetActivity(p, auth)
 	}
 	getAvailability := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
-		p := users.NewGetAvailabilityParams().WithTimeout(timeout).WithPolicyName("p-a").WithSlotName("sl-a")
+		p := users.NewGetAvailabilityParams().WithTimeout(timeout).WithSlotName("sl-a")
 		return bc.Users.GetAvailability(p, auth)
 	}
 
@@ -2268,7 +2268,6 @@ func TestLockedToUser(t *testing.T) {
 	makeBooking := func(bc *apiclient.Client, auth rt.ClientAuthInfoWriter) (interface{}, error) {
 		p := users.NewMakeBookingParams().
 			WithTimeout(timeout).
-			WithPolicyName("p-b").
 			WithSlotName("sl-b").
 			WithUserName("someuser").
 			WithFrom(strfmt.DateTime(time.Date(2022, 11, 5, 1, 0, 0, 0, time.UTC))).
@@ -2291,14 +2290,14 @@ func TestLockedToUser(t *testing.T) {
 		"GetPolicyLockedUserDenied":                  {locked, getPolicy, authUser, false, `[GET /policies/{policy_name}][401] getPolicyUnauthorized`},
 		"GetPolicyUnlockedAdminAllowed":              {unlocked, getPolicy, authAdmin, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
 		"GetPolicyUnlockedUserAllowed":               {unlocked, getPolicy, authUser, true, `[GET /policies/{policy_name}][200] getPolicyOK`},
-		"GetAvailabilityLockedAdminAllowed":          {locked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"GetAvailabilityLockedUserDenied":            {locked, getAvailability, authUser, false, `[GET /policies/{policy_name}/slots/{slot_name}][401] getAvailabilityUnauthorized`},
-		"GetAvailabilityUnlockedAdminAllowed":        {unlocked, getAvailability, authAdmin, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"GetAvailabilityUnlockedUserAllowed":         {unlocked, getAvailability, authUser, true, `[GET /policies/{policy_name}/slots/{slot_name}][200] getAvailabilityOK`},
-		"MakeBookingLockedAdminAllowed":              {locked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"MakeBookingLockedUserDenied":                {locked, makeBooking, authUser, false, `[POST /policies/{policy_name}/slots/{slot_name}][401] makeBookingUnauthorized`},
-		"MakeBookingUnlockedAdminAllowed":            {unlocked, makeBooking, authAdmin, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
-		"MakeBookingUnlockedUserAllowed":             {unlocked, makeBooking, authUser, true, `[POST /policies/{policy_name}/slots/{slot_name}][204] makeBookingNoContent`},
+		"GetAvailabilityLockedAdminAllowed":          {locked, getAvailability, authAdmin, true, `[GET /slots/{slot_name}][200] getAvailabilityOK`},
+		"GetAvailabilityLockedUserDenied":            {locked, getAvailability, authUser, false, `[GET /slots/{slot_name}][401] getAvailabilityUnauthorized`},
+		"GetAvailabilityUnlockedAdminAllowed":        {unlocked, getAvailability, authAdmin, true, `[GET /slots/{slot_name}][200] getAvailabilityOK`},
+		"GetAvailabilityUnlockedUserAllowed":         {unlocked, getAvailability, authUser, true, `[GET /slots/{slot_name}][200] getAvailabilityOK`},
+		"MakeBookingLockedAdminAllowed":              {locked, makeBooking, authAdmin, true, `[POST /slots/{slot_name}][204] makeBookingNoContent`},
+		"MakeBookingLockedUserDenied":                {locked, makeBooking, authUser, false, `[POST /slots/{slot_name}][401] makeBookingUnauthorized`},
+		"MakeBookingUnlockedAdminAllowed":            {unlocked, makeBooking, authAdmin, true, `[POST /slots/{slot_name}][204] makeBookingNoContent`},
+		"MakeBookingUnlockedUserAllowed":             {unlocked, makeBooking, authUser, true, `[POST /slots/{slot_name}][204] makeBookingNoContent`},
 		"GetStoreStatusUserLockedAdminAllowed":       {locked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
 		"GetStoreStatusUserLockedUserAllowed":        {locked, getStoreStatusUser, authUser, true, `[GET /users/status][200] getStoreStatusUserOK`},
 		"GetStoreStatusUserUnlockedAdminAllowed":     {unlocked, getStoreStatusUser, authAdmin, true, `[GET /users/status][200] getStoreStatusUserOK`},
@@ -2575,7 +2574,7 @@ func TestGroups(t *testing.T) {
 	if debug {
 		t.Log(string(body))
 	}
-	assert.Equal(t, `{"description":{"name":"group-a","short":"a","type":"group"},"policies":{"p-a":{"allow_start_in_past_within":"0s","book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","next_available":"0s","slots":["sl-a"],"starts_within":"0s"}}}`+"\n", string(body))
+	assert.Equal(t, `{"description":{"name":"group-a","short":"a","type":"group"},"policies":{"p-a":{"allow_start_in_past_within":"0s","book_ahead":"1h0m0s","description":{"name":"policy-a","short":"a","type":"policy"},"display_guides":{"1mFor20m":{"book_ahead":"20m0s","duration":"1m0s","label":"1m","max_slots":15}},"enforce_book_ahead":true,"max_duration":"0s","max_usage":"0s","min_duration":"0s","next_available":"0s","slots":{"sl-a":{"description":{"name":"slot-a","short":"a","type":"slot"},"policy":"p-a"}},"starts_within":"0s"}}}`+"\n", string(body))
 
 	// Add nonexistent group - needs to return a 404 not 500
 	client = &http.Client{}

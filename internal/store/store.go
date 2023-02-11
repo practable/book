@@ -1135,7 +1135,7 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 }
 
 // GetAvailability returns a list of intervals for which a given slot is available under a given policy, or an error if the slot or policy is not found. The policy contains aspects such as look-ahead which may limit the window of availability.
-func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error) {
+func (s *Store) GetAvailability(slot string) ([]interval.Interval, error) {
 
 	where := "store.GetAvailability"
 	log.Trace(where + " awaiting Rlock")
@@ -1146,29 +1146,22 @@ func (s *Store) GetAvailability(policy, slot string) ([]interval.Interval, error
 		log.Trace(where + " released Rlock")
 	}()
 
-	return s.getAvailability(policy, slot)
+	return s.getAvailability(slot)
 
 }
 
 // getAvailability is for internal use only (e.g. in MakeBooking)
-func (s *Store) getAvailability(policy, slot string) ([]interval.Interval, error) {
+func (s *Store) getAvailability(slot string) ([]interval.Interval, error) {
 
-	p, ok := s.Policies[policy]
-
-	if !ok {
-		return []interval.Interval{}, errors.New("policy " + policy + " not found")
-	}
-
-	_, ok = p.SlotMap[slot]
-
-	if !ok {
-		return []interval.Interval{}, errors.New("slot " + slot + " not in policy " + policy)
-	}
-
-	_, ok = s.Slots[slot]
+	sl, ok := s.Slots[slot]
 
 	if !ok {
 		return []interval.Interval{}, errors.New("slot " + slot + " not found")
+	}
+
+	p, ok := s.Policies[sl.Policy]
+	if !ok {
+		return []interval.Interval{}, errors.New("policy " + sl.Policy + " not found")
 	}
 
 	bk, err := s.getSlotBookings(slot)
@@ -1508,6 +1501,35 @@ func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
 	return ps, nil
 }
 
+// GetSlot returns a slot if found
+func (s *Store) GetSlot(name string) (Slot, error) {
+
+	where := "store.GetSlot"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
+	return s.getSlot(name)
+
+}
+
+// getSlot returns a slot if found
+// no lock - internal use only
+func (s *Store) getSlot(name string) (Slot, error) {
+
+	d, ok := s.Slots[name]
+
+	if !ok {
+		return Slot{}, errors.New("not found")
+	}
+
+	return d, nil
+}
+
 // GetSlotBookings gets bookings as far as ahead as the diary holds them
 // It's up to the caller to handle any pagination that might be required
 // Does not take a lock because the calling function(s) handles that
@@ -1675,7 +1697,7 @@ func HumaniseDuration(t time.Duration) string {
 // If a user does not exist, one is created.
 // APIs for users should call this version
 // do not use mutex, because it calls function that handles that
-func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (Booking, error) {
+func (s *Store) MakeBooking(slot, user string, when interval.Interval) (Booking, error) {
 	where := "store.MakeBooking"
 	log.Trace(where + " awaiting lock")
 	s.Lock()
@@ -1686,7 +1708,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 	}()
 	name := uuid.New().String()
 
-	b, err := s.makeBookingWithName(policy, slot, user, when, name, true) //check groups
+	b, err := s.makeBookingWithName(slot, user, when, name, true) //check groups
 
 	msg := "successful booking"
 
@@ -1694,7 +1716,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 		msg = "failed booking because " + err.Error()
 	}
 
-	log.WithFields(log.Fields{"policy": policy, "slot": slot, "user": user, "start": when.Start.String(), "end": when.End.String(), "name": name}).Info(msg)
+	log.WithFields(log.Fields{"slot": slot, "user": user, "start": when.Start.String(), "end": when.End.String(), "name": name}).Info(msg)
 
 	return b, err
 
@@ -1704,7 +1726,7 @@ func (s *Store) MakeBooking(policy, slot, user string, when interval.Interval) (
 // If a user does not exist, one is created.
 // The booking ID is set by the caller, so that bookings can be edited/replaced
 // This version should only be called by Admin users
-func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Interval, name string, checkGroup bool) (Booking, error) {
+func (s *Store) MakeBookingWithName(slot, user string, when interval.Interval, name string, checkGroup bool) (Booking, error) {
 	where := "store.MakeBookingWithName"
 	log.Trace(where + " awaiting lock")
 	s.Lock()
@@ -1714,7 +1736,7 @@ func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Int
 		log.Trace(where + " released lock")
 	}()
 
-	b, err := s.makeBookingWithName(policy, slot, user, when, name, checkGroup) //leave up to admin to enfore group membership on this booking (e.g. might be a one off booking that is not intended to confer future access to any policies
+	b, err := s.makeBookingWithName(slot, user, when, name, checkGroup) //leave up to admin to enfore group membership on this booking (e.g. might be a one off booking that is not intended to confer future access to any policies
 
 	msg := "successful booking"
 
@@ -1722,7 +1744,7 @@ func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Int
 		msg = "failed booking because " + err.Error()
 	}
 
-	log.WithFields(log.Fields{"policy": policy, "slot": slot, "user": user, "start": when.Start.String(), "end": when.End.String(), "name": name}).Info(msg)
+	log.WithFields(log.Fields{"slot": slot, "user": user, "start": when.Start.String(), "end": when.End.String(), "name": name}).Info(msg)
 
 	return b, err
 }
@@ -1736,26 +1758,26 @@ func (s *Store) MakeBookingWithName(policy, slot, user string, when interval.Int
 // checkGroup is for when replaceBookings is making bookings without reference to groups
 // e.g. for pre-making identities that can't be operated by the user, there is no need for groups because that would allow other bookings to be made
 // by the student, potentially
-func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Interval, name string, checkGroup bool) (Booking, error) {
+func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, name string, checkGroup bool) (Booking, error) {
 
-	p, ok := s.Policies[policy]
+	sl, ok := s.Slots[slot]
 
 	if !ok {
-		msg := "policy " + policy + " not found"
-		log.Warnf("makebooking: %s %s %s %v %s: %s", policy, slot, user, when, name, msg)
+		return Booking{}, errors.New("slot " + slot + " not found")
+	}
+
+	p, ok := s.Policies[sl.Policy]
+
+	if !ok {
+		msg := "policy " + sl.Policy + " not found"
+		log.Warnf("makebooking: %s %s %s %v %s: %s", sl.Policy, slot, user, when, name, msg)
 		return Booking{}, errors.New(msg)
 	}
 
 	_, ok = p.SlotMap[slot]
 
 	if !ok {
-		return Booking{}, errors.New("slot " + slot + " not in policy " + policy)
-	}
-
-	sl, ok := s.Slots[slot]
-
-	if !ok {
-		return Booking{}, errors.New("slot " + slot + " not found")
+		return Booking{}, errors.New("slot " + slot + " not in policy " + sl.Policy)
 	}
 
 	r, ok := s.Resources[sl.Resource]
@@ -1784,7 +1806,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 				}
 			}
 
-			if _, ok := pm[policy]; !ok {
+			if _, ok := pm[sl.Policy]; !ok {
 				return Booking{}, errors.New("user " + user + " belongs to no group that includes this policy")
 			}
 		}
@@ -1820,7 +1842,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 		cb := []string{}
 
 		for k, v := range u.Bookings {
-			if v.Policy == policy {
+			if v.Policy == sl.Policy {
 				cb = append(cb, k)
 			}
 		}
@@ -1832,7 +1854,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 				" current/future bookings which is at or exceeds the limit of " +
 				strconv.FormatInt(p.MaxBookings, 10) +
 				" for policy " +
-				policy)
+				sl.Policy)
 		}
 
 	}
@@ -1886,7 +1908,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 	if p.EnforceNextAvailable {
 
 		// check if booking is starting soon enough after the earliest current booking, or now, if there is no booking, if NextAvailable is enforced
-		a, err := s.getAvailability(policy, slot)
+		a, err := s.getAvailability(slot)
 
 		if err != nil {
 			return Booking{}, errors.New("enforcing next available policy setting failed because " + err.Error())
@@ -1907,7 +1929,7 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 	now = s.now() // return now to the current value in case we use it again and overlook that we have adjusted it in the checks above
 
 	// check for existing usage tracker for this policy?
-	_, ok = u.Usage[policy]
+	_, ok = u.Usage[sl.Policy]
 
 	if !ok { //create usage tracker (always track usage, even if not limited)
 		ut, err := time.ParseDuration("0s")
@@ -1917,12 +1939,12 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 				" because " +
 				err.Error())
 		}
-		u.Usage[policy] = &ut
+		u.Usage[sl.Policy] = &ut
 	}
 
 	duration := when.End.Sub(when.Start)
 
-	currentUsage := *u.Usage[policy]
+	currentUsage := *u.Usage[sl.Policy]
 	newUsage := currentUsage + duration
 
 	// Check if usage allowance sufficient
@@ -1964,12 +1986,12 @@ func (s *Store) makeBookingWithName(policy, slot, user string, when interval.Int
 	}
 
 	// successful (or skipped) booking, so update usage tracker with value we calculated earlier
-	u.Usage[policy] = &newUsage
+	u.Usage[sl.Policy] = &newUsage
 
 	booking := Booking{
 		Cancelled:   false,
 		Name:        name,
-		Policy:      policy,
+		Policy:      sl.Policy,
 		Slot:        slot,
 		Started:     false,
 		Unfulfilled: false,
@@ -2153,7 +2175,7 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 
 	// Now make the bookings, respecting policy and usage
 	for _, v := range bm {
-		_, err := s.makeBookingWithName(v.Policy, v.Slot, v.User, v.When, v.Name, false) //ignore group check on bookings
+		_, err := s.makeBookingWithName(v.Slot, v.User, v.When, v.Name, false) //ignore group check on bookings
 
 		lm := "successful booking"
 

@@ -96,11 +96,11 @@ func (o *MakeBookingNoContent) IsCode(code int) bool {
 }
 
 func (o *MakeBookingNoContent) Error() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingNoContent ", 204)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNoContent ", 204)
 }
 
 func (o *MakeBookingNoContent) String() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingNoContent ", 204)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNoContent ", 204)
 }
 
 func (o *MakeBookingNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -147,11 +147,11 @@ func (o *MakeBookingUnauthorized) IsCode(code int) bool {
 }
 
 func (o *MakeBookingUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingUnauthorized  %+v", 401, o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingUnauthorized  %+v", 401, o.Payload)
 }
 
 func (o *MakeBookingUnauthorized) String() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingUnauthorized  %+v", 401, o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingUnauthorized  %+v", 401, o.Payload)
 }
 
 func (o *MakeBookingUnauthorized) GetPayload() *models.Error {
@@ -209,11 +209,11 @@ func (o *MakeBookingNotFound) IsCode(code int) bool {
 }
 
 func (o *MakeBookingNotFound) Error() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingNotFound  %+v", 404, o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNotFound  %+v", 404, o.Payload)
 }
 
 func (o *MakeBookingNotFound) String() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingNotFound  %+v", 404, o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNotFound  %+v", 404, o.Payload)
 }
 
 func (o *MakeBookingNotFound) GetPayload() *models.Error {
@@ -271,11 +271,11 @@ func (o *MakeBookingConflict) IsCode(code int) bool {
 }
 
 func (o *MakeBookingConflict) Error() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingConflict  %+v", 409, o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingConflict  %+v", 409, o.Payload)
 }
 
 func (o *MakeBookingConflict) String() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingConflict  %+v", 409, o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingConflict  %+v", 409, o.Payload)
 }
 
 func (o *MakeBookingConflict) GetPayload() interface{} {
@@ -331,11 +331,11 @@ func (o *MakeBookingInternalServerError) IsCode(code int) bool {
 }
 
 func (o *MakeBookingInternalServerError) Error() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingInternalServerError  %+v", 500, o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingInternalServerError  %+v", 500, o.Payload)
 }
 
 func (o *MakeBookingInternalServerError) String() string {
-	return fmt.Sprintf("[POST /policies/{policy_name}/slots/{slot_name}][%d] makeBookingInternalServerError  %+v", 500, o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingInternalServerError  %+v", 500, o.Payload)
 }
 
 func (o *MakeBookingInternalServerError) GetPayload() *models.Error {

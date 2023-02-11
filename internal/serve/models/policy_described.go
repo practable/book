@@ -85,7 +85,7 @@ type PolicyDescribed struct {
 
 	// slots
 	// Required: true
-	Slots []string `json:"slots"`
+	Slots map[string]SlotDescribed `json:"slots"`
 
 	// starts within
 	StartsWithin string `json:"starts_within,omitempty"`
@@ -165,6 +165,24 @@ func (m *PolicyDescribed) validateSlots(formats strfmt.Registry) error {
 		return err
 	}
 
+	for k := range m.Slots {
+
+		if err := validate.Required("slots"+"."+k, "body", m.Slots[k]); err != nil {
+			return err
+		}
+		if val, ok := m.Slots[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("slots" + "." + k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("slots" + "." + k)
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 
@@ -177,6 +195,10 @@ func (m *PolicyDescribed) ContextValidate(ctx context.Context, formats strfmt.Re
 	}
 
 	if err := m.contextValidateDisplayGuides(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateSlots(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -207,6 +229,25 @@ func (m *PolicyDescribed) contextValidateDisplayGuides(ctx context.Context, form
 	for k := range m.DisplayGuides {
 
 		if val, ok := m.DisplayGuides[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *PolicyDescribed) contextValidateSlots(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := validate.Required("slots", "body", m.Slots); err != nil {
+		return err
+	}
+
+	for k := range m.Slots {
+
+		if val, ok := m.Slots[k]; ok {
 			if err := val.ContextValidate(ctx, formats); err != nil {
 				return err
 			}

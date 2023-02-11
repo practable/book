@@ -224,6 +224,36 @@ func getGroupHandler(config config.ServerConfig) func(users.GetGroupParams, inte
 				return users.NewGetGroupInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 			}
 
+			slm := make(map[string]models.SlotDescribed)
+
+			for _, sln := range p.Slots {
+				sl, err := config.Store.GetSlot(sln)
+				if err != nil {
+					c := "500"
+					m := err.Error()
+					return users.NewGetGroupInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+				}
+				d, err := config.Store.GetDescription(sl.Description)
+				if err != nil {
+					c := "500"
+					m := err.Error()
+					return users.NewGetGroupInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+				}
+				sld := models.SlotDescribed{
+					Description: gog.Ptr(models.Description{
+						Name:    &d.Name,
+						Type:    &d.Type,
+						Short:   d.Short,
+						Long:    d.Long,
+						Further: d.Further,
+						Thumb:   d.Thumb,
+						Image:   d.Image,
+					}),
+					Policy: gog.Ptr(sl.Policy),
+				}
+				slm[sln] = sld
+			}
+
 			pm := models.PolicyDescribed{
 				AllowStartInPastWithin: store.HumaniseDuration(p.AllowStartInPastWithin),
 				BookAhead:              store.HumaniseDuration(p.BookAhead),
@@ -251,7 +281,7 @@ func getGroupHandler(config config.ServerConfig) func(users.GetGroupParams, inte
 				MinDuration:             store.HumaniseDuration(p.MinDuration),
 				MaxUsage:                store.HumaniseDuration(p.MaxUsage),
 				NextAvailable:           store.HumaniseDuration(p.NextAvailable),
-				Slots:                   p.Slots,
+				Slots:                   slm,
 				StartsWithin:            store.HumaniseDuration(p.StartsWithin),
 			}
 
@@ -318,6 +348,36 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 			return users.NewGetPolicyInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
+		slm := make(map[string]models.SlotDescribed)
+
+		for _, sln := range p.Slots {
+			sl, err := config.Store.GetSlot(sln)
+			if err != nil {
+				c := "500"
+				m := err.Error()
+				return users.NewGetGroupInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+			d, err := config.Store.GetDescription(sl.Description)
+			if err != nil {
+				c := "500"
+				m := err.Error()
+				return users.NewGetGroupInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+			}
+			sld := models.SlotDescribed{
+				Description: gog.Ptr(models.Description{
+					Name:    &d.Name,
+					Type:    &d.Type,
+					Short:   d.Short,
+					Long:    d.Long,
+					Further: d.Further,
+					Thumb:   d.Thumb,
+					Image:   d.Image,
+				}),
+				Policy: gog.Ptr(sl.Policy),
+			}
+			slm[sln] = sld
+		}
+
 		pm := models.PolicyDescribed{
 			AllowStartInPastWithin: store.HumaniseDuration(p.AllowStartInPastWithin),
 			BookAhead:              store.HumaniseDuration(p.BookAhead),
@@ -345,7 +405,7 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 			MinDuration:             store.HumaniseDuration(p.MinDuration),
 			MaxUsage:                store.HumaniseDuration(p.MaxUsage),
 			NextAvailable:           store.HumaniseDuration(p.NextAvailable),
-			Slots:                   p.Slots,
+			Slots:                   slm,
 			StartsWithin:            store.HumaniseDuration(p.StartsWithin),
 		}
 
@@ -372,19 +432,13 @@ func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabili
 			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if params.PolicyName == "" {
-			c := "404"
-			m := "no policy_name in path"
-			return users.NewGetAvailabilityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
 		if params.SlotName == "" {
 			c := "404"
 			m := "no slot_name in path"
 			return users.NewGetAvailabilityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		when, err := config.Store.GetAvailability(params.PolicyName, params.SlotName)
+		when, err := config.Store.GetAvailability(params.SlotName)
 
 		if err != nil {
 			c := "500"
@@ -472,12 +526,6 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 			return users.NewMakeBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if params.PolicyName == "" {
-			c := "404"
-			m := "no policy_name in path"
-			return users.NewMakeBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
 		if params.SlotName == "" {
 			c := "404"
 			m := "no slot_name in path"
@@ -521,7 +569,7 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 
 		log.Debug(when)
 
-		_, err = config.Store.MakeBooking(params.PolicyName, params.SlotName, params.UserName, when)
+		_, err = config.Store.MakeBooking(params.SlotName, params.UserName, when)
 
 		if err != nil {
 			c := "404"

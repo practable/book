@@ -91,11 +91,11 @@ func (o *GetAvailabilityOK) IsCode(code int) bool {
 }
 
 func (o *GetAvailabilityOK) Error() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}/slots/{slot_name}][%d] getAvailabilityOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /slots/{slot_name}][%d] getAvailabilityOK  %+v", 200, o.Payload)
 }
 
 func (o *GetAvailabilityOK) String() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}/slots/{slot_name}][%d] getAvailabilityOK  %+v", 200, o.Payload)
+	return fmt.Sprintf("[GET /slots/{slot_name}][%d] getAvailabilityOK  %+v", 200, o.Payload)
 }
 
 func (o *GetAvailabilityOK) GetPayload() models.Intervals {
@@ -151,11 +151,11 @@ func (o *GetAvailabilityUnauthorized) IsCode(code int) bool {
 }
 
 func (o *GetAvailabilityUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}/slots/{slot_name}][%d] getAvailabilityUnauthorized  %+v", 401, o.Payload)
+	return fmt.Sprintf("[GET /slots/{slot_name}][%d] getAvailabilityUnauthorized  %+v", 401, o.Payload)
 }
 
 func (o *GetAvailabilityUnauthorized) String() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}/slots/{slot_name}][%d] getAvailabilityUnauthorized  %+v", 401, o.Payload)
+	return fmt.Sprintf("[GET /slots/{slot_name}][%d] getAvailabilityUnauthorized  %+v", 401, o.Payload)
 }
 
 func (o *GetAvailabilityUnauthorized) GetPayload() *models.Error {
@@ -213,11 +213,11 @@ func (o *GetAvailabilityNotFound) IsCode(code int) bool {
 }
 
 func (o *GetAvailabilityNotFound) Error() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}/slots/{slot_name}][%d] getAvailabilityNotFound  %+v", 404, o.Payload)
+	return fmt.Sprintf("[GET /slots/{slot_name}][%d] getAvailabilityNotFound  %+v", 404, o.Payload)
 }
 
 func (o *GetAvailabilityNotFound) String() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}/slots/{slot_name}][%d] getAvailabilityNotFound  %+v", 404, o.Payload)
+	return fmt.Sprintf("[GET /slots/{slot_name}][%d] getAvailabilityNotFound  %+v", 404, o.Payload)
 }
 
 func (o *GetAvailabilityNotFound) GetPayload() *models.Error {
@@ -275,11 +275,11 @@ func (o *GetAvailabilityInternalServerError) IsCode(code int) bool {
 }
 
 func (o *GetAvailabilityInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}/slots/{slot_name}][%d] getAvailabilityInternalServerError  %+v", 500, o.Payload)
+	return fmt.Sprintf("[GET /slots/{slot_name}][%d] getAvailabilityInternalServerError  %+v", 500, o.Payload)
 }
 
 func (o *GetAvailabilityInternalServerError) String() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}/slots/{slot_name}][%d] getAvailabilityInternalServerError  %+v", 500, o.Payload)
+	return fmt.Sprintf("[GET /slots/{slot_name}][%d] getAvailabilityInternalServerError  %+v", 500, o.Payload)
 }
 
 func (o *GetAvailabilityInternalServerError) GetPayload() *models.Error {

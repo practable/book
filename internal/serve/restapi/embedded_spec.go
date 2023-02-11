@@ -595,7 +595,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Get fully described group, including described policies",
+        "description": "Get fully described group, including described policies, and described slots",
         "produces": [
           "application/json"
         ],
@@ -712,7 +712,7 @@ func init() {
         }
       }
     },
-    "/policies/{policy_name}/slots/{slot_name}": {
+    "/slots/{slot_name}": {
       "get": {
         "security": [
           {
@@ -729,15 +729,9 @@ func init() {
         "tags": [
           "users"
         ],
-        "summary": "Get availability for the slot under the policy",
+        "summary": "Get availability for the slot",
         "operationId": "GetAvailability",
         "parameters": [
-          {
-            "type": "string",
-            "name": "policy_name",
-            "in": "path",
-            "required": true
-          },
           {
             "type": "string",
             "name": "slot_name",
@@ -792,12 +786,6 @@ func init() {
         "summary": "Request a booking",
         "operationId": "MakeBooking",
         "parameters": [
-          {
-            "type": "string",
-            "name": "policy_name",
-            "in": "path",
-            "required": true
-          },
           {
             "type": "string",
             "name": "slot_name",
@@ -1903,9 +1891,9 @@ func init() {
           "type": "string"
         },
         "slots": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/SlotDescribed"
           }
         },
         "starts_within": {
@@ -1981,6 +1969,21 @@ func init() {
           "type": "string"
         },
         "window": {
+          "type": "string"
+        }
+      }
+    },
+    "SlotDescribed": {
+      "type": "object",
+      "required": [
+        "description",
+        "policy"
+      ],
+      "properties": {
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "policy": {
           "type": "string"
         }
       }
@@ -2969,7 +2972,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Get fully described group, including described policies",
+        "description": "Get fully described group, including described policies, and described slots",
         "produces": [
           "application/json"
         ],
@@ -3113,7 +3116,7 @@ func init() {
         }
       }
     },
-    "/policies/{policy_name}/slots/{slot_name}": {
+    "/slots/{slot_name}": {
       "get": {
         "security": [
           {
@@ -3130,15 +3133,9 @@ func init() {
         "tags": [
           "users"
         ],
-        "summary": "Get availability for the slot under the policy",
+        "summary": "Get availability for the slot",
         "operationId": "GetAvailability",
         "parameters": [
-          {
-            "type": "string",
-            "name": "policy_name",
-            "in": "path",
-            "required": true
-          },
           {
             "type": "string",
             "name": "slot_name",
@@ -3202,12 +3199,6 @@ func init() {
         "summary": "Request a booking",
         "operationId": "MakeBooking",
         "parameters": [
-          {
-            "type": "string",
-            "name": "policy_name",
-            "in": "path",
-            "required": true
-          },
           {
             "type": "string",
             "name": "slot_name",
@@ -4400,9 +4391,9 @@ func init() {
           "type": "string"
         },
         "slots": {
-          "type": "array",
-          "items": {
-            "type": "string"
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/SlotDescribed"
           }
         },
         "starts_within": {
@@ -4478,6 +4469,21 @@ func init() {
           "type": "string"
         },
         "window": {
+          "type": "string"
+        }
+      }
+    },
+    "SlotDescribed": {
+      "type": "object",
+      "required": [
+        "description",
+        "policy"
+      ],
+      "properties": {
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "policy": {
           "type": "string"
         }
       }

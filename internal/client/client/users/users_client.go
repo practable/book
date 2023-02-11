@@ -220,7 +220,7 @@ func (a *Client) GetActivity(params *GetActivityParams, authInfo runtime.ClientA
 }
 
 /*
-  GetAvailability gets availability for the slot under the policy
+  GetAvailability gets availability for the slot
 
   Pagination is supported by the limit and offset parameters. For the first query '?limit=20&offset=0', the second '?limit=20&offset=20'. The offset is equal to the zero-indexed value of the first item of the next page to be returned (20 items are indexed from 0 to 19, so 20 is the first item to be returned in the second page). Note that drift can occur if slots are booked during the sending of availability data, potentially preventing a user from seeing some slots that move earlier in the index and cross a pagination boundary. Users should refresh their results from 0 offset on a regular-ish basis if they wish to avoid this.
 */
@@ -232,7 +232,7 @@ func (a *Client) GetAvailability(params *GetAvailabilityParams, authInfo runtime
 	op := &runtime.ClientOperation{
 		ID:                 "GetAvailability",
 		Method:             "GET",
-		PathPattern:        "/policies/{policy_name}/slots/{slot_name}",
+		PathPattern:        "/slots/{slot_name}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},
@@ -345,7 +345,7 @@ func (a *Client) GetDescription(params *GetDescriptionParams, authInfo runtime.C
 /*
   GetGroup gets group
 
-  Get fully described group, including described policies
+  Get fully described group, including described policies, and described slots
 */
 func (a *Client) GetGroup(params *GetGroupParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetGroupOK, error) {
 	// TODO: Validate the params before sending
@@ -560,7 +560,7 @@ func (a *Client) MakeBooking(params *MakeBookingParams, authInfo runtime.ClientA
 	op := &runtime.ClientOperation{
 		ID:                 "MakeBooking",
 		Method:             "POST",
-		PathPattern:        "/policies/{policy_name}/slots/{slot_name}",
+		PathPattern:        "/slots/{slot_name}",
 		ProducesMediaTypes: []string{"application/json"},
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"http"},

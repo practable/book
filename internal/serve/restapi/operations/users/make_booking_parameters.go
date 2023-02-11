@@ -41,11 +41,6 @@ type MakeBookingParams struct {
 	  Required: true
 	  In: path
 	*/
-	PolicyName string
-	/*
-	  Required: true
-	  In: path
-	*/
 	SlotName string
 	/*
 	  Required: true
@@ -72,11 +67,6 @@ func (o *MakeBookingParams) BindRequest(r *http.Request, route *middleware.Match
 
 	qFrom, qhkFrom, _ := qs.GetOK("from")
 	if err := o.bindFrom(qFrom, qhkFrom, route.Formats); err != nil {
-		res = append(res, err)
-	}
-
-	rPolicyName, rhkPolicyName, _ := route.Params.GetOK("policy_name")
-	if err := o.bindPolicyName(rPolicyName, rhkPolicyName, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -137,20 +127,6 @@ func (o *MakeBookingParams) validateFrom(formats strfmt.Registry) error {
 	if err := validate.FormatOf("from", "query", "date-time", o.From.String(), formats); err != nil {
 		return err
 	}
-	return nil
-}
-
-// bindPolicyName binds and validates parameter PolicyName from path.
-func (o *MakeBookingParams) bindPolicyName(rawData []string, hasKey bool, formats strfmt.Registry) error {
-	var raw string
-	if len(rawData) > 0 {
-		raw = rawData[len(rawData)-1]
-	}
-
-	// Required: true
-	// Parameter is provided by construction from the route
-	o.PolicyName = raw
-
 	return nil
 }
 
