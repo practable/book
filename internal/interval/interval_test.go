@@ -144,10 +144,10 @@ func TestInvert(t *testing.T) {
 		Interval{Start: a.End.Add(time.Nanosecond), End: b.Start.Add(-time.Nanosecond)},
 		Interval{Start: b.End.Add(time.Nanosecond), End: c.Start.Add(-time.Nanosecond)},
 		Interval{Start: c.End.Add(time.Nanosecond), End: d.Start.Add(-time.Nanosecond)},
-		Interval{Start: d.End.Add(time.Nanosecond), End: Infinity},
+		Interval{Start: d.End.Add(time.Nanosecond), End: DistantFuture},
 	}
 
-	assert.Equal(t, inverted, expected)
+	assert.Equal(t, expected, inverted)
 
 }
 
@@ -178,7 +178,7 @@ func TestInvertOverlapping(t *testing.T) {
 		Interval{Start: a.End.Add(time.Nanosecond), End: b.Start.Add(-time.Nanosecond)},
 		//skip b.End, c.Start because within overlapped allow intervals
 		Interval{Start: c.End.Add(time.Nanosecond), End: d.Start.Add(-time.Nanosecond)},
-		Interval{Start: d.End.Add(time.Nanosecond), End: Infinity},
+		Interval{Start: d.End.Add(time.Nanosecond), End: DistantFuture},
 	}
 
 	assert.Equal(t, inverted, expected)
@@ -281,4 +281,53 @@ func TestMergeSameStart(t *testing.T) {
 	}
 
 	assert.Equal(t, merged, expected)
+}
+
+func TestMergeLargeAndSmall(t *testing.T) {
+
+	now := time.Now()
+
+	large := Interval{
+		Start: now.Add(-100000 * time.Hour),
+		End:   now.Add(Century),
+	}
+
+	small0 := Interval{
+		Start: now,
+		End:   now.Add(time.Minute),
+	}
+	small1 := Interval{
+		Start: now.Add(2 * time.Minute),
+		End:   now.Add(3 * time.Minute),
+	}
+
+	list := []Interval{large, small0, small1}
+	sorted := []Interval{large, small0, small1}
+	Sort(&sorted)
+
+	assert.Equal(t, list, sorted)
+
+	merged := Merge([]Interval{large, small0, small1})
+	assert.Equal(t, []Interval{large}, merged)
+
+	merged = Merge([]Interval{small0, small1, large})
+	assert.Equal(t, []Interval{large}, merged)
+
+	merged = Merge([]Interval{large, small0})
+	assert.Equal(t, []Interval{large}, merged)
+
+	large = Interval{
+		Start: ZeroTime,
+		End:   Infinity,
+	}
+
+	merged = Merge([]Interval{large, small0, small1})
+	assert.Equal(t, []Interval{large}, merged)
+
+	merged = Merge([]Interval{small0, small1, large})
+	assert.Equal(t, []Interval{large}, merged)
+
+	merged = Merge([]Interval{large, small0})
+	assert.Equal(t, []Interval{large}, merged)
+
 }

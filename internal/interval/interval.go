@@ -11,6 +11,7 @@ import (
 var ZeroTime = time.Unix(0, 0)
 var Infinity = time.Unix(1<<63-62135596801, 999999999)
 var Century = time.Duration(100 * 365 * 24 * time.Hour)
+var DistantFuture = ZeroTime.Add(2 * Century)
 
 type Interval struct {
 	Start time.Time `json:"start" yaml:"start"`
@@ -81,8 +82,11 @@ func Merge(intervals []Interval) []Interval {
 		if next.Start.After(last.End) { // normal case
 			merged = append(merged, next)
 
-		} else { // overlapping, so extend last interval
-			last.End = next.End
+		} else { // overlapping
+			if next.End.After(last.End) {
+				last.End = next.End //extend the existing interval
+			}
+			//else ignore the smaller interval
 		}
 	}
 	return merged
@@ -114,7 +118,7 @@ func Invert(intervals []Interval) []Interval {
 
 	// set the end of the last deny interval to infinity
 	p := &inverted[len(inverted)-1]
-	p.End = Infinity
+	p.End = DistantFuture
 
 	return inverted
 

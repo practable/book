@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -1170,14 +1171,35 @@ func (s *Store) getAvailability(slot string) ([]interval.Interval, error) {
 		return []interval.Interval{}, err
 	}
 
+	// strip the intervals from the bookings
+	bi := []interval.Interval{}
+
+	for _, b := range bk {
+		bi = append(bi, b.When)
+	}
+
+	// get pointer to filter for policy
+	fp, ok := s.Filters[sl.Window]
+
+	if !ok {
+		return []interval.Interval{}, errors.New("cannot find filter for window " + sl.Window + " in slot " + slot)
+	}
+
+	dl := fp.Export()
+
+	// merge bookings with the times that are blocked by the policy
+	unavailable := interval.Merge(append(bi, dl...))
+
 	start := s.now()
-	end := s.now().Add(interval.Century) //interval.Infinity causes parsing problems in API, so choose something saner (from a parsing point of view)
+
+	end := interval.DistantFuture //interval.Infinity causes parsing problems in API, so choose something saner (from a parsing point of view)
 
 	if p.EnforceBookAhead {
+		fmt.Println()
 		end = start.Add(p.BookAhead)
 	}
 
-	if len(bk) == 0 { // no bookings
+	if len(unavailable) == 0 { // no bookings, no blocked periods
 		a := []interval.Interval{
 			interval.Interval{
 				Start: start,
@@ -1188,7 +1210,7 @@ func (s *Store) getAvailability(slot string) ([]interval.Interval, error) {
 		return a, nil
 	}
 
-	fa := availability(bk, start, end)
+	fa := availability(unavailable, start, end)
 
 	return fa, nil
 
@@ -2578,15 +2600,8 @@ func (s *Store) validateBooking(booking Booking) error {
 
 // Operations not on the store
 
-// availability returns a slice of available intervals between start and end, given a set of bookings
-func availability(bk []diary.Booking, start, end time.Time) []interval.Interval {
-
-	// strip the intervals from the bookings
-	bi := []interval.Interval{}
-
-	for _, b := range bk {
-		bi = append(bi, b.When)
-	}
+// availability returns a slice of available intervals between start and end, given a set of unavailable intervals
+func availability(bi []interval.Interval, start, end time.Time) []interval.Interval {
 
 	// interval.Invert merges and sort intervals
 	// so we don't need to check for overlaps and ordering
@@ -2607,20 +2622,19 @@ func availability(bk []diary.Booking, start, end time.Time) []interval.Interval 
 			continue
 		}
 
+		// A single large interval could overlap both start and end!
+
 		//trim an interval if it overlaps start
 		if i.Start.Before(start) {
-			fa = append(fa, interval.Interval{
-				Start: start,
-				End:   i.End,
-			})
-		} else if i.End.After(end) { //trim an interval if it overlaps end
-			fa = append(fa, interval.Interval{
-				Start: i.Start,
-				End:   end,
-			})
-		} else { // ok interval, append it
-			fa = append(fa, i)
+			i.Start = start
 		}
+
+		//trim an interval if it overlaps end
+		if i.End.After(end) {
+			i.End = end
+		}
+
+		fa = append(fa, i)
 	}
 
 	return fa

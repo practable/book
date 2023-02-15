@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/practable/book/internal/interval"
+	"github.com/stretchr/testify/assert"
 )
 
 // Graphical representation of the intervals used in this test (a = allowed, d = denied, s = session to try)
@@ -29,8 +29,10 @@ import (
 //                       34 38                              82    86                           163     168
 //                       |s3|                               |--s6-|                            |--s11--|
 //
-
-var w = time.Now()
+// The resulting list of denied regions (Dn) is
+//0               30  35     42                60+1ns                120      150           161      180+1ns
+//|-----D0--------|   |--D1--|                 |---------D2-----------|        |----D3-------|       |----D4-----> infinity
+var w = time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 
 var a0 = interval.Interval{
 	Start: w.Add(20 * time.Second),
@@ -177,4 +179,109 @@ func TestFilter(t *testing.T) {
 	assert.False(t, f.Allowed(s9))
 	assert.False(t, f.Allowed(s10))
 	assert.True(t, f.Allowed(s11))
+
+	dl := f.Export()
+	exp := []interval.Interval{
+		interval.Interval{
+			Start: interval.ZeroTime,
+			End:   w.Add(30 * time.Second),
+		},
+		interval.Interval{
+			Start: w.Add(35 * time.Second),
+			End:   w.Add(42 * time.Second),
+		},
+		interval.Interval{
+			Start: w.Add(60 * time.Second).Add(time.Nanosecond),
+			End:   w.Add(120 * time.Second).Add(-time.Nanosecond),
+		},
+		interval.Interval{
+			Start: w.Add(150 * time.Second),
+			End:   w.Add(161 * time.Second),
+		},
+		interval.Interval{
+			Start: w.Add(180 * time.Second).Add(time.Nanosecond),
+			End:   interval.DistantFuture,
+		},
+	}
+
+	// to help with debugging test
+	assert.Equal(t, exp[0], dl[0])
+	assert.Equal(t, exp[1], dl[1])
+	assert.Equal(t, exp[2], dl[2])
+	assert.Equal(t, exp[3], dl[3])
+	assert.Equal(t, exp[4], dl[4])
+
+	assert.Equal(t, exp, dl)
+}
+
+// The resulting list of denied regions (Dn) is
+//                         30  35     42     60+1ns                120       150           161      180+1ns
+//ZeroTime <-----D0--------|   |--D1--|      |---------D2-----------|        |----D3-------|       |----D4-----> infinity
+
+func TestExport(t *testing.T) {
+
+	f := New()
+
+	d := f.Export()
+
+	forever := []interval.Interval{interval.Interval{
+		Start: interval.ZeroTime,
+		End:   interval.DistantFuture,
+	}}
+
+	assert.Equal(t, forever, d)
+
+	err := f.SetAllowed([]interval.Interval{a0})
+	assert.NoError(t, err)
+
+	d = f.Export()
+
+	assert.Equal(t, []interval.Interval{interval.Interval{
+		Start: interval.ZeroTime,
+		End:   a0.Start.Add(-time.Nanosecond),
+	}, interval.Interval{
+		Start: a0.End.Add(time.Nanosecond),
+		End:   interval.DistantFuture,
+	}}, d)
+
+	err = f.SetDenied([]interval.Interval{d2})
+	assert.NoError(t, err)
+	d = f.Export()
+	assert.Equal(t, []interval.Interval{interval.Interval{
+		Start: interval.ZeroTime,
+		End:   a0.Start.Add(-time.Nanosecond),
+	}, interval.Interval{
+		Start: d2.Start,
+		End:   d2.End,
+	}, interval.Interval{
+		Start: a0.End.Add(time.Nanosecond),
+		End:   interval.DistantFuture,
+	}}, d)
+
+	f = New()
+
+	err = f.SetDenied([]interval.Interval{d0, d1, d2}) //same as before, except some redundant deny periods
+	assert.NoError(t, err)
+	d = f.Export()
+	assert.Equal(t, forever, d) //adding deny intervals in the absence of allowed intervals just results in no change to the default "forever" deny interval
+
+	f = New()
+
+	err = f.SetAllowed([]interval.Interval{a0})
+	assert.NoError(t, err)
+
+	err = f.SetDenied([]interval.Interval{d0, d2}) //same as before, except a redundant deny periods
+	assert.NoError(t, err)
+	d = f.Export()
+	assert.Equal(t, []interval.Interval{interval.Interval{
+		Start: interval.ZeroTime,
+		End:   a0.Start.Add(-time.Nanosecond),
+	}, interval.Interval{
+		Start: d2.Start,
+		End:   d2.End,
+	}, interval.Interval{
+		Start: a0.End.Add(time.Nanosecond),
+		End:   interval.DistantFuture,
+	}}, d)
+
 }

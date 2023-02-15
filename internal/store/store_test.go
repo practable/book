@@ -396,6 +396,404 @@ windows:
       end: 2022-11-06T00:00:00Z
     denied: []`)
 
+var manifestYAML2 = []byte(`---
+descriptions:
+  d-g-everyone:
+    name: Everyone
+    type: group
+    short: A selection of experiments for any user
+  d-g-engdes1-lab:
+    name: Engineering Design 1 Laboratories
+    type: group
+    short: Access to experiments during scheduled Engineering Design 1 laboratory sessions
+  d-p-everyone-pend:
+    name: Pendulums (Everyone)
+    type: policy
+    short: Pendulums for everyone
+  d-p-everyone-trus:
+    name: Trusses (Everyone)
+    type: policy
+    short: Trusses for everyone
+  d-p-engdes1-lab-pend:
+    name: Pendulums (EngDes1)
+    type: policy
+    short: Pendulums for Engineering Design 1 Laboratories
+  d-p-engdes1-lab-spin:
+    name: Spinners (EngDes1)
+    type: policy
+    short: Spinners for Engineering Design 1 Laboratories    
+  d-r-pendulum-standard:
+    name: Pendulum (Std)
+    type: resource
+    short: An electromagnetically-driven pendulum (standard configuration)
+  d-r-spinner-weight-a:
+    name: Spinner (Weight A)
+    type: resource
+    short: PID-controlled spinner with weight A
+  d-r-spinner-weight-b:
+    name: Spinner (Weight B)
+    type: resource
+    short: PID-controlled spinner with weight B
+  d-r-spinner-weight-c:
+    name: Spinner (Weight C)
+    type: resource
+    short: PID-controlled spinner with weight C
+  d-r-spinner-weight-d:
+    name: Spinner (Weight D)
+    type: resource
+    short: PID-controlled spinner with weight D
+  d-r-truss-medium:
+    name: Truss (Medium)
+    type: resource
+    short: Medium size truss with linear actuator and strain gauges
+  d-sl-everyone-pend00:
+    name: Pendulum 00 (Everyone)
+    type: slot
+    short: An electromagnetically-driven simple pendulum
+    image: https://dev.practable.io/static/images/booking/slots/penduino-real-1.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/penduino-real-1.0/thumb.png 
+  d-sl-everyone-pend01:
+    name: Pendulum 01 (Everyone)
+    type: slot
+    short: An electromagnetically-driven simple pendulum
+    image: https://dev.practable.io/static/images/booking/slots/penduino-real-1.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/penduino-real-1.0/thumb.png 
+  d-sl-everyone-trus00:
+    name: Truss 00 (Everyone)
+    type: slot
+    short: A six-member truss with linear actuator and strain gauges
+    image: https://dev.practable.io/static/images/booking/slots/truss-real-1.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/truss-real-1.0/thumb.png 
+  d-sl-everyone-trus01:
+    name: Truss 01 (Everyone)
+    type: slot
+    short: A six-member truss with linear actuator and strain gauges
+    image: https://dev.practable.io/static/images/booking/slots/truss-real-1.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/truss-real-1.0/thumb.png 
+  d-sl-engdes1-lab-pend00:
+    name: Pendulum 00 (EngDes1 Lab)
+    type: slot
+    short: An electromagnetically-driven simple pendulum
+    image: https://dev.practable.io/static/images/booking/slots/penduino-real-1.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/penduino-real-1.0/thumb.png 
+  d-sl-engdes1-lab-pend01:
+    name: Pendulum 01 (EngDes1 Lab)
+    type: slot
+    short: An electromagnetically-driven simple pendulum
+    image: https://dev.practable.io/static/images/booking/slots/penduino-real-1.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/penduino-real-1.0/thumb.png 
+  d-sl-engdes1-lab-spin30:
+    name: Spinner 30 (A) (EngDes1 Lab)
+    type: slot
+    short: A PID-controlled brushed motor with Weight A
+    image: https://dev.practable.io/static/images/booking/slots/spinner-real-2.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/spinner-real-2.0/thumb.png    
+  d-sl-engdes1-lab-spin31:
+    name: Spinner 31 (B) (EngDes1 Lab)
+    type: slot
+    short: A PID-controlled brushed motor with Weight B
+    image: https://dev.practable.io/static/images/booking/slots/spinner-real-2.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/spinner-real-2.0/thumb.png 
+  d-sl-engdes1-lab-spin32:
+    name: Spinner 32 (C) (EngDes1 Lab)
+    type: slot
+    short: A PID-controlled brushed motor with Weight C
+    image: https://dev.practable.io/static/images/booking/slots/spinner-real-2.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/spinner-real-2.0/thumb.png 
+  d-sl-engdes1-lab-spin33:
+    name: Spinner 33 (D) (EngDes1 Lab)
+    type: slot
+    short: A PID-controlled brushed motor with Weight D
+    image: https://dev.practable.io/static/images/booking/slots/spinner-real-2.0/image.png
+    thumb: https://dev.practable.io/static/images/booking/slots/spinner-real-2.0/thumb.png 
+  d-ui-pend-student:
+    name: Pendulum (Student)
+    type: ui
+    short: Pendulum UI for student use    
+  d-ui-spin-student:
+    name: Spinner (Student)
+    type: ui
+    short: Spinner UI for student use
+  d-ui-trus-student:
+    name: Truss (Student)
+    type: ui
+    short: Truss UI for student use
+display_guides:
+  5mFor20m:
+    book_ahead: 20m
+    duration: 5m
+    max_slots: 10
+    label: 5 min 
+  15mFor1h:
+    book_ahead: 1h
+    duration: 15m
+    max_slots: 10
+    label: 15 min
+  30mFor2h:
+    book_ahead: 2h
+    duration: 30m
+    max_slots: 10
+    label: 30 min
+  1hFor2h:
+    book_ahead: 2h
+    duration: 1h
+    max_slots: 10
+    label: 1 hour    
+groups:
+  g-everyone:
+    description: d-g-everyone
+    policies:
+      - p-everyone-pend
+      - p-everyone-trus
+  g-engdes1-lab:
+    description: d-g-engdes1-lab
+    policies:
+      - p-engdes1-lab-pend
+      - p-engdes1-lab-spin
+policies:
+  p-everyone-pend:
+    book_ahead: 2h0m0s
+    description: d-p-everyone-pend
+    display_guides:
+      - 5mFor20m
+      - 15mFor1h
+    enforce_book_ahead: true
+    slots:
+      - sl-everyone-pend00
+      - sl-everyone-pend01
+  p-everyone-trus:
+    description: d-p-everyone-trus
+    display_guides:
+      - 5mFor20m
+      - 15mFor1h
+    slots:
+      - sl-everyone-trus00
+      - sl-everyone-trus01
+  p-engdes1-lab-pend:
+    description: d-p-engdes1-lab-pend
+    display_guides:
+      - 1hFor2h
+    slots:
+      - sl-engdes1-lab-pend00
+      - sl-engdes1-lab-pend01
+  p-engdes1-lab-spin:
+    description: d-p-engdes1-lab-spin
+    display_guides:
+      - 1hFor2h
+    slots:
+      - sl-engdes1-lab-spin30
+      - sl-engdes1-lab-spin31
+      - sl-engdes1-lab-spin32
+      - sl-engdes1-lab-spin33   
+resources:
+  r-pend00:
+    description: d-r-pendulum-standard
+    streams:
+      - st-data
+      - st-video
+    topic_stub: pend00
+  r-pend01:
+    description: d-r-pendulum-standard
+    streams:
+      - st-data
+      - st-video
+    topic_stub: pend01
+  r-spin30:
+    description: d-r-spinner-weight-a
+    streams:
+      - st-data
+      - st-video
+    topic_stub: spin30
+  r-spin31:
+    description: d-r-spinner-weight-b
+    streams:
+      - st-data
+      - st-video
+    topic_stub: spin31
+  r-spin32:
+    description: d-r-spinner-weight-c
+    streams:
+      - st-data
+      - st-video
+    topic_stub: spin32
+  r-spin33:
+    description: d-r-spinner-weight-d
+    streams:
+      - st-data
+      - st-video
+    topic_stub: spin33
+  r-trus00:
+    description: d-r-truss-medium
+    streams:
+      - st-data
+      - st-video
+    topic_stub: trus00
+  r-trus01:
+    description: d-r-truss-medium
+    streams:
+      - st-data
+      - st-video
+    topic_stub: trus01
+    
+slots:
+  sl-everyone-pend00:
+    description: d-sl-everyone-pend00 
+    policy: p-everyone-pend 
+    resource: r-pend00
+    ui_set: us-pend-everyone
+    window: w-pend-everyone
+  sl-everyone-pend01:
+    description: d-sl-everyone-pend01 
+    policy: p-everyone-pend
+    resource: r-pend01
+    ui_set: us-pend-everyone
+    window: w-pend-everyone
+  sl-everyone-trus00:
+    description: d-sl-everyone-trus00 
+    policy: p-everyone-trus
+    resource: r-trus00
+    ui_set: us-trus-everyone
+    window: w-trus-everyone
+  sl-everyone-trus01:
+    description: d-sl-everyone-trus01 
+    policy: p-everyone-trus
+    resource: r-trus01
+    ui_set: us-trus-everyone
+    window: w-trus-everyone
+  sl-engdes1-lab-pend00:
+    description: d-sl-engdes1-lab-pend00 
+    policy: p-engdes1-lab-pend
+    resource: r-pend00
+    ui_set: us-pend-engdes1
+    window: w-pend-engdes1
+  sl-engdes1-lab-pend01:
+    description: d-sl-engdes1-lab-pend01
+    policy: p-engdes1-lab-pend
+    resource: r-pend01
+    ui_set: us-pend-engdes1
+    window: w-pend-engdes1
+  sl-engdes1-lab-spin30:
+    description: d-sl-engdes1-lab-spin30 
+    policy: p-engdes1-lab-spin
+    resource: r-spin30
+    ui_set: us-spin-engdes1
+    window: w-spin-engdes1
+  sl-engdes1-lab-spin31:
+    description: d-sl-engdes1-lab-spin31
+    policy: p-engdes1-lab-spin
+    resource: r-spin31
+    ui_set: us-spin-engdes1
+    window: w-spin-engdes1
+  sl-engdes1-lab-spin32:
+    description: d-sl-engdes1-lab-spin32 
+    policy: p-engdes1-lab-spin
+    resource: r-spin32
+    ui_set: us-spin-engdes1
+    window: w-spin-engdes1
+  sl-engdes1-lab-spin33: 
+    description: d-sl-engdes1-lab-spin33 
+    policy: p-engdes1-lab-spin
+    resource: r-spin33
+    ui_set: us-spin-engdes1
+    window: w-spin-engdes1
+streams:
+  st-data:
+    url: https://dev.practable.io/access
+    connection_type: session
+    for: data
+    scopes:
+      - read
+      - write
+    topic: auto
+  st-video:
+    url: https://dev.practable.io/access
+    connection_type: session
+    for: video
+    scopes:
+      - read
+    topic: auto
+uis:
+  ui-pend-student:
+    description: d-ui-pend-student
+    url: https://static.practable.io/ui/penduino-1.0/?streams={{streams}}&exp={{exp}}
+    streams_required:
+      - st-data
+      - st-video
+  ui-spin-student:
+    description: d-ui-spin-student
+    url: https://static.practable.io/ui/spinner-1.0/?v=0&streams={{streams}}&exp={{exp}}
+    streams_required:
+      - st-data
+      - st-video
+  ui-trus-student:
+    description: d-ui-trus-student
+    url: https://static.practable.io/ui/truss-1.0/?streams={{streams}}&exp={{exp}}
+    streams_required:
+      - st-data
+      - st-video    
+ui_sets:
+  us-pend-engdes1:
+    uis:
+      - ui-pend-student
+  us-pend-everyone:
+    uis:
+      - ui-pend-student
+  us-spin-engdes1:
+    uis:
+      - ui-spin-student
+  us-spin-everyone:
+    uis:
+      - ui-spin-student
+  us-trus-everyone:
+    uis:
+      - ui-trus-student 
+windows:
+  w-pend-everyone:
+    allowed:
+      - start: 2023-02-04T00:00:00Z
+        end: 2024-02-04T00:00:00Z
+    denied:
+      - start: 2023-02-10T12:00:00Z
+        end:   2023-02-10T17:00:00Z
+      - start: 2023-02-11T12:00:00Z
+        end:   2023-02-11T17:00:00Z
+      - start: 2023-02-12T12:00:00Z
+        end:   2023-02-12T17:00:00Z
+  w-spin-everyone:
+    allowed:
+      - start: 2023-02-04T00:00:00Z
+        end: 2024-02-04T00:00:00Z
+    denied:
+      - start: 2023-02-10T12:00:00Z
+        end:   2023-02-10T17:00:00Z
+      - start: 2023-02-11T12:00:00Z
+        end:   2023-02-11T17:00:00Z
+      - start: 2023-02-12T12:00:00Z
+        end:   2023-02-12T17:00:00Z
+  w-trus-everyone:
+    allowed:
+      - start: 2023-02-04T00:00:00Z
+        end: 2024-02-04T00:00:00Z
+    denied: []       
+  w-pend-engdes1:
+    allowed:
+      - start: 2023-02-10T12:00:00Z
+        end:   2023-02-10T17:00:00Z
+      - start: 2023-02-11T12:00:00Z
+        end:   2023-02-11T17:00:00Z
+      - start: 2023-02-12T12:00:00Z
+        end:   2023-02-12T17:00:00Z     
+    denied: []
+  w-spin-engdes1:
+    allowed:
+      - start: 2023-02-10T12:00:00Z
+        end:   2023-02-10T17:00:00Z
+      - start: 2023-02-11T12:00:00Z
+        end:   2023-02-11T17:00:00Z
+      - start: 2023-02-12T12:00:00Z
+        end:   2023-02-12T17:00:00Z     
+    denied: []`)
+
 var debug bool
 
 func init() {
@@ -537,7 +935,13 @@ func TestAvailability(t *testing.T) {
 		},
 	}
 
-	a := availability(bk, start, end)
+	bi := []interval.Interval{}
+
+	for _, b := range bk {
+		bi = append(bi, b.When)
+	}
+
+	a := availability(bi, start, end)
 
 	assert.Equal(t, exp, a)
 
@@ -570,7 +974,13 @@ func TestAvailabilityTimeBoundaries(t *testing.T) {
 		},
 	}
 
-	a := availability(bk, start, end)
+	bi := []interval.Interval{}
+
+	for _, b := range bk {
+		bi = append(bi, b.When)
+	}
+
+	a := availability(bi, start, end)
 
 	d := diary.New("test")
 
@@ -649,34 +1059,35 @@ func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {
 	s := New()
 
 	// fix time for ease of checking results
-	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
+	// make this after the deny windows have finished in ManifestYAML2
+	s.SetNow(func() time.Time { return time.Date(2023, 03, 1, 0, 0, 0, 0, time.UTC) })
 
 	m := Manifest{}
-	err := yaml.Unmarshal(manifestYAML, &m)
+	err := yaml.Unmarshal(manifestYAML2, &m)
 	assert.NoError(t, err)
 
 	err = s.ReplaceManifest(m)
 	assert.NoError(t, err)
 
-	ok, reason, err := s.GetSlotIsAvailable("sl-a")
+	ok, reason, err := s.GetSlotIsAvailable("sl-everyone-trus00")
 
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
+	assert.Equal(t, "Loaded at 2023-03-01T00:00:00Z", reason)
 
 	// no lookahead limit in policy
-	a, err := s.GetAvailability("sl-a")
+	a, err := s.GetAvailability("sl-everyone-trus00")
 	assert.NoError(t, err)
 	exp := []interval.Interval{
 		interval.Interval{
 			Start: s.Now(),
-			End:   s.Now().Add(interval.Century), //don't use infinity because it does not parse well in the API
+			End:   time.Date(2024, 02, 4, 0, 0, 0, 0, time.UTC), //end of window in manifest
 		},
 	}
 	assert.Equal(t, exp, a)
 
 	// 2-hour lookahead limit in policy
-	a, err = s.GetAvailability("sl-b")
+	a, err = s.GetAvailability("sl-everyone-pend00")
 	assert.NoError(t, err)
 	exp = []interval.Interval{
 		interval.Interval{
@@ -687,6 +1098,35 @@ func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {
 	assert.Equal(t, exp, a)
 
 	// slot not part of policy: not required to test - slots can only go in one policy
+
+}
+
+func TestGetSlotAvailabilityWithMultipleAllowWindows(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of checking results
+	s.SetNow(func() time.Time { return time.Date(2023, 2, 15, 17, 12, 0, 0, time.UTC) })
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML2, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	ok, reason, err := s.GetSlotIsAvailable("sl-engdes1-lab-pend00")
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "Loaded at 2023-02-15T17:12:00Z", reason)
+
+	// no lookahead limit in policy
+	a, err := s.GetAvailability("sl-engdes1-lab-pend00")
+	assert.NoError(t, err)
+	exp := []interval.Interval{} //there should be no slots, because all allowed windows are in the past
+
+	assert.Equal(t, exp, a)
 
 }
 

@@ -23,9 +23,13 @@ import (
 
 // Filter represents an allowed interval, with a list of denied sub-intervals
 type Filter struct {
-	*sync.RWMutex `json:"-"`
-	notAllowed    *avl.Tree // a deny list calculated by inverting the allow list
-	denied        *avl.Tree // the deny list
+	*sync.RWMutex  `json:"-"`
+	notAllowed     *avl.Tree // a deny list calculated by inverting the allow list
+	denied         *avl.Tree // the deny list
+	allowedList    []interval.Interval
+	notAllowedList []interval.Interval
+	deniedList     []interval.Interval
+	combinedList   []interval.Interval
 }
 
 // New creates a new filter with an empty deny list and no allowed interval
@@ -34,6 +38,19 @@ func New() *Filter {
 		&sync.RWMutex{},
 		avl.NewWith(interval.Comparator),
 		avl.NewWith(interval.Comparator),
+		[]interval.Interval{},
+		[]interval.Interval{
+			interval.Interval{
+				Start: interval.ZeroTime,
+				End:   interval.DistantFuture,
+			}},
+		[]interval.Interval{},
+		[]interval.Interval{
+			interval.Interval{
+				Start: interval.ZeroTime,
+				End:   interval.DistantFuture,
+			},
+		},
 	}
 }
 
@@ -41,10 +58,24 @@ func New() *Filter {
 func (f *Filter) SetAllowed(allowed []interval.Interval) error {
 	f.Lock()
 	defer f.Unlock()
-	// invert the intervals to become notAllowed intervals
-	notAllowed := interval.Invert(allowed)
 
-	for _, na := range notAllowed {
+	// add to any existing allowed intervals we have
+	f.allowedList = interval.Merge(append(f.allowedList, allowed...))
+
+	// invert the intervals to become notAllowed intervals
+	f.notAllowedList = interval.Invert(f.allowedList)
+
+	// update the combined list
+	f.combinedList = interval.Merge(append(f.notAllowedList, f.deniedList...))
+
+	// make a new AVL tree (rather than try to modify the existing one)
+	// it's easier to start again because we are storing inverted values in this tree
+	// so calling this function more than once would require removing intervals from the notAllowed tree
+	// easier just to track all the allowed regions we've had so far and recalculate the AVL tree
+	f.notAllowed = avl.NewWith(interval.Comparator)
+
+	// add to the AVL trees
+	for _, na := range f.notAllowedList {
 
 		u := uuid.New()
 
@@ -59,12 +90,17 @@ func (f *Filter) SetAllowed(allowed []interval.Interval) error {
 	return nil
 }
 
-// SetDenied adds an interval to the `denied list`
+// SetDenied adds intervals to the `denied list`
 func (f *Filter) SetDenied(denied []interval.Interval) error {
 	f.Lock()
 	defer f.Unlock()
 
 	denied = interval.Merge(denied)
+
+	// update the lists
+	f.deniedList = interval.Merge(append(f.deniedList, denied...))
+
+	f.combinedList = interval.Merge(append(f.notAllowedList, f.deniedList...))
 
 	for _, d := range denied {
 
@@ -107,4 +143,10 @@ func (f *Filter) Allowed(when interval.Interval) bool {
 
 	return true
 
+}
+
+// Export exports the filter as a list of denied intervals, accounting for the combined effects of allowed and denied intervals
+func (f *Filter) Export() []interval.Interval {
+
+	return f.combinedList
 }
