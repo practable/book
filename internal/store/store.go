@@ -652,6 +652,20 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 		return errors.New("cannot cancel booking that has already ended")
 	}
 
+	msg := "cancelling a started booking failed because "
+
+	sl, ok := s.Slots[b.Slot]
+
+	if !ok { //won't happen unless manifest and bookings out of sync
+		return errors.New(msg + "slot " + b.Slot + " not found")
+	}
+
+	r, ok := s.Resources[sl.Resource]
+
+	if !ok { //won't happen unless manifest and bookings out of sync
+		return errors.New(msg + "resource " + sl.Resource + " not found")
+	}
+
 	if b.Started {
 
 		if s.DisableCancelAfterUse {
@@ -664,20 +678,6 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 		// although that is more of an edge case.
 		// task: map all the relay urls being used
 		// slot -> resource -> streams -> url
-
-		msg := "cancelling a started booking failed because "
-
-		sl, ok := s.Slots[b.Slot]
-
-		if !ok { //won't happen unless manifest and bookings out of sync
-			return errors.New(msg + "slot " + b.Slot + " not found")
-		}
-
-		r, ok := s.Resources[sl.Resource]
-
-		if !ok { //won't happen unless manifest and bookings out of sync
-			return errors.New(msg + "resource " + sl.Resource + " not found")
-		}
 
 		um := make(map[string]bool) //map of URLs from streams (this de-duplicates urls)
 
@@ -730,6 +730,18 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 
 		// ok to cancel if get to here
 
+	}
+
+	// delete in the resource
+	p, ok := s.Policies[booking.Policy]
+	if !ok {
+		return errors.New(msg + "could not find policy " + booking.Policy)
+	}
+	if !p.EnforceUnlimitedUsers { //if we aren't allowing unlimited users, then we made a resource booking
+		err := r.Diary.Delete(booking.Name) //so delete that booking to allow others to use the cancelled time
+		if err != nil {
+			return errors.New(msg + "could not delete resource booking " + err.Error())
+		}
 	}
 
 	delete(s.Bookings, b.Name)

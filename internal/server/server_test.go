@@ -252,6 +252,10 @@ windows:
 var manifestJSON []byte
 
 var manifestGraceYAML = []byte(`descriptions:
+  d-g-a:
+    name: group-a
+    type: group
+    short: a
   d-p-a:
     name: policy-a
     type: policy
@@ -290,6 +294,11 @@ display_guides:
     duration: 1m
     max_slots: 15
     label: 1m
+groups:
+  g-a:
+    description: d-g-a
+    policies: 
+      - p-a
 policies:
   p-a:
     book_ahead: 1h
@@ -2680,5 +2689,135 @@ func TestGroups(t *testing.T) {
 	}
 
 	// TODO test DeleteGroup
+
+}
+
+func TestRebookCancelledSlot(t *testing.T) {
+
+	// Must be able to make a new booking that cuts across two cancelled bookings,
+	// one cancelled by a grace period and the other manually
+
+	ct := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+	setNow(s, ct)
+
+	satoken, err := signedAdminToken()
+	assert.NoError(t, err)
+	client := &http.Client{}
+	bodyReader := bytes.NewReader(manifestGraceJSON)
+	req, err := http.NewRequest("PUT", cfg.Host+"/api/v1/admin/manifest", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", satoken)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	if debug {
+		t.Log(string(body))
+	}
+
+	assert.Equal(t, 200, resp.StatusCode)
+
+	resp.Body.Close()
+
+	removeAllBookings(t)
+
+	b := getBookings(t)
+	printBookings(t, b)
+
+	assert.NoError(t, err)
+	client = &http.Client{}
+	bodyReader = bytes.NewReader(bookingsGraceJSON)
+	req, err = http.NewRequest("PUT", cfg.Host+"/api/v1/admin/bookings", bodyReader)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", satoken)
+	req.Header.Add("Content-Type", "application/json")
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	resp.Body.Close()
+	ct = time.Date(2022, 11, 5, 0, 4, 0, 0, time.UTC)
+	setNow(s, ct)
+
+	time.Sleep(50 * time.Millisecond) //let the GracePeriod Check expire
+
+	b = getBookings(t)
+	if debug {
+		printBookings(t, b)
+	}
+	ob := getOldBookings(t)
+	if debug {
+		printBookings(t, ob)
+	}
+	obn := make(map[string]bool)
+
+	for _, obk := range ob {
+		obn[*obk.Name] = true
+		assert.True(t, obk.Cancelled) //only cancelled booking can be an old booking here)
+
+	}
+
+	bn := make(map[string]bool)
+
+	for _, bk := range b {
+		bn[*bk.Name] = true
+
+	}
+
+	eob := map[string]bool{"bk-0": true} //the booking expired due to not starting within grace period
+
+	assert.Equal(t, eob, obn)
+
+	eb := map[string]bool{"bk-1": true, "bk-2": true}
+	assert.Equal(t, eb, bn)
+
+	// cancel the second booking on this resource (we'll book across time taken by two slots previously)
+	sutoken, err := signedUserTokenFor("user-b") // different user to the one who cancelled (but still a known user)
+	assert.NoError(t, err)
+
+	client = &http.Client{}
+	req, err = http.NewRequest("DELETE", cfg.Host+"/api/v1/users/user-b/bookings/bk-1", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 404, resp.StatusCode) //NotFound if successful deletion
+
+	sutoken, err = signedUserTokenFor("anotheruser") // different user to the ones who are cancelled (but still a known user)
+	assert.NoError(t, err)
+
+	// AddGroupForUser
+	client = &http.Client{}
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/users/anotheruser/groups/g-a", nil)
+	req.Header.Add("Authorization", sutoken)
+	assert.NoError(t, err)
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 204, resp.StatusCode) //should be OK No Content
+	body, err = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if debug {
+		t.Log(string(body))
+	}
+
+	// Main part of the test - now rebook the slot!
+	client = &http.Client{}
+	req, err = http.NewRequest("POST", cfg.Host+"/api/v1/slots/sl-a", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", sutoken)
+	// add query params
+	q := req.URL.Query()
+	q.Add("user_name", "anotheruser")    //must match token
+	q.Add("from", "2022-11-05T00:04:05") //overlaps with cancelled booking by just under a minute
+	q.Add("to", "2022-11-05T00:09:05Z")  //5min duration
+	req.URL.RawQuery = q.Encode()
+	resp, err = client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 204, resp.StatusCode) //should be ok!
+	body, err = ioutil.ReadAll(resp.Body)
+	if debug {
+		t.Log(string(body))
+	}
+	resp.Body.Close()
 
 }

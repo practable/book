@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/practable/book/internal/interval"
+	"github.com/stretchr/testify/assert"
 )
 
 var w = time.Now()
@@ -183,5 +183,28 @@ func TestDenySameNameBooking(t *testing.T) {
 	err = d.Request(b, "test00")
 	assert.Error(t, err)
 	assert.Equal(t, "name already in use", err.Error())
+
+}
+
+func TestDeleteBooking(t *testing.T) {
+
+	d := New("test")
+
+	// request first interval - must succeed
+	err := d.Request(a, "test00")
+	assert.NoError(t, err)
+
+	// repeat request - must fail
+	err = d.Request(a, "test01")
+	assert.Error(t, err)
+	assert.Equal(t, "conflict with existing", err.Error())
+
+	// delete booking
+	err = d.Delete("test00")
+	assert.NoError(t, err)
+
+	// request first interval again - must succeed
+	err = d.Request(a, "test02")
+	assert.NoError(t, err)
 
 }
