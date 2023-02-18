@@ -1887,9 +1887,98 @@ func TestGetActivity(t *testing.T) {
 	assert.NoError(t, err)
 	resp.Body.Close()
 	//Order might change. Note tokens now include BookingID field
-	expected1 := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWIiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.uu76zhbEw0ycSuUMEYkgeeADev2GTR-NNW3O2ulx6ZQ","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWEiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiLCJ3cml0ZSJdLCJzdWIiOiJ1c2VyLWciLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY2NzYxMTIwMCwibmJmIjoxNjY3NjEwOTAwLCJpYXQiOjE2Njc2MTA5MDB9.Y_6UhVu1roW-rIKPlLce7qNUHek6dQ0WXwO4boxFyFQ","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
-	expected2 := `{"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWEiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiLCJ3cml0ZSJdLCJzdWIiOiJ1c2VyLWciLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY2NzYxMTIwMCwibmJmIjoxNjY3NjEwOTAwLCJpYXQiOjE2Njc2MTA5MDB9.Y_6UhVu1roW-rIKPlLce7qNUHek6dQ0WXwO4boxFyFQ","topic":"bbbb00-st-a","url":"https://relay-access.practable.io"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWIiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.uu76zhbEw0ycSuUMEYkgeeADev2GTR-NNW3O2ulx6ZQ","topic":"bbbb00-st-b","url":"https://relay-access.practable.io"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]}` + "\n"
-	assert.True(t, expected1 == string(body) || expected2 == string(body))
+
+	var a models.Activity
+
+	err = json.Unmarshal(body, &a)
+
+	assert.NoError(t, err)
+
+	assert.Equal(t, "slot-b", *a.Description.Name)
+	assert.Equal(t, "b", a.Description.Short)
+	assert.Equal(t, "slot", *a.Description.Type)
+
+	assert.Equal(t, float64(1667611200), *a.Exp)
+	assert.Equal(t, float64(1667610900), *a.Nbf)
+
+	streams := make(map[string]models.ActivityStream)
+
+	for _, s := range a.Streams {
+		streams[*s.For] = *s
+	}
+
+	sd := streams["data"]
+	sv := streams["video"]
+
+	assert.Equal(t, "https://relay-access.practable.io", *sd.Audience)
+	assert.Equal(t, "https://relay-access.practable.io", *sv.Audience)
+	assert.Equal(t, "session", *sd.ConnectionType)
+	assert.Equal(t, "session", *sv.ConnectionType)
+
+	sm := make(map[string]bool)
+
+	for _, scope := range sv.Scopes {
+		sm[scope] = true
+	}
+
+	assert.Equal(t, 1, len(sm))
+	assert.Equal(t, sm["read"], true)
+
+	sm = make(map[string]bool)
+
+	for _, scope := range sd.Scopes {
+		sm[scope] = true
+	}
+
+	assert.Equal(t, 2, len(sm))
+	assert.Equal(t, sm["read"], true)
+	assert.Equal(t, sm["write"], true)
+
+	assert.Equal(t, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWEiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiLCJ3cml0ZSJdLCJzdWIiOiJ1c2VyLWciLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY2NzYxMTIwMCwibmJmIjoxNjY3NjEwOTAwLCJpYXQiOjE2Njc2MTA5MDB9.Y_6UhVu1roW-rIKPlLce7qNUHek6dQ0WXwO4boxFyFQ", sd.Token)
+
+	assert.Equal(t, "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWIiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.uu76zhbEw0ycSuUMEYkgeeADev2GTR-NNW3O2ulx6ZQ", sv.Token)
+
+	assert.Equal(t, "bbbb00-st-a", *sd.Topic)
+	assert.Equal(t, "bbbb00-st-b", *sv.Topic)
+
+	assert.Equal(t, "https://relay-access.practable.io/session/bbbb00-st-a", *sd.URL)
+	assert.Equal(t, "https://relay-access.practable.io/session/bbbb00-st-b", *sv.URL)
+
+	uim := make(map[string]models.UIDescribed)
+
+	for _, ui := range a.Uis {
+		uim[*ui.Description.Name] = *ui
+	}
+
+	uia := uim["ui-a"]
+	uib := uim["ui-b"]
+
+	assert.Equal(t, "a", uia.Description.Short)
+	assert.Equal(t, "b", uib.Description.Short)
+	assert.Equal(t, "ui", *uia.Description.Type)
+	assert.Equal(t, "ui", *uib.Description.Type)
+
+	sre := make(map[string]bool)
+	sre["st-a"] = true
+	sre["st-b"] = true
+
+	sr := make(map[string]bool)
+
+	for _, r := range uia.StreamsRequired {
+		sr[r] = true
+	}
+
+	assert.Equal(t, sre, sr)
+
+	sr = make(map[string]bool)
+
+	for _, r := range uib.StreamsRequired {
+		sr[r] = true
+	}
+
+	assert.Equal(t, sre, sr)
+
+	//	Example body string from new system {"description":{"name":"slot-b","short":"b","type":"slot"},"exp":1667611200,"nbf":1667610900,"streams":[{"audience":"https://relay-access.practable.io","connection_type":"session","for":"video","scopes":["read"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWIiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiXSwic3ViIjoidXNlci1nIiwiYXVkIjpbImh0dHBzOi8vcmVsYXktYWNjZXNzLnByYWN0YWJsZS5pbyJdLCJleHAiOjE2Njc2MTEyMDAsIm5iZiI6MTY2NzYxMDkwMCwiaWF0IjoxNjY3NjEwOTAwfQ.uu76zhbEw0ycSuUMEYkgeeADev2GTR-NNW3O2ulx6ZQ","topic":"bbbb00-st-b","url":"https://relay-access.practable.io/session/bbbb00-st-b"},{"audience":"https://relay-access.practable.io","connection_type":"session","for":"data","scopes":["read","write"],"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJib29raW5nX2lkIjoiYmstNiIsInRvcGljIjoiYmJiYjAwLXN0LWEiLCJwcmVmaXgiOiJzZXNzaW9uIiwic2NvcGVzIjpbInJlYWQiLCJ3cml0ZSJdLCJzdWIiOiJ1c2VyLWciLCJhdWQiOlsiaHR0cHM6Ly9yZWxheS1hY2Nlc3MucHJhY3RhYmxlLmlvIl0sImV4cCI6MTY2NzYxMTIwMCwibmJmIjoxNjY3NjEwOTAwLCJpYXQiOjE2Njc2MTA5MDB9.Y_6UhVu1roW-rIKPlLce7qNUHek6dQ0WXwO4boxFyFQ","topic":"bbbb00-st-a","url":"https://relay-access.practable.io/session/bbbb00-st-a"}],"uis":[{"description":{"name":"ui-a","short":"a","type":"ui"},"streams_required":["st-a","st-b"],"url":"a"},{"description":{"name":"ui-b","short":"b","type":"ui"},"streams_required":["st-a","st-b"],"url":"b"}]
 
 }
 

@@ -839,7 +839,7 @@ func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams
 				For:            gog.Ptr(st.For),
 				Scopes:         v.Scopes,
 				Topic:          gog.Ptr(st.Topic),
-				URL:            gog.Ptr(st.URL),
+				URL:            gog.Ptr(st.URL + "/" + st.ConnectionType + "/" + st.Topic), //this is the URL the UI attempts to connect to, so must be complete
 				Token:          stoken,
 			})
 			streams = append(streams, stm)
