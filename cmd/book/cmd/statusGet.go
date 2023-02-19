@@ -24,9 +24,9 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/ory/viper"
-	"github.com/spf13/cobra"
 	apiclient "github.com/practable/book/internal/client/client"
 	"github.com/practable/book/internal/client/client/admin"
+	"github.com/spf13/cobra"
 )
 
 // getstatusCmd represents the getstatus command
@@ -39,6 +39,7 @@ For example:
 export BOOK_CLIENT_HOST=localhost:4000
 export BOOK_CLIENT_SCHEME=http
 export BOOK_CLIENT_TOKEN=$secret
+export BOOK_CLIENT_BASE_PATH=/book/api/v1
 book getstatus 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -47,7 +48,9 @@ book getstatus
 		viper.AutomaticEnv()
 		viper.SetDefault("host", "book.practable.io")
 		viper.SetDefault("scheme", "https")
+		viper.SetDefault("base_path", "/api/v1")
 
+		basePath := viper.GetString("base_path")
 		host := viper.GetString("host")
 		scheme := viper.GetString("scheme")
 		token := viper.GetString("token")
@@ -57,7 +60,7 @@ book getstatus
 			os.Exit(1)
 		}
 
-		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme})
+		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme}).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
 		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second

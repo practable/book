@@ -25,9 +25,9 @@ import (
 
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/ory/viper"
-	"github.com/spf13/cobra"
 	apiclient "github.com/practable/book/internal/client/client"
 	"github.com/practable/book/internal/client/client/admin"
+	"github.com/spf13/cobra"
 )
 
 // setstatusCmd represents the setstatus command
@@ -40,6 +40,7 @@ For example:
 export BOOK_CLIENT_HOST=book.practable.io
 export BOOK_CLIENT_SCHEME=https
 export BOOK_CLIENT_TOKEN=$secret
+export BOOK_CLIENT_BASE_PATH=/book/api/v1
 book setstatus lock "Bookings are currently closed for maintenance"
 book setstatus unlock "Bookings are open"
 `,
@@ -49,7 +50,8 @@ book setstatus unlock "Bookings are open"
 		viper.AutomaticEnv()
 		viper.SetDefault("host", "book.practable.io")
 		viper.SetDefault("scheme", "https")
-
+		viper.SetDefault("base_path", "/api/v1")
+		basePath := viper.GetString("base_path")
 		host := viper.GetString("host")
 		scheme := viper.GetString("scheme")
 		token := viper.GetString("token")
@@ -77,7 +79,7 @@ book setstatus unlock "Bookings are open"
 
 		message := os.Args[3]
 
-		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme})
+		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme}).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
 		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
