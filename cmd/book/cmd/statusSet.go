@@ -61,12 +61,12 @@ book setstatus unlock "Bookings are open"
 			os.Exit(1)
 		}
 
-		if len(os.Args) < 4 {
-			fmt.Println("usage: book setstatus [lock/unlock] message")
+		if len(os.Args) < 5 {
+			fmt.Println("usage: book status set [lock/unlock] message")
 			os.Exit(1)
 		}
 
-		lockword := strings.ToLower(os.Args[2])
+		lockword := strings.ToLower(os.Args[3])
 		lock := false
 
 		if lockword == "lock" {
@@ -77,7 +77,7 @@ book setstatus unlock "Bookings are open"
 			os.Exit(1)
 		}
 
-		message := os.Args[3]
+		message := os.Args[4]
 
 		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme}).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
