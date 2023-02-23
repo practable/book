@@ -38,9 +38,10 @@ var bookingsExportCmd = &cobra.Command{
 	Long: `Export the manifest from the booking server
 
 example usage:
-export BOOK_CLIENT_HOST=localhost:4000
 export BOOK_CLIENT_SCHEME=http
-export BOOK_CLIENT_TOKEN=$secret
+export BOOK_CLIENT_HOST=example.org
+export BOOK_CLIENT_BASE_PATH=/book/api/v1
+export BOOK_CLIENT_TOKEN=$somesecret
 export BOOK_CLIENT_FORMAT=yaml
 book bookings export
 
@@ -53,7 +54,9 @@ The exported manifest is printed to stdout, and can be piped to a file if requir
 		viper.SetDefault("host", "localhost")
 		viper.SetDefault("scheme", "http")
 		viper.SetDefault("format", "yaml")
+		viper.SetDefault("base_path", "/api/v1")
 
+		basePath := viper.GetString("base_path")
 		host := viper.GetString("host")
 		scheme := viper.GetString("scheme")
 		token := viper.GetString("token")
@@ -71,7 +74,7 @@ The exported manifest is printed to stdout, and can be piped to a file if requir
 			os.Exit(1)
 		}
 
-		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme})
+		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme}).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
 		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
