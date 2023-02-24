@@ -161,16 +161,16 @@ func (c *Client) Run(ctx context.Context) {
 			payload, err := client.Operations.Deny(param, auth)
 
 			if err != nil {
-				msg := "relay deny request failed because" + err.Error()
-				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
-				req.Result <- msg
+				msg := "relay deny request failed with error because" + err.Error()
+				log.WithFields(log.Fields{"request": req}).Error("[hotfix, replying ok anyway] deny error is" + msg)
+				req.Result <- "ok" //hotfix workaround for cancellation issues
 				break NEXT
 			}
 
 			if !payload.IsSuccess() {
-				msg := "relay deny request failed because" + payload.String()
-				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
-				req.Result <- msg
+				msg := "relay deny request failed with no success because" + payload.String()
+				log.WithFields(log.Fields{"request": req}).Error("[hotfix, replying ok anyway], deny error is" + msg)
+				req.Result <- "ok" //hotfix workaround for cancellation issues
 				break NEXT
 			}
 
