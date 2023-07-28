@@ -21,9 +21,10 @@ import (
 //	apiclient "github.com/practable/book/internal/client/client"
 
 type About struct {
-	Name    string
-	Streams []string
-	Tests   []string
+	Name      string   `json:"name"`
+	Streams   []string `json:"streams"`
+	Tests     []string `json:"tests"`
+	TopicStub string   `json:"topic_stub"`
 }
 
 type Status struct {
@@ -85,6 +86,9 @@ func (c *Config) GetResources() ([]About, error) {
 	req.Header.Add("Authorization", c.Token)
 
 	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {

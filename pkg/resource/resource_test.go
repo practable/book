@@ -435,12 +435,14 @@ func TestGetResources(t *testing.T) {
 	expected := make(map[string]About)
 
 	expected["r-a"] = About{
-		Name:    "r-a",
-		Streams: []string{"st-a", "st-b"},
+		Name:      "r-a",
+		Streams:   []string{"st-a", "st-b"},
+		TopicStub: "aaaa00",
 	}
 	expected["r-b"] = About{
-		Name:    "r-b",
-		Streams: []string{"st-a", "st-b"},
+		Name:      "r-b",
+		Streams:   []string{"st-a", "st-b"},
+		TopicStub: "bbbb00",
 	}
 
 	assert.Equal(t, expected, am)
