@@ -14,10 +14,10 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// SlotStatus slot status
+// ResourceStatus resource status
 //
-// swagger:model SlotStatus
-type SlotStatus struct {
+// swagger:model ResourceStatus
+type ResourceStatus struct {
 
 	// available
 	// Required: true
@@ -28,8 +28,8 @@ type SlotStatus struct {
 	Reason *string `json:"reason"`
 }
 
-// Validate validates this slot status
-func (m *SlotStatus) Validate(formats strfmt.Registry) error {
+// Validate validates this resource status
+func (m *ResourceStatus) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateAvailable(formats); err != nil {
@@ -46,7 +46,7 @@ func (m *SlotStatus) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *SlotStatus) validateAvailable(formats strfmt.Registry) error {
+func (m *ResourceStatus) validateAvailable(formats strfmt.Registry) error {
 
 	if err := validate.Required("available", "body", m.Available); err != nil {
 		return err
@@ -55,7 +55,7 @@ func (m *SlotStatus) validateAvailable(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *SlotStatus) validateReason(formats strfmt.Registry) error {
+func (m *ResourceStatus) validateReason(formats strfmt.Registry) error {
 
 	if err := validate.Required("reason", "body", m.Reason); err != nil {
 		return err
@@ -64,13 +64,13 @@ func (m *SlotStatus) validateReason(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this slot status based on context it is used
-func (m *SlotStatus) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this resource status based on context it is used
+func (m *ResourceStatus) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *SlotStatus) MarshalBinary() ([]byte, error) {
+func (m *ResourceStatus) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -78,8 +78,8 @@ func (m *SlotStatus) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *SlotStatus) UnmarshalBinary(b []byte) error {
-	var res SlotStatus
+func (m *ResourceStatus) UnmarshalBinary(b []byte) error {
+	var res ResourceStatus
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}
