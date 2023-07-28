@@ -9,10 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	rt "github.com/go-openapi/runtime"
-	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/golang-jwt/jwt/v4"
-	apiclient "github.com/practable/book/internal/client/client"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -33,14 +30,11 @@ type Status struct {
 }
 
 type Config struct {
-	BasePath  string
-	Host      string
-	Scheme    string
-	Token     string
-	Timeout   time.Duration
-	auth      rt.ClientAuthInfoWriter
-	transport *apiclient.TransportConfig
-	//client    *apiclient.Client
+	BasePath string
+	Host     string
+	Scheme   string
+	Token    string
+	Timeout  time.Duration
 }
 
 // Token represents a token used for login or booking
@@ -67,41 +61,44 @@ func NewToken(audience, subject, secret string, scopes []string, iat, nbf, exp t
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, token).SignedString([]byte(secret))
 }
 
-func (c *Config) Prepare() {
-
-	c.auth = httptransport.APIKeyAuth("Authorization", "header", c.Token)
-	c.transport = apiclient.DefaultTransportConfig().WithBasePath(c.BasePath).WithHost(c.Host).WithSchemes([]string{c.Scheme})
-	//c.client = apiclient.NewHTTPClientWithConfig(nil, c.transport)
-}
-
 func (c *Config) GetResources() ([]About, error) {
 
 	client := &http.Client{}
 	url := c.Scheme + "://" + c.Host + c.BasePath + "/admin/resources"
-	log.Tracef("url:%s", url)
+	log.Tracef("GetResource: url is %s", url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		log.Errorf("GetResource: new request error was %s", err.Error())
 		return nil, err
 	}
 	req.Header.Add("Authorization", c.Token)
 
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Errorf("GetResource: do request error was %s", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		log.Errorf("GetResource: Status code was %d", resp.StatusCode)
 		return nil, fmt.Errorf("Status code was %d", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("GetResource: ioutil.ReadAll error is %s", err.Error())
+		return nil, err
+	}
 
 	results := make(map[string]About)
-	log.Tracef("body:%s", string(body))
+
+	log.Tracef("GetResource:  body is %s", string(body))
+
 	err = json.Unmarshal(body, &results)
 
 	if err != nil {
+		log.Errorf("GetResource: unmarshal error is %s", err.Error())
 		return nil, err
 	}
 
@@ -116,32 +113,6 @@ func (c *Config) GetResources() ([]About, error) {
 
 	return as, nil
 
-	/*
-		bc := apiclient.NewHTTPClientWithConfig(nil, c.transport)
-		p := admin.NewGetResourcesParams().WithTimeout(c.Timeout)
-		resp, err := bc.Admin.GetResources(p, c.auth)
-
-		if err != nil {
-			fmt.Println(err.Error())
-			log.Error(err.Error())
-			return []About{}, err
-		}
-
-		r := []About{}
-
-		for _, v := range resp.Payload { //models.Resources
-
-			a := About{
-				Name:    *v.TopicStub, //or k?
-				Streams: v.Streams,
-				Tests:   v.Tests,
-			}
-			r = append(r, a)
-
-		}
-		// todo check return code
-		return r, err
-	*/
 }
 
 func (c *Config) GetResourceAvailability(name string) Status {
@@ -151,11 +122,3 @@ func (c *Config) GetResourceAvailability(name string) Status {
 func (c *Config) SetResourceAvailability(name string, available bool, reason string) Status {
 	return Status{}
 }
-
-/*
-	status, err := bc.Admin.ExportBookings(
-		admin.NewExportBookingsParams().WithTimeout(timeout),
-		aa)
-		p := admin.NewSetSlotIsAvailableParams().WithTimeout(timeout).WithSlotName("sl-a").WithAvailable(true).WithReason("test")
-		return bc.Admin.SetSlotIsAvailable(p, auth)
-*/

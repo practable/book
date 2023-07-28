@@ -243,7 +243,7 @@ windows:
 var manifestJSON []byte
 
 func init() {
-	debug = true
+	debug = false
 	if debug {
 		log.SetReportCaller(true)
 		log.SetLevel(log.TraceLevel)
@@ -416,8 +416,6 @@ func TestGetResources(t *testing.T) {
 		Token:    token,
 		Timeout:  time.Duration(5 * time.Second),
 	}
-
-	c.Prepare()
 
 	actual, err := c.GetResources()
 
