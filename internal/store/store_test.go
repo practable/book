@@ -994,6 +994,27 @@ func TestAvailabilityTimeBoundaries(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestGetResourceIsAvailable(t *testing.T) {
+
+	s := New()
+
+	// fix time for ease of testing reason string
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	ok, reason, err := s.getResourceIsAvailable("r-a")
+
+	assert.NoError(t, err)
+	assert.Equal(t, true, ok)
+	assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
+
+}
 func TestGetSlotIsAvailable(t *testing.T) {
 
 	s := New()
@@ -1015,7 +1036,61 @@ func TestGetSlotIsAvailable(t *testing.T) {
 	assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
 
 }
+func TestSetResourceIsAvailable(t *testing.T) {
 
+	s := New()
+
+	// fix time for ease of testing reason string
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	ok, reason, err := s.GetResourceIsAvailable("r-a")
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
+
+	// check a slot using the resource also shows the correct results
+	ok, reason, err = s.GetSlotIsAvailable("sl-a")
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "Loaded at 2022-11-05T00:00:00Z", reason)
+
+	s.SetResourceIsAvailable("r-a", false, "foo")
+
+	ok, reason, err = s.GetResourceIsAvailable("r-a")
+
+	assert.NoError(t, err)
+	assert.False(t, ok)
+	assert.Equal(t, "unavailable because foo", reason)
+
+	ok, reason, err = s.GetSlotIsAvailable("sl-a")
+
+	assert.NoError(t, err)
+	assert.False(t, ok)
+	assert.Equal(t, "unavailable because foo", reason)
+
+	s.SetResourceIsAvailable("r-a", true, "bar")
+
+	ok, reason, err = s.GetResourceIsAvailable("r-a")
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "bar", reason)
+
+	ok, reason, err = s.GetSlotIsAvailable("sl-a")
+
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, "bar", reason)
+}
 func TestSetSlotIsAvailable(t *testing.T) {
 
 	s := New()
