@@ -2404,6 +2404,35 @@ func TestExportManifest(t *testing.T) {
 
 }
 
+func TestGetResources(t *testing.T) {
+
+	testManifest.Lock()
+	defer testManifest.Unlock()
+
+	m := Manifest{}
+	err := yaml.Unmarshal(manifestYAML, &m)
+	assert.NoError(t, err)
+
+	s := New()
+	err = s.ReplaceManifest(m)
+	assert.NoError(t, err)
+
+	// make diary pointers nil as expected for exported version
+	rm := make(map[string]Resource)
+	for k, v := range m.Resources {
+		rm[k] = Resource{
+			ConfigURL:   v.ConfigURL,
+			Description: v.Description,
+			Streams:     v.Streams,
+			TopicStub:   v.TopicStub,
+		}
+	}
+
+	exported := s.GetResources()
+	assert.Equal(t, rm, exported)
+
+}
+
 // Note that complex types and slices are shallow copied so changes are visible
 // to other tests. Since tests may eventually run in parallel, add a mutex
 // All tests must restore any changes they make to the manifest
