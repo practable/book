@@ -3,14 +3,17 @@
 package resource
 
 import (
-	"context"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"time"
 
 	rt "github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/golang-jwt/jwt/v4"
 	apiclient "github.com/practable/book/internal/client/client"
-	"github.com/practable/book/internal/client/client/admin"
+	log "github.com/sirupsen/logrus"
 )
 
 //rt "github.com/go-openapi/runtime"
@@ -70,38 +73,78 @@ func (c *Config) Prepare() {
 	//c.client = apiclient.NewHTTPClientWithConfig(nil, c.transport)
 }
 
-func (c *Config) GetResources(ctx context.Context) ([]About, error) {
+func (c *Config) GetResources() ([]About, error) {
 
-	bc := apiclient.NewHTTPClientWithConfig(nil, c.transport)
-	p := admin.NewGetResourcesParams().WithTimeout(c.Timeout)
-	resp, err := bc.Admin.GetResources(p, c.auth)
+	client := &http.Client{}
+	url := c.Scheme + "://" + c.Host + c.BasePath + "/admin/resources"
+	log.Tracef("url:%s", url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Authorization", c.Token)
+
+	resp, err := client.Do(req)
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Status code was %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+
+	results := make(map[string]About)
+	log.Tracef("body:%s", string(body))
+	err = json.Unmarshal(body, &results)
 
 	if err != nil {
-		return []About{}, err
+		return nil, err
 	}
 
-	r := []About{}
+	as := []About{}
 
-	for _, v := range resp.Payload { //models.Resources
+	for k, v := range results {
+		about := v
+		name := k
+		about.Name = name
+		as = append(as, about)
+	}
 
-		a := About{
-			Name:    *v.TopicStub, //or k?
-			Streams: v.Streams,
-			Tests:   v.Tests,
+	return as, nil
+
+	/*
+		bc := apiclient.NewHTTPClientWithConfig(nil, c.transport)
+		p := admin.NewGetResourcesParams().WithTimeout(c.Timeout)
+		resp, err := bc.Admin.GetResources(p, c.auth)
+
+		if err != nil {
+			fmt.Println(err.Error())
+			log.Error(err.Error())
+			return []About{}, err
 		}
-		r = append(r, a)
 
-	}
-	// todo check return code
-	return r, err
+		r := []About{}
 
+		for _, v := range resp.Payload { //models.Resources
+
+			a := About{
+				Name:    *v.TopicStub, //or k?
+				Streams: v.Streams,
+				Tests:   v.Tests,
+			}
+			r = append(r, a)
+
+		}
+		// todo check return code
+		return r, err
+	*/
 }
 
-func (c *Config) GetResourceAvailability(ctx context.Context, name string) Status {
+func (c *Config) GetResourceAvailability(name string) Status {
 	return Status{}
 }
 
-func (c *Config) SetResourceAvailability(ctx context.Context, name string, available bool, reason string) Status {
+func (c *Config) SetResourceAvailability(name string, available bool, reason string) Status {
 	return Status{}
 }
 

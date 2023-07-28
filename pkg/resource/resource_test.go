@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -16,12 +14,8 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/phayes/freeport"
-	apiclient "github.com/practable/book/internal/client/client"
-	"github.com/practable/book/internal/client/client/admin"
-	cmodels "github.com/practable/book/internal/client/models"
 	"github.com/practable/book/internal/config"
 	"github.com/practable/book/internal/login"
-	"github.com/practable/book/internal/serve/models"
 	"github.com/practable/book/internal/server"
 	"github.com/practable/book/internal/store"
 	log "github.com/sirupsen/logrus"
@@ -41,6 +35,7 @@ var cs, ch string //client scheme and host
 var timeout time.Duration
 var aa, ua rt.ClientAuthInfoWriter
 var s *server.Server
+var host, secret string
 
 // Are you thinking about making a models.Manifest object
 // to compare responses to? Don't. Tried it.
@@ -248,10 +243,10 @@ windows:
 var manifestJSON []byte
 
 func init() {
-	debug = false
+	debug = true
 	if debug {
 		log.SetReportCaller(true)
-		log.SetLevel(log.DebugLevel)
+		log.SetLevel(log.TraceLevel)
 		log.SetFormatter(&log.TextFormatter{FullTimestamp: false, DisableColors: true})
 		defer log.SetOutput(os.Stdout)
 
@@ -289,17 +284,18 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	host := "http://[::]:" + strconv.Itoa(port)
+	host = "[::]:" + strconv.Itoa(port)
+	fqdn := "http://" + host
 
 	ct = time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 	ctp = &ct
-
+	secret = "somesecret"
 	cfg = config.ServerConfig{
 		CheckEvery:          time.Duration(10 * time.Millisecond),
 		GraceRebound:        time.Duration(10 * time.Millisecond),
-		Host:                host,
+		Host:                fqdn,
 		Port:                port,
-		StoreSecret:         []byte("somesecret"),
+		StoreSecret:         []byte(secret),
 		RelaySecret:         []byte("anothersecret"),
 		MinUserNameLength:   6,
 		AccessTokenLifetime: time.Duration(time.Minute),
@@ -381,70 +377,6 @@ func loadTestManifest(t *testing.T) string {
 	return stoken //for use by other commands in test
 }
 
-func setLock(t *testing.T, locked bool, message string) {
-	satoken, err := signedAdminToken()
-	assert.NoError(t, err)
-	auth := httptransport.APIKeyAuth("Authorization", "header", satoken)
-	timeout := 1 * time.Second
-	c := apiclient.DefaultTransportConfig().WithHost(ch).WithSchemes([]string{cs})
-	bc := apiclient.NewHTTPClientWithConfig(nil, c)
-	p := admin.NewSetLockParams().WithTimeout(timeout).WithLock(locked).WithMsg(&message)
-	_, err = bc.Admin.SetLock(p, auth)
-	assert.NoError(t, err)
-}
-
-func newBc() *apiclient.Client {
-	c := apiclient.DefaultTransportConfig().WithHost(ch).WithSchemes([]string{cs})
-	return apiclient.NewHTTPClientWithConfig(nil, c)
-}
-
-func getBookings(t *testing.T) cmodels.Bookings {
-	stoken, err := signedAdminToken()
-	assert.NoError(t, err)
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/bookings", nil)
-	assert.NoError(t, err)
-	req.Header.Add("Authorization", stoken)
-	resp, err := client.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode) //should be ok!
-	body, err := ioutil.ReadAll(resp.Body)
-	var exportedBookings cmodels.Bookings
-	err = yaml.Unmarshal(body, &exportedBookings)
-	assert.NoError(t, err)
-	resp.Body.Close()
-	return exportedBookings
-}
-func getOldBookings(t *testing.T) cmodels.Bookings {
-	stoken, err := signedAdminToken()
-	assert.NoError(t, err)
-	client := &http.Client{}
-	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/oldbookings", nil)
-	assert.NoError(t, err)
-	req.Header.Add("Authorization", stoken)
-	resp, err := client.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, resp.StatusCode) //should be ok!
-	body, err := ioutil.ReadAll(resp.Body)
-	var exportedBookings cmodels.Bookings
-	err = yaml.Unmarshal(body, &exportedBookings)
-	assert.NoError(t, err)
-	resp.Body.Close()
-	return exportedBookings
-}
-func printBookings(t *testing.T, bm cmodels.Bookings) {
-	for k, v := range bm {
-		fmt.Print(strconv.Itoa(k) + " : " + *v.User + " " + *v.Policy + " " + *v.Slot + " " + v.When.Start.String() + " " + v.When.End.String() + " " + fmt.Sprintf(" cancelled: %t  started: %t \n", v.Cancelled, v.Started))
-	}
-
-}
-
-func printIntervals(t *testing.T, im []*models.Interval) {
-	for k, v := range im {
-		fmt.Print(strconv.Itoa(k) + " : " + v.Start.String() + " " + v.End.String() + "\n")
-	}
-}
-
 // TestManifestOK lets us know if our test manifest is correct
 func TestManifestOK(t *testing.T) {
 
@@ -461,4 +393,56 @@ func TestManifestOK(t *testing.T) {
 	if err != nil {
 		t.Log(msgs)
 	}
+}
+
+func TestGetResources(t *testing.T) {
+
+	loadTestManifest(t)
+
+	audience := cfg.Host
+	subject := "someuser"
+	scopes := []string{"booking:admin"}
+	nbf := ct.Add(time.Second * -1)
+	iat := ct
+	exp := ct.Add(time.Hour * 24) //1 day
+	token, err := NewToken(audience, subject, secret, scopes, iat, nbf, exp)
+
+	assert.NoError(t, err)
+
+	c := Config{
+		BasePath: "/api/v1",
+		Host:     host,
+		Scheme:   "http",
+		Token:    token,
+		Timeout:  time.Duration(5 * time.Second),
+	}
+
+	c.Prepare()
+
+	actual, err := c.GetResources()
+
+	assert.NoError(t, err)
+
+	// make a map for comparison
+
+	am := make(map[string]About)
+
+	for _, v := range actual {
+		ab := v
+		am[ab.Name] = ab
+	}
+
+	expected := make(map[string]About)
+
+	expected["r-a"] = About{
+		Name:    "r-a",
+		Streams: []string{"st-a", "st-b"},
+	}
+	expected["r-b"] = About{
+		Name:    "r-b",
+		Streams: []string{"st-a", "st-b"},
+	}
+
+	assert.Equal(t, expected, am)
+
 }
