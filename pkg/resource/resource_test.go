@@ -446,3 +446,51 @@ func TestGetResources(t *testing.T) {
 	assert.Equal(t, expected, am)
 
 }
+
+func TestGetSetResourceAvailability(t *testing.T) {
+
+	loadTestManifest(t)
+
+	audience := cfg.Host
+	subject := "someuser"
+	scopes := []string{"booking:admin"}
+	nbf := ct.Add(time.Second * -1)
+	iat := ct
+	exp := ct.Add(time.Hour * 24) //1 day
+	token, err := NewToken(audience, subject, secret, scopes, iat, nbf, exp)
+
+	assert.NoError(t, err)
+
+	c := Config{
+		BasePath: "/api/v1",
+		Host:     host,
+		Scheme:   "http",
+		Token:    token,
+		Timeout:  time.Duration(5 * time.Second),
+	}
+
+	status, err := c.GetResourceAvailability("r-a")
+
+	assert.NoError(t, err)
+
+	expected := Status{
+		Available: true,
+		Reason:    "Loaded at 2022-11-05T00:00:00Z",
+	}
+
+	assert.Equal(t, expected, status)
+
+	err = c.SetResourceAvailability("r-a", false, "testing")
+
+	assert.NoError(t, err)
+
+	status, err = c.GetResourceAvailability("r-a")
+
+	expected = Status{
+		Available: false,
+		Reason:    "unavailable because testing",
+	}
+
+	assert.Equal(t, expected, status)
+
+}

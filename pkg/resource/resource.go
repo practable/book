@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -25,8 +26,8 @@ type About struct {
 }
 
 type Status struct {
-	Available bool
-	Reason    string
+	Available bool   `json:"available"`
+	Reason    string `json:"reason"`
 }
 
 type Config struct {
@@ -115,10 +116,80 @@ func (c *Config) GetResources() ([]About, error) {
 
 }
 
-func (c *Config) GetResourceAvailability(name string) Status {
-	return Status{}
+func (c *Config) GetResourceAvailability(name string) (Status, error) {
+
+	client := &http.Client{}
+	url := c.Scheme + "://" + c.Host + c.BasePath + "/admin/resources/" + name
+	log.Tracef("GetResourceAvailability: url is %s", url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Errorf("GetResourceAvailability: new request error was %s", err.Error())
+		return Status{}, err
+	}
+	req.Header.Add("Authorization", c.Token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("GetResourceAvailability: do request error was %s", err.Error())
+		return Status{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		log.Errorf("GetResourceAvailability: Status code was %d", resp.StatusCode)
+		return Status{}, fmt.Errorf("Status code was %d", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Errorf("GetResourceAvailability: ioutil.ReadAll error is %s", err.Error())
+		return Status{}, err
+	}
+
+	log.Tracef("GetResourceAvailability:  body is %s", string(body))
+
+	result := Status{}
+	err = json.Unmarshal(body, &result)
+
+	if err != nil {
+		log.Errorf("GetResourceAvailability: unmarshal error is %s", err.Error())
+		return Status{}, err
+	}
+
+	return result, nil
+
 }
 
-func (c *Config) SetResourceAvailability(name string, available bool, reason string) Status {
-	return Status{}
+func (c *Config) SetResourceAvailability(name string, available bool, reason string) error {
+
+	client := &http.Client{}
+	url := c.Scheme + "://" + c.Host + c.BasePath + "/admin/resources/" + name
+	log.Tracef("SetResourceAvailability: url is %s", url)
+	req, err := http.NewRequest("PUT", url, nil)
+	if err != nil {
+		log.Errorf("SetResourceAvailability: new request error was %s", err.Error())
+		return err
+	}
+	req.Header.Add("Authorization", c.Token)
+
+	// add query params
+	q := req.URL.Query()
+	q.Add("available", strconv.FormatBool(available))
+	q.Add("reason", reason)
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Errorf("SetResourceAvailability: do request error was %s", err.Error())
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 204 {
+		log.Errorf("SetResourceAvailability: Status code was %d", resp.StatusCode)
+		return fmt.Errorf("Status code was %d", resp.StatusCode)
+	}
+
+	return nil
+
 }
