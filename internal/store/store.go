@@ -216,6 +216,8 @@ type Resource struct {
 	// being included for the main use case.
 	Streams []string `json:"streams"  yaml:"streams"`
 
+	Tests []string `json:"tests"  yaml:"tests"`
+
 	//TopicStub is the name that should be used to make the topic <TopicStub>-<for>
 	TopicStub string `json:"topic_stub" yaml:"topic_stub"`
 }
@@ -691,7 +693,7 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 			um[st.URL] = true
 		}
 
-		for URL, _ := range um {
+		for URL := range um {
 
 			if s.denyRequests == nil {
 				msg = msg + "deny requests channel is nil"
@@ -968,6 +970,7 @@ func (s *Store) ExportManifest() Manifest {
 			ConfigURL:   v.ConfigURL,
 			Description: v.Description,
 			Streams:     v.Streams,
+			Tests:       v.Tests,
 			TopicStub:   v.TopicStub,
 		}
 	}
@@ -1551,6 +1554,34 @@ func (s *Store) GetSlot(name string) (Slot, error) {
 
 }
 
+// ExportManifest returns the manifest from the store
+func (s *Store) GetResources() map[string]Resource {
+
+	where := "store.GetResources"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
+	// Resources have diary pointers which we should nullify by omission for security and readability
+	rm := make(map[string]Resource)
+	for k, v := range s.Resources {
+		rm[k] = Resource{
+			ConfigURL:   v.ConfigURL,
+			Description: v.Description,
+			Streams:     v.Streams,
+			Tests:       v.Tests,
+			TopicStub:   v.TopicStub,
+		}
+	}
+
+	return rm
+
+}
+
 // getSlot returns a slot if found
 // no lock - internal use only
 func (s *Store) getSlot(name string) (Slot, error) {
@@ -1598,6 +1629,38 @@ func (s *Store) getSlotBookings(slot string) ([]diary.Booking, error) {
 	// available, return bookings
 	return b, nil
 
+}
+
+// getResourceIsAvailable checks the underlying resource's availability
+// this one does not take a lock, so it can be used within other functions
+// that already take a lock
+func (s *Store) getResourceIsAvailable(resource string) (bool, string, error) {
+
+	r, ok := s.Resources[resource]
+
+	if !ok {
+		return false, "", errors.New("resource " + resource + " not found")
+	}
+
+	ok, reason := r.Diary.IsAvailable()
+
+	return ok, reason, nil
+
+}
+
+// GetResourceIsAvailable checks the underlying resource's availability
+// Use this version when calling externally
+func (s *Store) GetResourceIsAvailable(resource string) (bool, string, error) {
+	where := "store.GetResourceIsAvailable"
+	log.Trace(where + " awaiting Rlock")
+	s.Lock()
+	log.Trace(where + " has Rlock")
+	defer func() {
+		s.Unlock()
+		log.Trace(where + " released Rlock")
+	}()
+
+	return s.getResourceIsAvailable(resource)
 }
 
 // getSlotIsAvailable checks the underlying resource's availability
@@ -2525,6 +2588,27 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery ti
 			}
 		}
 	}()
+}
+
+// SetResourceIsAvailable sets the underlying resource's availability
+func (s *Store) SetResourceIsAvailable(resource string, available bool, reason string) error {
+	s.Lock()
+	defer s.Unlock()
+
+	r, ok := s.Resources[resource]
+
+	if !ok {
+		return errors.New("resource " + resource + " not found")
+	}
+
+	if available {
+		r.Diary.SetAvailable(reason)
+	} else {
+		r.Diary.SetUnavailable(reason)
+	}
+
+	return nil
+
 }
 
 // SetSlotIsAvailable sets the underlying resource's availability

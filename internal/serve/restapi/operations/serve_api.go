@@ -98,6 +98,12 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersGetPolicyStatusForUserHandler: users.GetPolicyStatusForUserHandlerFunc(func(params users.GetPolicyStatusForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetPolicyStatusForUser has not yet been implemented")
 		}),
+		AdminGetResourceIsAvailableHandler: admin.GetResourceIsAvailableHandlerFunc(func(params admin.GetResourceIsAvailableParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetResourceIsAvailable has not yet been implemented")
+		}),
+		AdminGetResourcesHandler: admin.GetResourcesHandlerFunc(func(params admin.GetResourcesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetResources has not yet been implemented")
+		}),
 		AdminGetSlotIsAvailableHandler: admin.GetSlotIsAvailableHandlerFunc(func(params admin.GetSlotIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetSlotIsAvailable has not yet been implemented")
 		}),
@@ -112,6 +118,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		}),
 		AdminReplaceOldBookingsHandler: admin.ReplaceOldBookingsHandlerFunc(func(params admin.ReplaceOldBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceOldBookings has not yet been implemented")
+		}),
+		AdminSetResourceIsAvailableHandler: admin.SetResourceIsAvailableHandlerFunc(func(params admin.SetResourceIsAvailableParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.SetResourceIsAvailable has not yet been implemented")
 		}),
 		AdminSetSlotIsAvailableHandler: admin.SetSlotIsAvailableHandlerFunc(func(params admin.SetSlotIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.SetSlotIsAvailable has not yet been implemented")
@@ -218,6 +227,10 @@ type ServeAPI struct {
 	UsersGetPolicyHandler users.GetPolicyHandler
 	// UsersGetPolicyStatusForUserHandler sets the operation handler for the get policy status for user operation
 	UsersGetPolicyStatusForUserHandler users.GetPolicyStatusForUserHandler
+	// AdminGetResourceIsAvailableHandler sets the operation handler for the get resource is available operation
+	AdminGetResourceIsAvailableHandler admin.GetResourceIsAvailableHandler
+	// AdminGetResourcesHandler sets the operation handler for the get resources operation
+	AdminGetResourcesHandler admin.GetResourcesHandler
 	// AdminGetSlotIsAvailableHandler sets the operation handler for the get slot is available operation
 	AdminGetSlotIsAvailableHandler admin.GetSlotIsAvailableHandler
 	// UsersMakeBookingHandler sets the operation handler for the make booking operation
@@ -228,6 +241,8 @@ type ServeAPI struct {
 	AdminReplaceManifestHandler admin.ReplaceManifestHandler
 	// AdminReplaceOldBookingsHandler sets the operation handler for the replace old bookings operation
 	AdminReplaceOldBookingsHandler admin.ReplaceOldBookingsHandler
+	// AdminSetResourceIsAvailableHandler sets the operation handler for the set resource is available operation
+	AdminSetResourceIsAvailableHandler admin.SetResourceIsAvailableHandler
 	// AdminSetSlotIsAvailableHandler sets the operation handler for the set slot is available operation
 	AdminSetSlotIsAvailableHandler admin.SetSlotIsAvailableHandler
 	// UsersUniqueNameHandler sets the operation handler for the unique name operation
@@ -376,6 +391,12 @@ func (o *ServeAPI) Validate() error {
 	if o.UsersGetPolicyStatusForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetPolicyStatusForUserHandler")
 	}
+	if o.AdminGetResourceIsAvailableHandler == nil {
+		unregistered = append(unregistered, "admin.GetResourceIsAvailableHandler")
+	}
+	if o.AdminGetResourcesHandler == nil {
+		unregistered = append(unregistered, "admin.GetResourcesHandler")
+	}
 	if o.AdminGetSlotIsAvailableHandler == nil {
 		unregistered = append(unregistered, "admin.GetSlotIsAvailableHandler")
 	}
@@ -390,6 +411,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.AdminReplaceOldBookingsHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceOldBookingsHandler")
+	}
+	if o.AdminSetResourceIsAvailableHandler == nil {
+		unregistered = append(unregistered, "admin.SetResourceIsAvailableHandler")
 	}
 	if o.AdminSetSlotIsAvailableHandler == nil {
 		unregistered = append(unregistered, "admin.SetSlotIsAvailableHandler")
@@ -578,6 +602,14 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/admin/resources/{resource_name}"] = admin.NewGetResourceIsAvailable(o.context, o.AdminGetResourceIsAvailableHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/admin/resources"] = admin.NewGetResources(o.context, o.AdminGetResourcesHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/admin/slots/{slot_name}"] = admin.NewGetSlotIsAvailable(o.context, o.AdminGetSlotIsAvailableHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -595,6 +627,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/admin/oldbookings"] = admin.NewReplaceOldBookings(o.context, o.AdminReplaceOldBookingsHandler)
+	if o.handlers["PUT"] == nil {
+		o.handlers["PUT"] = make(map[string]http.Handler)
+	}
+	o.handlers["PUT"]["/admin/resources/{resource_name}"] = admin.NewSetResourceIsAvailable(o.context, o.AdminSetResourceIsAvailableHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

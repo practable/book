@@ -51,8 +51,10 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 
 	// *** ADMIN *** //
 	api.AdminCheckManifestHandler = admin.CheckManifestHandlerFunc(checkManifestHandler(config))
+	api.AdminGetResourceIsAvailableHandler = admin.GetResourceIsAvailableHandlerFunc(getResourceIsAvailableHandler(config))
 	api.AdminGetStoreStatusAdminHandler = admin.GetStoreStatusAdminHandlerFunc(getStoreStatusAdminHandler(config))
 	api.AdminGetSlotIsAvailableHandler = admin.GetSlotIsAvailableHandlerFunc(getSlotIsAvailableHandler(config))
+	api.AdminGetResourcesHandler = admin.GetResourcesHandlerFunc(getResourcesHandler(config))
 	api.AdminExportBookingsHandler = admin.ExportBookingsHandlerFunc(exportBookingsHandler(config))
 	api.AdminExportManifestHandler = admin.ExportManifestHandlerFunc(exportManifestHandler(config))
 	api.AdminExportOldBookingsHandler = admin.ExportOldBookingsHandlerFunc(exportOldBookingsHandler(config))
@@ -61,6 +63,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.AdminReplaceManifestHandler = admin.ReplaceManifestHandlerFunc(replaceManifestHandler(config))
 	api.AdminReplaceOldBookingsHandler = admin.ReplaceOldBookingsHandlerFunc(replaceOldBookingsHandler(config))
 	api.AdminSetLockHandler = admin.SetLockHandlerFunc(setLockHandler(config))
+	api.AdminSetResourceIsAvailableHandler = admin.SetResourceIsAvailableHandlerFunc(setResourceIsAvailableHandler(config))
 	api.AdminSetSlotIsAvailableHandler = admin.SetSlotIsAvailableHandlerFunc(setSlotIsAvailableHandler(config))
 
 	// *** USERS *** //

@@ -139,6 +139,16 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.GetPolicyStatusForUser has not yet been implemented")
 		})
 	}
+	if api.AdminGetResourceIsAvailableHandler == nil {
+		api.AdminGetResourceIsAvailableHandler = admin.GetResourceIsAvailableHandlerFunc(func(params admin.GetResourceIsAvailableParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetResourceIsAvailable has not yet been implemented")
+		})
+	}
+	if api.AdminGetResourcesHandler == nil {
+		api.AdminGetResourcesHandler = admin.GetResourcesHandlerFunc(func(params admin.GetResourcesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetResources has not yet been implemented")
+		})
+	}
 	if api.AdminGetSlotIsAvailableHandler == nil {
 		api.AdminGetSlotIsAvailableHandler = admin.GetSlotIsAvailableHandlerFunc(func(params admin.GetSlotIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetSlotIsAvailable has not yet been implemented")
@@ -162,6 +172,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	if api.AdminReplaceOldBookingsHandler == nil {
 		api.AdminReplaceOldBookingsHandler = admin.ReplaceOldBookingsHandlerFunc(func(params admin.ReplaceOldBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceOldBookings has not yet been implemented")
+		})
+	}
+	if api.AdminSetResourceIsAvailableHandler == nil {
+		api.AdminSetResourceIsAvailableHandler = admin.SetResourceIsAvailableHandlerFunc(func(params admin.SetResourceIsAvailableParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.SetResourceIsAvailable has not yet been implemented")
 		})
 	}
 	if api.AdminSetSlotIsAvailableHandler == nil {

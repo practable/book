@@ -30,6 +30,9 @@ type Resource struct {
 	// Required: true
 	Streams []string `json:"streams"`
 
+	// tests
+	Tests []string `json:"tests"`
+
 	// topic stub
 	// Required: true
 	TopicStub *string `json:"topic_stub"`

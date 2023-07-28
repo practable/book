@@ -278,6 +278,7 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 			ConfigURL:   m.ConfigURL,
 			Description: *(m.Description),
 			Streams:     m.Streams,
+			Tests:       m.Tests,
 			TopicStub:   *(m.TopicStub),
 		}
 	}
@@ -537,6 +538,7 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 				ConfigURL:   s.ConfigURL,
 				Description: gog.Ptr(s.Description),
 				Streams:     s.Streams,
+				Tests:       s.Tests,
 				TopicStub:   gog.Ptr(s.TopicStub),
 			}
 		}
@@ -686,6 +688,37 @@ func exportOldBookingsHandler(config config.ServerConfig) func(admin.ExportOldBo
 	}
 }
 
+// getResourcesHandler
+func getResourcesHandler(config config.ServerConfig) func(admin.GetResourcesParams, interface{}) middleware.Responder {
+	return func(params admin.GetResourcesParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := "no scope booking:admin"
+			return admin.NewGetResourcesUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		rs := config.Store.GetResources()
+
+		rm := make(map[string]models.Resource)
+
+		for k, v := range rs {
+			s := v
+			rm[k] = models.Resource{
+				ConfigURL:   s.ConfigURL,
+				Description: gog.Ptr(s.Description),
+				Streams:     s.Streams,
+				Tests:       s.Tests,
+				TopicStub:   gog.Ptr(s.TopicStub),
+			}
+		}
+
+		return admin.NewGetResourcesOK().WithPayload(rm)
+	}
+}
+
 // exportUsersHandler
 func exportUsersHandler(config config.ServerConfig) func(admin.ExportUsersParams, interface{}) middleware.Responder {
 	return func(params admin.ExportUsersParams, principal interface{}) middleware.Responder {
@@ -765,6 +798,34 @@ func getStoreStatusAdminHandler(config config.ServerConfig) func(admin.GetStoreS
 	}
 }
 
+// getResourceIsAvailableHandlerFunc
+func getResourceIsAvailableHandler(config config.ServerConfig) func(admin.GetResourceIsAvailableParams, interface{}) middleware.Responder {
+	return func(params admin.GetResourceIsAvailableParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := "no scope booking:admin"
+			return admin.NewGetResourceIsAvailableUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		avail, reason, err := config.Store.GetResourceIsAvailable(params.ResourceName)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return admin.NewGetResourceIsAvailableNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		s := models.ResourceStatus{
+			Available: &avail,
+			Reason:    &reason,
+		}
+		return admin.NewGetResourceIsAvailableOK().WithPayload(&s)
+	}
+}
+
 // getSlotIsAvailableHandlerFunc
 func getSlotIsAvailableHandler(config config.ServerConfig) func(admin.GetSlotIsAvailableParams, interface{}) middleware.Responder {
 	return func(params admin.GetSlotIsAvailableParams, principal interface{}) middleware.Responder {
@@ -785,7 +846,7 @@ func getSlotIsAvailableHandler(config config.ServerConfig) func(admin.GetSlotIsA
 			return admin.NewGetSlotIsAvailableNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		s := models.SlotStatus{
+		s := models.ResourceStatus{
 			Available: &avail,
 			Reason:    &reason,
 		}
@@ -928,6 +989,30 @@ func setLockHandler(config config.ServerConfig) func(admin.SetLockParams, interf
 		}
 
 		return admin.NewSetLockOK().WithPayload(&s)
+	}
+}
+
+// setResourceIsAvailableHandlerFunc
+func setResourceIsAvailableHandler(config config.ServerConfig) func(admin.SetResourceIsAvailableParams, interface{}) middleware.Responder {
+	return func(params admin.SetResourceIsAvailableParams, principal interface{}) middleware.Responder {
+
+		_, err := isAdmin(principal)
+
+		if err != nil {
+			c := "401"
+			m := "no scope booking:admin"
+			return admin.NewSetResourceIsAvailableUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		err = config.Store.SetResourceIsAvailable(params.ResourceName, params.Available, params.Reason)
+
+		if err != nil {
+			c := "404"
+			m := err.Error()
+			return admin.NewSetResourceIsAvailableNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+
+		return admin.NewSetResourceIsAvailableNoContent()
 	}
 }
 

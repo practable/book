@@ -25,7 +25,7 @@ type GetSlotIsAvailableOK struct {
 	/*
 	  In: Body
 	*/
-	Payload *models.SlotStatus `json:"body,omitempty"`
+	Payload *models.ResourceStatus `json:"body,omitempty"`
 }
 
 // NewGetSlotIsAvailableOK creates GetSlotIsAvailableOK with default headers values
@@ -35,13 +35,13 @@ func NewGetSlotIsAvailableOK() *GetSlotIsAvailableOK {
 }
 
 // WithPayload adds the payload to the get slot is available o k response
-func (o *GetSlotIsAvailableOK) WithPayload(payload *models.SlotStatus) *GetSlotIsAvailableOK {
+func (o *GetSlotIsAvailableOK) WithPayload(payload *models.ResourceStatus) *GetSlotIsAvailableOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the get slot is available o k response
-func (o *GetSlotIsAvailableOK) SetPayload(payload *models.SlotStatus) {
+func (o *GetSlotIsAvailableOK) SetPayload(payload *models.ResourceStatus) {
 	o.Payload = payload
 }
 

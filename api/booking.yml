@@ -1,6 +1,6 @@
 swagger: '2.0'
 info:
-  version: '0.4'
+  version: '0.5'
   title: AdvanceBooking
   description: User API for booking slots in advance
   contact:
@@ -227,6 +227,96 @@ paths:
         500:
           $ref: '#/responses/InternalError'
           
+  /admin/resources:
+    get:
+      description: Gets a list of all resources, including their availability and any tests specified
+      summary: Get the list of resources in the manifest
+      tags:
+      - admin
+      operationId: GetResources
+      deprecated: false
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Resources'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+    
+      
+  /admin/resources/{resource_name}:
+    get:
+      description: Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
+      summary: Get the availability of the resource
+      tags:
+      - admin
+      operationId: GetResourceIsAvailable
+      deprecated: false
+      produces:
+      - application/json
+      parameters:
+        - name: resource_name
+          in: path
+          type: string
+          required: true            
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/ResourceStatus'
+          headers: {}
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+    put:
+      description: Sets the availability of a resource, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
+      summary: Set the availability of the resource
+      tags:
+      - admin
+      operationId: SetResourceIsAvailable
+      deprecated: false
+      parameters:
+      - name: resource_name
+        in: path
+        type: string
+        required: true   
+      - name: available
+        in: query
+        type: boolean
+        required: true
+      - name: reason
+        in: query
+        type: string
+        required: true
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        204:
+          description: OK
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+          
   /admin/slots/{slot_name}:
     get:
       description: Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
@@ -248,7 +338,7 @@ paths:
         200:
           description: OK
           schema:
-            $ref: '#/definitions/SlotStatus'
+            $ref: '#/definitions/ResourceStatus'
           headers: {}
         401:
           $ref: '#/responses/Unauthorized'
@@ -1408,11 +1498,20 @@ definitions:
           type: string
       topic_stub:
         type: string
+      tests:
+        type: array
+        items:
+          type: string
     required:
       - description
       - streams
       - topic_stub
 
+  Resources:
+    type: object
+    additionalProperties:
+      $ref: '#/definitions/Resource'
+        
   Slot:
     type: object
     properties:
@@ -1443,8 +1542,8 @@ definitions:
     required:
       - description
       - policy
-      
-  SlotStatus:
+
+  ResourceStatus:
     type: object
     properties:
       available:
@@ -1454,7 +1553,7 @@ definitions:
     required:
       - available
       - reason
-        
+      
   StoreStatusAdmin:
     type: object
     properties:
