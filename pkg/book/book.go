@@ -2,6 +2,7 @@ package book
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,6 +10,36 @@ import (
 	"github.com/practable/book/internal/config"
 	"github.com/practable/book/internal/server"
 )
+
+type AccessToken struct {
+
+	// Audience
+	// Required: true
+	Aud *string `json:"aud"`
+
+	// Expires At
+	// Required: true
+	Exp *float64 `json:"exp"`
+
+	// Issued At
+	Iat float64 `json:"iat,omitempty"`
+
+	// Not before
+	// Required: true
+	Nbf *float64 `json:"nbf"`
+
+	// List of scopes
+	// Required: true
+	Scopes []string `json:"scopes"`
+
+	// Subject
+	// Required: true
+	Sub *string `json:"sub"`
+
+	// token
+	// Required: true
+	Token *string `json:"token"`
+}
 
 type Config struct {
 	AccessTokenLifetime   time.Duration
@@ -35,7 +66,7 @@ func DefaultConfig() Config {
 		AccessTokenLifetime:   time.Hour,
 		CheckEvery:            time.Minute,
 		DisableCancelAfterUse: false,
-		Host:                  "[::]",
+		Host:                  "http://[::]:" + strconv.Itoa(port),
 		MinUserNameLength:     6,
 		Now:                   func() time.Time { return time.Now() },
 		Port:                  port,
