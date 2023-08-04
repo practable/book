@@ -1,3 +1,7 @@
+// Package book provides a method starting the book server
+// within another golang code, so as to support the testing
+// of other services within the practable ecosystem, like status
+// it is NOT intended for production usage
 package book
 
 import (
@@ -8,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/practable/book/internal/config"
+	"github.com/practable/book/internal/login"
 	"github.com/practable/book/internal/server"
 )
 
@@ -96,4 +101,19 @@ func Run(ctx context.Context, cfg Config) {
 	s := server.New(c)
 	s.Run(ctx)
 	<-ctx.Done()
+}
+
+// AdminAuth provides a pre-pared authorization header for testing purposes
+func AdminToken(cfg Config, ttl int64, subject string) (string, error) {
+
+	audience := cfg.Host
+	scopes := []string{"booking:admin"}
+	now := time.Now().Unix()
+	nbf := now - 1
+	iat := nbf
+	exp := nbf + ttl
+	t := login.New(audience, subject, scopes, iat, nbf, exp)
+
+	return login.Sign(t, cfg.StoreSecret)
+
 }

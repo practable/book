@@ -94,3 +94,25 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, "", c.RelaySecret) //user needs to supply this, we cannot know it
 
 }
+
+func TestAdminAuth(t *testing.T) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cfg := DefaultConfig()
+	go Run(ctx, cfg)
+	time.Sleep(time.Second) // let book server start
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/users", nil)
+	assert.NoError(t, err)
+
+	stoken, err := AdminToken(cfg, 60, "someuser")
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+}
