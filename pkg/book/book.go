@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/phayes/freeport"
 	"github.com/practable/book/internal/config"
@@ -97,6 +98,8 @@ func Run(ctx context.Context, cfg Config) {
 		RequestTimeout:        cfg.RequestTimeout,
 		StoreSecret:           []byte(cfg.StoreSecret),
 	}
+
+	jwt.TimeFunc = cfg.Now
 
 	s := server.New(c)
 	s.Run(ctx)
