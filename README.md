@@ -1,7 +1,7 @@
 # book
 This package implements bookings with arbitrary durations
 
-((This package is under active development and is not yet ready for use))
+This has been in production use for the academic year 2023-2024
 
 ## Features
 
