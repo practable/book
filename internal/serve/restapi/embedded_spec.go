@@ -38,7 +38,7 @@ func init() {
       "url": "https://practable.io",
       "email": "timothy.d.drysdale@gmail.com"
     },
-    "version": "0.3"
+    "version": "0.5"
   },
   "host": "book.practable.io",
   "basePath": "/api/v1",
@@ -334,6 +334,134 @@ func init() {
         }
       }
     },
+    "/admin/resources": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Gets a list of all resources, including their availability and any tests specified",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get the list of resources in the manifest",
+        "operationId": "GetResources",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Resources"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/resources/{resource_name}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get the availability of the resource",
+        "operationId": "GetResourceIsAvailable",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ResourceStatus"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Sets the availability of a resource, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Set the availability of the resource",
+        "operationId": "SetResourceIsAvailable",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "name": "available",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "reason",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/slots/{slot_name}": {
       "get": {
         "security": [
@@ -362,7 +490,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/SlotStatus"
+              "$ref": "#/definitions/ResourceStatus"
             }
           },
           "401": {
@@ -1941,9 +2069,36 @@ func init() {
             "type": "string"
           }
         },
+        "tests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "topic_stub": {
           "type": "string"
         }
+      }
+    },
+    "ResourceStatus": {
+      "type": "object",
+      "required": [
+        "available",
+        "reason"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "Resources": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Resource"
       }
     },
     "Slot": {
@@ -1984,21 +2139,6 @@ func init() {
           "$ref": "#/definitions/Description"
         },
         "policy": {
-          "type": "string"
-        }
-      }
-    },
-    "SlotStatus": {
-      "type": "object",
-      "required": [
-        "available",
-        "reason"
-      ],
-      "properties": {
-        "available": {
-          "type": "boolean"
-        },
-        "reason": {
           "type": "string"
         }
       }
@@ -2295,7 +2435,7 @@ func init() {
       "url": "https://practable.io",
       "email": "timothy.d.drysdale@gmail.com"
     },
-    "version": "0.3"
+    "version": "0.5"
   },
   "host": "book.practable.io",
   "basePath": "/api/v1",
@@ -2657,6 +2797,161 @@ func init() {
         }
       }
     },
+    "/admin/resources": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Gets a list of all resources, including their availability and any tests specified",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get the list of resources in the manifest",
+        "operationId": "GetResources",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Resources"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/resources/{resource_name}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get the availability of the resource",
+        "operationId": "GetResourceIsAvailable",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ResourceStatus"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Sets the availability of a resource, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Set the availability of the resource",
+        "operationId": "SetResourceIsAvailable",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "name": "available",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "reason",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/admin/slots/{slot_name}": {
       "get": {
         "security": [
@@ -2685,7 +2980,7 @@ func init() {
           "200": {
             "description": "OK",
             "schema": {
-              "$ref": "#/definitions/SlotStatus"
+              "$ref": "#/definitions/ResourceStatus"
             }
           },
           "401": {
@@ -4441,9 +4736,36 @@ func init() {
             "type": "string"
           }
         },
+        "tests": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "topic_stub": {
           "type": "string"
         }
+      }
+    },
+    "ResourceStatus": {
+      "type": "object",
+      "required": [
+        "available",
+        "reason"
+      ],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "Resources": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Resource"
       }
     },
     "Slot": {
@@ -4484,21 +4806,6 @@ func init() {
           "$ref": "#/definitions/Description"
         },
         "policy": {
-          "type": "string"
-        }
-      }
-    },
-    "SlotStatus": {
-      "type": "object",
-      "required": [
-        "available",
-        "reason"
-      ],
-      "properties": {
-        "available": {
-          "type": "boolean"
-        },
-        "reason": {
           "type": "string"
         }
       }

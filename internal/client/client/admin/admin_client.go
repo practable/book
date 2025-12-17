@@ -40,6 +40,10 @@ type ClientService interface {
 
 	ExportUsers(params *ExportUsersParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportUsersOK, error)
 
+	GetResourceIsAvailable(params *GetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourceIsAvailableOK, error)
+
+	GetResources(params *GetResourcesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourcesOK, error)
+
 	GetSlotIsAvailable(params *GetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetSlotIsAvailableOK, error)
 
 	ReplaceBookings(params *ReplaceBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceBookingsOK, error)
@@ -47,6 +51,8 @@ type ClientService interface {
 	ReplaceManifest(params *ReplaceManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceManifestOK, error)
 
 	ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceOldBookingsOK, error)
+
+	SetResourceIsAvailable(params *SetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetResourceIsAvailableNoContent, error)
 
 	SetSlotIsAvailable(params *SetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetSlotIsAvailableNoContent, error)
 
@@ -264,6 +270,88 @@ func (a *Client) ExportUsers(params *ExportUsersParams, authInfo runtime.ClientA
 }
 
 /*
+  GetResourceIsAvailable gets the availability of the resource
+
+  Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
+*/
+func (a *Client) GetResourceIsAvailable(params *GetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourceIsAvailableOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetResourceIsAvailableParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "GetResourceIsAvailable",
+		Method:             "GET",
+		PathPattern:        "/admin/resources/{resource_name}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetResourceIsAvailableReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetResourceIsAvailableOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for GetResourceIsAvailable: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  GetResources gets the list of resources in the manifest
+
+  Gets a list of all resources, including their availability and any tests specified
+*/
+func (a *Client) GetResources(params *GetResourcesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourcesOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetResourcesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "GetResources",
+		Method:             "GET",
+		PathPattern:        "/admin/resources",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetResourcesReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetResourcesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for GetResources: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
   GetSlotIsAvailable gets the availability of the slot
 
   Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
@@ -424,6 +512,47 @@ func (a *Client) ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for ReplaceOldBookings: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  SetResourceIsAvailable sets the availability of the resource
+
+  Sets the availability of a resource, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
+*/
+func (a *Client) SetResourceIsAvailable(params *SetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetResourceIsAvailableNoContent, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewSetResourceIsAvailableParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "SetResourceIsAvailable",
+		Method:             "PUT",
+		PathPattern:        "/admin/resources/{resource_name}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &SetResourceIsAvailableReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*SetResourceIsAvailableNoContent)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for SetResourceIsAvailable: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

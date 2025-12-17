@@ -1361,7 +1361,7 @@ func TestSetGetSlotIsAvailable(t *testing.T) {
 	resp, err = client.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
-	var ss models.SlotStatus
+	var ss models.ResourceStatus
 	body, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(body, &ss)
 	assert.Equal(t, false, *(ss.Available))
@@ -2818,6 +2818,28 @@ func TestRebookCancelledSlot(t *testing.T) {
 	if debug {
 		t.Log(string(body))
 	}
+	resp.Body.Close()
+
+}
+
+func TestGetResources(t *testing.T) {
+
+	stoken := loadTestManifest(t)
+
+	// make unavailable slot sl-a
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/resources", nil)
+	assert.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode) //should be ok!
+	body, err := ioutil.ReadAll(resp.Body)
+	assert.NoError(t, err)
+	expected := `{"r-a":{"description":"d-r-a","streams":["st-a","st-b"],"tests":null,"topic_stub":"aaaa00"},"r-b":{"description":"d-r-b","streams":["st-a","st-b"],"tests":null,"topic_stub":"bbbb00"}}` + "\n"
+	assert.Equal(t, expected, string(body))
+
 	resp.Body.Close()
 
 }

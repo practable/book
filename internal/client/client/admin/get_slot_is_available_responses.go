@@ -62,7 +62,7 @@ func NewGetSlotIsAvailableOK() *GetSlotIsAvailableOK {
 OK
 */
 type GetSlotIsAvailableOK struct {
-	Payload *models.SlotStatus
+	Payload *models.ResourceStatus
 }
 
 // IsSuccess returns true when this get slot is available o k response has a 2xx status code
@@ -98,13 +98,13 @@ func (o *GetSlotIsAvailableOK) String() string {
 	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableOK  %+v", 200, o.Payload)
 }
 
-func (o *GetSlotIsAvailableOK) GetPayload() *models.SlotStatus {
+func (o *GetSlotIsAvailableOK) GetPayload() *models.ResourceStatus {
 	return o.Payload
 }
 
 func (o *GetSlotIsAvailableOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(models.SlotStatus)
+	o.Payload = new(models.ResourceStatus)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
