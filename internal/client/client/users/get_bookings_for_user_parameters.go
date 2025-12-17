@@ -52,10 +52,12 @@ func NewGetBookingsForUserParamsWithHTTPClient(client *http.Client) *GetBookings
 	}
 }
 
-/* GetBookingsForUserParams contains all the parameters to send to the API endpoint
-   for the get bookings for user operation.
+/*
+GetBookingsForUserParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the get bookings for user operation.
+
+	Typically these are written to a http.Request.
 */
 type GetBookingsForUserParams struct {
 

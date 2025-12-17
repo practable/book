@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -54,7 +55,7 @@ func (o *MakeBookingReader) ReadResponse(response runtime.ClientResponse, consum
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /slots/{slot_name}] MakeBooking", response, response.Code())
 	}
 }
 
@@ -63,7 +64,8 @@ func NewMakeBookingNoContent() *MakeBookingNoContent {
 	return &MakeBookingNoContent{}
 }
 
-/* MakeBookingNoContent describes a response with status code 204, with default header values.
+/*
+MakeBookingNoContent describes a response with status code 204, with default header values.
 
 OK - No Content
 */
@@ -95,12 +97,17 @@ func (o *MakeBookingNoContent) IsCode(code int) bool {
 	return code == 204
 }
 
+// Code gets the status code for the make booking no content response
+func (o *MakeBookingNoContent) Code() int {
+	return 204
+}
+
 func (o *MakeBookingNoContent) Error() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNoContent ", 204)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNoContent", 204)
 }
 
 func (o *MakeBookingNoContent) String() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNoContent ", 204)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNoContent", 204)
 }
 
 func (o *MakeBookingNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -113,7 +120,8 @@ func NewMakeBookingUnauthorized() *MakeBookingUnauthorized {
 	return &MakeBookingUnauthorized{}
 }
 
-/* MakeBookingUnauthorized describes a response with status code 401, with default header values.
+/*
+MakeBookingUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -146,12 +154,19 @@ func (o *MakeBookingUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the make booking unauthorized response
+func (o *MakeBookingUnauthorized) Code() int {
+	return 401
+}
+
 func (o *MakeBookingUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingUnauthorized %s", 401, payload)
 }
 
 func (o *MakeBookingUnauthorized) String() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingUnauthorized %s", 401, payload)
 }
 
 func (o *MakeBookingUnauthorized) GetPayload() *models.Error {
@@ -175,7 +190,8 @@ func NewMakeBookingNotFound() *MakeBookingNotFound {
 	return &MakeBookingNotFound{}
 }
 
-/* MakeBookingNotFound describes a response with status code 404, with default header values.
+/*
+MakeBookingNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -208,12 +224,19 @@ func (o *MakeBookingNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the make booking not found response
+func (o *MakeBookingNotFound) Code() int {
+	return 404
+}
+
 func (o *MakeBookingNotFound) Error() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNotFound %s", 404, payload)
 }
 
 func (o *MakeBookingNotFound) String() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingNotFound %s", 404, payload)
 }
 
 func (o *MakeBookingNotFound) GetPayload() *models.Error {
@@ -237,7 +260,8 @@ func NewMakeBookingConflict() *MakeBookingConflict {
 	return &MakeBookingConflict{}
 }
 
-/* MakeBookingConflict describes a response with status code 409, with default header values.
+/*
+MakeBookingConflict describes a response with status code 409, with default header values.
 
 Conflict - unavailable for the requested interval
 */
@@ -270,12 +294,19 @@ func (o *MakeBookingConflict) IsCode(code int) bool {
 	return code == 409
 }
 
+// Code gets the status code for the make booking conflict response
+func (o *MakeBookingConflict) Code() int {
+	return 409
+}
+
 func (o *MakeBookingConflict) Error() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingConflict  %+v", 409, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingConflict %s", 409, payload)
 }
 
 func (o *MakeBookingConflict) String() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingConflict  %+v", 409, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingConflict %s", 409, payload)
 }
 
 func (o *MakeBookingConflict) GetPayload() interface{} {
@@ -297,7 +328,8 @@ func NewMakeBookingInternalServerError() *MakeBookingInternalServerError {
 	return &MakeBookingInternalServerError{}
 }
 
-/* MakeBookingInternalServerError describes a response with status code 500, with default header values.
+/*
+MakeBookingInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -330,12 +362,19 @@ func (o *MakeBookingInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the make booking internal server error response
+func (o *MakeBookingInternalServerError) Code() int {
+	return 500
+}
+
 func (o *MakeBookingInternalServerError) Error() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingInternalServerError %s", 500, payload)
 }
 
 func (o *MakeBookingInternalServerError) String() string {
-	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /slots/{slot_name}][%d] makeBookingInternalServerError %s", 500, payload)
 }
 
 func (o *MakeBookingInternalServerError) GetPayload() *models.Error {

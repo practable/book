@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *SetResourceIsAvailableReader) ReadResponse(response runtime.ClientRespo
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[PUT /admin/resources/{resource_name}] SetResourceIsAvailable", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewSetResourceIsAvailableNoContent() *SetResourceIsAvailableNoContent {
 	return &SetResourceIsAvailableNoContent{}
 }
 
-/* SetResourceIsAvailableNoContent describes a response with status code 204, with default header values.
+/*
+SetResourceIsAvailableNoContent describes a response with status code 204, with default header values.
 
 OK
 */
@@ -89,12 +91,17 @@ func (o *SetResourceIsAvailableNoContent) IsCode(code int) bool {
 	return code == 204
 }
 
+// Code gets the status code for the set resource is available no content response
+func (o *SetResourceIsAvailableNoContent) Code() int {
+	return 204
+}
+
 func (o *SetResourceIsAvailableNoContent) Error() string {
-	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableNoContent ", 204)
+	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableNoContent", 204)
 }
 
 func (o *SetResourceIsAvailableNoContent) String() string {
-	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableNoContent ", 204)
+	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableNoContent", 204)
 }
 
 func (o *SetResourceIsAvailableNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -107,7 +114,8 @@ func NewSetResourceIsAvailableUnauthorized() *SetResourceIsAvailableUnauthorized
 	return &SetResourceIsAvailableUnauthorized{}
 }
 
-/* SetResourceIsAvailableUnauthorized describes a response with status code 401, with default header values.
+/*
+SetResourceIsAvailableUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -140,12 +148,19 @@ func (o *SetResourceIsAvailableUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the set resource is available unauthorized response
+func (o *SetResourceIsAvailableUnauthorized) Code() int {
+	return 401
+}
+
 func (o *SetResourceIsAvailableUnauthorized) Error() string {
-	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableUnauthorized %s", 401, payload)
 }
 
 func (o *SetResourceIsAvailableUnauthorized) String() string {
-	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableUnauthorized %s", 401, payload)
 }
 
 func (o *SetResourceIsAvailableUnauthorized) GetPayload() *models.Error {
@@ -169,7 +184,8 @@ func NewSetResourceIsAvailableNotFound() *SetResourceIsAvailableNotFound {
 	return &SetResourceIsAvailableNotFound{}
 }
 
-/* SetResourceIsAvailableNotFound describes a response with status code 404, with default header values.
+/*
+SetResourceIsAvailableNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -202,12 +218,19 @@ func (o *SetResourceIsAvailableNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the set resource is available not found response
+func (o *SetResourceIsAvailableNotFound) Code() int {
+	return 404
+}
+
 func (o *SetResourceIsAvailableNotFound) Error() string {
-	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableNotFound %s", 404, payload)
 }
 
 func (o *SetResourceIsAvailableNotFound) String() string {
-	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableNotFound %s", 404, payload)
 }
 
 func (o *SetResourceIsAvailableNotFound) GetPayload() *models.Error {
@@ -231,7 +254,8 @@ func NewSetResourceIsAvailableInternalServerError() *SetResourceIsAvailableInter
 	return &SetResourceIsAvailableInternalServerError{}
 }
 
-/* SetResourceIsAvailableInternalServerError describes a response with status code 500, with default header values.
+/*
+SetResourceIsAvailableInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -264,12 +288,19 @@ func (o *SetResourceIsAvailableInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the set resource is available internal server error response
+func (o *SetResourceIsAvailableInternalServerError) Code() int {
+	return 500
+}
+
 func (o *SetResourceIsAvailableInternalServerError) Error() string {
-	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableInternalServerError %s", 500, payload)
 }
 
 func (o *SetResourceIsAvailableInternalServerError) String() string {
-	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/resources/{resource_name}][%d] setResourceIsAvailableInternalServerError %s", 500, payload)
 }
 
 func (o *SetResourceIsAvailableInternalServerError) GetPayload() *models.Error {

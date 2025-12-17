@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetBookingsForUserReader) ReadResponse(response runtime.ClientResponse,
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /users/{user_name}/bookings] GetBookingsForUser", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetBookingsForUserOK() *GetBookingsForUserOK {
 	return &GetBookingsForUserOK{}
 }
 
-/* GetBookingsForUserOK describes a response with status code 200, with default header values.
+/*
+GetBookingsForUserOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetBookingsForUserOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get bookings for user o k response
+func (o *GetBookingsForUserOK) Code() int {
+	return 200
+}
+
 func (o *GetBookingsForUserOK) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserOK %s", 200, payload)
 }
 
 func (o *GetBookingsForUserOK) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserOK %s", 200, payload)
 }
 
 func (o *GetBookingsForUserOK) GetPayload() models.Bookings {
@@ -117,7 +126,8 @@ func NewGetBookingsForUserUnauthorized() *GetBookingsForUserUnauthorized {
 	return &GetBookingsForUserUnauthorized{}
 }
 
-/* GetBookingsForUserUnauthorized describes a response with status code 401, with default header values.
+/*
+GetBookingsForUserUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -150,12 +160,19 @@ func (o *GetBookingsForUserUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get bookings for user unauthorized response
+func (o *GetBookingsForUserUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetBookingsForUserUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserUnauthorized %s", 401, payload)
 }
 
 func (o *GetBookingsForUserUnauthorized) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserUnauthorized %s", 401, payload)
 }
 
 func (o *GetBookingsForUserUnauthorized) GetPayload() *models.Error {
@@ -179,7 +196,8 @@ func NewGetBookingsForUserNotFound() *GetBookingsForUserNotFound {
 	return &GetBookingsForUserNotFound{}
 }
 
-/* GetBookingsForUserNotFound describes a response with status code 404, with default header values.
+/*
+GetBookingsForUserNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -212,12 +230,19 @@ func (o *GetBookingsForUserNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get bookings for user not found response
+func (o *GetBookingsForUserNotFound) Code() int {
+	return 404
+}
+
 func (o *GetBookingsForUserNotFound) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserNotFound %s", 404, payload)
 }
 
 func (o *GetBookingsForUserNotFound) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserNotFound %s", 404, payload)
 }
 
 func (o *GetBookingsForUserNotFound) GetPayload() *models.Error {
@@ -241,7 +266,8 @@ func NewGetBookingsForUserInternalServerError() *GetBookingsForUserInternalServe
 	return &GetBookingsForUserInternalServerError{}
 }
 
-/* GetBookingsForUserInternalServerError describes a response with status code 500, with default header values.
+/*
+GetBookingsForUserInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -274,12 +300,19 @@ func (o *GetBookingsForUserInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get bookings for user internal server error response
+func (o *GetBookingsForUserInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetBookingsForUserInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserInternalServerError %s", 500, payload)
 }
 
 func (o *GetBookingsForUserInternalServerError) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/bookings][%d] getBookingsForUserInternalServerError %s", 500, payload)
 }
 
 func (o *GetBookingsForUserInternalServerError) GetPayload() *models.Error {

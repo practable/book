@@ -53,10 +53,12 @@ func NewSetResourceIsAvailableParamsWithHTTPClient(client *http.Client) *SetReso
 	}
 }
 
-/* SetResourceIsAvailableParams contains all the parameters to send to the API endpoint
-   for the set resource is available operation.
+/*
+SetResourceIsAvailableParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the set resource is available operation.
+
+	Typically these are written to a http.Request.
 */
 type SetResourceIsAvailableParams struct {
 

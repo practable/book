@@ -122,6 +122,11 @@ func (m *Window) contextValidateAllowed(ctx context.Context, formats strfmt.Regi
 	for i := 0; i < len(m.Allowed); i++ {
 
 		if m.Allowed[i] != nil {
+
+			if swag.IsZero(m.Allowed[i]) { // not required
+				return nil
+			}
+
 			if err := m.Allowed[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("allowed" + "." + strconv.Itoa(i))
@@ -142,6 +147,11 @@ func (m *Window) contextValidateDenied(ctx context.Context, formats strfmt.Regis
 	for i := 0; i < len(m.Denied); i++ {
 
 		if m.Denied[i] != nil {
+
+			if swag.IsZero(m.Denied[i]) { // not required
+				return nil
+			}
+
 			if err := m.Denied[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("denied" + "." + strconv.Itoa(i))

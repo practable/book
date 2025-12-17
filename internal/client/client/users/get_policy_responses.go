@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetPolicyReader) ReadResponse(response runtime.ClientResponse, consumer
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /policies/{policy_name}] GetPolicy", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetPolicyOK() *GetPolicyOK {
 	return &GetPolicyOK{}
 }
 
-/* GetPolicyOK describes a response with status code 200, with default header values.
+/*
+GetPolicyOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetPolicyOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get policy o k response
+func (o *GetPolicyOK) Code() int {
+	return 200
+}
+
 func (o *GetPolicyOK) Error() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyOK %s", 200, payload)
 }
 
 func (o *GetPolicyOK) String() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyOK %s", 200, payload)
 }
 
 func (o *GetPolicyOK) GetPayload() *models.PolicyDescribed {
@@ -119,7 +128,8 @@ func NewGetPolicyUnauthorized() *GetPolicyUnauthorized {
 	return &GetPolicyUnauthorized{}
 }
 
-/* GetPolicyUnauthorized describes a response with status code 401, with default header values.
+/*
+GetPolicyUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *GetPolicyUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get policy unauthorized response
+func (o *GetPolicyUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetPolicyUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyUnauthorized %s", 401, payload)
 }
 
 func (o *GetPolicyUnauthorized) String() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyUnauthorized %s", 401, payload)
 }
 
 func (o *GetPolicyUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewGetPolicyNotFound() *GetPolicyNotFound {
 	return &GetPolicyNotFound{}
 }
 
-/* GetPolicyNotFound describes a response with status code 404, with default header values.
+/*
+GetPolicyNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *GetPolicyNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get policy not found response
+func (o *GetPolicyNotFound) Code() int {
+	return 404
+}
+
 func (o *GetPolicyNotFound) Error() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyNotFound %s", 404, payload)
 }
 
 func (o *GetPolicyNotFound) String() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyNotFound %s", 404, payload)
 }
 
 func (o *GetPolicyNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewGetPolicyInternalServerError() *GetPolicyInternalServerError {
 	return &GetPolicyInternalServerError{}
 }
 
-/* GetPolicyInternalServerError describes a response with status code 500, with default header values.
+/*
+GetPolicyInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *GetPolicyInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get policy internal server error response
+func (o *GetPolicyInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetPolicyInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyInternalServerError %s", 500, payload)
 }
 
 func (o *GetPolicyInternalServerError) String() string {
-	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /policies/{policy_name}][%d] getPolicyInternalServerError %s", 500, payload)
 }
 
 func (o *GetPolicyInternalServerError) GetPayload() *models.Error {

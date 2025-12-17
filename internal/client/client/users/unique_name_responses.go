@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -42,7 +43,7 @@ func (o *UniqueNameReader) ReadResponse(response runtime.ClientResponse, consume
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /users/unique] UniqueName", response, response.Code())
 	}
 }
 
@@ -51,7 +52,8 @@ func NewUniqueNameOK() *UniqueNameOK {
 	return &UniqueNameOK{}
 }
 
-/* UniqueNameOK describes a response with status code 200, with default header values.
+/*
+UniqueNameOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -84,12 +86,19 @@ func (o *UniqueNameOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the unique name o k response
+func (o *UniqueNameOK) Code() int {
+	return 200
+}
+
 func (o *UniqueNameOK) Error() string {
-	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameOK %s", 200, payload)
 }
 
 func (o *UniqueNameOK) String() string {
-	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameOK %s", 200, payload)
 }
 
 func (o *UniqueNameOK) GetPayload() *models.UserName {
@@ -113,7 +122,8 @@ func NewUniqueNameUnauthorized() *UniqueNameUnauthorized {
 	return &UniqueNameUnauthorized{}
 }
 
-/* UniqueNameUnauthorized describes a response with status code 401, with default header values.
+/*
+UniqueNameUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -146,12 +156,19 @@ func (o *UniqueNameUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the unique name unauthorized response
+func (o *UniqueNameUnauthorized) Code() int {
+	return 401
+}
+
 func (o *UniqueNameUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameUnauthorized %s", 401, payload)
 }
 
 func (o *UniqueNameUnauthorized) String() string {
-	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameUnauthorized %s", 401, payload)
 }
 
 func (o *UniqueNameUnauthorized) GetPayload() *models.Error {
@@ -175,7 +192,8 @@ func NewUniqueNameInternalServerError() *UniqueNameInternalServerError {
 	return &UniqueNameInternalServerError{}
 }
 
-/* UniqueNameInternalServerError describes a response with status code 500, with default header values.
+/*
+UniqueNameInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -208,12 +226,19 @@ func (o *UniqueNameInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the unique name internal server error response
+func (o *UniqueNameInternalServerError) Code() int {
+	return 500
+}
+
 func (o *UniqueNameInternalServerError) Error() string {
-	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameInternalServerError %s", 500, payload)
 }
 
 func (o *UniqueNameInternalServerError) String() string {
-	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/unique][%d] uniqueNameInternalServerError %s", 500, payload)
 }
 
 func (o *UniqueNameInternalServerError) GetPayload() *models.Error {

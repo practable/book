@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetResourceIsAvailableReader) ReadResponse(response runtime.ClientRespo
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /admin/resources/{resource_name}] GetResourceIsAvailable", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetResourceIsAvailableOK() *GetResourceIsAvailableOK {
 	return &GetResourceIsAvailableOK{}
 }
 
-/* GetResourceIsAvailableOK describes a response with status code 200, with default header values.
+/*
+GetResourceIsAvailableOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetResourceIsAvailableOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get resource is available o k response
+func (o *GetResourceIsAvailableOK) Code() int {
+	return 200
+}
+
 func (o *GetResourceIsAvailableOK) Error() string {
-	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableOK %s", 200, payload)
 }
 
 func (o *GetResourceIsAvailableOK) String() string {
-	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableOK %s", 200, payload)
 }
 
 func (o *GetResourceIsAvailableOK) GetPayload() *models.ResourceStatus {
@@ -119,7 +128,8 @@ func NewGetResourceIsAvailableUnauthorized() *GetResourceIsAvailableUnauthorized
 	return &GetResourceIsAvailableUnauthorized{}
 }
 
-/* GetResourceIsAvailableUnauthorized describes a response with status code 401, with default header values.
+/*
+GetResourceIsAvailableUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *GetResourceIsAvailableUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get resource is available unauthorized response
+func (o *GetResourceIsAvailableUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetResourceIsAvailableUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableUnauthorized %s", 401, payload)
 }
 
 func (o *GetResourceIsAvailableUnauthorized) String() string {
-	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableUnauthorized %s", 401, payload)
 }
 
 func (o *GetResourceIsAvailableUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewGetResourceIsAvailableNotFound() *GetResourceIsAvailableNotFound {
 	return &GetResourceIsAvailableNotFound{}
 }
 
-/* GetResourceIsAvailableNotFound describes a response with status code 404, with default header values.
+/*
+GetResourceIsAvailableNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *GetResourceIsAvailableNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get resource is available not found response
+func (o *GetResourceIsAvailableNotFound) Code() int {
+	return 404
+}
+
 func (o *GetResourceIsAvailableNotFound) Error() string {
-	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableNotFound %s", 404, payload)
 }
 
 func (o *GetResourceIsAvailableNotFound) String() string {
-	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableNotFound %s", 404, payload)
 }
 
 func (o *GetResourceIsAvailableNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewGetResourceIsAvailableInternalServerError() *GetResourceIsAvailableInter
 	return &GetResourceIsAvailableInternalServerError{}
 }
 
-/* GetResourceIsAvailableInternalServerError describes a response with status code 500, with default header values.
+/*
+GetResourceIsAvailableInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *GetResourceIsAvailableInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get resource is available internal server error response
+func (o *GetResourceIsAvailableInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetResourceIsAvailableInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableInternalServerError %s", 500, payload)
 }
 
 func (o *GetResourceIsAvailableInternalServerError) String() string {
-	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/resources/{resource_name}][%d] getResourceIsAvailableInternalServerError %s", 500, payload)
 }
 
 func (o *GetResourceIsAvailableInternalServerError) GetPayload() *models.Error {

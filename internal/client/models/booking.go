@@ -201,6 +201,7 @@ func (m *Booking) ContextValidate(ctx context.Context, formats strfmt.Registry) 
 func (m *Booking) contextValidateWhen(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.When != nil {
+
 		if err := m.When.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("when")

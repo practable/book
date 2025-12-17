@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -54,7 +55,7 @@ func (o *CheckManifestReader) ReadResponse(response runtime.ClientResponse, cons
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /admin/manifest/check] CheckManifest", response, response.Code())
 	}
 }
 
@@ -63,7 +64,8 @@ func NewCheckManifestOK() *CheckManifestOK {
 	return &CheckManifestOK{}
 }
 
-/* CheckManifestOK describes a response with status code 200, with default header values.
+/*
+CheckManifestOK describes a response with status code 200, with default header values.
 
 List of errors (e.g. errors in client-provided data such as manifest)
 */
@@ -96,12 +98,19 @@ func (o *CheckManifestOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the check manifest o k response
+func (o *CheckManifestOK) Code() int {
+	return 200
+}
+
 func (o *CheckManifestOK) Error() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestOK %s", 200, payload)
 }
 
 func (o *CheckManifestOK) String() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestOK %s", 200, payload)
 }
 
 func (o *CheckManifestOK) GetPayload() *models.ErrorList {
@@ -125,7 +134,8 @@ func NewCheckManifestNoContent() *CheckManifestNoContent {
 	return &CheckManifestNoContent{}
 }
 
-/* CheckManifestNoContent describes a response with status code 204, with default header values.
+/*
+CheckManifestNoContent describes a response with status code 204, with default header values.
 
 OK - manifest is valid
 */
@@ -157,12 +167,17 @@ func (o *CheckManifestNoContent) IsCode(code int) bool {
 	return code == 204
 }
 
+// Code gets the status code for the check manifest no content response
+func (o *CheckManifestNoContent) Code() int {
+	return 204
+}
+
 func (o *CheckManifestNoContent) Error() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestNoContent ", 204)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestNoContent", 204)
 }
 
 func (o *CheckManifestNoContent) String() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestNoContent ", 204)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestNoContent", 204)
 }
 
 func (o *CheckManifestNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -175,7 +190,8 @@ func NewCheckManifestUnauthorized() *CheckManifestUnauthorized {
 	return &CheckManifestUnauthorized{}
 }
 
-/* CheckManifestUnauthorized describes a response with status code 401, with default header values.
+/*
+CheckManifestUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -208,12 +224,19 @@ func (o *CheckManifestUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the check manifest unauthorized response
+func (o *CheckManifestUnauthorized) Code() int {
+	return 401
+}
+
 func (o *CheckManifestUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestUnauthorized %s", 401, payload)
 }
 
 func (o *CheckManifestUnauthorized) String() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestUnauthorized %s", 401, payload)
 }
 
 func (o *CheckManifestUnauthorized) GetPayload() *models.Error {
@@ -237,7 +260,8 @@ func NewCheckManifestNotFound() *CheckManifestNotFound {
 	return &CheckManifestNotFound{}
 }
 
-/* CheckManifestNotFound describes a response with status code 404, with default header values.
+/*
+CheckManifestNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -270,12 +294,19 @@ func (o *CheckManifestNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the check manifest not found response
+func (o *CheckManifestNotFound) Code() int {
+	return 404
+}
+
 func (o *CheckManifestNotFound) Error() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestNotFound %s", 404, payload)
 }
 
 func (o *CheckManifestNotFound) String() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestNotFound %s", 404, payload)
 }
 
 func (o *CheckManifestNotFound) GetPayload() *models.Error {
@@ -299,7 +330,8 @@ func NewCheckManifestInternalServerError() *CheckManifestInternalServerError {
 	return &CheckManifestInternalServerError{}
 }
 
-/* CheckManifestInternalServerError describes a response with status code 500, with default header values.
+/*
+CheckManifestInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -332,12 +364,19 @@ func (o *CheckManifestInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the check manifest internal server error response
+func (o *CheckManifestInternalServerError) Code() int {
+	return 500
+}
+
 func (o *CheckManifestInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestInternalServerError %s", 500, payload)
 }
 
 func (o *CheckManifestInternalServerError) String() string {
-	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/manifest/check][%d] checkManifestInternalServerError %s", 500, payload)
 }
 
 func (o *CheckManifestInternalServerError) GetPayload() *models.Error {

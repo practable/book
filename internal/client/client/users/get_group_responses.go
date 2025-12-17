@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetGroupReader) ReadResponse(response runtime.ClientResponse, consumer 
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /groups/{group_name}] GetGroup", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetGroupOK() *GetGroupOK {
 	return &GetGroupOK{}
 }
 
-/* GetGroupOK describes a response with status code 200, with default header values.
+/*
+GetGroupOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetGroupOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get group o k response
+func (o *GetGroupOK) Code() int {
+	return 200
+}
+
 func (o *GetGroupOK) Error() string {
-	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupOK %s", 200, payload)
 }
 
 func (o *GetGroupOK) String() string {
-	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupOK %s", 200, payload)
 }
 
 func (o *GetGroupOK) GetPayload() *models.GroupDescribedWithPolicies {
@@ -119,7 +128,8 @@ func NewGetGroupUnauthorized() *GetGroupUnauthorized {
 	return &GetGroupUnauthorized{}
 }
 
-/* GetGroupUnauthorized describes a response with status code 401, with default header values.
+/*
+GetGroupUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *GetGroupUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get group unauthorized response
+func (o *GetGroupUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetGroupUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupUnauthorized %s", 401, payload)
 }
 
 func (o *GetGroupUnauthorized) String() string {
-	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupUnauthorized %s", 401, payload)
 }
 
 func (o *GetGroupUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewGetGroupNotFound() *GetGroupNotFound {
 	return &GetGroupNotFound{}
 }
 
-/* GetGroupNotFound describes a response with status code 404, with default header values.
+/*
+GetGroupNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *GetGroupNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get group not found response
+func (o *GetGroupNotFound) Code() int {
+	return 404
+}
+
 func (o *GetGroupNotFound) Error() string {
-	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupNotFound %s", 404, payload)
 }
 
 func (o *GetGroupNotFound) String() string {
-	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupNotFound %s", 404, payload)
 }
 
 func (o *GetGroupNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewGetGroupInternalServerError() *GetGroupInternalServerError {
 	return &GetGroupInternalServerError{}
 }
 
-/* GetGroupInternalServerError describes a response with status code 500, with default header values.
+/*
+GetGroupInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *GetGroupInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get group internal server error response
+func (o *GetGroupInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetGroupInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupInternalServerError %s", 500, payload)
 }
 
 func (o *GetGroupInternalServerError) String() string {
-	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /groups/{group_name}][%d] getGroupInternalServerError %s", 500, payload)
 }
 
 func (o *GetGroupInternalServerError) GetPayload() *models.Error {

@@ -92,6 +92,7 @@ func (m *SlotDescribed) ContextValidate(ctx context.Context, formats strfmt.Regi
 func (m *SlotDescribed) contextValidateDescription(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Description != nil {
+
 		if err := m.Description.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("description")

@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *SetLockReader) ReadResponse(response runtime.ClientResponse, consumer r
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[PUT /admin/status] setLock", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewSetLockOK() *SetLockOK {
 	return &SetLockOK{}
 }
 
-/* SetLockOK describes a response with status code 200, with default header values.
+/*
+SetLockOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *SetLockOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the set lock o k response
+func (o *SetLockOK) Code() int {
+	return 200
+}
+
 func (o *SetLockOK) Error() string {
-	return fmt.Sprintf("[PUT /admin/status][%d] setLockOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/status][%d] setLockOK %s", 200, payload)
 }
 
 func (o *SetLockOK) String() string {
-	return fmt.Sprintf("[PUT /admin/status][%d] setLockOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/status][%d] setLockOK %s", 200, payload)
 }
 
 func (o *SetLockOK) GetPayload() *models.StoreStatusAdmin {
@@ -119,7 +128,8 @@ func NewSetLockUnauthorized() *SetLockUnauthorized {
 	return &SetLockUnauthorized{}
 }
 
-/* SetLockUnauthorized describes a response with status code 401, with default header values.
+/*
+SetLockUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *SetLockUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the set lock unauthorized response
+func (o *SetLockUnauthorized) Code() int {
+	return 401
+}
+
 func (o *SetLockUnauthorized) Error() string {
-	return fmt.Sprintf("[PUT /admin/status][%d] setLockUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/status][%d] setLockUnauthorized %s", 401, payload)
 }
 
 func (o *SetLockUnauthorized) String() string {
-	return fmt.Sprintf("[PUT /admin/status][%d] setLockUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/status][%d] setLockUnauthorized %s", 401, payload)
 }
 
 func (o *SetLockUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewSetLockNotFound() *SetLockNotFound {
 	return &SetLockNotFound{}
 }
 
-/* SetLockNotFound describes a response with status code 404, with default header values.
+/*
+SetLockNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *SetLockNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the set lock not found response
+func (o *SetLockNotFound) Code() int {
+	return 404
+}
+
 func (o *SetLockNotFound) Error() string {
-	return fmt.Sprintf("[PUT /admin/status][%d] setLockNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/status][%d] setLockNotFound %s", 404, payload)
 }
 
 func (o *SetLockNotFound) String() string {
-	return fmt.Sprintf("[PUT /admin/status][%d] setLockNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/status][%d] setLockNotFound %s", 404, payload)
 }
 
 func (o *SetLockNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewSetLockInternalServerError() *SetLockInternalServerError {
 	return &SetLockInternalServerError{}
 }
 
-/* SetLockInternalServerError describes a response with status code 500, with default header values.
+/*
+SetLockInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *SetLockInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the set lock internal server error response
+func (o *SetLockInternalServerError) Code() int {
+	return 500
+}
+
 func (o *SetLockInternalServerError) Error() string {
-	return fmt.Sprintf("[PUT /admin/status][%d] setLockInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/status][%d] setLockInternalServerError %s", 500, payload)
 }
 
 func (o *SetLockInternalServerError) String() string {
-	return fmt.Sprintf("[PUT /admin/status][%d] setLockInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/status][%d] setLockInternalServerError %s", 500, payload)
 }
 
 func (o *SetLockInternalServerError) GetPayload() *models.Error {

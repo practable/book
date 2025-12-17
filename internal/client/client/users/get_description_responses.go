@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetDescriptionReader) ReadResponse(response runtime.ClientResponse, con
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /descriptions/{description_name}] GetDescription", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetDescriptionOK() *GetDescriptionOK {
 	return &GetDescriptionOK{}
 }
 
-/* GetDescriptionOK describes a response with status code 200, with default header values.
+/*
+GetDescriptionOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetDescriptionOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get description o k response
+func (o *GetDescriptionOK) Code() int {
+	return 200
+}
+
 func (o *GetDescriptionOK) Error() string {
-	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionOK %s", 200, payload)
 }
 
 func (o *GetDescriptionOK) String() string {
-	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionOK %s", 200, payload)
 }
 
 func (o *GetDescriptionOK) GetPayload() *models.Description {
@@ -119,7 +128,8 @@ func NewGetDescriptionUnauthorized() *GetDescriptionUnauthorized {
 	return &GetDescriptionUnauthorized{}
 }
 
-/* GetDescriptionUnauthorized describes a response with status code 401, with default header values.
+/*
+GetDescriptionUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *GetDescriptionUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get description unauthorized response
+func (o *GetDescriptionUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetDescriptionUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionUnauthorized %s", 401, payload)
 }
 
 func (o *GetDescriptionUnauthorized) String() string {
-	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionUnauthorized %s", 401, payload)
 }
 
 func (o *GetDescriptionUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewGetDescriptionNotFound() *GetDescriptionNotFound {
 	return &GetDescriptionNotFound{}
 }
 
-/* GetDescriptionNotFound describes a response with status code 404, with default header values.
+/*
+GetDescriptionNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *GetDescriptionNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get description not found response
+func (o *GetDescriptionNotFound) Code() int {
+	return 404
+}
+
 func (o *GetDescriptionNotFound) Error() string {
-	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionNotFound %s", 404, payload)
 }
 
 func (o *GetDescriptionNotFound) String() string {
-	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionNotFound %s", 404, payload)
 }
 
 func (o *GetDescriptionNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewGetDescriptionInternalServerError() *GetDescriptionInternalServerError {
 	return &GetDescriptionInternalServerError{}
 }
 
-/* GetDescriptionInternalServerError describes a response with status code 500, with default header values.
+/*
+GetDescriptionInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *GetDescriptionInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get description internal server error response
+func (o *GetDescriptionInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetDescriptionInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionInternalServerError %s", 500, payload)
 }
 
 func (o *GetDescriptionInternalServerError) String() string {
-	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /descriptions/{description_name}][%d] getDescriptionInternalServerError %s", 500, payload)
 }
 
 func (o *GetDescriptionInternalServerError) GetPayload() *models.Error {

@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *AddGroupForUserReader) ReadResponse(response runtime.ClientResponse, co
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[POST /users/{user_name}/groups/{group_name}] AddGroupForUser", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewAddGroupForUserNoContent() *AddGroupForUserNoContent {
 	return &AddGroupForUserNoContent{}
 }
 
-/* AddGroupForUserNoContent describes a response with status code 204, with default header values.
+/*
+AddGroupForUserNoContent describes a response with status code 204, with default header values.
 
 OK - No Content
 */
@@ -89,12 +91,17 @@ func (o *AddGroupForUserNoContent) IsCode(code int) bool {
 	return code == 204
 }
 
+// Code gets the status code for the add group for user no content response
+func (o *AddGroupForUserNoContent) Code() int {
+	return 204
+}
+
 func (o *AddGroupForUserNoContent) Error() string {
-	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserNoContent ", 204)
+	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserNoContent", 204)
 }
 
 func (o *AddGroupForUserNoContent) String() string {
-	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserNoContent ", 204)
+	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserNoContent", 204)
 }
 
 func (o *AddGroupForUserNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -107,7 +114,8 @@ func NewAddGroupForUserUnauthorized() *AddGroupForUserUnauthorized {
 	return &AddGroupForUserUnauthorized{}
 }
 
-/* AddGroupForUserUnauthorized describes a response with status code 401, with default header values.
+/*
+AddGroupForUserUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -140,12 +148,19 @@ func (o *AddGroupForUserUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the add group for user unauthorized response
+func (o *AddGroupForUserUnauthorized) Code() int {
+	return 401
+}
+
 func (o *AddGroupForUserUnauthorized) Error() string {
-	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserUnauthorized %s", 401, payload)
 }
 
 func (o *AddGroupForUserUnauthorized) String() string {
-	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserUnauthorized %s", 401, payload)
 }
 
 func (o *AddGroupForUserUnauthorized) GetPayload() *models.Error {
@@ -169,7 +184,8 @@ func NewAddGroupForUserNotFound() *AddGroupForUserNotFound {
 	return &AddGroupForUserNotFound{}
 }
 
-/* AddGroupForUserNotFound describes a response with status code 404, with default header values.
+/*
+AddGroupForUserNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -202,12 +218,19 @@ func (o *AddGroupForUserNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the add group for user not found response
+func (o *AddGroupForUserNotFound) Code() int {
+	return 404
+}
+
 func (o *AddGroupForUserNotFound) Error() string {
-	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserNotFound %s", 404, payload)
 }
 
 func (o *AddGroupForUserNotFound) String() string {
-	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserNotFound %s", 404, payload)
 }
 
 func (o *AddGroupForUserNotFound) GetPayload() *models.Error {
@@ -231,7 +254,8 @@ func NewAddGroupForUserInternalServerError() *AddGroupForUserInternalServerError
 	return &AddGroupForUserInternalServerError{}
 }
 
-/* AddGroupForUserInternalServerError describes a response with status code 500, with default header values.
+/*
+AddGroupForUserInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -264,12 +288,19 @@ func (o *AddGroupForUserInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the add group for user internal server error response
+func (o *AddGroupForUserInternalServerError) Code() int {
+	return 500
+}
+
 func (o *AddGroupForUserInternalServerError) Error() string {
-	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserInternalServerError %s", 500, payload)
 }
 
 func (o *AddGroupForUserInternalServerError) String() string {
-	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /users/{user_name}/groups/{group_name}][%d] addGroupForUserInternalServerError %s", 500, payload)
 }
 
 func (o *AddGroupForUserInternalServerError) GetPayload() *models.Error {

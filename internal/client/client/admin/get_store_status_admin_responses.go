@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetStoreStatusAdminReader) ReadResponse(response runtime.ClientResponse
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /admin/status] getStoreStatusAdmin", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetStoreStatusAdminOK() *GetStoreStatusAdminOK {
 	return &GetStoreStatusAdminOK{}
 }
 
-/* GetStoreStatusAdminOK describes a response with status code 200, with default header values.
+/*
+GetStoreStatusAdminOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetStoreStatusAdminOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get store status admin o k response
+func (o *GetStoreStatusAdminOK) Code() int {
+	return 200
+}
+
 func (o *GetStoreStatusAdminOK) Error() string {
-	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminOK %s", 200, payload)
 }
 
 func (o *GetStoreStatusAdminOK) String() string {
-	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminOK %s", 200, payload)
 }
 
 func (o *GetStoreStatusAdminOK) GetPayload() *models.StoreStatusAdmin {
@@ -119,7 +128,8 @@ func NewGetStoreStatusAdminUnauthorized() *GetStoreStatusAdminUnauthorized {
 	return &GetStoreStatusAdminUnauthorized{}
 }
 
-/* GetStoreStatusAdminUnauthorized describes a response with status code 401, with default header values.
+/*
+GetStoreStatusAdminUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *GetStoreStatusAdminUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get store status admin unauthorized response
+func (o *GetStoreStatusAdminUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetStoreStatusAdminUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminUnauthorized %s", 401, payload)
 }
 
 func (o *GetStoreStatusAdminUnauthorized) String() string {
-	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminUnauthorized %s", 401, payload)
 }
 
 func (o *GetStoreStatusAdminUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewGetStoreStatusAdminNotFound() *GetStoreStatusAdminNotFound {
 	return &GetStoreStatusAdminNotFound{}
 }
 
-/* GetStoreStatusAdminNotFound describes a response with status code 404, with default header values.
+/*
+GetStoreStatusAdminNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *GetStoreStatusAdminNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get store status admin not found response
+func (o *GetStoreStatusAdminNotFound) Code() int {
+	return 404
+}
+
 func (o *GetStoreStatusAdminNotFound) Error() string {
-	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminNotFound %s", 404, payload)
 }
 
 func (o *GetStoreStatusAdminNotFound) String() string {
-	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminNotFound %s", 404, payload)
 }
 
 func (o *GetStoreStatusAdminNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewGetStoreStatusAdminInternalServerError() *GetStoreStatusAdminInternalSer
 	return &GetStoreStatusAdminInternalServerError{}
 }
 
-/* GetStoreStatusAdminInternalServerError describes a response with status code 500, with default header values.
+/*
+GetStoreStatusAdminInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *GetStoreStatusAdminInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get store status admin internal server error response
+func (o *GetStoreStatusAdminInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetStoreStatusAdminInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminInternalServerError %s", 500, payload)
 }
 
 func (o *GetStoreStatusAdminInternalServerError) String() string {
-	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/status][%d] getStoreStatusAdminInternalServerError %s", 500, payload)
 }
 
 func (o *GetStoreStatusAdminInternalServerError) GetPayload() *models.Error {

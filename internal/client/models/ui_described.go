@@ -97,6 +97,7 @@ func (m *UIDescribed) ContextValidate(ctx context.Context, formats strfmt.Regist
 func (m *UIDescribed) contextValidateDescription(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Description != nil {
+
 		if err := m.Description.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("description")

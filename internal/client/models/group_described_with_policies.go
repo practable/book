@@ -102,6 +102,11 @@ func (m *GroupDescribedWithPolicies) ContextValidate(ctx context.Context, format
 func (m *GroupDescribedWithPolicies) contextValidateDescription(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Description != nil {
+
+		if swag.IsZero(m.Description) { // not required
+			return nil
+		}
+
 		if err := m.Description.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("description")
@@ -116,6 +121,10 @@ func (m *GroupDescribedWithPolicies) contextValidateDescription(ctx context.Cont
 }
 
 func (m *GroupDescribedWithPolicies) contextValidatePolicies(ctx context.Context, formats strfmt.Registry) error {
+
+	if swag.IsZero(m.Policies) { // not required
+		return nil
+	}
 
 	if err := m.Policies.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {

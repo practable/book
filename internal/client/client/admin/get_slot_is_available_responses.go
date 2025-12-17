@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetSlotIsAvailableReader) ReadResponse(response runtime.ClientResponse,
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /admin/slots/{slot_name}] GetSlotIsAvailable", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetSlotIsAvailableOK() *GetSlotIsAvailableOK {
 	return &GetSlotIsAvailableOK{}
 }
 
-/* GetSlotIsAvailableOK describes a response with status code 200, with default header values.
+/*
+GetSlotIsAvailableOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetSlotIsAvailableOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get slot is available o k response
+func (o *GetSlotIsAvailableOK) Code() int {
+	return 200
+}
+
 func (o *GetSlotIsAvailableOK) Error() string {
-	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableOK %s", 200, payload)
 }
 
 func (o *GetSlotIsAvailableOK) String() string {
-	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableOK %s", 200, payload)
 }
 
 func (o *GetSlotIsAvailableOK) GetPayload() *models.ResourceStatus {
@@ -119,7 +128,8 @@ func NewGetSlotIsAvailableUnauthorized() *GetSlotIsAvailableUnauthorized {
 	return &GetSlotIsAvailableUnauthorized{}
 }
 
-/* GetSlotIsAvailableUnauthorized describes a response with status code 401, with default header values.
+/*
+GetSlotIsAvailableUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *GetSlotIsAvailableUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get slot is available unauthorized response
+func (o *GetSlotIsAvailableUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetSlotIsAvailableUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableUnauthorized %s", 401, payload)
 }
 
 func (o *GetSlotIsAvailableUnauthorized) String() string {
-	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableUnauthorized %s", 401, payload)
 }
 
 func (o *GetSlotIsAvailableUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewGetSlotIsAvailableNotFound() *GetSlotIsAvailableNotFound {
 	return &GetSlotIsAvailableNotFound{}
 }
 
-/* GetSlotIsAvailableNotFound describes a response with status code 404, with default header values.
+/*
+GetSlotIsAvailableNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *GetSlotIsAvailableNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get slot is available not found response
+func (o *GetSlotIsAvailableNotFound) Code() int {
+	return 404
+}
+
 func (o *GetSlotIsAvailableNotFound) Error() string {
-	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableNotFound %s", 404, payload)
 }
 
 func (o *GetSlotIsAvailableNotFound) String() string {
-	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableNotFound %s", 404, payload)
 }
 
 func (o *GetSlotIsAvailableNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewGetSlotIsAvailableInternalServerError() *GetSlotIsAvailableInternalServe
 	return &GetSlotIsAvailableInternalServerError{}
 }
 
-/* GetSlotIsAvailableInternalServerError describes a response with status code 500, with default header values.
+/*
+GetSlotIsAvailableInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *GetSlotIsAvailableInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get slot is available internal server error response
+func (o *GetSlotIsAvailableInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetSlotIsAvailableInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableInternalServerError %s", 500, payload)
 }
 
 func (o *GetSlotIsAvailableInternalServerError) String() string {
-	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/slots/{slot_name}][%d] getSlotIsAvailableInternalServerError %s", 500, payload)
 }
 
 func (o *GetSlotIsAvailableInternalServerError) GetPayload() *models.Error {

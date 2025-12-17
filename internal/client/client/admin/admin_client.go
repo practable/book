@@ -9,12 +9,38 @@ import (
 	"fmt"
 
 	"github.com/go-openapi/runtime"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 )
 
 // New creates a new admin API client.
 func New(transport runtime.ClientTransport, formats strfmt.Registry) ClientService {
 	return &Client{transport: transport, formats: formats}
+}
+
+// New creates a new admin API client with basic auth credentials.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - user: user for basic authentication header.
+// - password: password for basic authentication header.
+func NewClientWithBasicAuth(host, basePath, scheme, user, password string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BasicAuth(user, password)
+	return &Client{transport: transport, formats: strfmt.Default}
+}
+
+// New creates a new admin API client with a bearer token for authentication.
+// It takes the following parameters:
+// - host: http host (github.com).
+// - basePath: any base path for the API client ("/v1", "/v3").
+// - scheme: http scheme ("http", "https").
+// - bearerToken: bearer token for Bearer authentication header.
+func NewClientWithBearerToken(host, basePath, scheme, bearerToken string) ClientService {
+	transport := httptransport.New(host, basePath, []string{scheme})
+	transport.DefaultAuthentication = httptransport.BearerToken(bearerToken)
+	return &Client{transport: transport, formats: strfmt.Default}
 }
 
 /*
@@ -25,8 +51,32 @@ type Client struct {
 	formats   strfmt.Registry
 }
 
-// ClientOption is the option for Client methods
+// ClientOption may be used to customize the behavior of Client methods.
 type ClientOption func(*runtime.ClientOperation)
+
+// This client is generated with a few options you might find useful for your swagger spec.
+//
+// Feel free to add you own set of options.
+
+// WithContentType allows the client to force the Content-Type header
+// to negotiate a specific Consumer from the server.
+//
+// You may use this option to set arbitrary extensions to your MIME media type.
+func WithContentType(mime string) ClientOption {
+	return func(r *runtime.ClientOperation) {
+		r.ConsumesMediaTypes = []string{mime}
+	}
+}
+
+// WithContentTypeApplicationJSON sets the Content-Type header to "application/json".
+func WithContentTypeApplicationJSON(r *runtime.ClientOperation) {
+	r.ConsumesMediaTypes = []string{"application/json"}
+}
+
+// WithContentTypeTextPlain sets the Content-Type header to "text/plain".
+func WithContentTypeTextPlain(r *runtime.ClientOperation) {
+	r.ConsumesMediaTypes = []string{"text/plain"}
+}
 
 // ClientService is the interface for Client methods
 type ClientService interface {
@@ -64,9 +114,9 @@ type ClientService interface {
 }
 
 /*
-  CheckManifest checks a manifest
+CheckManifest checks a manifest
 
-  Check a manifest is valid. Returns 204 if valid or, 200 with a list of error(s).
+Check a manifest is valid. Returns 204 if valid or, 200 with a list of error(s).
 */
 func (a *Client) CheckManifest(params *CheckManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CheckManifestOK, *CheckManifestNoContent, error) {
 	// TODO: Validate the params before sending
@@ -106,9 +156,9 @@ func (a *Client) CheckManifest(params *CheckManifestParams, authInfo runtime.Cli
 }
 
 /*
-  ExportBookings exports a copy of all current bookings
+ExportBookings exports a copy of all current bookings
 
-  Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
+Exports a copy of the current bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
 */
 func (a *Client) ExportBookings(params *ExportBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportBookingsOK, error) {
 	// TODO: Validate the params before sending
@@ -147,9 +197,9 @@ func (a *Client) ExportBookings(params *ExportBookingsParams, authInfo runtime.C
 }
 
 /*
-  ExportManifest exports the manifest
+ExportManifest exports the manifest
 
-  Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users
+Export the manifest (resources, slots, policies, descriptions etc). Does not include bookings or users
 */
 func (a *Client) ExportManifest(params *ExportManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportManifestOK, error) {
 	// TODO: Validate the params before sending
@@ -188,9 +238,9 @@ func (a *Client) ExportManifest(params *ExportManifestParams, authInfo runtime.C
 }
 
 /*
-  ExportOldBookings exports a copy of all old bookings
+ExportOldBookings exports a copy of all old bookings
 
-  Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
+Exports a copy of the old bookings, with sufficient information to allow editing and replacement. If successful produces JSON-formatted bookings list.
 */
 func (a *Client) ExportOldBookings(params *ExportOldBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportOldBookingsOK, error) {
 	// TODO: Validate the params before sending
@@ -229,9 +279,9 @@ func (a *Client) ExportOldBookings(params *ExportOldBookingsParams, authInfo run
 }
 
 /*
-  ExportUsers exports users
+ExportUsers exports users
 
-  Export bookings and usage data for each user
+Export bookings and usage data for each user
 */
 func (a *Client) ExportUsers(params *ExportUsersParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportUsersOK, error) {
 	// TODO: Validate the params before sending
@@ -270,9 +320,9 @@ func (a *Client) ExportUsers(params *ExportUsersParams, authInfo runtime.ClientA
 }
 
 /*
-  GetResourceIsAvailable gets the availability of the resource
+GetResourceIsAvailable gets the availability of the resource
 
-  Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
+Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
 */
 func (a *Client) GetResourceIsAvailable(params *GetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourceIsAvailableOK, error) {
 	// TODO: Validate the params before sending
@@ -311,9 +361,9 @@ func (a *Client) GetResourceIsAvailable(params *GetResourceIsAvailableParams, au
 }
 
 /*
-  GetResources gets the list of resources in the manifest
+GetResources gets the list of resources in the manifest
 
-  Gets a list of all resources, including their availability and any tests specified
+Gets a list of all resources, including their availability and any tests specified
 */
 func (a *Client) GetResources(params *GetResourcesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourcesOK, error) {
 	// TODO: Validate the params before sending
@@ -352,9 +402,9 @@ func (a *Client) GetResources(params *GetResourcesParams, authInfo runtime.Clien
 }
 
 /*
-  GetSlotIsAvailable gets the availability of the slot
+GetSlotIsAvailable gets the availability of the slot
 
-  Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
+Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
 */
 func (a *Client) GetSlotIsAvailable(params *GetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetSlotIsAvailableOK, error) {
 	// TODO: Validate the params before sending
@@ -393,9 +443,9 @@ func (a *Client) GetSlotIsAvailable(params *GetSlotIsAvailableParams, authInfo r
 }
 
 /*
-  ReplaceBookings replaces current bookings
+ReplaceBookings replaces current bookings
 
-  Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.
+Deletes all current bookings, refunds usage to users, and then replaces with current bookings. Existing users are retained, new users are created as required to match bookings.
 */
 func (a *Client) ReplaceBookings(params *ReplaceBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceBookingsOK, error) {
 	// TODO: Validate the params before sending
@@ -434,9 +484,9 @@ func (a *Client) ReplaceBookings(params *ReplaceBookingsParams, authInfo runtime
 }
 
 /*
-  ReplaceManifest replaces the manifest
+ReplaceManifest replaces the manifest
 
-  Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)
+Delete the existing manifest and replace it with a new one. All items have specified names so bookings do not need updating (except perhaps you should if booked resources have been removed)
 */
 func (a *Client) ReplaceManifest(params *ReplaceManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceManifestOK, error) {
 	// TODO: Validate the params before sending
@@ -475,9 +525,9 @@ func (a *Client) ReplaceManifest(params *ReplaceManifestParams, authInfo runtime
 }
 
 /*
-  ReplaceOldBookings replaces old bookings
+ReplaceOldBookings replaces old bookings
 
-  Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.
+Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.
 */
 func (a *Client) ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceOldBookingsOK, error) {
 	// TODO: Validate the params before sending
@@ -516,9 +566,9 @@ func (a *Client) ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo r
 }
 
 /*
-  SetResourceIsAvailable sets the availability of the resource
+SetResourceIsAvailable sets the availability of the resource
 
-  Sets the availability of a resource, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
+Sets the availability of a resource, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
 */
 func (a *Client) SetResourceIsAvailable(params *SetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetResourceIsAvailableNoContent, error) {
 	// TODO: Validate the params before sending
@@ -557,9 +607,9 @@ func (a *Client) SetResourceIsAvailable(params *SetResourceIsAvailableParams, au
 }
 
 /*
-  SetSlotIsAvailable sets the availability of the slot
+SetSlotIsAvailable sets the availability of the slot
 
-  Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
+Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
 */
 func (a *Client) SetSlotIsAvailable(params *SetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetSlotIsAvailableNoContent, error) {
 	// TODO: Validate the params before sending
@@ -598,9 +648,9 @@ func (a *Client) SetSlotIsAvailable(params *SetSlotIsAvailableParams, authInfo r
 }
 
 /*
-  GetStoreStatusAdmin gets current store status
+GetStoreStatusAdmin gets current store status
 
-  Gets a count of the number of elements in the store, e.g. Bookings, Descriptions etc to facilitate a necessary but not sufficient check that replace manifest and replace bookings have produced the correct results.
+Gets a count of the number of elements in the store, e.g. Bookings, Descriptions etc to facilitate a necessary but not sufficient check that replace manifest and replace bookings have produced the correct results.
 */
 func (a *Client) GetStoreStatusAdmin(params *GetStoreStatusAdminParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetStoreStatusAdminOK, error) {
 	// TODO: Validate the params before sending
@@ -639,9 +689,9 @@ func (a *Client) GetStoreStatusAdmin(params *GetStoreStatusAdminParams, authInfo
 }
 
 /*
-  SetLock sets release booking lock
+SetLock sets release booking lock
 
-  Set whether the booking system is locked for users
+Set whether the booking system is locked for users
 */
 func (a *Client) SetLock(params *SetLockParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetLockOK, error) {
 	// TODO: Validate the params before sending

@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *ExportUsersReader) ReadResponse(response runtime.ClientResponse, consum
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /admin/users] ExportUsers", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewExportUsersOK() *ExportUsersOK {
 	return &ExportUsersOK{}
 }
 
-/* ExportUsersOK describes a response with status code 200, with default header values.
+/*
+ExportUsersOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *ExportUsersOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the export users o k response
+func (o *ExportUsersOK) Code() int {
+	return 200
+}
+
 func (o *ExportUsersOK) Error() string {
-	return fmt.Sprintf("[GET /admin/users][%d] exportUsersOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] exportUsersOK %s", 200, payload)
 }
 
 func (o *ExportUsersOK) String() string {
-	return fmt.Sprintf("[GET /admin/users][%d] exportUsersOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] exportUsersOK %s", 200, payload)
 }
 
 func (o *ExportUsersOK) GetPayload() models.Users {
@@ -117,7 +126,8 @@ func NewExportUsersUnauthorized() *ExportUsersUnauthorized {
 	return &ExportUsersUnauthorized{}
 }
 
-/* ExportUsersUnauthorized describes a response with status code 401, with default header values.
+/*
+ExportUsersUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -150,12 +160,19 @@ func (o *ExportUsersUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the export users unauthorized response
+func (o *ExportUsersUnauthorized) Code() int {
+	return 401
+}
+
 func (o *ExportUsersUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /admin/users][%d] exportUsersUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] exportUsersUnauthorized %s", 401, payload)
 }
 
 func (o *ExportUsersUnauthorized) String() string {
-	return fmt.Sprintf("[GET /admin/users][%d] exportUsersUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] exportUsersUnauthorized %s", 401, payload)
 }
 
 func (o *ExportUsersUnauthorized) GetPayload() *models.Error {
@@ -179,7 +196,8 @@ func NewExportUsersNotFound() *ExportUsersNotFound {
 	return &ExportUsersNotFound{}
 }
 
-/* ExportUsersNotFound describes a response with status code 404, with default header values.
+/*
+ExportUsersNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -212,12 +230,19 @@ func (o *ExportUsersNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the export users not found response
+func (o *ExportUsersNotFound) Code() int {
+	return 404
+}
+
 func (o *ExportUsersNotFound) Error() string {
-	return fmt.Sprintf("[GET /admin/users][%d] exportUsersNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] exportUsersNotFound %s", 404, payload)
 }
 
 func (o *ExportUsersNotFound) String() string {
-	return fmt.Sprintf("[GET /admin/users][%d] exportUsersNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] exportUsersNotFound %s", 404, payload)
 }
 
 func (o *ExportUsersNotFound) GetPayload() *models.Error {
@@ -241,7 +266,8 @@ func NewExportUsersInternalServerError() *ExportUsersInternalServerError {
 	return &ExportUsersInternalServerError{}
 }
 
-/* ExportUsersInternalServerError describes a response with status code 500, with default header values.
+/*
+ExportUsersInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -274,12 +300,19 @@ func (o *ExportUsersInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the export users internal server error response
+func (o *ExportUsersInternalServerError) Code() int {
+	return 500
+}
+
 func (o *ExportUsersInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /admin/users][%d] exportUsersInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] exportUsersInternalServerError %s", 500, payload)
 }
 
 func (o *ExportUsersInternalServerError) String() string {
-	return fmt.Sprintf("[GET /admin/users][%d] exportUsersInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/users][%d] exportUsersInternalServerError %s", 500, payload)
 }
 
 func (o *ExportUsersInternalServerError) GetPayload() *models.Error {

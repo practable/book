@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -42,7 +43,7 @@ func (o *CancelBookingReader) ReadResponse(response runtime.ClientResponse, cons
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[DELETE /users/{user_name}/bookings/{booking_name}] CancelBooking", response, response.Code())
 	}
 }
 
@@ -51,7 +52,8 @@ func NewCancelBookingUnauthorized() *CancelBookingUnauthorized {
 	return &CancelBookingUnauthorized{}
 }
 
-/* CancelBookingUnauthorized describes a response with status code 401, with default header values.
+/*
+CancelBookingUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -84,12 +86,19 @@ func (o *CancelBookingUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the cancel booking unauthorized response
+func (o *CancelBookingUnauthorized) Code() int {
+	return 401
+}
+
 func (o *CancelBookingUnauthorized) Error() string {
-	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingUnauthorized %s", 401, payload)
 }
 
 func (o *CancelBookingUnauthorized) String() string {
-	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingUnauthorized %s", 401, payload)
 }
 
 func (o *CancelBookingUnauthorized) GetPayload() *models.Error {
@@ -113,7 +122,8 @@ func NewCancelBookingNotFound() *CancelBookingNotFound {
 	return &CancelBookingNotFound{}
 }
 
-/* CancelBookingNotFound describes a response with status code 404, with default header values.
+/*
+CancelBookingNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -146,12 +156,19 @@ func (o *CancelBookingNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the cancel booking not found response
+func (o *CancelBookingNotFound) Code() int {
+	return 404
+}
+
 func (o *CancelBookingNotFound) Error() string {
-	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingNotFound %s", 404, payload)
 }
 
 func (o *CancelBookingNotFound) String() string {
-	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingNotFound %s", 404, payload)
 }
 
 func (o *CancelBookingNotFound) GetPayload() *models.Error {
@@ -175,7 +192,8 @@ func NewCancelBookingInternalServerError() *CancelBookingInternalServerError {
 	return &CancelBookingInternalServerError{}
 }
 
-/* CancelBookingInternalServerError describes a response with status code 500, with default header values.
+/*
+CancelBookingInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -208,12 +226,19 @@ func (o *CancelBookingInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the cancel booking internal server error response
+func (o *CancelBookingInternalServerError) Code() int {
+	return 500
+}
+
 func (o *CancelBookingInternalServerError) Error() string {
-	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingInternalServerError %s", 500, payload)
 }
 
 func (o *CancelBookingInternalServerError) String() string {
-	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[DELETE /users/{user_name}/bookings/{booking_name}][%d] cancelBookingInternalServerError %s", 500, payload)
 }
 
 func (o *CancelBookingInternalServerError) GetPayload() *models.Error {

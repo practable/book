@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *ReplaceBookingsReader) ReadResponse(response runtime.ClientResponse, co
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[PUT /admin/bookings] ReplaceBookings", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewReplaceBookingsOK() *ReplaceBookingsOK {
 	return &ReplaceBookingsOK{}
 }
 
-/* ReplaceBookingsOK describes a response with status code 200, with default header values.
+/*
+ReplaceBookingsOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *ReplaceBookingsOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the replace bookings o k response
+func (o *ReplaceBookingsOK) Code() int {
+	return 200
+}
+
 func (o *ReplaceBookingsOK) Error() string {
-	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsOK %s", 200, payload)
 }
 
 func (o *ReplaceBookingsOK) String() string {
-	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsOK %s", 200, payload)
 }
 
 func (o *ReplaceBookingsOK) GetPayload() *models.StoreStatusAdmin {
@@ -119,7 +128,8 @@ func NewReplaceBookingsUnauthorized() *ReplaceBookingsUnauthorized {
 	return &ReplaceBookingsUnauthorized{}
 }
 
-/* ReplaceBookingsUnauthorized describes a response with status code 401, with default header values.
+/*
+ReplaceBookingsUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *ReplaceBookingsUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the replace bookings unauthorized response
+func (o *ReplaceBookingsUnauthorized) Code() int {
+	return 401
+}
+
 func (o *ReplaceBookingsUnauthorized) Error() string {
-	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsUnauthorized %s", 401, payload)
 }
 
 func (o *ReplaceBookingsUnauthorized) String() string {
-	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsUnauthorized %s", 401, payload)
 }
 
 func (o *ReplaceBookingsUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewReplaceBookingsNotFound() *ReplaceBookingsNotFound {
 	return &ReplaceBookingsNotFound{}
 }
 
-/* ReplaceBookingsNotFound describes a response with status code 404, with default header values.
+/*
+ReplaceBookingsNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *ReplaceBookingsNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the replace bookings not found response
+func (o *ReplaceBookingsNotFound) Code() int {
+	return 404
+}
+
 func (o *ReplaceBookingsNotFound) Error() string {
-	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsNotFound %s", 404, payload)
 }
 
 func (o *ReplaceBookingsNotFound) String() string {
-	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsNotFound %s", 404, payload)
 }
 
 func (o *ReplaceBookingsNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewReplaceBookingsInternalServerError() *ReplaceBookingsInternalServerError
 	return &ReplaceBookingsInternalServerError{}
 }
 
-/* ReplaceBookingsInternalServerError describes a response with status code 500, with default header values.
+/*
+ReplaceBookingsInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *ReplaceBookingsInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the replace bookings internal server error response
+func (o *ReplaceBookingsInternalServerError) Code() int {
+	return 500
+}
+
 func (o *ReplaceBookingsInternalServerError) Error() string {
-	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsInternalServerError %s", 500, payload)
 }
 
 func (o *ReplaceBookingsInternalServerError) String() string {
-	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/bookings][%d] replaceBookingsInternalServerError %s", 500, payload)
 }
 
 func (o *ReplaceBookingsInternalServerError) GetPayload() *models.Error {

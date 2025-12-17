@@ -194,6 +194,7 @@ func (m *Activity) ContextValidate(ctx context.Context, formats strfmt.Registry)
 func (m *Activity) contextValidateDescription(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Description != nil {
+
 		if err := m.Description.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("description")
@@ -212,6 +213,11 @@ func (m *Activity) contextValidateStreams(ctx context.Context, formats strfmt.Re
 	for i := 0; i < len(m.Streams); i++ {
 
 		if m.Streams[i] != nil {
+
+			if swag.IsZero(m.Streams[i]) { // not required
+				return nil
+			}
+
 			if err := m.Streams[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("streams" + "." + strconv.Itoa(i))
@@ -232,6 +238,11 @@ func (m *Activity) contextValidateUis(ctx context.Context, formats strfmt.Regist
 	for i := 0; i < len(m.Uis); i++ {
 
 		if m.Uis[i] != nil {
+
+			if swag.IsZero(m.Uis[i]) { // not required
+				return nil
+			}
+
 			if err := m.Uis[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("uis" + "." + strconv.Itoa(i))

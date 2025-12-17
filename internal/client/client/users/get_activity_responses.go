@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetActivityReader) ReadResponse(response runtime.ClientResponse, consum
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[PUT /users/{user_name}/bookings/{booking_name}] GetActivity", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetActivityOK() *GetActivityOK {
 	return &GetActivityOK{}
 }
 
-/* GetActivityOK describes a response with status code 200, with default header values.
+/*
+GetActivityOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetActivityOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get activity o k response
+func (o *GetActivityOK) Code() int {
+	return 200
+}
+
 func (o *GetActivityOK) Error() string {
-	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityOK %s", 200, payload)
 }
 
 func (o *GetActivityOK) String() string {
-	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityOK %s", 200, payload)
 }
 
 func (o *GetActivityOK) GetPayload() *models.Activity {
@@ -119,7 +128,8 @@ func NewGetActivityUnauthorized() *GetActivityUnauthorized {
 	return &GetActivityUnauthorized{}
 }
 
-/* GetActivityUnauthorized describes a response with status code 401, with default header values.
+/*
+GetActivityUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *GetActivityUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get activity unauthorized response
+func (o *GetActivityUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetActivityUnauthorized) Error() string {
-	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityUnauthorized %s", 401, payload)
 }
 
 func (o *GetActivityUnauthorized) String() string {
-	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityUnauthorized %s", 401, payload)
 }
 
 func (o *GetActivityUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewGetActivityNotFound() *GetActivityNotFound {
 	return &GetActivityNotFound{}
 }
 
-/* GetActivityNotFound describes a response with status code 404, with default header values.
+/*
+GetActivityNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *GetActivityNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get activity not found response
+func (o *GetActivityNotFound) Code() int {
+	return 404
+}
+
 func (o *GetActivityNotFound) Error() string {
-	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityNotFound %s", 404, payload)
 }
 
 func (o *GetActivityNotFound) String() string {
-	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityNotFound %s", 404, payload)
 }
 
 func (o *GetActivityNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewGetActivityInternalServerError() *GetActivityInternalServerError {
 	return &GetActivityInternalServerError{}
 }
 
-/* GetActivityInternalServerError describes a response with status code 500, with default header values.
+/*
+GetActivityInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *GetActivityInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get activity internal server error response
+func (o *GetActivityInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetActivityInternalServerError) Error() string {
-	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityInternalServerError %s", 500, payload)
 }
 
 func (o *GetActivityInternalServerError) String() string {
-	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /users/{user_name}/bookings/{booking_name}][%d] getActivityInternalServerError %s", 500, payload)
 }
 
 func (o *GetActivityInternalServerError) GetPayload() *models.Error {

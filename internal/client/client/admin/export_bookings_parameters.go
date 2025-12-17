@@ -52,10 +52,12 @@ func NewExportBookingsParamsWithHTTPClient(client *http.Client) *ExportBookingsP
 	}
 }
 
-/* ExportBookingsParams contains all the parameters to send to the API endpoint
-   for the export bookings operation.
+/*
+ExportBookingsParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the export bookings operation.
+
+	Typically these are written to a http.Request.
 */
 type ExportBookingsParams struct {
 	timeout    time.Duration

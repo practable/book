@@ -16,7 +16,7 @@ import (
 
 // ActivityStream stream
 //
-// Represents an assigned, valid booking slot for an individual piece of equipment
+// # Represents an assigned, valid booking slot for an individual piece of equipment
 //
 // swagger:model ActivityStream
 type ActivityStream struct {

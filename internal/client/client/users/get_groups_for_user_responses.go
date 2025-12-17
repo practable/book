@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetGroupsForUserReader) ReadResponse(response runtime.ClientResponse, c
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /users/{user_name}/groups] GetGroupsForUser", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetGroupsForUserOK() *GetGroupsForUserOK {
 	return &GetGroupsForUserOK{}
 }
 
-/* GetGroupsForUserOK describes a response with status code 200, with default header values.
+/*
+GetGroupsForUserOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetGroupsForUserOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get groups for user o k response
+func (o *GetGroupsForUserOK) Code() int {
+	return 200
+}
+
 func (o *GetGroupsForUserOK) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserOK %s", 200, payload)
 }
 
 func (o *GetGroupsForUserOK) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserOK %s", 200, payload)
 }
 
 func (o *GetGroupsForUserOK) GetPayload() models.GroupsDescribed {
@@ -117,7 +126,8 @@ func NewGetGroupsForUserUnauthorized() *GetGroupsForUserUnauthorized {
 	return &GetGroupsForUserUnauthorized{}
 }
 
-/* GetGroupsForUserUnauthorized describes a response with status code 401, with default header values.
+/*
+GetGroupsForUserUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -150,12 +160,19 @@ func (o *GetGroupsForUserUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get groups for user unauthorized response
+func (o *GetGroupsForUserUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetGroupsForUserUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserUnauthorized %s", 401, payload)
 }
 
 func (o *GetGroupsForUserUnauthorized) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserUnauthorized %s", 401, payload)
 }
 
 func (o *GetGroupsForUserUnauthorized) GetPayload() *models.Error {
@@ -179,7 +196,8 @@ func NewGetGroupsForUserNotFound() *GetGroupsForUserNotFound {
 	return &GetGroupsForUserNotFound{}
 }
 
-/* GetGroupsForUserNotFound describes a response with status code 404, with default header values.
+/*
+GetGroupsForUserNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -212,12 +230,19 @@ func (o *GetGroupsForUserNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get groups for user not found response
+func (o *GetGroupsForUserNotFound) Code() int {
+	return 404
+}
+
 func (o *GetGroupsForUserNotFound) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserNotFound %s", 404, payload)
 }
 
 func (o *GetGroupsForUserNotFound) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserNotFound %s", 404, payload)
 }
 
 func (o *GetGroupsForUserNotFound) GetPayload() *models.Error {
@@ -241,7 +266,8 @@ func NewGetGroupsForUserInternalServerError() *GetGroupsForUserInternalServerErr
 	return &GetGroupsForUserInternalServerError{}
 }
 
-/* GetGroupsForUserInternalServerError describes a response with status code 500, with default header values.
+/*
+GetGroupsForUserInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -274,12 +300,19 @@ func (o *GetGroupsForUserInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get groups for user internal server error response
+func (o *GetGroupsForUserInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetGroupsForUserInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserInternalServerError %s", 500, payload)
 }
 
 func (o *GetGroupsForUserInternalServerError) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/groups][%d] getGroupsForUserInternalServerError %s", 500, payload)
 }
 
 func (o *GetGroupsForUserInternalServerError) GetPayload() *models.Error {

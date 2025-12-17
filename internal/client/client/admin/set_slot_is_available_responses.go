@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *SetSlotIsAvailableReader) ReadResponse(response runtime.ClientResponse,
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[PUT /admin/slots/{slot_name}] SetSlotIsAvailable", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewSetSlotIsAvailableNoContent() *SetSlotIsAvailableNoContent {
 	return &SetSlotIsAvailableNoContent{}
 }
 
-/* SetSlotIsAvailableNoContent describes a response with status code 204, with default header values.
+/*
+SetSlotIsAvailableNoContent describes a response with status code 204, with default header values.
 
 OK
 */
@@ -89,12 +91,17 @@ func (o *SetSlotIsAvailableNoContent) IsCode(code int) bool {
 	return code == 204
 }
 
+// Code gets the status code for the set slot is available no content response
+func (o *SetSlotIsAvailableNoContent) Code() int {
+	return 204
+}
+
 func (o *SetSlotIsAvailableNoContent) Error() string {
-	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableNoContent ", 204)
+	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableNoContent", 204)
 }
 
 func (o *SetSlotIsAvailableNoContent) String() string {
-	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableNoContent ", 204)
+	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableNoContent", 204)
 }
 
 func (o *SetSlotIsAvailableNoContent) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -107,7 +114,8 @@ func NewSetSlotIsAvailableUnauthorized() *SetSlotIsAvailableUnauthorized {
 	return &SetSlotIsAvailableUnauthorized{}
 }
 
-/* SetSlotIsAvailableUnauthorized describes a response with status code 401, with default header values.
+/*
+SetSlotIsAvailableUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -140,12 +148,19 @@ func (o *SetSlotIsAvailableUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the set slot is available unauthorized response
+func (o *SetSlotIsAvailableUnauthorized) Code() int {
+	return 401
+}
+
 func (o *SetSlotIsAvailableUnauthorized) Error() string {
-	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableUnauthorized %s", 401, payload)
 }
 
 func (o *SetSlotIsAvailableUnauthorized) String() string {
-	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableUnauthorized %s", 401, payload)
 }
 
 func (o *SetSlotIsAvailableUnauthorized) GetPayload() *models.Error {
@@ -169,7 +184,8 @@ func NewSetSlotIsAvailableNotFound() *SetSlotIsAvailableNotFound {
 	return &SetSlotIsAvailableNotFound{}
 }
 
-/* SetSlotIsAvailableNotFound describes a response with status code 404, with default header values.
+/*
+SetSlotIsAvailableNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -202,12 +218,19 @@ func (o *SetSlotIsAvailableNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the set slot is available not found response
+func (o *SetSlotIsAvailableNotFound) Code() int {
+	return 404
+}
+
 func (o *SetSlotIsAvailableNotFound) Error() string {
-	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableNotFound %s", 404, payload)
 }
 
 func (o *SetSlotIsAvailableNotFound) String() string {
-	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableNotFound %s", 404, payload)
 }
 
 func (o *SetSlotIsAvailableNotFound) GetPayload() *models.Error {
@@ -231,7 +254,8 @@ func NewSetSlotIsAvailableInternalServerError() *SetSlotIsAvailableInternalServe
 	return &SetSlotIsAvailableInternalServerError{}
 }
 
-/* SetSlotIsAvailableInternalServerError describes a response with status code 500, with default header values.
+/*
+SetSlotIsAvailableInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -264,12 +288,19 @@ func (o *SetSlotIsAvailableInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the set slot is available internal server error response
+func (o *SetSlotIsAvailableInternalServerError) Code() int {
+	return 500
+}
+
 func (o *SetSlotIsAvailableInternalServerError) Error() string {
-	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableInternalServerError %s", 500, payload)
 }
 
 func (o *SetSlotIsAvailableInternalServerError) String() string {
-	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/slots/{slot_name}][%d] setSlotIsAvailableInternalServerError %s", 500, payload)
 }
 
 func (o *SetSlotIsAvailableInternalServerError) GetPayload() *models.Error {

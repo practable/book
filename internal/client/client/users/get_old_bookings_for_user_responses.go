@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetOldBookingsForUserReader) ReadResponse(response runtime.ClientRespon
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /users/{user_name}/oldbookings] GetOldBookingsForUser", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetOldBookingsForUserOK() *GetOldBookingsForUserOK {
 	return &GetOldBookingsForUserOK{}
 }
 
-/* GetOldBookingsForUserOK describes a response with status code 200, with default header values.
+/*
+GetOldBookingsForUserOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetOldBookingsForUserOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get old bookings for user o k response
+func (o *GetOldBookingsForUserOK) Code() int {
+	return 200
+}
+
 func (o *GetOldBookingsForUserOK) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserOK %s", 200, payload)
 }
 
 func (o *GetOldBookingsForUserOK) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserOK %s", 200, payload)
 }
 
 func (o *GetOldBookingsForUserOK) GetPayload() models.Bookings {
@@ -117,7 +126,8 @@ func NewGetOldBookingsForUserUnauthorized() *GetOldBookingsForUserUnauthorized {
 	return &GetOldBookingsForUserUnauthorized{}
 }
 
-/* GetOldBookingsForUserUnauthorized describes a response with status code 401, with default header values.
+/*
+GetOldBookingsForUserUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -150,12 +160,19 @@ func (o *GetOldBookingsForUserUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get old bookings for user unauthorized response
+func (o *GetOldBookingsForUserUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetOldBookingsForUserUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserUnauthorized %s", 401, payload)
 }
 
 func (o *GetOldBookingsForUserUnauthorized) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserUnauthorized %s", 401, payload)
 }
 
 func (o *GetOldBookingsForUserUnauthorized) GetPayload() *models.Error {
@@ -179,7 +196,8 @@ func NewGetOldBookingsForUserNotFound() *GetOldBookingsForUserNotFound {
 	return &GetOldBookingsForUserNotFound{}
 }
 
-/* GetOldBookingsForUserNotFound describes a response with status code 404, with default header values.
+/*
+GetOldBookingsForUserNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -212,12 +230,19 @@ func (o *GetOldBookingsForUserNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get old bookings for user not found response
+func (o *GetOldBookingsForUserNotFound) Code() int {
+	return 404
+}
+
 func (o *GetOldBookingsForUserNotFound) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserNotFound %s", 404, payload)
 }
 
 func (o *GetOldBookingsForUserNotFound) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserNotFound %s", 404, payload)
 }
 
 func (o *GetOldBookingsForUserNotFound) GetPayload() *models.Error {
@@ -241,7 +266,8 @@ func NewGetOldBookingsForUserInternalServerError() *GetOldBookingsForUserInterna
 	return &GetOldBookingsForUserInternalServerError{}
 }
 
-/* GetOldBookingsForUserInternalServerError describes a response with status code 500, with default header values.
+/*
+GetOldBookingsForUserInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -274,12 +300,19 @@ func (o *GetOldBookingsForUserInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get old bookings for user internal server error response
+func (o *GetOldBookingsForUserInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetOldBookingsForUserInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserInternalServerError %s", 500, payload)
 }
 
 func (o *GetOldBookingsForUserInternalServerError) String() string {
-	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/{user_name}/oldbookings][%d] getOldBookingsForUserInternalServerError %s", 500, payload)
 }
 
 func (o *GetOldBookingsForUserInternalServerError) GetPayload() *models.Error {

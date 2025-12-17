@@ -6,6 +6,7 @@ package users
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *GetStoreStatusUserReader) ReadResponse(response runtime.ClientResponse,
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /users/status] getStoreStatusUser", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewGetStoreStatusUserOK() *GetStoreStatusUserOK {
 	return &GetStoreStatusUserOK{}
 }
 
-/* GetStoreStatusUserOK describes a response with status code 200, with default header values.
+/*
+GetStoreStatusUserOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *GetStoreStatusUserOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the get store status user o k response
+func (o *GetStoreStatusUserOK) Code() int {
+	return 200
+}
+
 func (o *GetStoreStatusUserOK) Error() string {
-	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserOK %s", 200, payload)
 }
 
 func (o *GetStoreStatusUserOK) String() string {
-	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserOK %s", 200, payload)
 }
 
 func (o *GetStoreStatusUserOK) GetPayload() *models.StoreStatusUser {
@@ -119,7 +128,8 @@ func NewGetStoreStatusUserUnauthorized() *GetStoreStatusUserUnauthorized {
 	return &GetStoreStatusUserUnauthorized{}
 }
 
-/* GetStoreStatusUserUnauthorized describes a response with status code 401, with default header values.
+/*
+GetStoreStatusUserUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *GetStoreStatusUserUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the get store status user unauthorized response
+func (o *GetStoreStatusUserUnauthorized) Code() int {
+	return 401
+}
+
 func (o *GetStoreStatusUserUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserUnauthorized %s", 401, payload)
 }
 
 func (o *GetStoreStatusUserUnauthorized) String() string {
-	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserUnauthorized %s", 401, payload)
 }
 
 func (o *GetStoreStatusUserUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewGetStoreStatusUserNotFound() *GetStoreStatusUserNotFound {
 	return &GetStoreStatusUserNotFound{}
 }
 
-/* GetStoreStatusUserNotFound describes a response with status code 404, with default header values.
+/*
+GetStoreStatusUserNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *GetStoreStatusUserNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the get store status user not found response
+func (o *GetStoreStatusUserNotFound) Code() int {
+	return 404
+}
+
 func (o *GetStoreStatusUserNotFound) Error() string {
-	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserNotFound %s", 404, payload)
 }
 
 func (o *GetStoreStatusUserNotFound) String() string {
-	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserNotFound %s", 404, payload)
 }
 
 func (o *GetStoreStatusUserNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewGetStoreStatusUserInternalServerError() *GetStoreStatusUserInternalServe
 	return &GetStoreStatusUserInternalServerError{}
 }
 
-/* GetStoreStatusUserInternalServerError describes a response with status code 500, with default header values.
+/*
+GetStoreStatusUserInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *GetStoreStatusUserInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the get store status user internal server error response
+func (o *GetStoreStatusUserInternalServerError) Code() int {
+	return 500
+}
+
 func (o *GetStoreStatusUserInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserInternalServerError %s", 500, payload)
 }
 
 func (o *GetStoreStatusUserInternalServerError) String() string {
-	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /users/status][%d] getStoreStatusUserInternalServerError %s", 500, payload)
 }
 
 func (o *GetStoreStatusUserInternalServerError) GetPayload() *models.Error {

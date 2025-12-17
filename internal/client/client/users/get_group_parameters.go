@@ -52,10 +52,12 @@ func NewGetGroupParamsWithHTTPClient(client *http.Client) *GetGroupParams {
 	}
 }
 
-/* GetGroupParams contains all the parameters to send to the API endpoint
-   for the get group operation.
+/*
+GetGroupParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the get group operation.
+
+	Typically these are written to a http.Request.
 */
 type GetGroupParams struct {
 

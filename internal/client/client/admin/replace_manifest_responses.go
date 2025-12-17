@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *ReplaceManifestReader) ReadResponse(response runtime.ClientResponse, co
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[PUT /admin/manifest] ReplaceManifest", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewReplaceManifestOK() *ReplaceManifestOK {
 	return &ReplaceManifestOK{}
 }
 
-/* ReplaceManifestOK describes a response with status code 200, with default header values.
+/*
+ReplaceManifestOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *ReplaceManifestOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the replace manifest o k response
+func (o *ReplaceManifestOK) Code() int {
+	return 200
+}
+
 func (o *ReplaceManifestOK) Error() string {
-	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestOK %s", 200, payload)
 }
 
 func (o *ReplaceManifestOK) String() string {
-	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestOK %s", 200, payload)
 }
 
 func (o *ReplaceManifestOK) GetPayload() *models.StoreStatusAdmin {
@@ -119,7 +128,8 @@ func NewReplaceManifestUnauthorized() *ReplaceManifestUnauthorized {
 	return &ReplaceManifestUnauthorized{}
 }
 
-/* ReplaceManifestUnauthorized describes a response with status code 401, with default header values.
+/*
+ReplaceManifestUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -152,12 +162,19 @@ func (o *ReplaceManifestUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the replace manifest unauthorized response
+func (o *ReplaceManifestUnauthorized) Code() int {
+	return 401
+}
+
 func (o *ReplaceManifestUnauthorized) Error() string {
-	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestUnauthorized %s", 401, payload)
 }
 
 func (o *ReplaceManifestUnauthorized) String() string {
-	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestUnauthorized %s", 401, payload)
 }
 
 func (o *ReplaceManifestUnauthorized) GetPayload() *models.Error {
@@ -181,7 +198,8 @@ func NewReplaceManifestNotFound() *ReplaceManifestNotFound {
 	return &ReplaceManifestNotFound{}
 }
 
-/* ReplaceManifestNotFound describes a response with status code 404, with default header values.
+/*
+ReplaceManifestNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -214,12 +232,19 @@ func (o *ReplaceManifestNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the replace manifest not found response
+func (o *ReplaceManifestNotFound) Code() int {
+	return 404
+}
+
 func (o *ReplaceManifestNotFound) Error() string {
-	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestNotFound %s", 404, payload)
 }
 
 func (o *ReplaceManifestNotFound) String() string {
-	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestNotFound %s", 404, payload)
 }
 
 func (o *ReplaceManifestNotFound) GetPayload() *models.Error {
@@ -243,7 +268,8 @@ func NewReplaceManifestInternalServerError() *ReplaceManifestInternalServerError
 	return &ReplaceManifestInternalServerError{}
 }
 
-/* ReplaceManifestInternalServerError describes a response with status code 500, with default header values.
+/*
+ReplaceManifestInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -276,12 +302,19 @@ func (o *ReplaceManifestInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the replace manifest internal server error response
+func (o *ReplaceManifestInternalServerError) Code() int {
+	return 500
+}
+
 func (o *ReplaceManifestInternalServerError) Error() string {
-	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestInternalServerError %s", 500, payload)
 }
 
 func (o *ReplaceManifestInternalServerError) String() string {
-	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[PUT /admin/manifest][%d] replaceManifestInternalServerError %s", 500, payload)
 }
 
 func (o *ReplaceManifestInternalServerError) GetPayload() *models.Error {

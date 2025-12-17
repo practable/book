@@ -6,6 +6,7 @@ package admin
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -48,7 +49,7 @@ func (o *ExportOldBookingsReader) ReadResponse(response runtime.ClientResponse, 
 		}
 		return nil, result
 	default:
-		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
+		return nil, runtime.NewAPIError("[GET /admin/oldbookings] ExportOldBookings", response, response.Code())
 	}
 }
 
@@ -57,7 +58,8 @@ func NewExportOldBookingsOK() *ExportOldBookingsOK {
 	return &ExportOldBookingsOK{}
 }
 
-/* ExportOldBookingsOK describes a response with status code 200, with default header values.
+/*
+ExportOldBookingsOK describes a response with status code 200, with default header values.
 
 OK
 */
@@ -90,12 +92,19 @@ func (o *ExportOldBookingsOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the export old bookings o k response
+func (o *ExportOldBookingsOK) Code() int {
+	return 200
+}
+
 func (o *ExportOldBookingsOK) Error() string {
-	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsOK %s", 200, payload)
 }
 
 func (o *ExportOldBookingsOK) String() string {
-	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsOK %s", 200, payload)
 }
 
 func (o *ExportOldBookingsOK) GetPayload() models.Bookings {
@@ -117,7 +126,8 @@ func NewExportOldBookingsUnauthorized() *ExportOldBookingsUnauthorized {
 	return &ExportOldBookingsUnauthorized{}
 }
 
-/* ExportOldBookingsUnauthorized describes a response with status code 401, with default header values.
+/*
+ExportOldBookingsUnauthorized describes a response with status code 401, with default header values.
 
 Unauthorized
 */
@@ -150,12 +160,19 @@ func (o *ExportOldBookingsUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the export old bookings unauthorized response
+func (o *ExportOldBookingsUnauthorized) Code() int {
+	return 401
+}
+
 func (o *ExportOldBookingsUnauthorized) Error() string {
-	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsUnauthorized %s", 401, payload)
 }
 
 func (o *ExportOldBookingsUnauthorized) String() string {
-	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsUnauthorized  %+v", 401, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsUnauthorized %s", 401, payload)
 }
 
 func (o *ExportOldBookingsUnauthorized) GetPayload() *models.Error {
@@ -179,7 +196,8 @@ func NewExportOldBookingsNotFound() *ExportOldBookingsNotFound {
 	return &ExportOldBookingsNotFound{}
 }
 
-/* ExportOldBookingsNotFound describes a response with status code 404, with default header values.
+/*
+ExportOldBookingsNotFound describes a response with status code 404, with default header values.
 
 The specified resource was not found
 */
@@ -212,12 +230,19 @@ func (o *ExportOldBookingsNotFound) IsCode(code int) bool {
 	return code == 404
 }
 
+// Code gets the status code for the export old bookings not found response
+func (o *ExportOldBookingsNotFound) Code() int {
+	return 404
+}
+
 func (o *ExportOldBookingsNotFound) Error() string {
-	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsNotFound %s", 404, payload)
 }
 
 func (o *ExportOldBookingsNotFound) String() string {
-	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsNotFound  %+v", 404, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsNotFound %s", 404, payload)
 }
 
 func (o *ExportOldBookingsNotFound) GetPayload() *models.Error {
@@ -241,7 +266,8 @@ func NewExportOldBookingsInternalServerError() *ExportOldBookingsInternalServerE
 	return &ExportOldBookingsInternalServerError{}
 }
 
-/* ExportOldBookingsInternalServerError describes a response with status code 500, with default header values.
+/*
+ExportOldBookingsInternalServerError describes a response with status code 500, with default header values.
 
 Internal Error
 */
@@ -274,12 +300,19 @@ func (o *ExportOldBookingsInternalServerError) IsCode(code int) bool {
 	return code == 500
 }
 
+// Code gets the status code for the export old bookings internal server error response
+func (o *ExportOldBookingsInternalServerError) Code() int {
+	return 500
+}
+
 func (o *ExportOldBookingsInternalServerError) Error() string {
-	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsInternalServerError %s", 500, payload)
 }
 
 func (o *ExportOldBookingsInternalServerError) String() string {
-	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsInternalServerError  %+v", 500, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /admin/oldbookings][%d] exportOldBookingsInternalServerError %s", 500, payload)
 }
 
 func (o *ExportOldBookingsInternalServerError) GetPayload() *models.Error {
