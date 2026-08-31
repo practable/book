@@ -30,11 +30,14 @@ docker run --rm --name book-postgres \
   -e POSTGRES_PASSWORD=local-only-password \
   -p 5432:5432 -d postgres:16
 export BOOK_TEST_DATABASE_URL='postgres://postgres:local-only-password@127.0.0.1:5432/postgres?sslmode=disable'
+export BOOK_TEST_ADMIN_DATABASE_URL="$BOOK_TEST_DATABASE_URL"
 GOCACHE=/tmp/book-go-cache go test -count=1 -v ./internal/postgres
 ```
 
 The integration suite truncates booking tables. Point it only at a disposable
-database. Run the remaining checks with:
+database. `BOOK_TEST_ADMIN_DATABASE_URL` must be a disposable administrative
+connection: the empty-database migration test uses it to create and drop one
+uniquely named temporary database. Run the remaining checks with:
 
 ```sh
 GOCACHE=/tmp/book-go-cache go test ./internal/store ./internal/check ./internal/diary ./internal/filter ./internal/interval

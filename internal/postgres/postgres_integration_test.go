@@ -103,6 +103,25 @@ func TestMigrationAndRestartRecovery(t *testing.T) {
 	require.Equal(t, []string{"course-group"}, state.Groups["opaque-user"])
 }
 
+func TestTimestampsRoundTripAsUTCInstants(t *testing.T) {
+	repository := integrationRepository(t)
+	location := time.FixedZone("UTC+05:30", 5*60*60+30*60)
+	start := time.Date(2026, 9, 1, 15, 30, 0, 456, location)
+	end := start.Add(45 * time.Minute)
+	_, _, err := repository.CreateBooking(context.Background(),
+		request("utc-round-trip", "opaque-user", "slot-a", "resource-a", start, end))
+	require.NoError(t, err)
+
+	state, err := repository.Load(context.Background())
+	require.NoError(t, err)
+	require.Len(t, state.Bookings, 1)
+	when := state.Bookings[0].Booking.When
+	require.Equal(t, start.UnixNano(), when.Start.UnixNano())
+	require.Equal(t, end.UnixNano(), when.End.UnixNano())
+	require.Equal(t, time.UTC, when.Start.Location())
+	require.Equal(t, time.UTC, when.End.Location())
+}
+
 func TestStoreProjectionSurvivesProcessRestart(t *testing.T) {
 	repository := integrationRepository(t)
 	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
