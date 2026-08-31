@@ -317,6 +317,10 @@ type Store struct {
 
 	// Window represents allowed and denied time periods for slots
 	Windows map[string]Window
+
+	// manifestVersion fences durable mutations against a concurrently activated
+	// database manifest. Zero means that no durable manifest has been activated.
+	manifestVersion int64
 }
 
 type StoreStatusAdmin struct {
@@ -449,6 +453,7 @@ func New() *Store {
 		make(map[string]UISet),
 		make(map[string]*User),
 		make(map[string]Window),
+		0,
 	}
 }
 
@@ -581,7 +586,7 @@ func (s *Store) AddGroupForUser(user, group string) error {
 		return errors.New("group " + group + " not found")
 	}
 	if s.repository != nil {
-		if err := s.repository.GrantGroup(context.Background(), user, group); err != nil {
+		if err := s.repository.GrantGroup(context.Background(), user, group, s.manifestVersion); err != nil {
 			return err
 		}
 	}
@@ -786,8 +791,11 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 	}
 
 	if s.repository != nil {
-		persisted, err := s.repository.CancelBooking(context.Background(), b.Name, cancelledAt, cancelledBy, usage)
+		persisted, err := s.repository.CancelBooking(context.Background(), b.Name, cancelledAt, cancelledBy, usage, s.manifestVersion)
 		if err != nil {
+			if errors.Is(err, ErrStaleManifest) {
+				_ = s.refreshFromRepositoryLocked(context.Background())
+			}
 			return err
 		}
 		*b = persisted.Booking
@@ -932,7 +940,7 @@ func (s *Store) DeleteGroupFor(user, group string) error {
 		}
 	}
 	if s.repository != nil {
-		if err := s.repository.RevokeGroup(context.Background(), user, group); err != nil {
+		if err := s.repository.RevokeGroup(context.Background(), user, group, s.manifestVersion); err != nil {
 			return err
 		}
 	}
@@ -975,6 +983,9 @@ func (s *Store) ExportManifest() Manifest {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.recoverFromRepositoryLocked(context.Background()); err != nil {
+		log.WithError(err).Error("could not refresh persistent manifest")
+	}
 
 	// We store the full description in the store for convenience
 	// but the manifest only has the name of the description in the Group
@@ -1014,12 +1025,18 @@ func (s *Store) ExportManifest() Manifest {
 			TopicStub:   v.TopicStub,
 		}
 	}
+	pm := make(map[string]Policy, len(s.Policies))
+	for k, value := range s.Policies {
+		value.DisplayGuidesMap = nil
+		value.SlotMap = nil
+		pm[k] = value
+	}
 
 	return Manifest{
 		Descriptions:  s.Descriptions,
 		DisplayGuides: s.DisplayGuides,
 		Groups:        gm,
-		Policies:      s.Policies,
+		Policies:      pm,
 		Resources:     rm,
 		Slots:         s.Slots,
 		Streams:       s.Streams,
@@ -1027,6 +1044,14 @@ func (s *Store) ExportManifest() Manifest {
 		UISets:        s.UISets,
 		Windows:       s.Windows,
 	}
+}
+
+// ManifestVersion returns the active durable manifest version. It is zero for
+// the compatibility in-memory store or before the first database activation.
+func (s *Store) ManifestVersion() int64 {
+	s.Lock()
+	defer s.Unlock()
+	return s.manifestVersion
 }
 
 // ExportOldBookings returns a map by name of old bookings
@@ -1196,8 +1221,11 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 
 	startedAt := s.now()
 	if s.repository != nil {
-		persisted, err := s.repository.StartBooking(context.Background(), b.Name, startedAt)
+		persisted, err := s.repository.StartBooking(context.Background(), b.Name, startedAt, s.manifestVersion)
 		if err != nil {
+			if errors.Is(err, ErrStaleManifest) {
+				_ = s.refreshFromRepositoryLocked(context.Background())
+			}
 			return Activity{}, err
 		}
 		*b = persisted.Booking
@@ -2190,12 +2218,16 @@ func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, n
 	if s.repository != nil {
 		persisted, created, err := s.repository.CreateBooking(context.Background(), CreateBookingRequest{
 			Booking: booking, Resource: sl.Resource, ResourceConstrained: !p.EnforceUnlimitedUsers,
-			Now: s.now(), EnforceMaxBookings: p.EnforceMaxBookings, MaxBookings: p.MaxBookings,
+			ManifestVersion: s.manifestVersion,
+			Now:             s.now(), EnforceMaxBookings: p.EnforceMaxBookings, MaxBookings: p.MaxBookings,
 			EnforceMaxUsage: p.EnforceMaxUsage, MaxUsage: p.MaxUsage,
 		})
 		if err != nil {
 			if !p.EnforceUnlimitedUsers {
 				_ = r.Diary.Delete(name)
+			}
+			if errors.Is(err, ErrStaleManifest) {
+				_ = s.refreshFromRepositoryLocked(context.Background())
 			}
 			return Booking{}, err
 		}
@@ -2435,11 +2467,12 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 			policy := s.Policies[booking.Policy]
 			requests = append(requests, CreateBookingRequest{
 				Booking: *booking, Resource: slot.Resource, ResourceConstrained: !policy.EnforceUnlimitedUsers,
-				Now: s.now(), EnforceMaxBookings: policy.EnforceMaxBookings, MaxBookings: policy.MaxBookings,
+				ManifestVersion: s.manifestVersion,
+				Now:             s.now(), EnforceMaxBookings: policy.EnforceMaxBookings, MaxBookings: policy.MaxBookings,
 				EnforceMaxUsage: policy.EnforceMaxUsage, MaxUsage: policy.MaxUsage,
 			})
 		}
-		if err := repository.ReplaceBookings(context.Background(), requests); err != nil {
+		if err := repository.ReplaceBookings(context.Background(), requests, s.manifestVersion); err != nil {
 			s.repository = repository
 			_ = s.refreshFromRepositoryLocked(context.Background())
 			return err, []string{err.Error()}
@@ -2465,113 +2498,106 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 		log.Trace(where + " released lock")
 	}()
 
-	// lock is taken after we check whether we need to alter the store (see below)
-	err, _ := checkManifest(m)
-
-	if err != nil {
-		return err //user can call CheckDescriptions some other way if they want the manifest error details
+	// Prepare the entire candidate before changing either durable or local state.
+	probe := New().WithNow(s.now)
+	if err := probe.applyManifestLocked(m); err != nil {
+		return err
 	}
-
-	// we can get errors making filters, so do that before doing anything destructive
-	// even though we checked it with CheckManifest, we have to handle the errors
-	fm := make(map[string]*filter.Filter)
-
-	for k, w := range m.Windows {
-
-		f := filter.New()
-		err = f.SetAllowed(w.Allowed)
+	if s.repository != nil {
+		persisted, err := s.repository.ReplaceManifest(context.Background(), m, func(state PersistentState) error {
+			return validateManifestState(m, state, s.now)
+		})
 		if err != nil {
+			return err
+		}
+		if err := s.applyManifestLocked(persisted.Manifest); err != nil {
+			return err
+		}
+		s.manifestVersion = persisted.Version
+		return s.recoverFromRepositoryLocked(context.Background())
+	}
+	if err := s.applyManifestLocked(m); err != nil {
+		return err
+	}
+	return s.recoverFromRepositoryLocked(context.Background())
+}
+
+// applyManifestLocked validates and installs only manifest-derived state. The
+// caller holds the Store lock. All derived values are prepared before assignment
+// so a bad candidate cannot leave a partially replaced projection.
+func (s *Store) applyManifestLocked(m Manifest) error {
+	err, _ := checkManifest(m)
+	if err != nil {
+		return err
+	}
+	fm := make(map[string]*filter.Filter)
+	for k, w := range m.Windows {
+		f := filter.New()
+		if err := f.SetAllowed(w.Allowed); err != nil {
 			return errors.New("failed to create allowed intervals for window " + k + ":" + err.Error())
 		}
-		err := f.SetDenied(w.Denied)
-		if err != nil {
+		if err := f.SetDenied(w.Denied); err != nil {
 			return errors.New("failed to create denied intervals for window " + k + ":" + err.Error())
 		}
-
 		fm[k] = f
 	}
-
-	// we're going to do the replacement now, goodbye old manifest data.
-	s.Filters = fm
-
-	// Make new maps for our new entities (note this is m for manifest, not m for swagger models)
-	s.Descriptions = m.Descriptions
-	s.DisplayGuides = m.DisplayGuides
-	s.Policies = m.Policies
-	s.Resources = m.Resources
-	s.Slots = m.Slots
-	s.Streams = m.Streams
-	s.UISets = m.UISets
-	s.Windows = m.Windows
-
-	status := "Loaded at " + s.now().Format(time.RFC3339)
-
-	// SlotMap is used for checking if slots are listed in policy
-	// DisplayGuidesMap is used for exporting complete policies
-	for k, v := range s.Policies {
+	policies := make(map[string]Policy, len(m.Policies))
+	for k, v := range m.Policies {
 		v.SlotMap = make(map[string]bool)
-		for _, k := range v.Slots {
-			v.SlotMap[k] = true
+		for _, slot := range v.Slots {
+			v.SlotMap[slot] = true
 		}
 		v.DisplayGuidesMap = make(map[string]DisplayGuide)
-		for _, k := range v.DisplayGuides {
-			v.DisplayGuidesMap[k] = s.DisplayGuides[k]
+		for _, guide := range v.DisplayGuides {
+			v.DisplayGuidesMap[guide] = m.DisplayGuides[guide]
 		}
-		s.Policies[k] = v
+		policies[k] = v
 	}
-
-	for k := range s.Resources {
-		r := s.Resources[k]
+	resources := make(map[string]Resource, len(m.Resources))
+	status := "Loaded at " + s.now().Format(time.RFC3339)
+	for k, value := range m.Resources {
+		r := value
 		r.Diary = diary.New(k)
-		s.Resources[k] = r
-		// default to available because unavailable kit is the exception
-		s.Resources[k].Diary.SetAvailable(status)
+		r.Diary.SetAvailable(status)
+		resources[k] = r
 	}
-
-	// populate UIs with descriptions now to save doing it repetively later
-	s.UIs = make(map[string]UIDescribed)
-
+	uis := make(map[string]UIDescribed, len(m.UIs))
 	for k, v := range m.UIs {
-
-		d, err := s.getDescription(v.Description)
-
-		if err != nil {
-			return err
+		d, ok := m.Descriptions[v.Description]
+		if !ok {
+			return errors.New("description " + v.Description + " not found")
 		}
-
-		uid := UIDescribed{
+		uis[k] = UIDescribed{
 			Description:          d,
 			DescriptionReference: v.Description,
-			URL:                  m.UIs[k].URL,
-			StreamsRequired:      m.UIs[k].StreamsRequired,
+			URL:                  v.URL,
+			StreamsRequired:      v.StreamsRequired,
 		}
-		s.UIs[k] = uid
 	}
-
-	// populate the groups with the descriptions now, to save repetitively doing it later
-	s.Groups = make(map[string]GroupDescribed)
-
+	groups := make(map[string]GroupDescribed, len(m.Groups))
 	for k, v := range m.Groups {
-
-		d, err := s.getDescription(v.Description)
-
-		if err != nil {
-			return err
+		d, ok := m.Descriptions[v.Description]
+		if !ok {
+			return errors.New("description " + v.Description + " not found")
 		}
-
-		gd := GroupDescribed{
+		groups[k] = GroupDescribed{
 			Description:          d,
 			DescriptionReference: v.Description,
 			Policies:             v.Policies,
 		}
-		s.Groups[k] = gd
 	}
-	if err := s.recoverFromRepositoryLocked(context.Background()); err != nil {
-		return err
-	}
-
+	s.Filters = fm
+	s.Descriptions = m.Descriptions
+	s.DisplayGuides = m.DisplayGuides
+	s.Groups = groups
+	s.Policies = policies
+	s.Resources = resources
+	s.Slots = m.Slots
+	s.Streams = m.Streams
+	s.UIs = uis
+	s.UISets = m.UISets
+	s.Windows = m.Windows
 	return nil
-
 }
 
 // ReplaceOldBookings will replace the map of old bookings with the supplied list or return an error if the bookings have issues. All existing users are deleted, and replaced with users with usages that match the old bookings
@@ -2669,7 +2695,7 @@ func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 				ResourceConstrained: !policy.EnforceUnlimitedUsers, Current: false,
 				UsageCharge: booking.When.End.Sub(booking.When.Start)})
 		}
-		if err := repository.ReplaceOldBookings(context.Background(), bookings); err != nil {
+		if err := repository.ReplaceOldBookings(context.Background(), bookings, s.manifestVersion); err != nil {
 			s.repository = repository
 			_ = s.refreshFromRepositoryLocked(context.Background())
 			return err, []string{err.Error()}
@@ -2744,6 +2770,23 @@ func (s *Store) ReplaceUserGroups(u map[string][]string) (error, []string) {
 func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery time.Duration) {
 
 	go s.denyClient.Run(ctx) //setup already done in the With/Set functions
+
+	if s.repository != nil {
+		go func() {
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := s.RefreshManifest(ctx); err != nil && !errors.Is(err, context.Canceled) {
+						log.Errorf("failed to refresh manifest: %v", err)
+					}
+				}
+			}
+		}()
+	}
 
 	go func() { //This needs to run more often than the pruning operation, because it frees unused bookings for others. Suggest one minute (balance CPU usage and timeliness of checks)
 		defer func() {

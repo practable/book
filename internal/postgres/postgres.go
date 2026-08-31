@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/practable/book/internal/interval"
 	"github.com/practable/book/internal/store"
+	"gopkg.in/yaml.v2"
 )
 
 const migrationLock int64 = 0x626f6f6b5f6d6967
@@ -128,7 +129,27 @@ func (r *Repository) Migrate(ctx context.Context) error {
 func (r *Repository) Load(ctx context.Context) (store.PersistentState, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
 	defer cancel()
-	rows, err := r.pool.Query(ctx, `SELECT name, collection, user_name, policy_name, slot_name,
+	return loadState(ctx, r.pool)
+}
+
+func (r *Repository) ActiveManifestVersion(ctx context.Context) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	var version int64
+	err := r.pool.QueryRow(ctx, "SELECT version FROM public.active_manifest WHERE singleton").Scan(&version)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, nil
+	}
+	return version, err
+}
+
+type stateQueryer interface {
+	Query(context.Context, string, ...interface{}) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...interface{}) pgx.Row
+}
+
+func loadState(ctx context.Context, queryer stateQueryer) (store.PersistentState, error) {
+	rows, err := queryer.Query(ctx, `SELECT name, collection, user_name, policy_name, slot_name,
 		resource_name, resource_constrained, starts_ns, ends_ns, started_at_ns,
 		cancelled_at_ns, cancelled_by, unfulfilled, usage_charge_ns,
 		started, started_at_text, cancelled, cancelled_by_text
@@ -148,7 +169,7 @@ func (r *Repository) Load(ctx context.Context) (store.PersistentState, error) {
 	if err := rows.Err(); err != nil {
 		return store.PersistentState{}, err
 	}
-	groupRows, err := r.pool.Query(ctx, "SELECT user_name, group_name FROM public.user_groups ORDER BY user_name, group_name")
+	groupRows, err := queryer.Query(ctx, "SELECT user_name, group_name FROM public.user_groups ORDER BY user_name, group_name")
 	if err != nil {
 		return store.PersistentState{}, err
 	}
@@ -160,7 +181,29 @@ func (r *Repository) Load(ctx context.Context) (store.PersistentState, error) {
 		}
 		state.Groups[user] = append(state.Groups[user], group)
 	}
-	return state, groupRows.Err()
+	if err := groupRows.Err(); err != nil {
+		return store.PersistentState{}, err
+	}
+	var persisted store.PersistentManifest
+	var document string
+	err = queryer.QueryRow(ctx, `SELECT m.version,m.document,m.checksum,m.activated_at
+		FROM public.active_manifest a JOIN public.manifest_versions m ON m.version=a.version
+		WHERE a.singleton`).Scan(&persisted.Version, &document, &persisted.Checksum, &persisted.ActivatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return state, nil
+	}
+	if err != nil {
+		return store.PersistentState{}, err
+	}
+	digest := sha256.Sum256([]byte(document))
+	if hex.EncodeToString(digest[:]) != persisted.Checksum {
+		return store.PersistentState{}, errors.New("active manifest checksum mismatch")
+	}
+	if err := yaml.Unmarshal([]byte(document), &persisted.Manifest); err != nil {
+		return store.PersistentState{}, fmt.Errorf("decode active manifest: %w", err)
+	}
+	state.Manifest = &persisted
+	return state, nil
 }
 
 type rowScanner interface{ Scan(...interface{}) error }
@@ -204,6 +247,9 @@ func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBook
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 	if err := lockCreate(ctx, tx, request.Booking.User, request.Booking.Policy, request.Resource); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
 
@@ -285,6 +331,20 @@ func lockCreate(ctx context.Context, tx pgx.Tx, user, policy, resource string) e
 	return nil
 }
 
+func assertManifestVersion(ctx context.Context, tx pgx.Tx, expected int64) error {
+	var active int64
+	err := tx.QueryRow(ctx, "SELECT version FROM public.active_manifest WHERE singleton").Scan(&active)
+	if errors.Is(err, pgx.ErrNoRows) {
+		active = 0
+	} else if err != nil {
+		return err
+	}
+	if active != expected {
+		return store.ErrStaleManifest
+	}
+	return nil
+}
+
 func insertBooking(ctx context.Context, tx pgx.Tx, request store.CreateBookingRequest, collection, event string) (int64, error) {
 	b := request.Booking
 	charge := b.When.End.Sub(b.When.Start)
@@ -320,7 +380,7 @@ func insertEvent(ctx context.Context, tx pgx.Tx, rowID int64, name, kind string,
 	return err
 }
 
-func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Time, actor string, charge time.Duration) (store.PersistentBooking, error) {
+func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Time, actor string, charge time.Duration, manifestVersion int64) (store.PersistentBooking, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
 	defer cancel()
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
@@ -329,6 +389,9 @@ func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Tim
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
+		return store.PersistentBooking{}, err
+	}
+	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
 		return store.PersistentBooking{}, err
 	}
 	var user, policy string
@@ -372,7 +435,7 @@ func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Tim
 	return persisted, nil
 }
 
-func (r *Repository) StartBooking(ctx context.Context, name string, at time.Time) (store.PersistentBooking, error) {
+func (r *Repository) StartBooking(ctx context.Context, name string, at time.Time, manifestVersion int64) (store.PersistentBooking, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
 	defer cancel()
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
@@ -380,6 +443,12 @@ func (r *Repository) StartBooking(ctx context.Context, name string, at time.Time
 		return store.PersistentBooking{}, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
+		return store.PersistentBooking{}, err
+	}
+	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
+		return store.PersistentBooking{}, err
+	}
 	var rowID int64
 	var existing *int64
 	var alreadyStarted bool
@@ -509,19 +578,19 @@ func supersedeHistoryName(ctx context.Context, tx pgx.Tx, name string, at time.T
 	return nil
 }
 
-func (r *Repository) ReplaceBookings(ctx context.Context, requests []store.CreateBookingRequest) error {
-	return r.replace(ctx, "live", requests, nil)
+func (r *Repository) ReplaceBookings(ctx context.Context, requests []store.CreateBookingRequest, manifestVersion int64) error {
+	return r.replace(ctx, "live", requests, nil, manifestVersion)
 }
 
-func (r *Repository) ReplaceOldBookings(ctx context.Context, bookings []store.PersistentBooking) error {
+func (r *Repository) ReplaceOldBookings(ctx context.Context, bookings []store.PersistentBooking, manifestVersion int64) error {
 	requests := make([]store.CreateBookingRequest, 0, len(bookings))
 	for _, value := range bookings {
 		requests = append(requests, store.CreateBookingRequest{Booking: value.Booking, Resource: value.Resource, ResourceConstrained: value.ResourceConstrained})
 	}
-	return r.replace(ctx, "history", requests, bookings)
+	return r.replace(ctx, "history", requests, bookings, manifestVersion)
 }
 
-func (r *Repository) replace(ctx context.Context, collection string, requests []store.CreateBookingRequest, old []store.PersistentBooking) error {
+func (r *Repository) replace(ctx context.Context, collection string, requests []store.CreateBookingRequest, old []store.PersistentBooking, manifestVersion int64) error {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
 	defer cancel()
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
@@ -530,6 +599,9 @@ func (r *Repository) replace(ctx context.Context, collection string, requests []
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", maintenanceLock); err != nil {
+		return err
+	}
+	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
 		return err
 	}
 	rows, err := tx.Query(ctx, "UPDATE public.bookings SET superseded=true,updated_at=clock_timestamp() WHERE collection=$1 AND NOT superseded RETURNING row_id,name", collection)
@@ -578,18 +650,97 @@ func (r *Repository) replace(ctx context.Context, collection string, requests []
 	return tx.Commit(ctx)
 }
 
-func (r *Repository) GrantGroup(ctx context.Context, user, group string) error {
+func (r *Repository) ReplaceManifest(ctx context.Context, manifest store.Manifest, validate store.ManifestValidator) (store.PersistentManifest, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
 	defer cancel()
-	_, err := r.pool.Exec(ctx, `INSERT INTO public.user_groups(user_name,group_name) VALUES($1,$2)
-		ON CONFLICT (user_name,group_name) DO NOTHING`, user, group)
-	return err
+	document, err := yaml.Marshal(manifest)
+	if err != nil {
+		return store.PersistentManifest{}, fmt.Errorf("encode manifest: %w", err)
+	}
+	digest := sha256.Sum256(document)
+	checksum := hex.EncodeToString(digest[:])
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return store.PersistentManifest{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", maintenanceLock); err != nil {
+		return store.PersistentManifest{}, err
+	}
+	state, err := loadState(ctx, tx)
+	if err != nil {
+		return store.PersistentManifest{}, err
+	}
+	if validate != nil {
+		if err := validate(state); err != nil {
+			return store.PersistentManifest{}, err
+		}
+	}
+	if state.Manifest != nil && state.Manifest.Checksum == checksum {
+		if err := tx.Commit(ctx); err != nil {
+			return store.PersistentManifest{}, err
+		}
+		return *state.Manifest, nil
+	}
+	var persisted store.PersistentManifest
+	persisted.Manifest = manifest
+	persisted.Checksum = checksum
+	if err := tx.QueryRow(ctx, `INSERT INTO public.manifest_versions(document,checksum)
+		VALUES($1,$2) RETURNING version,activated_at`, string(document), checksum).
+		Scan(&persisted.Version, &persisted.ActivatedAt); err != nil {
+		return store.PersistentManifest{}, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO public.active_manifest(singleton,version) VALUES(true,$1)
+		ON CONFLICT (singleton) DO UPDATE SET version=EXCLUDED.version`, persisted.Version); err != nil {
+		return store.PersistentManifest{}, err
+	}
+	if _, err := tx.Exec(ctx, "SELECT pg_notify('book_manifest_changed',$1)", fmt.Sprint(persisted.Version)); err != nil {
+		return store.PersistentManifest{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentManifest{}, err
+	}
+	return persisted, nil
 }
-func (r *Repository) RevokeGroup(ctx context.Context, user, group string) error {
+
+func (r *Repository) GrantGroup(ctx context.Context, user, group string, manifestVersion int64) error {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
 	defer cancel()
-	_, err := r.pool.Exec(ctx, "DELETE FROM public.user_groups WHERE user_name=$1 AND group_name=$2", user, group)
-	return err
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
+		return err
+	}
+	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO public.user_groups(user_name,group_name) VALUES($1,$2)
+		ON CONFLICT (user_name,group_name) DO NOTHING`, user, group); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+func (r *Repository) RevokeGroup(ctx context.Context, user, group string, manifestVersion int64) error {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
+		return err
+	}
+	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, "DELETE FROM public.user_groups WHERE user_name=$1 AND group_name=$2", user, group); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func mapWriteError(err error) error {
