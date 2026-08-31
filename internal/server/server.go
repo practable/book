@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/practable/book/internal/config"
@@ -18,6 +19,16 @@ type Server struct {
 // New Creates a new server, and provides a pointer to underlying store
 // so as to permit testing, e.g. mocking time in the store
 func New(config config.ServerConfig) *Server {
+	s, err := NewWithError(config)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+// NewWithError constructs a server and reports persistence initialisation
+// failures to production callers without changing the established New helper.
+func NewWithError(config config.ServerConfig) (*Server, error) {
 
 	st := store.New().
 		WithNow(config.Now).
@@ -27,6 +38,11 @@ func New(config config.ServerConfig) *Server {
 
 	if config.GraceRebound != time.Duration(0) {
 		st.WithGraceRebound(config.GraceRebound)
+	}
+	if config.Repository != nil {
+		if err := st.WithRepository(config.Repository); err != nil {
+			return nil, fmt.Errorf("load persistent booking state: %w", err)
+		}
 	}
 
 	if config.Now == nil {
@@ -49,7 +65,7 @@ func New(config config.ServerConfig) *Server {
 		Store:  st,
 	}
 
-	return s
+	return s, nil
 
 }
 

@@ -28,6 +28,7 @@ import (
 
 	"github.com/ory/viper"
 	"github.com/practable/book/internal/config"
+	"github.com/practable/book/internal/postgres"
 	"github.com/practable/book/internal/server"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -45,7 +46,7 @@ The main parameters have these defaults:
 export BOOK_AUDIENCE=https://book.practable.io
 export BOOK_PORT=4000
 export BOOK_LOG_FILE=/some/logging/location/book.log
-export BOOK_PERSIST_DIR=/var/lib/book/
+export BOOK_DATABASE_URL=postgres://book:password@localhost/book?sslmode=require
 
 If the BOOK_LOG_FILE is not set, or the file cannot be opened, then logging goes to stderr. Setting it to stdout sends logging to stdout.
 
@@ -62,9 +63,8 @@ Logs default to json format but can also be set to text format (e.g. for develop
 
 export BOOK_LOG_FORMAT=text
 
-Note that persisting bookings to /var/lib/book will require write permission to that directory, 
-which can be obtained by running at with elevated permissions e.g. systemd service, or running
-as a user which has write priviledges to that directory. Else, specify a user-space directory.
+BOOK_DATABASE_URL must identify a PostgreSQL database. It is not logged; supply it
+through your deployment's secret management rather than source control.
 
 ADVANCED SETTINGS:
 You should not need to alter the default values for the following settings, 
@@ -75,6 +75,7 @@ export BOOK_TIDY_EVERY=1h
 export BOOK_MIN_USERNAME_LENGTH=6
 export BOOK_PROFILE=true
 export BOOK_PROFILE_PORT=6060
+export BOOK_DATABASE_MAX_CONNECTIONS=10
 
 After setting the env vars and permissions as required, run with:
 
@@ -93,7 +94,7 @@ $ book serve
 		viper.SetDefault("log_level", "warn")
 		viper.SetDefault("log_format", "json")
 		viper.SetDefault("min_username_length", 6)
-		viper.SetDefault("persist_dir", "/var/lib/book/")
+		viper.SetDefault("database_max_connections", 10)
 		viper.SetDefault("port", 4000)
 		viper.SetDefault("profile", "true")
 		viper.SetDefault("profile_port", 6060)
@@ -108,7 +109,8 @@ $ book serve
 		logFile := viper.GetString("log_file")
 		logFormat := viper.GetString("log_format")
 		logLevel := viper.GetString("log_level")
-		persistDir := viper.GetString("persist_dir")
+		databaseURL := viper.GetString("database_url")
+		databaseMaxConnections := viper.GetInt("database_max_connections")
 		port := viper.GetInt("port")
 		profile := viper.GetBool("profile")
 		profilePort := viper.GetInt("profile_port")
@@ -128,6 +130,10 @@ $ book serve
 
 		if adminSecret == "" || relaySecret == "" {
 			fmt.Println("You must set both BOOK_ADMIN_SECRET and BOOK_RELAY_SECRET")
+			ok = false
+		}
+		if databaseURL == "" {
+			fmt.Println("You must set BOOK_DATABASE_URL for PostgreSQL persistence")
 			ok = false
 		}
 
@@ -221,8 +227,7 @@ $ book serve
 		log.Infof("Listening port: %d", port)
 		log.Infof("Log file: [%s]", logFile)
 		log.Infof("Log level: [%s]", logLevel)
-		log.Infof("Persistance Directory: [%s]", persistDir)
-		log.Infof("Persistance NOT IMPLEMENTED")
+		log.Infof("PostgreSQL persistence enabled with at most %d connections", databaseMaxConnections)
 		log.Infof("Profiling on: [%t]", profile)
 		log.Infof("Profile port: [%d]", profilePort)
 		log.Infof("Request timeout: [%s]", requestTimeout)
@@ -245,6 +250,14 @@ $ book serve
 
 		// Start the server
 
+		databaseContext, cancelDatabase := context.WithTimeout(context.Background(), requestTimeoutDuration)
+		repository, err := postgres.Open(databaseContext, databaseURL, int32(databaseMaxConnections))
+		cancelDatabase()
+		if err != nil {
+			log.Fatalf("could not initialise PostgreSQL: %s", err)
+		}
+		defer repository.Close()
+
 		cfg := config.ServerConfig{
 			AccessTokenLifetime:   accessTokenTTLDuration,
 			CheckEvery:            checkEveryDuration,
@@ -257,9 +270,13 @@ $ book serve
 			StoreSecret:           []byte(adminSecret),
 			RelaySecret:           []byte(relaySecret),
 			RequestTimeout:        requestTimeoutDuration,
+			Repository:            repository,
 		}
 
-		s := server.New(cfg)
+		s, err := server.NewWithError(cfg)
+		if err != nil {
+			log.Fatalf("could not initialise server: %s", err)
+		}
 		s.Run(context.Background()) //serve.API handles shutdown, so pass dummy background (we keep it for testing purposes though)
 
 	},

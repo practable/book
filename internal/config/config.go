@@ -20,6 +20,7 @@ type ServerConfig struct {
 	PruneEvery            time.Duration
 	RelaySecret           []byte //TODO update to string to suit internal/login.Sign()
 	RequestTimeout        time.Duration
+	Repository            store.BookingRepository
 	StoreSecret           []byte //TODO update to string to suit internal/login.Sign()?
 	Store                 *store.Store
 }

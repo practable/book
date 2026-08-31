@@ -288,6 +288,9 @@ type Store struct {
 	// TimePolicies represents all the TimePolicy(ies) in use
 	Policies map[string]Policy
 
+	// repository is authoritative for mutable booking state when configured.
+	repository BookingRepository
+
 	// relaySecret holds the secret for the relays (all relays served by a book instance must share the same secret)
 	// Don't expose secret unnecessarily, so don't include when serialising (not that we currently serialise the store anyway)
 	relaySecret string `json:"-" yaml:"-"`
@@ -436,6 +439,7 @@ func New() *Store {
 		func() time.Time { return time.Now() },
 		make(map[string]*Booking),
 		make(map[string]Policy),
+		nil,
 		"replaceme",
 		time.Second,
 		make(map[string]Resource),
@@ -576,6 +580,11 @@ func (s *Store) AddGroupForUser(user, group string) error {
 	if !ok {
 		return errors.New("group " + group + " not found")
 	}
+	if s.repository != nil {
+		if err := s.repository.GrantGroup(context.Background(), user, group); err != nil {
+			return err
+		}
+	}
 
 	u, ok := s.Users[user]
 
@@ -614,6 +623,9 @@ func (s *Store) CancelBooking(booking Booking, cancelledBy string) error {
 		log.Trace(where + " released lock")
 	}()
 
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return err
+	}
 	return s.cancelBooking(booking, cancelledBy)
 
 }
@@ -734,28 +746,12 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 
 	}
 
-	// delete in the resource
+	// Calculate the final usage charge before changing either durable or local
+	// state so any failure leaves the booking wholly active.
 	p, ok := s.Policies[booking.Policy]
 	if !ok {
 		return errors.New(msg + "could not find policy " + booking.Policy)
 	}
-	if !p.EnforceUnlimitedUsers { //if we aren't allowing unlimited users, then we made a resource booking
-		err := r.Diary.Delete(booking.Name) //so delete that booking to allow others to use the cancelled time
-		if err != nil {
-			return errors.New(msg + "could not delete resource booking " + err.Error())
-		}
-	}
-
-	delete(s.Bookings, b.Name)
-
-	b.Cancelled = true
-	b.CancelledAt = s.now()
-	b.CancelledBy = cancelledBy
-
-	s.OldBookings[b.Name] = b
-
-	// adjust usage for user - original usage charge was booking length
-
 	originalCharge := b.When.End.Sub(b.When.Start)
 	p, err := s.getPolicy(b.Policy)
 	if err != nil {
@@ -764,7 +760,12 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 		return errors.New(msg)
 	}
 
-	usage, err := calculateUsage(*b, p)
+	cancelledAt := s.now()
+	cancelled := *b
+	cancelled.Cancelled = true
+	cancelled.CancelledAt = cancelledAt
+	cancelled.CancelledBy = cancelledBy
+	usage, err := calculateUsage(cancelled, p)
 
 	if err != nil {
 		msg := "cannot cancel booking because cannot calculate usage to refund: " + err.Error()
@@ -784,7 +785,34 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 		return errors.New(msg)
 	}
 
-	*u.Usage[b.Policy] = *u.Usage[b.Policy] - refund //refund reduces usage
+	if s.repository != nil {
+		persisted, err := s.repository.CancelBooking(context.Background(), b.Name, cancelledAt, cancelledBy, usage)
+		if err != nil {
+			return err
+		}
+		*b = persisted.Booking
+	} else {
+		b.Cancelled = true
+		b.CancelledAt = cancelledAt
+		b.CancelledBy = cancelledBy
+		b.UsageCharged = usage
+	}
+
+	if !p.EnforceUnlimitedUsers {
+		if err := r.Diary.Delete(booking.Name); err != nil {
+			// The durable transition is already committed. Rebuild the projection
+			// instead of exposing a partially mutated local state.
+			if s.repository != nil {
+				_ = s.refreshFromRepositoryLocked(context.Background())
+			}
+			return errors.New(msg + "could not delete resource booking " + err.Error())
+		}
+	}
+	delete(s.Bookings, b.Name)
+	s.OldBookings[b.Name] = b
+	delete(u.Bookings, b.Name)
+	u.OldBookings[b.Name] = b
+	*u.Usage[b.Policy] = *u.Usage[b.Policy] - refund
 
 	s.Users[b.User] = u
 
@@ -848,6 +876,9 @@ func (s *Store) DeleteGroupFor(user, group string) error {
 		s.Unlock()
 		log.Trace(where + " released lock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return err
+	}
 
 	u, ok := s.Users[user]
 
@@ -900,6 +931,11 @@ func (s *Store) DeleteGroupFor(user, group string) error {
 			}
 		}
 	}
+	if s.repository != nil {
+		if err := s.repository.RevokeGroup(context.Background(), user, group); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -914,6 +950,10 @@ func (s *Store) ExportBookings() map[string]Booking {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		log.WithError(err).Error("could not refresh persistent bookings")
+		return map[string]Booking{}
+	}
 
 	bm := make(map[string]Booking)
 
@@ -1000,6 +1040,10 @@ func (s *Store) ExportOldBookings() map[string]Booking {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		log.WithError(err).Error("could not refresh persistent old bookings")
+		return map[string]Booking{}
+	}
 
 	bm := make(map[string]Booking)
 
@@ -1022,6 +1066,10 @@ func (s *Store) ExportUsers() map[string]UserExternal {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		log.WithError(err).Error("could not refresh persistent users")
+		return map[string]UserExternal{}
+	}
 
 	um := make(map[string]UserExternal)
 
@@ -1072,6 +1120,9 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 		s.Unlock()
 		log.Trace(where + " released lock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return Activity{}, err
+	}
 
 	err := s.validateBooking(booking)
 
@@ -1083,10 +1134,6 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 	if !ok {
 		return Activity{}, errors.New("not found")
 	}
-
-	b.Started = true
-
-	s.Bookings[booking.Name] = b
 
 	sl, ok := s.Slots[b.Slot]
 
@@ -1147,6 +1194,19 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 		})
 	}
 
+	startedAt := s.now()
+	if s.repository != nil {
+		persisted, err := s.repository.StartBooking(context.Background(), b.Name, startedAt)
+		if err != nil {
+			return Activity{}, err
+		}
+		*b = persisted.Booking
+	} else {
+		b.Started = true
+		b.StartedAt = startedAt.UTC().Format(time.RFC3339Nano)
+	}
+	s.Bookings[booking.Name] = b
+
 	return a, nil
 }
 
@@ -1161,6 +1221,9 @@ func (s *Store) GetAvailability(slot string) ([]interval.Interval, error) {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return nil, err
+	}
 
 	return s.getAvailability(slot)
 
@@ -1231,7 +1294,7 @@ func (s *Store) getAvailability(slot string) ([]interval.Interval, error) {
 
 }
 
-//GetBooking returns a booking given a bookingname
+// GetBooking returns a booking given a bookingname
 func (s *Store) GetBooking(booking string) (Booking, error) {
 	where := "store.GetBooking"
 	log.Trace(where + " awaiting Rlock")
@@ -1241,6 +1304,9 @@ func (s *Store) GetBooking(booking string) (Booking, error) {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return Booking{}, err
+	}
 
 	v, ok := s.Bookings[booking]
 
@@ -1262,6 +1328,9 @@ func (s *Store) GetBookingsFor(user string) ([]Booking, error) {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return nil, err
+	}
 	return s.getBookingsFor(user)
 }
 
@@ -1383,6 +1452,9 @@ func (s *Store) GetOldBookingsFor(user string) ([]Booking, error) {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return nil, err
+	}
 	return s.getOldBookingsFor(user)
 }
 
@@ -1453,6 +1525,9 @@ func (s *Store) GetGroupsFor(user string) ([]string, error) {
 		s.Unlock()
 		log.Trace(where + " released Rlock")
 	}()
+	if err := s.recoverFromRepositoryLocked(context.Background()); err != nil {
+		return nil, err
+	}
 
 	if _, ok := s.Users[user]; !ok {
 		return []string{}, errors.New("user not found")
@@ -1478,6 +1553,9 @@ func (s *Store) GetPolicyStatusFor(user, policy string) (PolicyStatus, error) {
 		s.Unlock()
 		log.Trace(where + " released lock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return PolicyStatus{}, err
+	}
 
 	if _, ok := s.Users[user]; !ok {
 		return PolicyStatus{}, errors.New("user not found")
@@ -1803,6 +1881,9 @@ func (s *Store) MakeBooking(slot, user string, when interval.Interval) (Booking,
 		s.Unlock()
 		log.Trace(where + " released lock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return Booking{}, err
+	}
 	name := uuid.New().String()
 
 	b, err := s.makeBookingWithName(slot, user, when, name, true) //check groups
@@ -1832,6 +1913,9 @@ func (s *Store) MakeBookingWithName(slot, user string, when interval.Interval, n
 		s.Unlock()
 		log.Trace(where + " released lock")
 	}()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return Booking{}, err
+	}
 
 	b, err := s.makeBookingWithName(slot, user, when, name, checkGroup) //leave up to admin to enfore group membership on this booking (e.g. might be a one off booking that is not intended to confer future access to any policies
 
@@ -1927,6 +2011,16 @@ func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, n
 	u, ok = s.Users[user]
 	if !ok {
 		return Booking{}, errors.New("user " + user + " was not found and creation failed")
+	}
+
+	// The API has no idempotency key. Treat an exact active request as a retry;
+	// this is unobservable to clients because successful creation returns 204.
+	if s.repository != nil {
+		for _, existing := range s.Bookings {
+			if existing.User == user && existing.Slot == slot && existing.Policy == sl.Policy && existing.When == when {
+				return *existing, nil
+			}
+		}
 	}
 
 	// check if too many bookings already
@@ -2082,9 +2176,6 @@ func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, n
 		}
 	}
 
-	// successful (or skipped) booking, so update usage tracker with value we calculated earlier
-	u.Usage[sl.Policy] = &newUsage
-
 	booking := Booking{
 		Cancelled:   false,
 		Name:        name,
@@ -2095,6 +2186,30 @@ func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, n
 		User:        user,
 		When:        when,
 	}
+
+	if s.repository != nil {
+		persisted, created, err := s.repository.CreateBooking(context.Background(), CreateBookingRequest{
+			Booking: booking, Resource: sl.Resource, ResourceConstrained: !p.EnforceUnlimitedUsers,
+			Now: s.now(), EnforceMaxBookings: p.EnforceMaxBookings, MaxBookings: p.MaxBookings,
+			EnforceMaxUsage: p.EnforceMaxUsage, MaxUsage: p.MaxUsage,
+		})
+		if err != nil {
+			if !p.EnforceUnlimitedUsers {
+				_ = r.Diary.Delete(name)
+			}
+			return Booking{}, err
+		}
+		if !created {
+			if !p.EnforceUnlimitedUsers {
+				_ = r.Diary.Delete(name)
+			}
+			return persisted.Booking, nil
+		}
+		booking = persisted.Booking
+	}
+
+	// successful (or skipped) booking, so update usage tracker with value we calculated earlier
+	u.Usage[sl.Policy] = &newUsage
 
 	s.Bookings[name] = &booking
 	s.Users[user].Bookings[name] = &booking
@@ -2126,6 +2241,12 @@ func (s *Store) PruneAll() {
 		s.Unlock()
 		log.Trace(where + " released lock")
 	}()
+	if s.repository != nil {
+		if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+			log.WithError(err).Error("could not expire persistent bookings")
+		}
+		return
+	}
 
 	s.pruneBookings()
 	s.pruneDiaries()
@@ -2242,6 +2363,18 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 	if len(msg) > 0 {
 		return errors.New("malformed booking"), msg
 	}
+	repository := s.repository
+	if repository != nil {
+		// Validate and construct the complete replacement using the existing
+		// domain code without issuing piecemeal durable writes. PostgreSQL is
+		// updated once, after every item succeeds.
+		s.repository = nil
+		defer func() {
+			if s.repository == nil {
+				s.repository = repository
+			}
+		}()
+	}
 
 	// bookings are ok, so clean house.
 
@@ -2287,6 +2420,34 @@ func (s *Store) ReplaceBookings(bm map[string]Booking) (error, []string) {
 		}
 
 		// s.Bookings is updated by MakeBookingWithID so we mustn't update it ourselves
+	}
+	if repository != nil && len(msg) > 0 {
+		if repository != nil {
+			s.repository = repository
+			_ = s.refreshFromRepositoryLocked(context.Background())
+		}
+		return errors.New("could not replace bookings"), msg
+	}
+	if repository != nil {
+		requests := make([]CreateBookingRequest, 0, len(s.Bookings))
+		for _, booking := range s.Bookings {
+			slot := s.Slots[booking.Slot]
+			policy := s.Policies[booking.Policy]
+			requests = append(requests, CreateBookingRequest{
+				Booking: *booking, Resource: slot.Resource, ResourceConstrained: !policy.EnforceUnlimitedUsers,
+				Now: s.now(), EnforceMaxBookings: policy.EnforceMaxBookings, MaxBookings: policy.MaxBookings,
+				EnforceMaxUsage: policy.EnforceMaxUsage, MaxUsage: policy.MaxUsage,
+			})
+		}
+		if err := repository.ReplaceBookings(context.Background(), requests); err != nil {
+			s.repository = repository
+			_ = s.refreshFromRepositoryLocked(context.Background())
+			return err, []string{err.Error()}
+		}
+		s.repository = repository
+		if err := s.recoverFromRepositoryLocked(context.Background()); err != nil {
+			return err, []string{err.Error()}
+		}
 	}
 
 	return nil, []string{}
@@ -2405,6 +2566,9 @@ func (s *Store) ReplaceManifest(m Manifest) error {
 		}
 		s.Groups[k] = gd
 	}
+	if err := s.recoverFromRepositoryLocked(context.Background()); err != nil {
+		return err
+	}
 
 	return nil
 
@@ -2437,6 +2601,15 @@ func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 
 	if len(msg) > 0 {
 		return errors.New("malformed booking"), msg
+	}
+	repository := s.repository
+	if repository != nil {
+		s.repository = nil
+		defer func() {
+			if s.repository == nil {
+				s.repository = repository
+			}
+		}()
 	}
 
 	// bookings are ok, so clean house.
@@ -2486,6 +2659,25 @@ func (s *Store) ReplaceOldBookings(bm map[string]Booking) (error, []string) {
 		// replace edited user in map
 		s.Users[ob.User] = u
 
+	}
+	if repository != nil {
+		bookings := make([]PersistentBooking, 0, len(s.OldBookings))
+		for _, booking := range s.OldBookings {
+			slot := s.Slots[booking.Slot]
+			policy := s.Policies[booking.Policy]
+			bookings = append(bookings, PersistentBooking{Booking: *booking, Resource: slot.Resource,
+				ResourceConstrained: !policy.EnforceUnlimitedUsers, Current: false,
+				UsageCharge: booking.When.End.Sub(booking.When.Start)})
+		}
+		if err := repository.ReplaceOldBookings(context.Background(), bookings); err != nil {
+			s.repository = repository
+			_ = s.refreshFromRepositoryLocked(context.Background())
+			return err, []string{err.Error()}
+		}
+		s.repository = repository
+		if err := s.recoverFromRepositoryLocked(context.Background()); err != nil {
+			return err, []string{err.Error()}
+		}
 	}
 
 	return nil, []string{}
