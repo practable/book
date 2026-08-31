@@ -27,7 +27,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.booking_events, public.bookings, public.user_groups RESTART IDENTITY")
+		"TRUNCATE public.booking_events, public.bookings, public.user_groups, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	t.Cleanup(repository.Close)
 	return repository
@@ -59,7 +59,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 2, versions)
+	require.Equal(t, 3, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -86,9 +86,9 @@ func TestMigrationAndRestartRecovery(t *testing.T) {
 	created, fresh, err := repository.CreateBooking(ctx, request("restart", "opaque-user", "slot-a", "resource-a", start, start.Add(time.Hour)))
 	require.NoError(t, err)
 	require.True(t, fresh)
-	_, err = repository.StartBooking(ctx, created.Booking.Name, start.Add(time.Minute))
+	_, err = repository.StartBooking(ctx, created.Booking.Name, start.Add(time.Minute), 0)
 	require.NoError(t, err)
-	require.NoError(t, repository.GrantGroup(ctx, "opaque-user", "course-group"))
+	require.NoError(t, repository.GrantGroup(ctx, "opaque-user", "course-group", 0))
 
 	url := os.Getenv("BOOK_TEST_DATABASE_URL")
 	repository.Close()
@@ -131,18 +131,19 @@ func TestStoreProjectionSurvivesProcessRestart(t *testing.T) {
 	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
 
 	first := store.New().WithNow(func() time.Time { return now })
-	require.NoError(t, first.ReplaceManifest(manifest))
 	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(manifest))
+	require.Positive(t, first.ManifestVersion())
 	when := interval.Interval{Start: now.Add(time.Hour), End: now.Add(70 * time.Minute)}
 	created, err := first.MakeBookingWithName("sl-a", "opaque-restart-user", when, "restart-booking", false)
 	require.NoError(t, err)
 	require.Equal(t, "restart-booking", created.Name)
 
 	second := store.New().WithNow(func() time.Time { return now })
-	// Production attaches PostgreSQL before an administrator reloads the
-	// process-local manifest. Recovery must work in that order.
+	// A new process has no local manifest. Attaching PostgreSQL must restore the
+	// active manifest before replaying the durable booking.
 	require.NoError(t, second.WithRepository(repository))
-	require.NoError(t, second.ReplaceManifest(manifest))
+	require.Equal(t, first.ManifestVersion(), second.ManifestVersion())
 	recovered, err := second.GetBooking("restart-booking")
 	require.NoError(t, err)
 	require.Equal(t, created, recovered)
@@ -169,12 +170,129 @@ func TestRestartDurablyExpiresOverdueGraceBooking(t *testing.T) {
 	restartNow := base.Add(66 * time.Minute)
 	second := store.New().WithNow(func() time.Time { return restartNow })
 	require.NoError(t, second.WithRepository(repository))
-	require.NoError(t, second.ReplaceManifest(manifest))
 	_, err = second.GetBooking("overdue-grace")
 	require.Error(t, err)
 	history := second.ExportOldBookings()
 	require.True(t, history["overdue-grace"].Cancelled)
 	require.Equal(t, "auto-grace-check", history["overdue-grace"].CancelledBy)
+}
+
+func TestManifestActivationIsIdempotentAndRefreshesAnotherInstance(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var initial store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &initial))
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+
+	first := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(initial))
+	versionOne := first.ManifestVersion()
+	require.Positive(t, versionOne)
+	require.NoError(t, first.ReplaceManifest(initial))
+	require.Equal(t, versionOne, first.ManifestVersion())
+
+	databaseURL := os.Getenv("BOOK_TEST_DATABASE_URL")
+	secondRepository, err := Open(context.Background(), databaseURL, 4, 10*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(secondRepository.Close)
+	second := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, second.WithRepository(secondRepository))
+	require.Equal(t, versionOne, second.ManifestVersion())
+
+	var changed store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &changed))
+	description := changed.Descriptions["d-r-a"]
+	description.Short = description.Short + " (updated)"
+	changed.Descriptions["d-r-a"] = description
+	require.NoError(t, first.ReplaceManifest(changed))
+	versionTwo := first.ManifestVersion()
+	require.Greater(t, versionTwo, versionOne)
+
+	require.NoError(t, second.RefreshManifest(context.Background()))
+	require.Equal(t, versionTwo, second.ManifestVersion())
+	require.Equal(t, description.Short, second.ExportManifest().Descriptions["d-r-a"].Short)
+
+	stale := request("stale-manifest-request", "opaque-user", "sl-a", "r-a", now.Add(time.Hour), now.Add(70*time.Minute))
+	stale.ManifestVersion = versionOne
+	_, _, err = secondRepository.CreateBooking(context.Background(), stale)
+	require.ErrorIs(t, err, store.ErrStaleManifest)
+}
+
+func TestInvalidManifestReplacementLeavesActiveVersionUnchanged(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var initial store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &initial))
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	s := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, s.WithRepository(repository))
+	require.NoError(t, s.ReplaceManifest(initial))
+	version := s.ManifestVersion()
+	_, err = s.MakeBookingWithName("sl-a", "opaque-user", interval.Interval{
+		Start: now.Add(time.Hour), End: now.Add(70 * time.Minute),
+	}, "manifest-guard-booking", false)
+	require.NoError(t, err)
+
+	// This is structurally valid, but it changes the resource underlying an
+	// existing booking. Replay validation must reject it transactionally.
+	var incompatible store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &incompatible))
+	slot := incompatible.Slots["sl-a"]
+	slot.Resource = "r-b"
+	incompatible.Slots["sl-a"] = slot
+	err = s.ReplaceManifest(incompatible)
+	require.Error(t, err)
+	require.Equal(t, version, s.ManifestVersion())
+
+	active, err := repository.ActiveManifestVersion(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, version, active)
+	state, err := repository.Load(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, state.Manifest)
+	require.Equal(t, "r-a", state.Manifest.Manifest.Slots["sl-a"].Resource)
+}
+
+// TestExternalManifestPersistenceRoundTrip lets operators exercise a real,
+// potentially large manifest without copying production configuration into
+// this repository. The test is skipped unless BOOK_TEST_MANIFEST_PATH is set.
+func TestExternalManifestPersistenceRoundTrip(t *testing.T) {
+	path := os.Getenv("BOOK_TEST_MANIFEST_PATH")
+	if path == "" {
+		t.Skip("BOOK_TEST_MANIFEST_PATH is not set")
+	}
+	repository := integrationRepository(t)
+	document, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(document, &manifest))
+
+	first := store.New()
+	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(manifest))
+	version := first.ManifestVersion()
+	require.Positive(t, version)
+
+	databaseURL := os.Getenv("BOOK_TEST_DATABASE_URL")
+	reopened, err := Open(context.Background(), databaseURL, 4, 10*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(reopened.Close)
+	second := store.New()
+	require.NoError(t, second.WithRepository(reopened))
+	require.Equal(t, version, second.ManifestVersion())
+	// Store construction and YAML round-tripping may represent an omitted list
+	// as an empty list. Compare their public YAML representations, where those
+	// forms are equivalent, while still detecting any changed manifest value.
+	expected := store.New()
+	require.NoError(t, expected.ReplaceManifest(manifest))
+	expectedDocument, err := yaml.Marshal(expected.ExportManifest())
+	require.NoError(t, err)
+	actualDocument, err := yaml.Marshal(second.ExportManifest())
+	require.NoError(t, err)
+	require.YAMLEq(t, string(expectedDocument), string(actualDocument))
 }
 
 func TestConcurrentOverlapAndExactRetry(t *testing.T) {
@@ -248,7 +366,7 @@ func TestCancellationThenRebookingAndHistory(t *testing.T) {
 	first := request("first", "user-a", "slot-a", "resource-a", start, start.Add(time.Hour))
 	_, _, err := repository.CreateBooking(ctx, first)
 	require.NoError(t, err)
-	_, err = repository.CancelBooking(ctx, "first", start.Add(-time.Minute), "user-a", 0)
+	_, err = repository.CancelBooking(ctx, "first", start.Add(-time.Minute), "user-a", 0, 0)
 	require.NoError(t, err)
 	second := request("second", "user-b", "slot-b", "resource-a", start, start.Add(time.Hour))
 	_, fresh, err := repository.CreateBooking(ctx, second)
@@ -283,7 +401,7 @@ func TestPolicyLimitsIncludeHistoricalUsage(t *testing.T) {
 	_, _, err = repository.CreateBooking(ctx, concurrent)
 	require.ErrorIs(t, err, store.ErrMaxBookings)
 
-	_, err = repository.CancelBooking(ctx, "limit-a", start.Add(-time.Minute), "limited-user", 20*time.Minute)
+	_, err = repository.CancelBooking(ctx, "limit-a", start.Add(-time.Minute), "limited-user", 20*time.Minute, 0)
 	require.NoError(t, err)
 	usage := request("usage-b", "limited-user", "slot-b", "resource-b", start.Add(time.Hour), start.Add(110*time.Minute))
 	usage.EnforceMaxUsage, usage.MaxUsage = true, time.Hour
@@ -335,7 +453,7 @@ func TestHistoricalImportPreservesLegacyFlags(t *testing.T) {
 	err := repository.ReplaceOldBookings(context.Background(), []store.PersistentBooking{{
 		Booking: booking, Resource: "resource", ResourceConstrained: true,
 		Current: false, UsageCharge: 17 * time.Minute,
-	}})
+	}}, 0)
 	require.NoError(t, err)
 	state, err := repository.Load(context.Background())
 	require.NoError(t, err)
@@ -395,7 +513,7 @@ func TestTransactionRollbackAndAtomicReplacement(t *testing.T) {
 	require.NoError(t, err)
 	overlapA := request("replacement-a", "user-a", "slot-a", "resource-z", start.Add(2*time.Hour), start.Add(3*time.Hour))
 	overlapB := request("replacement-b", "user-b", "slot-b", "resource-z", start.Add(150*time.Minute), start.Add(4*time.Hour))
-	err = repository.ReplaceBookings(ctx, []store.CreateBookingRequest{overlapA, overlapB})
+	err = repository.ReplaceBookings(ctx, []store.CreateBookingRequest{overlapA, overlapB}, 0)
 	require.ErrorIs(t, err, store.ErrBookingConflict)
 	state, err := repository.Load(ctx)
 	require.NoError(t, err)

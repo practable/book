@@ -49,6 +49,40 @@ Some existing API tests open loopback listeners. In a restricted sandbox they
 must be run outside the network sandbox; on a normal development host use
 `GOCACHE=/tmp/book-go-cache go test ./internal/server ./pkg/...`.
 
+## Manifest activation and replicas
+
+The existing administrative workflow remains the entry point:
+
+```sh
+book manifest check manifest.yaml
+book manifest replace manifest.yaml
+book manifest export
+```
+
+Replacement validates and prepares the candidate before opening a database
+transaction. PostgreSQL then serializes activation against manifest-dependent
+writes and replays authoritative bookings and historical usage through the
+candidate policies. If any booking is incompatible, the transaction rolls back
+and the previous active manifest remains unchanged. Uploading the exact same
+manifest again is idempotent and does not create another version.
+
+Each committed version is immutable and identified by a SHA-256 checksum;
+`active_manifest` selects the singleton active version. Booking, cancellation,
+take-up, import, and group mutations carry the version used for validation and
+are rejected if activation won the race. Running instances poll the active
+version every five seconds and reload committed state when another replica has
+changed it. The database fence, rather than polling, provides correctness.
+
+An empty database intentionally starts with no bookable configuration. Load the
+first manifest using the same `book manifest replace` command. To exercise a
+large local manifest in the destructive disposable-database integration suite:
+
+```sh
+export BOOK_TEST_MANIFEST_PATH=/absolute/path/to/manifest.yaml
+GOCACHE=/tmp/book-go-cache go test -count=1 \
+  -run TestExternalManifestPersistenceRoundTrip ./internal/postgres
+```
+
 ## Migrations
 
 Numbered migrations are embedded from `internal/postgres/migrations`. Startup
@@ -63,14 +97,18 @@ editing one already applied.
 Use PostgreSQL backups and point-in-time recovery appropriate to the deployment.
 To recover a service, restore the database first, verify `schema_migrations`, then
 start one application instance and confirm booking counts before restoring normal
-capacity. The application reconstructs current/historical bookings, resource
-diaries, usage, group grants, and grace checks from PostgreSQL.
+capacity. The application reconstructs the active manifest first, followed by
+current/historical bookings, resource diaries, usage, group grants, and grace
+checks from PostgreSQL. After the first manifest has been activated, a restart
+does not require the manifest Git checkout or another upload.
 
-Never roll back to a pre-database binary while writers are enabled: it cannot see
-durable bookings and can double-book resources. Roll back only to a tested
-database-aware binary compatible with the applied schema. The supplied `.down.sql`
-file is documentation for an exceptional, offline destructive rollback; take and
-verify a backup before using it.
+Never roll back to a pre-database or pre-durable-manifest binary while writers
+are enabled: it cannot see authoritative bookings or the active manifest and may
+admit invalid work. Roll back only to a tested database-aware binary compatible
+with the applied schema. Supplied `.down.sql` files are documentation for an
+exceptional, offline destructive rollback; take and verify a backup before using
+them. Rolling back migration 0003 removes stored manifest versions, so export
+and retain the active manifest first.
 
 ## Idempotency and audit
 

@@ -27,6 +27,22 @@ difficult to add.
 
 ## Decision
 
+### Implemented first checkpoint
+
+The first checkpoint implements a singleton active manifest for the current
+trusted booking service. PostgreSQL stores immutable YAML-normalized documents,
+checksums, activation times, and the active pointer. Startup restores the
+manifest before bookings. Activation is serialized with booking mutations,
+revalidates durable state, is idempotent by checksum, and fences every
+manifest-dependent write by version. Replicas currently discover a committed
+change by a five-second version poll; activation also emits a PostgreSQL
+notification so a dedicated listener can reduce propagation latency later.
+
+This checkpoint deliberately does not yet implement `service_id`, creation
+pause, preview/supersession, resource claims/status, organisation allocation,
+or the Resource Authority. Those remain the forward design below, not claims
+about the current schema or API.
+
 ### Distinct identities and scopes
 
 The design distinguishes the following identities:
