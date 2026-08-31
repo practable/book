@@ -122,3 +122,9 @@ The HTTP schema and generated clients remain unchanged. Production gains durable
 recovery, auditable transitions, transactional policy accounting, and a database
 constraint that prevents double booking. The cost is a PostgreSQL operational
 dependency and explicit projection-refresh/error handling in the existing store.
+
+## Follow-up decisions
+
+- [ADR 0002: Durable manifests and shared-resource authority boundaries](0002-manifest-and-resource-authority.md)
+  supersedes the assumption that manifests and resource availability will remain
+  process-local, and records the intended boundary for future shared resources.
