@@ -25,10 +25,11 @@ const maintenanceLock int64 = 0x626f6f6b5f6d6169
 var migrationFiles embed.FS
 
 type Repository struct {
-	pool *pgxpool.Pool
+	pool             *pgxpool.Pool
+	operationTimeout time.Duration
 }
 
-func Open(ctx context.Context, databaseURL string, maxConnections int32) (*Repository, error) {
+func Open(ctx context.Context, databaseURL string, maxConnections int32, operationTimeout time.Duration) (*Repository, error) {
 	config, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse database URL: %w", err)
@@ -45,7 +46,10 @@ func Open(ctx context.Context, databaseURL string, maxConnections int32) (*Repos
 	if err != nil {
 		return nil, fmt.Errorf("connect to PostgreSQL: %w", err)
 	}
-	repository := &Repository{pool: pool}
+	if operationTimeout <= 0 {
+		operationTimeout = 30 * time.Second
+	}
+	repository := &Repository{pool: pool, operationTimeout: operationTimeout}
 	if err := repository.Migrate(ctx); err != nil {
 		pool.Close()
 		return nil, err
@@ -122,6 +126,8 @@ func (r *Repository) Migrate(ctx context.Context) error {
 }
 
 func (r *Repository) Load(ctx context.Context) (store.PersistentState, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
 	rows, err := r.pool.Query(ctx, `SELECT name, collection, user_name, policy_name, slot_name,
 		resource_name, resource_constrained, starts_ns, ends_ns, started_at_ns,
 		cancelled_at_ns, cancelled_by, unfulfilled, usage_charge_ns,
@@ -190,6 +196,8 @@ func scanBooking(row rowScanner) (store.PersistentBooking, error) {
 }
 
 func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBookingRequest) (store.PersistentBooking, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return store.PersistentBooking{}, false, err
@@ -313,6 +321,8 @@ func insertEvent(ctx context.Context, tx pgx.Tx, rowID int64, name, kind string,
 }
 
 func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Time, actor string, charge time.Duration) (store.PersistentBooking, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return store.PersistentBooking{}, err
@@ -321,16 +331,26 @@ func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Tim
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
 		return store.PersistentBooking{}, err
 	}
-	var rowID int64
 	var user, policy string
-	if err := tx.QueryRow(ctx, `SELECT row_id,user_name,policy_name FROM public.bookings
-		WHERE name=$1 AND collection='live' AND NOT superseded FOR UPDATE`, name).Scan(&rowID, &user, &policy); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT user_name,policy_name FROM public.bookings
+		WHERE name=$1 AND collection='live' AND NOT superseded`, name).Scan(&user, &policy); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return store.PersistentBooking{}, store.ErrPersistentNotFound
 		}
 		return store.PersistentBooking{}, err
 	}
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", userPolicyLock(user, policy)); err != nil {
+		return store.PersistentBooking{}, err
+	}
+	var rowID int64
+	if err := tx.QueryRow(ctx, `SELECT row_id FROM public.bookings
+		WHERE name=$1 AND collection='live' AND NOT superseded FOR UPDATE`, name).Scan(&rowID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return store.PersistentBooking{}, store.ErrPersistentNotFound
+		}
+		return store.PersistentBooking{}, err
+	}
+	if err := supersedeHistoryName(ctx, tx, name, at, actor); err != nil {
 		return store.PersistentBooking{}, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE public.bookings SET collection='history', cancelled=true, cancelled_at=$2,
@@ -353,6 +373,8 @@ func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Tim
 }
 
 func (r *Repository) StartBooking(ctx context.Context, name string, at time.Time) (store.PersistentBooking, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return store.PersistentBooking{}, err
@@ -387,6 +409,8 @@ func (r *Repository) StartBooking(ctx context.Context, name string, at time.Time
 }
 
 func (r *Repository) ExpireBookings(ctx context.Context, now time.Time) error {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
@@ -395,19 +419,20 @@ func (r *Repository) ExpireBookings(ctx context.Context, now time.Time) error {
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
 		return err
 	}
-	rows, err := tx.Query(ctx, `UPDATE public.bookings SET collection='history',updated_at=clock_timestamp()
-		WHERE collection='live' AND NOT superseded AND ends_ns < $1 RETURNING row_id,name`, now.UnixNano())
+	rows, err := tx.Query(ctx, `SELECT row_id,name,user_name,policy_name FROM public.bookings
+		WHERE collection='live' AND NOT superseded AND ends_ns < $1`, now.UnixNano())
 	if err != nil {
 		return err
 	}
 	type expired struct {
-		id   int64
-		name string
+		id         int64
+		name, user string
+		policy     string
 	}
 	var values []expired
 	for rows.Next() {
 		var value expired
-		if err := rows.Scan(&value.id, &value.name); err != nil {
+		if err := rows.Scan(&value.id, &value.name, &value.user, &value.policy); err != nil {
 			rows.Close()
 			return err
 		}
@@ -417,12 +442,71 @@ func (r *Repository) ExpireBookings(ctx context.Context, now time.Time) error {
 	if err := rows.Err(); err != nil {
 		return err
 	}
+	lockKeys := make([]string, 0, len(values))
 	for _, value := range values {
+		lockKeys = append(lockKeys, userPolicyLock(value.user, value.policy))
+	}
+	sort.Strings(lockKeys)
+	for i, key := range lockKeys {
+		if i > 0 && key == lockKeys[i-1] {
+			continue
+		}
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", key); err != nil {
+			return err
+		}
+	}
+	for _, value := range values {
+		var exists int
+		if err := tx.QueryRow(ctx, `SELECT 1 FROM public.bookings
+			WHERE row_id=$1 AND collection='live' AND NOT superseded FOR UPDATE`, value.id).Scan(&exists); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				continue
+			}
+			return err
+		}
+		if err := supersedeHistoryName(ctx, tx, value.name, now, "system"); err != nil {
+			return err
+		}
+		result, err := tx.Exec(ctx, `UPDATE public.bookings SET collection='history',updated_at=clock_timestamp()
+			WHERE row_id=$1 AND collection='live' AND NOT superseded`, value.id)
+		if err != nil {
+			return err
+		}
+		if result.RowsAffected() == 0 {
+			continue
+		}
 		if err := insertEvent(ctx, tx, value.id, value.name, "expired", now, "system"); err != nil {
 			return err
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+func supersedeHistoryName(ctx context.Context, tx pgx.Tx, name string, at time.Time, actor string) error {
+	rows, err := tx.Query(ctx, `UPDATE public.bookings SET superseded=true,updated_at=clock_timestamp()
+		WHERE name=$1 AND collection='history' AND NOT superseded RETURNING row_id`, name)
+	if err != nil {
+		return err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err := insertEvent(ctx, tx, id, name, "superseded", at, actor); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *Repository) ReplaceBookings(ctx context.Context, requests []store.CreateBookingRequest) error {
@@ -438,6 +522,8 @@ func (r *Repository) ReplaceOldBookings(ctx context.Context, bookings []store.Pe
 }
 
 func (r *Repository) replace(ctx context.Context, collection string, requests []store.CreateBookingRequest, old []store.PersistentBooking) error {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
@@ -493,11 +579,15 @@ func (r *Repository) replace(ctx context.Context, collection string, requests []
 }
 
 func (r *Repository) GrantGroup(ctx context.Context, user, group string) error {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
 	_, err := r.pool.Exec(ctx, `INSERT INTO public.user_groups(user_name,group_name) VALUES($1,$2)
 		ON CONFLICT (user_name,group_name) DO NOTHING`, user, group)
 	return err
 }
 func (r *Repository) RevokeGroup(ctx context.Context, user, group string) error {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
 	_, err := r.pool.Exec(ctx, "DELETE FROM public.user_groups WHERE user_name=$1 AND group_name=$2", user, group)
 	return err
 }

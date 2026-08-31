@@ -3,6 +3,10 @@ This package implements bookings with arbitrary durations
 
 This has been in production use for the academic year 2023-2024
 
+Production PostgreSQL setup, migrations, recovery, and integration-test commands
+are documented in [docs/postgresql.md](docs/postgresql.md). PostgreSQL is the
+authoritative booking store for `book serve`.
+
 ## Features
 
 - Advance bookings 

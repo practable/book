@@ -76,6 +76,7 @@ export BOOK_MIN_USERNAME_LENGTH=6
 export BOOK_PROFILE=true
 export BOOK_PROFILE_PORT=6060
 export BOOK_DATABASE_MAX_CONNECTIONS=10
+export BOOK_DATABASE_OPERATION_TIMEOUT=10s
 
 After setting the env vars and permissions as required, run with:
 
@@ -95,6 +96,7 @@ $ book serve
 		viper.SetDefault("log_format", "json")
 		viper.SetDefault("min_username_length", 6)
 		viper.SetDefault("database_max_connections", 10)
+		viper.SetDefault("database_operation_timeout", "10s")
 		viper.SetDefault("port", 4000)
 		viper.SetDefault("profile", "true")
 		viper.SetDefault("profile_port", 6060)
@@ -111,6 +113,7 @@ $ book serve
 		logLevel := viper.GetString("log_level")
 		databaseURL := viper.GetString("database_url")
 		databaseMaxConnections := viper.GetInt("database_max_connections")
+		databaseOperationTimeout := viper.GetString("database_operation_timeout")
 		port := viper.GetInt("port")
 		profile := viper.GetBool("profile")
 		profilePort := viper.GetInt("profile_port")
@@ -161,6 +164,11 @@ $ book serve
 
 		if err != nil {
 			fmt.Println("Specify BOOK_REQUEST_TIMEOUT duration as string, e.g. 30s, 1m etc")
+			os.Exit(1)
+		}
+		databaseOperationTimeoutDuration, err := time.ParseDuration(databaseOperationTimeout)
+		if err != nil {
+			fmt.Println("Specify BOOK_DATABASE_OPERATION_TIMEOUT duration as string, e.g. 10s, 1m etc")
 			os.Exit(1)
 		}
 		tidyEveryDuration, err := time.ParseDuration(tidyEvery)
@@ -228,6 +236,7 @@ $ book serve
 		log.Infof("Log file: [%s]", logFile)
 		log.Infof("Log level: [%s]", logLevel)
 		log.Infof("PostgreSQL persistence enabled with at most %d connections", databaseMaxConnections)
+		log.Infof("PostgreSQL operation timeout: [%s]", databaseOperationTimeout)
 		log.Infof("Profiling on: [%t]", profile)
 		log.Infof("Profile port: [%d]", profilePort)
 		log.Infof("Request timeout: [%s]", requestTimeout)
@@ -251,7 +260,7 @@ $ book serve
 		// Start the server
 
 		databaseContext, cancelDatabase := context.WithTimeout(context.Background(), requestTimeoutDuration)
-		repository, err := postgres.Open(databaseContext, databaseURL, int32(databaseMaxConnections))
+		repository, err := postgres.Open(databaseContext, databaseURL, int32(databaseMaxConnections), databaseOperationTimeoutDuration)
 		cancelDatabase()
 		if err != nil {
 			log.Fatalf("could not initialise PostgreSQL: %s", err)

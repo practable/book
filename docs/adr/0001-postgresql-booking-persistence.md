@@ -39,9 +39,11 @@ The database model contains:
   recovered user's future bookings; and
 - `schema_migrations`, recording each successfully applied versioned migration.
 
-Database timestamps use `timestamptz`; callers and API conversion continue to use
-Go `time.Time`, preserving instants and existing RFC3339 behaviour. Durations are
-stored as integer nanoseconds to match Go's `time.Duration` calculations.
+Database timestamps use `timestamptz` for operations and audit readability, while
+parallel epoch-nanosecond integers are authoritative for identity and interval
+comparison. This avoids PostgreSQL's microsecond timestamp precision changing the
+existing nanosecond and closed-endpoint behaviour. Callers and API conversion
+continue to use Go `time.Time`. Durations are stored as integer nanoseconds.
 
 ## Transactions and concurrency
 
@@ -49,7 +51,7 @@ Creating a booking is one transaction. It takes transaction-scoped advisory lock
 for the `(user, policy)` and resource keys, checks an exact active request first,
 enforces maximum booking and usage limits against committed database state, then
 inserts both the booking and audit event. An exclusion constraint on
-`(resource_name WITH =, tstzrange(starts_at, ends_at, '[]') WITH &&)` for active,
+`(resource_name WITH =, int8range(starts_ns, ends_ns, '[]') WITH &&)` for active,
 resource-constrained rows is the final invariant preventing overlap across server
 instances. Closed ranges intentionally retain the service's current rule that
 bookings sharing an endpoint conflict. Constraint or serialization failures are
@@ -57,9 +59,11 @@ reported as the same booking failure class the API already exposes.
 
 Because the API has no request key, an exact active request—same user, slot,
 policy, start, and end—is defined as a retry and returns the original booking as
-success. A supplied administrative booking identifier is immutable: repeating
-the same identifier and payload succeeds, while reusing it for different data is
-an error. Cancellation and take-up are idempotent state transitions in the
+success. A supplied administrative booking identifier is immutable during normal
+creation: repeating the same identifier and payload succeeds, while reusing it
+for different data is an error. Internally versioned rows let transactional
+administrative replacement reuse/edit a public name without losing audit history.
+Cancellation and take-up are idempotent state transitions in the
 repository, although the HTTP cancellation endpoint retains its historical 404
 response contract. Expiry and bulk replacement are transactional and write audit
 events in the same transaction. Failed event or state writes roll back together.
@@ -75,8 +79,10 @@ PostgreSQL advisory lock. Each version is applied in its own transaction and is
 recorded only after success. Starting from an empty database therefore produces
 the complete schema deterministically.
 
-Application rollback means first stopping writers, then deploying the previous
-binary. Additive migrations remain in place and are tolerated. Destructive schema
+Application rollback means first stopping writers, then deploying an earlier
+database-aware binary known to understand the applied schema. Rolling back to the
+pre-database service is unsafe because it would start empty and could double-book.
+Additive migrations remain in place and are tolerated. Destructive schema
 rollback is deliberately not automatic: restore a tested database backup or run
 a separately reviewed down migration after confirming no newer data would be
 lost. Operational backups and point-in-time recovery remain PostgreSQL concerns.
@@ -90,7 +96,9 @@ required.
 
 - Exact duplicate creation changes from an overlap error to idempotent success;
   this is intentionally unobservable to clients because successful creation has
-  no response body.
+  no response body. Without a client idempotency key this is best-effort: a
+  delayed retry after cancellation can create a new booking, while two intentional
+  exact submissions collapse into one.
 - The schema stores the resource resolved at booking time. A manifest replacement
   that remaps a slot with live bookings must be rejected or explicitly reconciled;
   silently changing the resource would weaken exclusivity.
@@ -98,6 +106,12 @@ required.
   part of a database transaction. A relay failure leaves the booking active. A
   database failure after a successful denial also leaves it active and retryable,
   which is safer than freeing occupied time without a durable cancellation.
+- A take-up request on another instance can race the external relay-denial phase
+  of cancellation. Eliminating that cross-system race needs a future relay-aware
+  cancelling protocol.
+- Manifests remain process-local. Operators must coordinate manifest changes
+  across instances; resolved resources protect existing bookings, but divergent
+  policies can still produce inconsistent admission decisions.
 - PostgreSQL is required for multi-instance safety. In-memory mode is documented
   as test/development compatibility only and provides the prior single-process
   guarantees.
