@@ -198,6 +198,11 @@ constraints cannot provide global protection.
 
 ## Migration and implementation sequence
 
+The first delivery checkpoint intentionally persists one active manifest for the
+current trusted service before introducing service identities or resource
+claims. It retains versioning and transaction boundaries that can be scoped by
+`service_id` later. The broader sequence remains:
+
 1. Introduce stable service and resource identities and move physical overlap
    enforcement behind resource claims while preserving the current HTTP API.
 2. Add versioned manifests, the active pointer, creation-pause state, activation
@@ -232,6 +237,7 @@ federation deployment is introduced by this decision alone.
 ## Related decisions
 
 - [ADR 0001: PostgreSQL as the authoritative booking store](0001-postgresql-booking-persistence.md)
+- [ADR 0003: Recurring operations, automation bookings, and health jobs](0003-recurring-operations-and-health-jobs.md)
 
 This decision supersedes ADR 0001 only where it describes manifests and resource
 availability as permanently process-local. ADR 0001 remains authoritative for
