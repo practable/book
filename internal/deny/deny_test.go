@@ -63,3 +63,26 @@ func TestDeny(t *testing.T) {
 	// Close the server when test finishes
 	defer server.Close()
 }
+
+func TestDenyReportsRelayFailure(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	client := New()
+	go client.Run(ctx)
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	result := make(chan string, 1)
+	client.Request <- Request{
+		URL:       server.URL,
+		BookingID: "bid0",
+		ExpiresAt: 1674164170,
+		Result:    result,
+	}
+
+	assert.NotEqual(t, "ok", <-result)
+}

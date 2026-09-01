@@ -773,10 +773,12 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 				log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
 				return errors.New(msg)
 			}
-			c := make(chan string)
+			// The worker must never be left blocked trying to reply after this
+			// caller times out.
+			c := make(chan string, 1)
 			s.denyRequests <- deny.Request{
 				Result:    c,
-				URL:       strings.TrimPrefix(URL, "http://"), //deny.Client scheme must be http
+				URL:       URL,
 				BookingID: b.Name,
 				ExpiresAt: b.When.End.Unix(),
 			}

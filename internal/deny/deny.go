@@ -3,7 +3,6 @@ package deny
 import (
 	"context"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -27,6 +26,15 @@ type Client struct {
 	Request chan Request
 	Secret  string
 	Timeout time.Duration
+}
+
+// reply reports a terminal result without allowing a caller that has timed out
+// to block the single denial worker indefinitely.
+func reply(ctx context.Context, result chan string, message string) {
+	select {
+	case result <- message:
+	case <-ctx.Done():
+	}
 }
 
 func New() *Client {
@@ -131,29 +139,26 @@ func (c *Client) Run(ctx context.Context) {
 			if err != nil { //token should generate ok, unless secret is blank?
 				msg := "signing admin token failed because" + err.Error()
 				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
-				req.Result <- msg
+				reply(ctx, req.Result, msg)
 				break NEXT
 			}
 
 			auth := httptransport.APIKeyAuth("Authorization", "header", stoken)
-			URL, err := url.Parse(req.URL)
-			if err != nil {
-				msg := "relay deny request failed because url parsing error" + err.Error()
+			URL, err := url.ParseRequestURI(req.URL)
+			if err != nil || URL.Scheme == "" || URL.Host == "" {
+				detail := "missing scheme or host"
+				if err != nil {
+					detail = err.Error()
+				}
+				msg := "relay deny request failed because url parsing error " + detail
 				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
-				req.Result <- msg
+				reply(ctx, req.Result, msg)
 				break NEXT
 			}
 
-			host := strings.TrimPrefix(req.URL, URL.Scheme+"://")
-
-			host, basePath, hasBasePath := strings.Cut(host, "/")
-
-			log.Debugf("scheme: %s, host: %s, basePath: %s, hasBasePath: %t", URL.Scheme, host, basePath, hasBasePath)
-
-			trans := ac.DefaultTransportConfig().WithSchemes([]string{URL.Scheme}).WithHost(host)
-
-			if hasBasePath {
-				trans = ac.DefaultTransportConfig().WithSchemes([]string{URL.Scheme}).WithHost(host).WithBasePath(basePath)
+			trans := ac.DefaultTransportConfig().WithSchemes([]string{URL.Scheme}).WithHost(URL.Host)
+			if URL.Path != "" && URL.Path != "/" {
+				trans = trans.WithBasePath(URL.EscapedPath())
 			}
 
 			client := ac.NewHTTPClientWithConfig(nil, trans)
@@ -162,20 +167,20 @@ func (c *Client) Run(ctx context.Context) {
 
 			if err != nil {
 				msg := "relay deny request failed with error because" + err.Error()
-				log.WithFields(log.Fields{"request": req}).Error("[hotfix, replying ok anyway] deny error is" + msg)
-				req.Result <- "ok" //hotfix workaround for cancellation issues
+				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
+				reply(ctx, req.Result, msg)
 				break NEXT
 			}
 
 			if !payload.IsSuccess() {
 				msg := "relay deny request failed with no success because" + payload.String()
-				log.WithFields(log.Fields{"request": req}).Error("[hotfix, replying ok anyway], deny error is" + msg)
-				req.Result <- "ok" //hotfix workaround for cancellation issues
+				log.WithFields(log.Fields{"request": req}).Error("deny error is" + msg)
+				reply(ctx, req.Result, msg)
 				break NEXT
 			}
 
 			log.WithFields(log.Fields{"request": req}).Info("deny successful at cancelling session at relay")
-			req.Result <- "ok"
+			reply(ctx, req.Result, "ok")
 		}
 
 	}
