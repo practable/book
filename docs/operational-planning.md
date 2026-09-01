@@ -75,3 +75,12 @@ guards are retired, boundary guards made reclaimable by the new interval are
 superseded, and the replacement booking and new guard jobs are committed as one
 unit. An edit that conflicts with leased or dispatched physical work is rejected
 and leaves the previous booking and plan unchanged.
+
+Each guard job also receives an operational-usage ledger entry in the same
+transaction as the user booking, reservation, and webhook delivery. Setup is
+reported as preparation and teardown or settling as cleanup. The ledger points
+to the exact triggering booking revision and charges its opaque user by
+default, but does not add guard time to the user's experiment-usage total or
+policy allowance. Runner activation and terminal callbacks record the actual
+operational duration. A guard cancelled before dispatch remains auditable with
+zero actual duration.

@@ -101,6 +101,9 @@ func (r *Repository) CreateBookingWithOperations(ctx context.Context, request st
 		if err := insertOperationalJobTx(ctx, tx, job, item.Delivery); err != nil {
 			return store.PersistentBooking{}, nil, false, err
 		}
+		if err := insertGuardOperationalUsageTx(ctx, tx, job, primary); err != nil {
+			return store.PersistentBooking{}, nil, false, err
+		}
 		reservations = append(reservations, reservation)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -187,6 +190,9 @@ func (r *Repository) ReplaceBookingWithOperations(ctx context.Context, originalN
 		job := item.Job
 		job.BookingRowID = &reservation.Revision
 		if err := insertOperationalJobTx(ctx, tx, job, item.Delivery); err != nil {
+			return store.PersistentBooking{}, nil, false, err
+		}
+		if err := insertGuardOperationalUsageTx(ctx, tx, job, persisted); err != nil {
 			return store.PersistentBooking{}, nil, false, err
 		}
 		created = append(created, reservation)
@@ -352,6 +358,10 @@ func retireTriggeredOperationalReservationsTx(ctx context.Context, tx pgx.Tx, tr
 		if _, err := tx.Exec(ctx, "UPDATE public.webhook_deliveries SET state='cancelled',updated_at=clock_timestamp() WHERE job_id=$1 AND state='pending'", item.jobID); err != nil {
 			return nil, err
 		}
+		if _, err := tx.Exec(ctx, `UPDATE public.operational_usage_ledger SET state='cancelled',actual_duration_ns=0,
+			completed_at=$2,updated_at=$2 WHERE job_id=$1 AND state IN ('reserved','dispatched')`, item.jobID, at.UTC()); err != nil {
+			return nil, err
+		}
 		persisted, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", item.rowID))
 		if err != nil {
 			return nil, err
@@ -391,6 +401,10 @@ func supersedeReclaimableOperationsTx(ctx context.Context, tx pgx.Tx, names []st
 		if _, err := tx.Exec(ctx, "UPDATE public.webhook_deliveries SET state='cancelled',updated_at=clock_timestamp() WHERE job_id=$1 AND state='pending'", jobID); err != nil {
 			return err
 		}
+		if _, err := tx.Exec(ctx, `UPDATE public.operational_usage_ledger SET state='cancelled',actual_duration_ns=0,
+			completed_at=$2,updated_at=$2 WHERE job_id=$1 AND state IN ('reserved','dispatched')`, jobID, now.UTC()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -409,6 +423,22 @@ func insertOperationalJobTx(ctx context.Context, tx pgx.Tx, job operations.Job, 
 	_, err = tx.Exec(ctx, `INSERT INTO public.webhook_deliveries
 		(delivery_id,job_id,direction,state,body,next_attempt_at,next_attempt_at_ns)
 		VALUES($1,$2,'book-to-runner','pending',$3,$4,$5)`, delivery.ID, job.ID, string(delivery.Body), job.DueAt.UTC(), job.DueAt.UnixNano())
+	return err
+}
+
+func insertGuardOperationalUsageTx(ctx context.Context, tx pgx.Tx, job operations.Job, triggering store.PersistentBooking) error {
+	phase := "preparation"
+	if job.Kind == "teardown" || job.Kind == "settling" {
+		phase = "cleanup"
+	}
+	planned := job.EndsAt.Sub(job.StartsAt)
+	if planned < 0 {
+		return errors.New("operational job ends before it starts")
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO public.operational_usage_ledger
+		(job_id,triggering_booking_row_id,triggering_booking_name,user_name,phase,payer_kind,payer_id,chargeable,state,planned_duration_ns)
+		VALUES($1,$2,$3,$4,$5,'user',$4,true,'reserved',$6) ON CONFLICT (job_id) DO NOTHING`,
+		job.ID, triggering.Revision, triggering.Booking.Name, triggering.Booking.User, phase, planned.Nanoseconds())
 	return err
 }
 
@@ -877,8 +907,8 @@ func createActivationStageJobTx(ctx context.Context, tx pgx.Tx, runID string, st
 
 func insertOperationalUsageTx(ctx context.Context, tx pgx.Tx, jobID, runID, phase string, planned time.Duration) error {
 	_, err := tx.Exec(ctx, `INSERT INTO public.operational_usage_ledger
-		(job_id,activation_run_id,triggering_booking_name,user_name,phase,payer_kind,payer_id,chargeable,state,planned_duration_ns)
-		SELECT $1,r.run_id,r.booking_name,r.user_name,$3,'user',r.user_name,true,'reserved',$4 FROM public.booking_activation_runs r WHERE r.run_id=$2
+		(job_id,activation_run_id,triggering_booking_row_id,triggering_booking_name,user_name,phase,payer_kind,payer_id,chargeable,state,planned_duration_ns)
+		SELECT $1,r.run_id,r.booking_row_id,r.booking_name,r.user_name,$3,'user',r.user_name,true,'reserved',$4 FROM public.booking_activation_runs r WHERE r.run_id=$2
 		ON CONFLICT (job_id) DO NOTHING`, jobID, runID, phase, planned.Nanoseconds())
 	return err
 }

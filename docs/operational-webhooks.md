@@ -112,10 +112,11 @@ User equipment usage remains the interval from successful booking activation
 to cancellation or booking end. Preparation and cleanup never inflate that
 figure or the policy usage limits derived from it.
 
-Each activation or cleanup attempt also writes an immutable operational usage
-ledger entry. It records the triggering booking, opaque user identifier,
-preparation/cleanup phase, planned duration, actual runner-active duration,
-and outcome. Operational work is chargeable to that user by default, while
+Each activation, cleanup, or per-booking guard attempt also writes an
+operational usage ledger entry. It records the exact triggering booking
+revision, opaque user identifier, preparation/cleanup phase, planned duration,
+actual runner-active duration, and outcome. Operational work is chargeable to
+that user by default, while
 remaining separately reportable as `preparation_usage`, `cleanup_usage`, and
 `operational_jobs` in the administrator usage summary. The payer fields are
 explicit so a future policy can charge an organisation or service without
@@ -134,6 +135,7 @@ Migration 0009 creates `operational_jobs`, `webhook_deliveries`, and
 event; migrations 0015 and 0016 add durable booking activation runs, stages,
 deadlines, retry policy, and failure guidance. Migrations 0017 and 0018 add the
 independent cleanup plan and lifecycle; migration 0019 adds operational usage
-accounting. Apply migrations using the normal process in
+accounting; migration 0020 extends that accounting to per-booking setup and
+teardown guards. Apply migrations using the normal process in
 [PostgreSQL](postgresql.md). Rollback is safe only after dispatch is disabled
 and retained operational history has been exported or deliberately discarded.

@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 19, versions)
+	require.Equal(t, 20, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -565,18 +565,38 @@ func TestBookingAndOperationalGuardsCommitAtomically(t *testing.T) {
 		operationalReservation("setup-job", "setup-booking", "setup-delivery", "guarded-user-booking", "resource-a", start.Add(-10*time.Minute), start),
 		operationalReservation("teardown-job", "teardown-booking", "teardown-delivery", "guarded-user-booking", "resource-a", start.Add(time.Hour), start.Add(70*time.Minute)),
 	}
+	planned[1].Job.Kind = "teardown"
 	created, guards, fresh, err := repository.CreateBookingWithOperations(ctx, primary, planned, nil)
 	require.NoError(t, err)
 	require.True(t, fresh)
 	require.Equal(t, "guarded-user-booking", created.Booking.Name)
 	require.Len(t, guards, 2)
-	var bookingCount, jobCount, deliveryCount int
+	var bookingCount, jobCount, deliveryCount, ledgerCount int
 	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.bookings WHERE collection='live' AND NOT superseded").Scan(&bookingCount))
 	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs").Scan(&jobCount))
 	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.webhook_deliveries").Scan(&deliveryCount))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_usage_ledger").Scan(&ledgerCount))
 	require.Equal(t, 3, bookingCount)
 	require.Equal(t, 2, jobCount)
 	require.Equal(t, 2, deliveryCount)
+	require.Equal(t, 2, ledgerCount)
+	rows, err := repository.pool.Query(ctx, `SELECT phase,payer_kind,payer_id,chargeable,triggering_booking_row_id
+		FROM public.operational_usage_ledger ORDER BY phase DESC`)
+	require.NoError(t, err)
+	defer rows.Close()
+	for _, expectedPhase := range []string{"preparation", "cleanup"} {
+		require.True(t, rows.Next())
+		var phase, payerKind, payerID string
+		var chargeable bool
+		var triggeringRow int64
+		require.NoError(t, rows.Scan(&phase, &payerKind, &payerID, &chargeable, &triggeringRow))
+		require.Equal(t, expectedPhase, phase)
+		require.Equal(t, "user", payerKind)
+		require.Equal(t, "user", payerID)
+		require.True(t, chargeable)
+		require.Equal(t, created.Revision, triggeringRow)
+	}
+	require.NoError(t, rows.Err())
 }
 
 func TestOperationalGuardFailureRollsBackUserBooking(t *testing.T) {
@@ -619,6 +639,9 @@ func TestCancellingBookingAtomicallyRetiresUndispatchedOperationalWork(t *testin
 	require.Zero(t, live)
 	require.Equal(t, 2, cancelledJobs)
 	require.Equal(t, 2, cancelledDeliveries)
+	var cancelledLedger int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_usage_ledger WHERE state='cancelled' AND actual_duration_ns=0").Scan(&cancelledLedger))
+	require.Equal(t, 2, cancelledLedger)
 }
 
 func TestCancellingBookingPreservesLeasedOperationalWork(t *testing.T) {
@@ -716,6 +739,11 @@ func TestAcceptedOperationalJobActivatesOnlyItsReservation(t *testing.T) {
 	require.Equal(t, "history", collection)
 	require.Equal(t, (4 * time.Minute).Nanoseconds(), usage)
 	require.Equal(t, 1, revocations)
+	preparationUsage, cleanupUsage, jobs, err := repository.GetOperationalUsageSummary(ctx, store.UsageQuery{User: primary.Booking.User})
+	require.NoError(t, err)
+	require.Equal(t, 4*time.Minute, preparationUsage)
+	require.Zero(t, cleanupUsage)
+	require.Equal(t, int64(1), jobs)
 	_, _, err = repository.ActivateOperationalJob(ctx, "missing-job", "activate-missing", "missing-hash", start)
 	require.ErrorIs(t, err, operations.ErrNotFound)
 }
