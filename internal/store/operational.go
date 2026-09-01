@@ -152,6 +152,86 @@ func ResolveOperationalPipeline(manifest Manifest, resourceName, streamName stri
 	return stages, cleanup, err
 }
 
+// BeginBookingActivation resolves the active manifest into an immutable plan
+// and atomically persists that plan with its first runner delivery. Repeated
+// requests with the same key return the original activation run.
+func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamName, idempotencyKey string) (operations.ActivationRun, bool, error) {
+	s.Lock()
+	defer s.Unlock()
+	if err := s.expireAndRefreshLocked(ctx); err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	repository, ok := s.repository.(BookingActivationRepository)
+	if !ok {
+		return operations.ActivationRun{}, false, errors.New("booking activation requires durable persistence")
+	}
+	booking, ok := s.Bookings[bookingName]
+	if !ok {
+		return operations.ActivationRun{}, false, ErrPersistentNotFound
+	}
+	slot, ok := s.Slots[booking.Slot]
+	if !ok {
+		return operations.ActivationRun{}, false, fmt.Errorf("slot %s not found", booking.Slot)
+	}
+	manifest := s.exportManifestLocked()
+	stages, cleanup, err := ResolveOperationalPipeline(manifest, slot.Resource, streamName)
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	if len(stages) == 0 {
+		return operations.ActivationRun{}, false, errors.New("activation pipeline has no stages")
+	}
+	now := s.now().UTC()
+	runID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation\x00"+bookingName+"\x00"+idempotencyKey)).String()
+	stageSpecs := make([]operations.ActivationStageSpec, 0, len(stages))
+	due := now
+	for _, stage := range stages {
+		attempts := stage.Retry.Attempts
+		if attempts < 1 {
+			attempts = 1
+		}
+		stageSpecs = append(stageSpecs, operations.ActivationStageSpec{Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow,
+			DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters,
+			ProgressMessage: stage.ProgressMessages.Initial})
+		due = due.Add(stage.Timeout + stage.WaitAfter)
+	}
+	resolvedPlan, err := json.Marshal(struct {
+		Stages  []ResolvedOperationalStage `json:"stages"`
+		Cleanup []ResolvedOperationalStage `json:"cleanup,omitempty"`
+	}{Stages: stages, Cleanup: cleanup})
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	first := stages[0]
+	jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation-job\x00"+runID+"\x000\x001")).String()
+	deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation-delivery\x00"+jobID)).String()
+	jobKey := "booking-activation:" + runID + ":0:1"
+	command := operations.Command{Version: 1, JobID: jobID, Workflow: first.Workflow, Resource: slot.Resource, Kind: "preflight",
+		StartsAt: now, EndsAt: now.Add(first.Timeout), BookingName: bookingName, PlanRevision: 1, IdempotencyKey: jobKey, Parameters: first.Parameters}
+	body, err := json.Marshal(command)
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	request := operations.CreateActivationRequest{RunID: runID, BookingName: bookingName, User: booking.User, Resource: slot.Resource,
+		Stream: streamName, Pipeline: s.Resources[slot.Resource].StreamOperations[streamName].ActivationPipeline, ManifestVersion: s.manifestVersion,
+		IdempotencyKey: idempotencyKey, RequestedAt: now, ResolvedPlan: resolvedPlan, Stages: stageSpecs,
+		FirstJob: operations.Job{ID: jobID, Resource: slot.Resource, Workflow: first.Workflow, Kind: "preflight", State: "reserved", DueAt: now,
+			StartsAt: now, EndsAt: now.Add(first.Timeout), TriggeringBookingName: bookingName, ManifestVersion: s.manifestVersion,
+			PlanRevision: 1, IdempotencyKey: jobKey, Payload: body},
+		FirstDelivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body}}
+	return repository.CreateActivation(ctx, request)
+}
+
+func (s *Store) GetBookingActivation(ctx context.Context, runID string) (operations.ActivationRun, error) {
+	s.RLock()
+	repository, ok := s.repository.(BookingActivationRepository)
+	s.RUnlock()
+	if !ok {
+		return operations.ActivationRun{}, errors.New("booking activation requires durable persistence")
+	}
+	return repository.GetActivation(ctx, runID)
+}
+
 type OperationalSchedule struct {
 	Slot       string                `json:"slot" yaml:"slot"`
 	Workflow   string                `json:"workflow" yaml:"workflow"`

@@ -107,6 +107,11 @@ type OperationalActivationRepository interface {
 	ActivateOperationalJob(context.Context, string, string, string, time.Time) (PersistentBooking, operations.Job, error)
 }
 
+type BookingActivationRepository interface {
+	CreateActivation(context.Context, operations.CreateActivationRequest) (operations.ActivationRun, bool, error)
+	GetActivation(context.Context, string) (operations.ActivationRun, error)
+}
+
 type OperationalScheduleResult struct {
 	State   string
 	Created bool

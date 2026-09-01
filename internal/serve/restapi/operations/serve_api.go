@@ -54,6 +54,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersAddGroupForUserHandler: users.AddGroupForUserHandlerFunc(func(params users.AddGroupForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.AddGroupForUser has not yet been implemented")
 		}),
+		UsersBeginBookingActivationHandler: users.BeginBookingActivationHandlerFunc(func(params users.BeginBookingActivationParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.BeginBookingActivation has not yet been implemented")
+		}),
 		UsersCancelBookingHandler: users.CancelBookingHandlerFunc(func(params users.CancelBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.CancelBooking has not yet been implemented")
 		}),
@@ -83,6 +86,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		}),
 		UsersGetAvailabilityHandler: users.GetAvailabilityHandlerFunc(func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetAvailability has not yet been implemented")
+		}),
+		UsersGetBookingActivationHandler: users.GetBookingActivationHandlerFunc(func(params users.GetBookingActivationParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetBookingActivation has not yet been implemented")
 		}),
 		AdminGetBookingEventsHandler: admin.GetBookingEventsHandlerFunc(func(params admin.GetBookingEventsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetBookingEvents has not yet been implemented")
@@ -249,6 +255,8 @@ type ServeAPI struct {
 	OperationsopsActivateOperationalJobHandler operationsops.ActivateOperationalJobHandler
 	// UsersAddGroupForUserHandler sets the operation handler for the add group for user operation
 	UsersAddGroupForUserHandler users.AddGroupForUserHandler
+	// UsersBeginBookingActivationHandler sets the operation handler for the begin booking activation operation
+	UsersBeginBookingActivationHandler users.BeginBookingActivationHandler
 	// UsersCancelBookingHandler sets the operation handler for the cancel booking operation
 	UsersCancelBookingHandler users.CancelBookingHandler
 	// AdminCheckManifestHandler sets the operation handler for the check manifest operation
@@ -269,6 +277,8 @@ type ServeAPI struct {
 	UsersGetActivityHandler users.GetActivityHandler
 	// UsersGetAvailabilityHandler sets the operation handler for the get availability operation
 	UsersGetAvailabilityHandler users.GetAvailabilityHandler
+	// UsersGetBookingActivationHandler sets the operation handler for the get booking activation operation
+	UsersGetBookingActivationHandler users.GetBookingActivationHandler
 	// AdminGetBookingEventsHandler sets the operation handler for the get booking events operation
 	AdminGetBookingEventsHandler admin.GetBookingEventsHandler
 	// UsersGetBookingsForUserHandler sets the operation handler for the get bookings for user operation
@@ -432,6 +442,9 @@ func (o *ServeAPI) Validate() error {
 	if o.UsersAddGroupForUserHandler == nil {
 		unregistered = append(unregistered, "users.AddGroupForUserHandler")
 	}
+	if o.UsersBeginBookingActivationHandler == nil {
+		unregistered = append(unregistered, "users.BeginBookingActivationHandler")
+	}
 	if o.UsersCancelBookingHandler == nil {
 		unregistered = append(unregistered, "users.CancelBookingHandler")
 	}
@@ -461,6 +474,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.UsersGetAvailabilityHandler == nil {
 		unregistered = append(unregistered, "users.GetAvailabilityHandler")
+	}
+	if o.UsersGetBookingActivationHandler == nil {
+		unregistered = append(unregistered, "users.GetBookingActivationHandler")
 	}
 	if o.AdminGetBookingEventsHandler == nil {
 		unregistered = append(unregistered, "admin.GetBookingEventsHandler")
@@ -676,6 +692,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/users/{user_name}/groups/{group_name}"] = users.NewAddGroupForUser(o.context, o.UsersAddGroupForUserHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/users/{user_name}/bookings/{booking_name}/activations"] = users.NewBeginBookingActivation(o.context, o.UsersBeginBookingActivationHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
@@ -716,6 +736,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/slots/{slot_name}"] = users.NewGetAvailability(o.context, o.UsersGetAvailabilityHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/users/{user_name}/bookings/{booking_name}/activations/{activation_id}"] = users.NewGetBookingActivation(o.context, o.UsersGetBookingActivationHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

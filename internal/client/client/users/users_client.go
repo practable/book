@@ -102,6 +102,8 @@ func WithAcceptTextPlain(r *runtime.ClientOperation) {
 type ClientService interface {
 	AddGroupForUser(params *AddGroupForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AddGroupForUserNoContent, error)
 
+	BeginBookingActivation(params *BeginBookingActivationParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*BeginBookingActivationAccepted, error)
+
 	CancelBooking(params *CancelBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) error
 
 	GetAccessToken(params *GetAccessTokenParams, opts ...ClientOption) (*GetAccessTokenOK, error)
@@ -109,6 +111,8 @@ type ClientService interface {
 	GetActivity(params *GetActivityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetActivityOK, error)
 
 	GetAvailability(params *GetAvailabilityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetAvailabilityOK, error)
+
+	GetBookingActivation(params *GetBookingActivationParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetBookingActivationOK, error)
 
 	GetBookingsForUser(params *GetBookingsForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetBookingsForUserOK, error)
 
@@ -181,6 +185,47 @@ func (a *Client) AddGroupForUser(params *AddGroupForUserParams, authInfo runtime
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for AddGroupForUser: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+BeginBookingActivation begins durable preparation for a booking
+
+Resolves and starts the selected stream activation pipeline. Repeating the same Idempotency-Key returns the original activation.
+*/
+func (a *Client) BeginBookingActivation(params *BeginBookingActivationParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*BeginBookingActivationAccepted, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewBeginBookingActivationParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "BeginBookingActivation",
+		Method:             "POST",
+		PathPattern:        "/users/{user_name}/bookings/{booking_name}/activations",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &BeginBookingActivationReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*BeginBookingActivationAccepted)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for BeginBookingActivation: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -337,6 +382,45 @@ func (a *Client) GetAvailability(params *GetAvailabilityParams, authInfo runtime
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for GetAvailability: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetBookingActivation gets booking preparation progress
+*/
+func (a *Client) GetBookingActivation(params *GetBookingActivationParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetBookingActivationOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetBookingActivationParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "GetBookingActivation",
+		Method:             "GET",
+		PathPattern:        "/users/{user_name}/bookings/{booking_name}/activations/{activation_id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetBookingActivationReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetBookingActivationOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for GetBookingActivation: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

@@ -144,6 +144,86 @@ func operationalJob(now time.Time) (operations.Job, operations.Delivery) {
 	return job, delivery
 }
 
+func activationRequest(booking, user, key string, now time.Time) operations.CreateActivationRequest {
+	jobID := "activation-job-" + key
+	body := []byte(`{"version":1,"job_id":"` + jobID + `","workflow":"video-health"}`)
+	return operations.CreateActivationRequest{
+		RunID: "activation-run-" + key, BookingName: booking, User: user, Resource: "resource-a", Stream: "video",
+		Pipeline: "video-activation", IdempotencyKey: key, RequestedAt: now, ResolvedPlan: []byte(`{"pipeline":"video-activation"}`),
+		Stages: []operations.ActivationStageSpec{
+			{Name: "power-on", JobTemplate: "video-on", Workflow: "video-on", DueAt: now, TimeoutAt: now.Add(4 * time.Second), MaximumAttempts: 1, Parameters: map[string]string{"stream": "camera-a"}, ProgressMessage: "Starting video"},
+			{Name: "health", JobTemplate: "video-check", Workflow: "video-health", DueAt: now.Add(time.Second), TimeoutAt: now.Add(5 * time.Second), MaximumAttempts: 3, Parameters: map[string]string{"stream": "camera-a"}, ProgressMessage: "Checking video"},
+		},
+		FirstJob: operations.Job{ID: jobID, Resource: "resource-a", Workflow: "video-on", Kind: "preflight", State: "reserved", DueAt: now,
+			StartsAt: now, EndsAt: now.Add(4 * time.Second), TriggeringBookingName: booking, PlanRevision: 1, IdempotencyKey: "activation-job:" + key, Payload: body},
+		FirstDelivery: operations.Delivery{ID: "activation-delivery-" + key, JobID: jobID, Body: body},
+	}
+}
+
+func TestActivationCreationIsAtomicAndIdempotent(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("activation-booking", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("activation-booking", "opaque-user", "request-1", now)
+
+	type result struct {
+		run   operations.ActivationRun
+		fresh bool
+		err   error
+	}
+	results := make(chan result, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			run, fresh, err := repository.CreateActivation(ctx, req)
+			results <- result{run, fresh, err}
+		}()
+	}
+	wg.Wait()
+	close(results)
+	freshCount := 0
+	for item := range results {
+		require.NoError(t, item.err)
+		require.Equal(t, req.RunID, item.run.ID)
+		require.Len(t, item.run.Stages, 2)
+		if item.fresh {
+			freshCount++
+		}
+	}
+	require.Equal(t, 1, freshCount)
+	loaded, err := repository.GetActivation(ctx, req.RunID)
+	require.NoError(t, err)
+	require.Equal(t, "preparing", loaded.State)
+	require.Equal(t, "pending", loaded.Stages[0].State)
+	require.Equal(t, "waiting", loaded.Stages[1].State)
+	_, _, err = repository.CreateActivation(ctx, activationRequest("activation-booking", "opaque-user", "request-2", now))
+	require.ErrorIs(t, err, operations.ErrActivationConflict)
+}
+
+func TestActivationRollsBackWhenDeliveryInsertFails(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("rollback-activation", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	dummyJob, dummyDelivery := operationalJob(now)
+	_, _, err = repository.CreateJob(ctx, dummyJob, dummyDelivery)
+	require.NoError(t, err)
+	req := activationRequest("rollback-activation", "opaque-user", "rollback", now)
+	req.FirstDelivery.ID = dummyDelivery.ID
+	_, _, err = repository.CreateActivation(ctx, req)
+	require.Error(t, err)
+	var count int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.booking_activation_runs WHERE run_id=$1", req.RunID).Scan(&count))
+	require.Zero(t, count)
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs WHERE job_id=$1", req.FirstJob.ID).Scan(&count))
+	require.Zero(t, count)
+}
+
 func TestOperationalJobOutboxIsTransactionalIdempotentAndClaimedOnce(t *testing.T) {
 	repository := integrationRepository(t)
 	ctx := context.Background()

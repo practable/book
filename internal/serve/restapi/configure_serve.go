@@ -65,6 +65,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.AddGroupForUser has not yet been implemented")
 		})
 	}
+	if api.UsersBeginBookingActivationHandler == nil {
+		api.UsersBeginBookingActivationHandler = users.BeginBookingActivationHandlerFunc(func(params users.BeginBookingActivationParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.BeginBookingActivation has not yet been implemented")
+		})
+	}
 	if api.UsersCancelBookingHandler == nil {
 		api.UsersCancelBookingHandler = users.CancelBookingHandlerFunc(func(params users.CancelBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.CancelBooking has not yet been implemented")
@@ -113,6 +118,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	if api.UsersGetAvailabilityHandler == nil {
 		api.UsersGetAvailabilityHandler = users.GetAvailabilityHandlerFunc(func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetAvailability has not yet been implemented")
+		})
+	}
+	if api.UsersGetBookingActivationHandler == nil {
+		api.UsersGetBookingActivationHandler = users.GetBookingActivationHandlerFunc(func(params users.GetBookingActivationParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetBookingActivation has not yet been implemented")
 		})
 	}
 	if api.AdminGetBookingEventsHandler == nil {

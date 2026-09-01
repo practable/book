@@ -78,6 +78,8 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.UsersCancelBookingHandler = users.CancelBookingHandlerFunc(cancelBookingHandler(config))
 	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))
 	api.UsersGetActivityHandler = users.GetActivityHandlerFunc(getActivityHandler(config))
+	api.UsersBeginBookingActivationHandler = users.BeginBookingActivationHandlerFunc(beginBookingActivationHandler(config))
+	api.UsersGetBookingActivationHandler = users.GetBookingActivationHandlerFunc(getBookingActivationHandler(config))
 	api.UsersGetAvailabilityHandler = users.GetAvailabilityHandlerFunc(getAvailabilityHandler(config))
 	api.UsersGetCalendarCatalogueHandler = users.GetCalendarCatalogueHandlerFunc(getCalendarCatalogueHandler(config))
 	api.UsersGetBookingsForUserHandler = users.GetBookingsForUserHandlerFunc(getBookingsForUserHandler(config))

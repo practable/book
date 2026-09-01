@@ -2116,6 +2116,131 @@ func init() {
         }
       }
     },
+    "/users/{user_name}/bookings/{booking_name}/activations": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Resolves and starts the selected stream activation pipeline. Repeating the same Idempotency-Key returns the original activation.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Begin durable preparation for a booking",
+        "operationId": "BeginBookingActivation",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "user_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string",
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BookingActivationRequest"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Preparation is in progress",
+            "schema": {
+              "$ref": "#/definitions/BookingActivation"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/users/{user_name}/bookings/{booking_name}/activations/{activation_id}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Get booking preparation progress",
+        "operationId": "GetBookingActivation",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "user_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "activation_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current preparation state",
+            "schema": {
+              "$ref": "#/definitions/BookingActivation"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/users/{user_name}/groups": {
       "get": {
         "security": [
@@ -2536,6 +2661,125 @@ func init() {
         },
         "when": {
           "$ref": "#/definitions/Interval"
+        }
+      }
+    },
+    "BookingActivation": {
+      "type": "object",
+      "required": [
+        "id",
+        "booking_name",
+        "stream",
+        "state",
+        "current_stage",
+        "progress_message",
+        "stages"
+      ],
+      "properties": {
+        "booking_name": {
+          "type": "string"
+        },
+        "current_stage": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "failure_code": {
+          "type": "string"
+        },
+        "failure_guidance": {
+          "$ref": "#/definitions/OperationalFailureGuidance"
+        },
+        "failure_message": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "progress_message": {
+          "type": "string"
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BookingActivationStage"
+          }
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "preparing",
+            "active",
+            "failed",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "stream": {
+          "type": "string"
+        }
+      }
+    },
+    "BookingActivationRequest": {
+      "type": "object",
+      "required": [
+        "stream"
+      ],
+      "properties": {
+        "stream": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        }
+      }
+    },
+    "BookingActivationStage": {
+      "type": "object",
+      "required": [
+        "index",
+        "name",
+        "state",
+        "attempt",
+        "maximum_attempts"
+      ],
+      "properties": {
+        "attempt": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "index": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "last_error": {
+          "type": "string"
+        },
+        "last_error_code": {
+          "type": "string"
+        },
+        "maximum_attempts": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "progress_message": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "waiting",
+            "pending",
+            "dispatched",
+            "accepted",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "expired"
+          ]
         }
       }
     },
@@ -6858,6 +7102,152 @@ func init() {
         }
       }
     },
+    "/users/{user_name}/bookings/{booking_name}/activations": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Resolves and starts the selected stream activation pipeline. Repeating the same Idempotency-Key returns the original activation.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Begin durable preparation for a booking",
+        "operationId": "BeginBookingActivation",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "user_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string",
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BookingActivationRequest"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Preparation is in progress",
+            "schema": {
+              "$ref": "#/definitions/BookingActivation"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/users/{user_name}/bookings/{booking_name}/activations/{activation_id}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "users"
+        ],
+        "summary": "Get booking preparation progress",
+        "operationId": "GetBookingActivation",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "user_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "activation_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current preparation state",
+            "schema": {
+              "$ref": "#/definitions/BookingActivation"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/users/{user_name}/groups": {
       "get": {
         "security": [
@@ -7314,6 +7704,128 @@ func init() {
         },
         "when": {
           "$ref": "#/definitions/Interval"
+        }
+      }
+    },
+    "BookingActivation": {
+      "type": "object",
+      "required": [
+        "id",
+        "booking_name",
+        "stream",
+        "state",
+        "current_stage",
+        "progress_message",
+        "stages"
+      ],
+      "properties": {
+        "booking_name": {
+          "type": "string"
+        },
+        "current_stage": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0
+        },
+        "failure_code": {
+          "type": "string"
+        },
+        "failure_guidance": {
+          "$ref": "#/definitions/OperationalFailureGuidance"
+        },
+        "failure_message": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "progress_message": {
+          "type": "string"
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BookingActivationStage"
+          }
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "preparing",
+            "active",
+            "failed",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "stream": {
+          "type": "string"
+        }
+      }
+    },
+    "BookingActivationRequest": {
+      "type": "object",
+      "required": [
+        "stream"
+      ],
+      "properties": {
+        "stream": {
+          "type": "string",
+          "maxLength": 200,
+          "minLength": 1
+        }
+      }
+    },
+    "BookingActivationStage": {
+      "type": "object",
+      "required": [
+        "index",
+        "name",
+        "state",
+        "attempt",
+        "maximum_attempts"
+      ],
+      "properties": {
+        "attempt": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0
+        },
+        "index": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0
+        },
+        "last_error": {
+          "type": "string"
+        },
+        "last_error_code": {
+          "type": "string"
+        },
+        "maximum_attempts": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "progress_message": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "waiting",
+            "pending",
+            "dispatched",
+            "accepted",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "expired"
+          ]
         }
       }
     },

@@ -1291,7 +1291,54 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
-          
+
+  /users/{user_name}/bookings/{booking_name}/activations:
+    post:
+      summary: Begin durable preparation for a booking
+      description: Resolves and starts the selected stream activation pipeline. Repeating the same Idempotency-Key returns the original activation.
+      tags: [users]
+      operationId: BeginBookingActivation
+      consumes: [application/json]
+      produces: [application/json]
+      parameters:
+      - {name: user_name, in: path, required: true, type: string}
+      - {name: booking_name, in: path, required: true, type: string}
+      - {name: Idempotency-Key, in: header, required: true, type: string, minLength: 1, maxLength: 200}
+      - name: request
+        in: body
+        required: true
+        schema: {$ref: '#/definitions/BookingActivationRequest'}
+      security:
+        - Bearer: []
+      responses:
+        202:
+          description: Preparation is in progress
+          schema: {$ref: '#/definitions/BookingActivation'}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        409: {$ref: '#/responses/Conflict'}
+        500: {$ref: '#/responses/InternalError'}
+
+  /users/{user_name}/bookings/{booking_name}/activations/{activation_id}:
+    get:
+      summary: Get booking preparation progress
+      tags: [users]
+      operationId: GetBookingActivation
+      produces: [application/json]
+      parameters:
+      - {name: user_name, in: path, required: true, type: string}
+      - {name: booking_name, in: path, required: true, type: string}
+      - {name: activation_id, in: path, required: true, type: string}
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: Current preparation state
+          schema: {$ref: '#/definitions/BookingActivation'}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        500: {$ref: '#/responses/InternalError'}
+
   /users/{user_name}/groups:
     get:
       summary: Get all current groups for user
@@ -1544,6 +1591,46 @@ definitions:
     - nbf
     - streams
     - uis
+
+  BookingActivationRequest:
+    type: object
+    required: [stream]
+    properties:
+      stream: {type: string, minLength: 1, maxLength: 200}
+
+  BookingActivationStage:
+    type: object
+    required: [index, name, state, attempt, maximum_attempts]
+    properties:
+      index: {type: integer, format: int64, minimum: 0}
+      name: {type: string}
+      state:
+        type: string
+        enum: [waiting, pending, dispatched, accepted, running, succeeded, failed, cancelled, expired]
+      attempt: {type: integer, format: int64, minimum: 0}
+      maximum_attempts: {type: integer, format: int64, minimum: 1}
+      progress_message: {type: string}
+      last_error_code: {type: string}
+      last_error: {type: string}
+
+  BookingActivation:
+    type: object
+    required: [id, booking_name, stream, state, current_stage, progress_message, stages]
+    properties:
+      id: {type: string}
+      booking_name: {type: string}
+      stream: {type: string}
+      state:
+        type: string
+        enum: [preparing, active, failed, cancelled, expired]
+      current_stage: {type: integer, format: int64, minimum: 0}
+      progress_message: {type: string}
+      failure_code: {type: string}
+      failure_message: {type: string}
+      failure_guidance: {$ref: '#/definitions/OperationalFailureGuidance'}
+      stages:
+        type: array
+        items: {$ref: '#/definitions/BookingActivationStage'}
     
   ActivityStream:
     title: stream
