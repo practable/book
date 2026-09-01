@@ -135,8 +135,9 @@ func (r *Repository) CancelBookingWithOperations(ctx context.Context, name strin
 func retireTriggeredOperationalReservationsTx(ctx context.Context, tx pgx.Tx, triggeringName string, at time.Time, actor string) ([]store.PersistentBooking, error) {
 	rows, err := tx.Query(ctx, `SELECT b.row_id,b.name,j.job_id FROM public.operational_jobs j
 		JOIN public.bookings b ON b.row_id=j.booking_row_id
+		JOIN public.webhook_deliveries d ON d.job_id=j.job_id AND d.direction='book-to-runner'
 		WHERE j.triggering_booking_name=$1 AND j.state IN ('scheduled','reserved')
-		AND b.collection='live' AND NOT b.superseded FOR UPDATE OF b,j`, triggeringName)
+		AND d.state='pending' AND b.collection='live' AND NOT b.superseded FOR UPDATE OF b,j,d`, triggeringName)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +188,9 @@ func supersedeReclaimableOperationsTx(ctx context.Context, tx pgx.Tx, names []st
 		var jobID, state string
 		err := tx.QueryRow(ctx, `SELECT b.row_id,j.job_id,j.state FROM public.bookings b
 			JOIN public.operational_jobs j ON j.booking_row_id=b.row_id
-			WHERE b.name=$1 AND b.policy_name='__operations_reclaimable__' AND b.collection='live' AND NOT b.superseded FOR UPDATE OF b,j`, name).Scan(&rowID, &jobID, &state)
+			JOIN public.webhook_deliveries d ON d.job_id=j.job_id AND d.direction='book-to-runner'
+			WHERE b.name=$1 AND b.policy_name='__operations_reclaimable__' AND b.collection='live' AND NOT b.superseded
+			AND d.state='pending' FOR UPDATE OF b,j,d`, name).Scan(&rowID, &jobID, &state)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return store.ErrBookingConflict
 		}

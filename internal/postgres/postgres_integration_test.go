@@ -243,7 +243,7 @@ func TestCancellingBookingAtomicallyRetiresUndispatchedOperationalWork(t *testin
 	require.Equal(t, 2, cancelledDeliveries)
 }
 
-func TestCancellingBookingPreservesDispatchedOperationalWork(t *testing.T) {
+func TestCancellingBookingPreservesLeasedOperationalWork(t *testing.T) {
 	repository := integrationRepository(t)
 	ctx := context.Background()
 	start := time.Date(2026, 9, 8, 18, 0, 0, 0, time.UTC)
@@ -254,9 +254,7 @@ func TestCancellingBookingPreservesDispatchedOperationalWork(t *testing.T) {
 	}
 	_, _, _, err := repository.CreateBookingWithOperations(ctx, primary, planned, nil)
 	require.NoError(t, err)
-	_, err = repository.pool.Exec(ctx, "UPDATE public.operational_jobs SET state='dispatched' WHERE job_id='dispatched-setup-job'")
-	require.NoError(t, err)
-	_, err = repository.pool.Exec(ctx, "UPDATE public.webhook_deliveries SET state='delivered' WHERE job_id='dispatched-setup-job'")
+	_, err = repository.pool.Exec(ctx, "UPDATE public.webhook_deliveries SET state='leased',lease_owner='worker',lease_until=$1 WHERE job_id='dispatched-setup-job'", start)
 	require.NoError(t, err)
 
 	_, retired, err := repository.CancelBookingWithOperations(ctx, primary.Booking.Name, start.Add(-time.Hour), "admin:test", 0, 0)
@@ -268,7 +266,7 @@ func TestCancellingBookingPreservesDispatchedOperationalWork(t *testing.T) {
 	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.bookings WHERE collection='live' AND NOT superseded").Scan(&live))
 	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT state FROM public.operational_jobs WHERE job_id='dispatched-setup-job'").Scan(&setupState))
 	require.Equal(t, 1, live)
-	require.Equal(t, "dispatched", setupState)
+	require.Equal(t, "reserved", setupState)
 }
 
 func operationalReservation(jobID, bookingID, deliveryID, trigger, resource string, start, end time.Time) store.OperationalReservation {
