@@ -1071,6 +1071,44 @@ func TestCalendarDisclosesDegradedResources(t *testing.T) {
 	require.ErrorContains(t, err, "video unavailable; data remains usable")
 }
 
+func TestVerifiedReleaseWaitsForEveryRequiredStream(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	require.NoError(t, repository.SetResourceAvailabilityBy(ctx, "resource-a", false, "investigating", "technician", 0))
+	_, err := repository.RequestVerifiedResourceRelease(ctx, "resource-a", []string{"data", "video"}, "technician", 0, now)
+	require.NoError(t, err)
+
+	recordHealthy := func(stream string, at time.Time) {
+		t.Helper()
+		tx, err := repository.pool.Begin(ctx)
+		require.NoError(t, err)
+		defer tx.Rollback(ctx)
+		_, err = tx.Exec(ctx, `INSERT INTO public.operational_stream_health(resource_name,stream_name,status,result_code,message,manifest_version,checked_at)
+			VALUES($1,$2,'healthy','','',0,$3)
+			ON CONFLICT(resource_name,stream_name) DO UPDATE SET status='healthy',checked_at=EXCLUDED.checked_at`, "resource-a", stream, at)
+		require.NoError(t, err)
+		require.NoError(t, releaseResourceIfAllChecksPassedTx(ctx, tx, "resource-a", at))
+		require.NoError(t, tx.Commit(ctx))
+	}
+
+	recordHealthy("data", now.Add(time.Second))
+	state, err := repository.Load(ctx)
+	require.NoError(t, err)
+	require.False(t, state.ResourceAvailability["resource-a"].Available)
+	releases, err := repository.ListResourceReleaseStates(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "pending_checks", releases[0].State)
+
+	recordHealthy("video", now.Add(2*time.Second))
+	state, err = repository.Load(ctx)
+	require.NoError(t, err)
+	require.True(t, state.ResourceAvailability["resource-a"].Available)
+	releases, err = repository.ListResourceReleaseStates(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "verified", releases[0].State)
+}
+
 func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing.T) {
 	repository := integrationRepository(t)
 	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
