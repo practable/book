@@ -1158,7 +1158,11 @@ func getUsageSummaryHandler(config config.ServerConfig) func(admin.GetUsageSumma
 			value := time.Time(*params.To)
 			query.To = &value
 		}
-		summary := config.Store.GetFilteredUsageSummary(query)
+		summary, err := config.Store.GetFilteredUsageSummaryPersistent(query)
+		if err != nil {
+			code, message := "500", "could not read usage summary"
+			return admin.NewGetUsageSummaryInternalServerError().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
 		actual := summary.ActualUsage.String()
 		preparation, cleanup := summary.PreparationUsage.String(), summary.CleanupUsage.String()
 		return admin.NewGetUsageSummaryOK().WithPayload(&models.UsageSummary{

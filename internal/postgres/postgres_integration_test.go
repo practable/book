@@ -474,6 +474,54 @@ func TestPreparationFailureStartsCleanupWithoutHidingFailure(t *testing.T) {
 	require.Equal(t, "pending", run.CleanupStages[0].State)
 }
 
+func TestCleanupRunAndAccountingSurviveRepositoryRestart(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("restart-cleanup", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("restart-cleanup", "opaque-user", "restart-cleanup", now)
+	req.Stages = req.Stages[:1]
+	req.CleanupStages = []operations.ActivationStageSpec{{Name: "switch-off", JobTemplate: "video-off", Workflow: "video-off",
+		DueAt: now, TimeoutAt: now.Add(4 * time.Second), MaximumAttempts: 1, Parameters: map[string]string{"stream": "camera-a"}, ProgressMessage: "Switching video off"}}
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+	preparationJob := run.Stages[0].JobID
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "restart-preparation-accepted", JobID: preparationJob, State: "accepted", At: now}, "restart-preparation-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ActivateOperationalJob(ctx, preparationJob, "restart-preparation-activate", "restart-preparation-activate-hash", now)
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "restart-preparation-succeeded", JobID: preparationJob, State: "succeeded", At: now.Add(time.Second)}, "restart-preparation-succeeded-hash")
+	require.NoError(t, err)
+	_, err = repository.CancelBooking(ctx, req.BookingName, now.Add(2*time.Second), "opaque-user", 2*time.Second, 0)
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "running", run.CleanupState)
+	cleanupJob := run.CleanupStages[0].JobID
+
+	databaseURL := os.Getenv("BOOK_TEST_DATABASE_URL")
+	repository.Close()
+	reopened, err := Open(ctx, databaseURL, 4, 10*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(reopened.Close)
+	run, err = reopened.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "running", run.CleanupState)
+	require.Equal(t, cleanupJob, run.CleanupStages[0].JobID)
+	job, err := reopened.GetJob(ctx, cleanupJob)
+	require.NoError(t, err)
+	require.Equal(t, "teardown", job.Kind)
+	preparationUsage, cleanupUsage, jobs, err := reopened.GetOperationalUsageSummary(ctx, store.UsageQuery{User: "opaque-user"})
+	require.NoError(t, err)
+	require.Equal(t, time.Second, preparationUsage)
+	require.Zero(t, cleanupUsage)
+	require.Equal(t, int64(1), jobs)
+	var ledgerRows int64
+	require.NoError(t, reopened.pool.QueryRow(ctx, `SELECT count(*) FROM public.operational_usage_ledger WHERE triggering_booking_name=$1`, req.BookingName).Scan(&ledgerRows))
+	require.Equal(t, int64(2), ledgerRows)
+}
+
 func TestOperationalJobOutboxIsTransactionalIdempotentAndClaimedOnce(t *testing.T) {
 	repository := integrationRepository(t)
 	ctx := context.Background()

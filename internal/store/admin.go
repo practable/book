@@ -53,6 +53,13 @@ type OperationalUsageReader interface {
 }
 
 func (s *Store) GetFilteredUsageSummary(query UsageQuery) UsageSummary {
+	result, _ := s.GetFilteredUsageSummaryPersistent(query)
+	return result
+}
+
+// GetFilteredUsageSummaryPersistent returns database-backed operational usage
+// errors to callers that must not silently publish an incomplete report.
+func (s *Store) GetFilteredUsageSummaryPersistent(query UsageQuery) (UsageSummary, error) {
 	s.Lock()
 	defer s.Unlock()
 	now := s.now()
@@ -92,11 +99,12 @@ func (s *Store) GetFilteredUsageSummary(query UsageQuery) UsageSummary {
 	}
 	if reader, ok := s.repository.(OperationalUsageReader); ok {
 		preparation, cleanup, jobs, err := reader.GetOperationalUsageSummary(context.Background(), query)
-		if err == nil {
-			result.PreparationUsage, result.CleanupUsage, result.OperationalJobs = preparation, cleanup, jobs
+		if err != nil {
+			return UsageSummary{}, err
 		}
+		result.PreparationUsage, result.CleanupUsage, result.OperationalJobs = preparation, cleanup, jobs
 	}
-	return result
+	return result, nil
 }
 
 func bookingMatchesQuery(booking *Booking, resource, collection string, query BookingQuery) bool {

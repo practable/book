@@ -644,12 +644,14 @@ func validateOperationalManifest(m Manifest) []string {
 				continue
 			}
 			allowed := make(map[string]string)
-			for _, stage := range pipeline.Stages {
-				for parameter, kind := range m.OperationalJobTemplates[stage.JobTemplate].AllowedOverrides {
-					if previous, exists := allowed[parameter]; exists && previous != kind {
-						messages = append(messages, "resource "+resourceName+" stream "+stream+" parameter "+parameter+" has conflicting types in its activation pipeline")
+			for _, stages := range [][]OperationalPipelineStage{pipeline.Stages, pipeline.Cleanup} {
+				for _, stage := range stages {
+					for parameter, kind := range m.OperationalJobTemplates[stage.JobTemplate].AllowedOverrides {
+						if previous, exists := allowed[parameter]; exists && previous != kind {
+							messages = append(messages, "resource "+resourceName+" stream "+stream+" parameter "+parameter+" has conflicting types in its operational pipeline")
+						}
+						allowed[parameter] = kind
 					}
-					allowed[parameter] = kind
 				}
 			}
 			for parameter, value := range binding.Parameters {

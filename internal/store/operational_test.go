@@ -180,6 +180,36 @@ func TestReusableStreamPipelineResolvesTypedResourceBinding(t *testing.T) {
 	}
 }
 
+func TestReusableStreamPipelineResolvesCleanupOnlyBinding(t *testing.T) {
+	m := operationalManifest()
+	m.OperationalWorkflows["disable-video"] = OperationalWorkflow{Description: "Disable video", Kind: "action", ExpectedDuration: time.Second, MaximumDuration: 4 * time.Second}
+	m.OperationalJobTemplates = map[string]OperationalJobTemplate{
+		"enable":  {Workflow: "fill", Timeout: time.Minute},
+		"disable": {Workflow: "disable-video", Timeout: 4 * time.Second, AllowedOverrides: map[string]string{"stream": "string"}},
+	}
+	m.OperationalPipelineTemplates = map[string]OperationalPipelineTemplate{"video": {
+		Stages:  []OperationalPipelineStage{{Name: "enable", JobTemplate: "enable"}},
+		Cleanup: []OperationalPipelineStage{{Name: "disable", JobTemplate: "disable"}},
+	}}
+	resource := m.Resources["tank"]
+	resource.Streams = []string{"video"}
+	resource.Properties = map[string]string{"video_stream": "tank-camera"}
+	resource.StreamOperations = map[string]OperationalStreamBinding{"video": {ActivationPipeline: "video", Parameters: map[string]OperationalParameterBinding{
+		"stream": {From: "resource.properties.video_stream"},
+	}}}
+	m.Resources["tank"] = resource
+	if messages := validateOperationalManifest(m); len(messages) != 0 {
+		t.Fatalf("messages = %#v", messages)
+	}
+	_, cleanup, err := ResolveOperationalPipeline(m, "tank", "video")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cleanup) != 1 || cleanup[0].Parameters["stream"] != "tank-camera" {
+		t.Fatalf("cleanup = %#v", cleanup)
+	}
+}
+
 func TestOperationalPipelineRejectsUnapprovedOrMistypedBinding(t *testing.T) {
 	m := operationalManifest()
 	m.OperationalWorkflows["check-video"] = OperationalWorkflow{Description: "Check video", Kind: "health_check", ExpectedDuration: time.Second, MaximumDuration: 2 * time.Second}
