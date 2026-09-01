@@ -652,6 +652,17 @@ func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Tim
 	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
 		return store.PersistentBooking{}, err
 	}
+	persisted, err := cancelBookingTx(ctx, tx, name, at, actor, charge)
+	if err != nil {
+		return store.PersistentBooking{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, mapWriteError(err)
+	}
+	return persisted, nil
+}
+
+func cancelBookingTx(ctx context.Context, tx pgx.Tx, name string, at time.Time, actor string, charge time.Duration) (store.PersistentBooking, error) {
 	var user, policy string
 	if err := tx.QueryRow(ctx, `SELECT user_name,policy_name FROM public.bookings
 		WHERE name=$1 AND collection='live' AND NOT superseded`, name).Scan(&user, &policy); err != nil {
@@ -696,9 +707,6 @@ func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Tim
 	persisted, err := scanBooking(row)
 	if err != nil {
 		return store.PersistentBooking{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return store.PersistentBooking{}, mapWriteError(err)
 	}
 	return persisted, nil
 }

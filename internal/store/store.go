@@ -884,7 +884,14 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 	}
 
 	if s.repository != nil {
-		persisted, err := s.repository.CancelBooking(context.Background(), b.Name, cancelledAt, cancelledBy, usage, s.manifestVersion)
+		var persisted PersistentBooking
+		var retired []PersistentBooking
+		var err error
+		if repository, ok := s.repository.(OperationalCancellationRepository); ok {
+			persisted, retired, err = repository.CancelBookingWithOperations(context.Background(), b.Name, cancelledAt, cancelledBy, usage, s.manifestVersion)
+		} else {
+			persisted, err = s.repository.CancelBooking(context.Background(), b.Name, cancelledAt, cancelledBy, usage, s.manifestVersion)
+		}
 		if err != nil {
 			if errors.Is(err, ErrStaleManifest) {
 				_ = s.refreshFromRepositoryLocked(context.Background())
@@ -892,6 +899,9 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 			return err
 		}
 		*b = persisted.Booking
+		for _, reservation := range retired {
+			s.removeOperationalBookingLocked(reservation.Booking)
+		}
 	} else {
 		b.Cancelled = true
 		b.CancelledAt = cancelledAt
@@ -1041,6 +1051,18 @@ func (s *Store) DeleteGroupFor(user, group string) error {
 	}
 
 	return nil
+}
+
+func (s *Store) removeOperationalBookingLocked(booking Booking) {
+	if slot, ok := s.Slots[booking.Slot]; ok {
+		if resource, ok := s.Resources[slot.Resource]; ok {
+			_ = resource.Diary.Delete(booking.Name)
+		}
+	}
+	delete(s.Bookings, booking.Name)
+	if system := s.Users[booking.User]; system != nil {
+		delete(system.Bookings, booking.Name)
+	}
 }
 
 // ExportBookings returns a map of all current/future bookings

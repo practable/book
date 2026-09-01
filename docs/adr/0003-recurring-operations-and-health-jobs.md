@@ -186,10 +186,11 @@ Finite weekly `recurring_allowed` and `recurring_denied` rules are supported on
 existing manifest windows. Operational job persistence, leased outbox delivery,
 direction-bound HMAC authentication, retries, and idempotent callbacks are also
 implemented. Manifest-driven booking guards are created atomically with their
-triggering booking and undispatched reclaimable guards can be superseded by a
-following booking. Operational-state schedules, cancellation/edit replanning,
-runner booking capabilities, health policy, charging, organisation accounts,
-and block booking remain deferred.
+triggering booking, undispatched reclaimable guards can be superseded by a
+following booking, and cancellation retires undispatched guards atomically.
+Operational-state schedules, edit replanning, runner booking capabilities,
+health policy, charging, organisation accounts, and block booking remain
+deferred.
 
 ## Related decisions
 

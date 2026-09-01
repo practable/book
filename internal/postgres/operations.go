@@ -104,6 +104,83 @@ func (r *Repository) CreateBookingWithOperations(ctx context.Context, request st
 	return primary, reservations, true, nil
 }
 
+func (r *Repository) CancelBookingWithOperations(ctx context.Context, name string, at time.Time, actor string, charge time.Duration, manifestVersion int64) (store.PersistentBooking, []store.PersistentBooking, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return store.PersistentBooking{}, nil, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
+		return store.PersistentBooking{}, nil, err
+	}
+	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
+		return store.PersistentBooking{}, nil, err
+	}
+	retired, err := retireTriggeredOperationalReservationsTx(ctx, tx, name, at, actor)
+	if err != nil {
+		return store.PersistentBooking{}, nil, err
+	}
+	persisted, err := cancelBookingTx(ctx, tx, name, at, actor, charge)
+	if err != nil {
+		return store.PersistentBooking{}, nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, nil, mapWriteError(err)
+	}
+	return persisted, retired, nil
+}
+
+func retireTriggeredOperationalReservationsTx(ctx context.Context, tx pgx.Tx, triggeringName string, at time.Time, actor string) ([]store.PersistentBooking, error) {
+	rows, err := tx.Query(ctx, `SELECT b.row_id,b.name,j.job_id FROM public.operational_jobs j
+		JOIN public.bookings b ON b.row_id=j.booking_row_id
+		WHERE j.triggering_booking_name=$1 AND j.state IN ('scheduled','reserved')
+		AND b.collection='live' AND NOT b.superseded FOR UPDATE OF b,j`, triggeringName)
+	if err != nil {
+		return nil, err
+	}
+	type candidate struct {
+		rowID              int64
+		bookingName, jobID string
+	}
+	candidates := make([]candidate, 0)
+	for rows.Next() {
+		var item candidate
+		if err := rows.Scan(&item.rowID, &item.bookingName, &item.jobID); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		candidates = append(candidates, item)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	retired := make([]store.PersistentBooking, 0, len(candidates))
+	for _, item := range candidates {
+		if _, err := tx.Exec(ctx, "UPDATE public.bookings SET superseded=true,updated_at=clock_timestamp() WHERE row_id=$1", item.rowID); err != nil {
+			return nil, err
+		}
+		if err := insertEvent(ctx, tx, item.rowID, item.bookingName, "superseded", at, "operational-cancel:"+actor); err != nil {
+			return nil, err
+		}
+		if _, err := tx.Exec(ctx, "UPDATE public.operational_jobs SET state='cancelled',updated_at=clock_timestamp() WHERE job_id=$1", item.jobID); err != nil {
+			return nil, err
+		}
+		if _, err := tx.Exec(ctx, "UPDATE public.webhook_deliveries SET state='cancelled',updated_at=clock_timestamp() WHERE job_id=$1 AND state='pending'", item.jobID); err != nil {
+			return nil, err
+		}
+		persisted, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", item.rowID))
+		if err != nil {
+			return nil, err
+		}
+		retired = append(retired, persisted)
+	}
+	return retired, nil
+}
+
 func supersedeReclaimableOperationsTx(ctx context.Context, tx pgx.Tx, names []string, now time.Time) error {
 	for _, name := range names {
 		var rowID int64

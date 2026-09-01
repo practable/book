@@ -59,3 +59,8 @@ supersede a `reclaimable` reservation while its job remains `scheduled` or
 `reserved`; the associated pending delivery is cancelled and the new boundary
 is replanned. Once dispatch has begun, the physical action is treated as
 committed and the guard cannot be reclaimed merely to fit another booking.
+Cancelling a triggering booking uses the same transaction: operational work
+that is still `scheduled` or `reserved` is cancelled, its pending delivery is
+cancelled, and its guard reservation is superseded. Work that has reached
+`dispatched` or a later state is retained because the physical cost may already
+have been incurred.

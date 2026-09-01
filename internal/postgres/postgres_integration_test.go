@@ -217,6 +217,60 @@ func TestOperationalGuardFailureRollsBackUserBooking(t *testing.T) {
 	require.Zero(t, jobCount)
 }
 
+func TestCancellingBookingAtomicallyRetiresUndispatchedOperationalWork(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 8, 18, 0, 0, 0, time.UTC)
+	primary := request("cancel-guarded-booking", "user", "slot-a", "resource-a", start, start.Add(time.Hour))
+	planned := []store.OperationalReservation{
+		operationalReservation("cancel-setup-job", "cancel-setup-booking", "cancel-setup-delivery", primary.Booking.Name, "resource-a", start.Add(-10*time.Minute), start),
+		operationalReservation("cancel-teardown-job", "cancel-teardown-booking", "cancel-teardown-delivery", primary.Booking.Name, "resource-a", start.Add(time.Hour), start.Add(70*time.Minute)),
+	}
+	created, _, fresh, err := repository.CreateBookingWithOperations(ctx, primary, planned, nil)
+	require.NoError(t, err)
+	require.True(t, fresh)
+
+	cancelled, retired, err := repository.CancelBookingWithOperations(ctx, created.Booking.Name, start.Add(-time.Hour), "admin:test", 0, 0)
+	require.NoError(t, err)
+	require.True(t, cancelled.Booking.Cancelled)
+	require.Len(t, retired, 2)
+	var live, cancelledJobs, cancelledDeliveries int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.bookings WHERE collection='live' AND NOT superseded").Scan(&live))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs WHERE triggering_booking_name=$1 AND state='cancelled'", primary.Booking.Name).Scan(&cancelledJobs))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.webhook_deliveries WHERE state='cancelled'").Scan(&cancelledDeliveries))
+	require.Zero(t, live)
+	require.Equal(t, 2, cancelledJobs)
+	require.Equal(t, 2, cancelledDeliveries)
+}
+
+func TestCancellingBookingPreservesDispatchedOperationalWork(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 8, 18, 0, 0, 0, time.UTC)
+	primary := request("cancel-after-dispatch", "user", "slot-a", "resource-a", start, start.Add(time.Hour))
+	planned := []store.OperationalReservation{
+		operationalReservation("dispatched-setup-job", "dispatched-setup-booking", "dispatched-setup-delivery", primary.Booking.Name, "resource-a", start.Add(-10*time.Minute), start),
+		operationalReservation("pending-teardown-job", "pending-teardown-booking", "pending-teardown-delivery", primary.Booking.Name, "resource-a", start.Add(time.Hour), start.Add(70*time.Minute)),
+	}
+	_, _, _, err := repository.CreateBookingWithOperations(ctx, primary, planned, nil)
+	require.NoError(t, err)
+	_, err = repository.pool.Exec(ctx, "UPDATE public.operational_jobs SET state='dispatched' WHERE job_id='dispatched-setup-job'")
+	require.NoError(t, err)
+	_, err = repository.pool.Exec(ctx, "UPDATE public.webhook_deliveries SET state='delivered' WHERE job_id='dispatched-setup-job'")
+	require.NoError(t, err)
+
+	_, retired, err := repository.CancelBookingWithOperations(ctx, primary.Booking.Name, start.Add(-time.Hour), "admin:test", 0, 0)
+	require.NoError(t, err)
+	require.Len(t, retired, 1)
+	require.Equal(t, "pending-teardown-booking", retired[0].Booking.Name)
+	var live int
+	var setupState string
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.bookings WHERE collection='live' AND NOT superseded").Scan(&live))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT state FROM public.operational_jobs WHERE job_id='dispatched-setup-job'").Scan(&setupState))
+	require.Equal(t, 1, live)
+	require.Equal(t, "dispatched", setupState)
+}
+
 func operationalReservation(jobID, bookingID, deliveryID, trigger, resource string, start, end time.Time) store.OperationalReservation {
 	body := []byte(`{"version":1}`)
 	booking := store.Booking{Name: bookingID, User: "__operations__", Policy: "__operations__", Slot: "slot-a", Maintenance: true, When: interval.Interval{Start: start, End: end}}
