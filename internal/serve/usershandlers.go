@@ -2,6 +2,7 @@ package serve
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
 	"time"
 
@@ -18,6 +19,51 @@ import (
 	"github.com/practable/book/internal/store"
 	log "github.com/sirupsen/logrus"
 )
+
+func calendarError(code, message string) *models.Error {
+	return &models.Error{Code: &code, Message: &message}
+}
+
+func calendarSelectorFromModel(value *models.CalendarSelector) store.CalendarSelector {
+	if value == nil || value.Policy == nil {
+		return store.CalendarSelector{}
+	}
+	return store.CalendarSelector{Policy: *value.Policy, Resource: value.Resource, Properties: value.Properties}
+}
+
+func calendarSelectorToModel(value store.CalendarSelector) *models.CalendarSelector {
+	return &models.CalendarSelector{Policy: gog.Ptr(value.Policy), Resource: value.Resource, Properties: value.Properties}
+}
+
+func authorizeCalendarUser(principal interface{}, requestedUser string) (bool, *lit.Token, error) {
+	isAdmin, claims, err := isAdminOrUser(principal)
+	if err != nil {
+		return false, nil, err
+	}
+	if !isAdmin && claims.Subject != requestedUser {
+		return false, claims, errors.New("user_name does not match subject in token")
+	}
+	return isAdmin, claims, nil
+}
+
+func calendarPolicyAllowed(s *store.Store, user, policy string) bool {
+	groups, err := s.GetGroupsFor(user)
+	if err != nil {
+		return false
+	}
+	for _, groupName := range groups {
+		group, err := s.GetGroup(groupName)
+		if err != nil {
+			continue
+		}
+		for _, candidate := range group.Policies {
+			if candidate == policy {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 type Permission struct {
 	BookingID string   `json:"booking_id"`
@@ -551,6 +597,155 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 		// so save sending info we don't need (revisit if UI develops a need for info at this stage)
 		return users.NewMakeBookingNoContent()
 
+	}
+}
+
+func getCalendarCatalogueHandler(config config.ServerConfig) func(users.GetCalendarCatalogueParams, interface{}) middleware.Responder {
+	return func(params users.GetCalendarCatalogueParams, principal interface{}) middleware.Responder {
+		isAdmin, claims, err := isAdminOrUser(principal)
+		if err != nil {
+			return users.NewGetCalendarCatalogueUnauthorized().WithPayload(calendarError("401", err.Error()))
+		}
+		if !isAdmin {
+			groups, err := config.Store.GetGroupsFor(claims.Subject)
+			if err != nil {
+				return users.NewGetCalendarCatalogueNotFound().WithPayload(calendarError("404", err.Error()))
+			}
+			allowed := false
+			for _, group := range groups {
+				allowed = allowed || group == params.GroupName
+			}
+			if !allowed {
+				return users.NewGetCalendarCatalogueUnauthorized().WithPayload(calendarError("401", "group is not assigned to this user"))
+			}
+		}
+		items, err := config.Store.GetCalendarCatalogue(params.GroupName)
+		if err != nil {
+			return users.NewGetCalendarCatalogueNotFound().WithPayload(calendarError("404", err.Error()))
+		}
+		payload := make(models.CalendarCatalogue, 0, len(items))
+		for _, item := range items {
+			description := item.Description
+			model := &models.CalendarCatalogueItem{
+				Policy: gog.Ptr(item.Policy), BookingIncrement: gog.Ptr(store.HumaniseDuration(item.BookingIncrement)),
+				Description: &models.Description{Name: gog.Ptr(description.Name), Type: gog.Ptr(description.Type), Short: description.Short, Long: description.Long, Further: description.Further, Thumb: description.Thumb, Image: description.Image},
+				Resources:   make([]*models.CalendarResource, 0, len(item.Resources)),
+			}
+			if item.RecommendedDuration > 0 {
+				model.RecommendedDuration = store.HumaniseDuration(item.RecommendedDuration)
+			}
+			for _, resource := range item.Resources {
+				model.Resources = append(model.Resources, &models.CalendarResource{Name: gog.Ptr(resource.Name), Class: resource.Class, Properties: resource.Properties})
+			}
+			payload = append(payload, model)
+		}
+		return users.NewGetCalendarCatalogueOK().WithPayload(payload)
+	}
+}
+
+func queryCalendarAvailabilityHandler(config config.ServerConfig) func(users.QueryCalendarAvailabilityParams, interface{}) middleware.Responder {
+	return func(params users.QueryCalendarAvailabilityParams, principal interface{}) middleware.Responder {
+		request := params.Request
+		if request == nil || request.UserName == nil || request.Selector == nil || request.From == nil || request.To == nil || request.Duration == nil || request.Resolution == nil {
+			return users.NewQueryCalendarAvailabilityBadRequest().WithPayload(calendarError("400", "incomplete calendar availability request"))
+		}
+		isAdmin, _, err := authorizeCalendarUser(principal, *request.UserName)
+		if err != nil {
+			return users.NewQueryCalendarAvailabilityUnauthorized().WithPayload(calendarError("401", err.Error()))
+		}
+		selector := calendarSelectorFromModel(request.Selector)
+		if !isAdmin && !calendarPolicyAllowed(config.Store, *request.UserName, selector.Policy) {
+			return users.NewQueryCalendarAvailabilityUnauthorized().WithPayload(calendarError("401", "policy is not assigned to this user"))
+		}
+		duration, err := time.ParseDuration(*request.Duration)
+		if err != nil {
+			return users.NewQueryCalendarAvailabilityBadRequest().WithPayload(calendarError("400", "invalid duration"))
+		}
+		resolution, err := time.ParseDuration(*request.Resolution)
+		if err != nil {
+			return users.NewQueryCalendarAvailabilityBadRequest().WithPayload(calendarError("400", "invalid resolution"))
+		}
+		bands, err := config.Store.GetCalendarAvailability(selector, time.Time(*request.From), time.Time(*request.To), duration, resolution)
+		if err != nil {
+			return users.NewQueryCalendarAvailabilityBadRequest().WithPayload(calendarError("400", err.Error()))
+		}
+		payload := make(models.CalendarAvailability, 0, len(bands))
+		for _, band := range bands {
+			start, end, bookable, count, mode := strfmt.DateTime(band.Start), strfmt.DateTime(band.End), band.Bookable, band.MatchingResources, band.OperatingMode
+			payload = append(payload, &models.CalendarAvailabilityBand{Start: &start, End: &end, Bookable: &bookable, MatchingResources: &count, OperatingMode: &mode, Reason: band.Reason})
+		}
+		return users.NewQueryCalendarAvailabilityOK().WithPayload(payload)
+	}
+}
+
+func calendarInterval(value *models.Interval) (interval.Interval, error) {
+	if value == nil || time.Time(value.Start).IsZero() || time.Time(value.End).IsZero() {
+		return interval.Interval{}, errors.New("booking interval requires start and end")
+	}
+	return interval.Interval{Start: time.Time(value.Start), End: time.Time(value.End)}, nil
+}
+
+func previewCalendarBookingHandler(config config.ServerConfig) func(users.PreviewCalendarBookingParams, interface{}) middleware.Responder {
+	return func(params users.PreviewCalendarBookingParams, principal interface{}) middleware.Responder {
+		request := params.Request
+		if request == nil || request.UserName == nil || request.Selector == nil {
+			return users.NewPreviewCalendarBookingBadRequest().WithPayload(calendarError("400", "incomplete calendar booking request"))
+		}
+		isAdmin, _, err := authorizeCalendarUser(principal, *request.UserName)
+		if err != nil {
+			return users.NewPreviewCalendarBookingUnauthorized().WithPayload(calendarError("401", err.Error()))
+		}
+		selector := calendarSelectorFromModel(request.Selector)
+		if !isAdmin && !calendarPolicyAllowed(config.Store, *request.UserName, selector.Policy) {
+			return users.NewPreviewCalendarBookingUnauthorized().WithPayload(calendarError("401", "policy is not assigned to this user"))
+		}
+		when, err := calendarInterval(request.When)
+		if err != nil {
+			return users.NewPreviewCalendarBookingBadRequest().WithPayload(calendarError("400", err.Error()))
+		}
+		preview, err := config.Store.PreviewCalendarBooking(*request.UserName, selector, when)
+		if err != nil {
+			return users.NewPreviewCalendarBookingNotFound().WithPayload(calendarError("404", err.Error()))
+		}
+		bookable, version, usageAfter := preview.Bookable, preview.ManifestVersion, store.HumaniseDuration(preview.UsageAfter)
+		payload := &models.CalendarBookingPreview{
+			When: request.When, Selector: calendarSelectorToModel(preview.Selector), MatchingResources: preview.MatchingResources,
+			Bookable: &bookable, Reasons: preview.Reasons, UsageAfter: &usageAfter, ManifestVersion: &version,
+			OperationalEffects: preview.OperationalEffects,
+		}
+		if preview.UsageLimit > 0 {
+			payload.UsageLimit = store.HumaniseDuration(preview.UsageLimit)
+		}
+		return users.NewPreviewCalendarBookingOK().WithPayload(payload)
+	}
+}
+
+func makeCalendarBookingHandler(config config.ServerConfig) func(users.MakeCalendarBookingParams, interface{}) middleware.Responder {
+	return func(params users.MakeCalendarBookingParams, principal interface{}) middleware.Responder {
+		request := params.Request
+		if request == nil || request.UserName == nil || request.Selector == nil {
+			return users.NewMakeCalendarBookingBadRequest().WithPayload(calendarError("400", "incomplete calendar booking request"))
+		}
+		isAdmin, _, err := authorizeCalendarUser(principal, *request.UserName)
+		if err != nil {
+			return users.NewMakeCalendarBookingUnauthorized().WithPayload(calendarError("401", err.Error()))
+		}
+		selector := calendarSelectorFromModel(request.Selector)
+		if !isAdmin && !calendarPolicyAllowed(config.Store, *request.UserName, selector.Policy) {
+			return users.NewMakeCalendarBookingUnauthorized().WithPayload(calendarError("401", "policy is not assigned to this user"))
+		}
+		when, err := calendarInterval(request.When)
+		if err != nil {
+			return users.NewMakeCalendarBookingBadRequest().WithPayload(calendarError("400", err.Error()))
+		}
+		booking, err := config.Store.MakeCalendarBooking(*request.UserName, selector, when, params.IdempotencyKey)
+		if err != nil {
+			if errors.Is(err, store.ErrBookingConflict) || errors.Is(err, store.ErrBookingIDConflict) || errors.Is(err, store.ErrMaxBookings) || errors.Is(err, store.ErrMaxUsage) {
+				return users.NewMakeCalendarBookingConflict().WithPayload(calendarError("409", err.Error()))
+			}
+			return users.NewMakeCalendarBookingNotFound().WithPayload(calendarError("404", err.Error()))
+		}
+		return users.NewMakeCalendarBookingOK().WithPayload(bookingToModel(booking))
 	}
 }
 

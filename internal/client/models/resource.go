@@ -19,12 +19,18 @@ import (
 // swagger:model Resource
 type Resource struct {
 
+	// optional experiment class used for catalogue grouping and search
+	Class string `json:"class,omitempty"`
+
 	// config url
 	ConfigURL string `json:"config_url,omitempty"`
 
 	// description
 	// Required: true
 	Description *string `json:"description"`
+
+	// optional structured, filterable equipment characteristics
+	Properties map[string]string `json:"properties,omitempty"`
 
 	// streams
 	// Required: true

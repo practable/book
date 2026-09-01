@@ -114,6 +114,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.GetBookingsForUser has not yet been implemented")
 		})
 	}
+	if api.UsersGetCalendarCatalogueHandler == nil {
+		api.UsersGetCalendarCatalogueHandler = users.GetCalendarCatalogueHandlerFunc(func(params users.GetCalendarCatalogueParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetCalendarCatalogue has not yet been implemented")
+		})
+	}
 	if api.UsersGetDescriptionHandler == nil {
 		api.UsersGetDescriptionHandler = users.GetDescriptionHandlerFunc(func(params users.GetDescriptionParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetDescription has not yet been implemented")
@@ -174,6 +179,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
 		})
 	}
+	if api.UsersMakeCalendarBookingHandler == nil {
+		api.UsersMakeCalendarBookingHandler = users.MakeCalendarBookingHandlerFunc(func(params users.MakeCalendarBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.MakeCalendarBooking has not yet been implemented")
+		})
+	}
 	if api.AdminMakeMaintenanceBookingHandler == nil {
 		api.AdminMakeMaintenanceBookingHandler = admin.MakeMaintenanceBookingHandlerFunc(func(params admin.MakeMaintenanceBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.MakeMaintenanceBooking has not yet been implemented")
@@ -182,6 +192,16 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	if api.AdminOverrideCancelBookingHandler == nil {
 		api.AdminOverrideCancelBookingHandler = admin.OverrideCancelBookingHandlerFunc(func(params admin.OverrideCancelBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.OverrideCancelBooking has not yet been implemented")
+		})
+	}
+	if api.UsersPreviewCalendarBookingHandler == nil {
+		api.UsersPreviewCalendarBookingHandler = users.PreviewCalendarBookingHandlerFunc(func(params users.PreviewCalendarBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.PreviewCalendarBooking has not yet been implemented")
+		})
+	}
+	if api.UsersQueryCalendarAvailabilityHandler == nil {
+		api.UsersQueryCalendarAvailabilityHandler = users.QueryCalendarAvailabilityHandlerFunc(func(params users.QueryCalendarAvailabilityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.QueryCalendarAvailability has not yet been implemented")
 		})
 	}
 	if api.AdminReplaceBookingHandler == nil {

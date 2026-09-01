@@ -671,6 +671,127 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+
+  /calendar/catalog/{group_name}:
+    get:
+      summary: Get the calendar-oriented experiment catalogue for a group
+      description: Returns one experiment class per policy, including descriptions, recommended duration, booking increment, and candidate resources.
+      tags:
+      - users
+      operationId: GetCalendarCatalogue
+      parameters:
+      - name: group_name
+        in: path
+        required: true
+        type: string
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/CalendarCatalogue'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+  /calendar/availability:
+    post:
+      summary: Query aggregate availability for a calendar range
+      description: Returns sampled availability counts for a policy pool optionally narrowed by resource or structured properties. It never reveals other users.
+      tags:
+      - users
+      operationId: QueryCalendarAvailability
+      parameters:
+      - name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/CalendarAvailabilityRequest'
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/CalendarAvailability'
+        400:
+          $ref: '#/responses/BadRequest'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+  /calendar/preview:
+    post:
+      summary: Preview an exact calendar booking
+      description: Validates policy, usage, resource matching, and current availability without reserving capacity. A successful preview is advisory and must be revalidated during creation.
+      tags:
+      - users
+      operationId: PreviewCalendarBooking
+      parameters:
+      - name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/CalendarBookingRequest'
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/CalendarBookingPreview'
+        400:
+          $ref: '#/responses/BadRequest'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+  /calendar/bookings:
+    post:
+      summary: Create a selector-aware calendar booking
+      description: Atomically assigns one matching resource and returns the booking. Exact retries with the same user and Idempotency-Key return the original booking; reuse for a different request returns 409.
+      tags:
+      - users
+      operationId: MakeCalendarBooking
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        type: string
+        minLength: 8
+        maxLength: 200
+      - name: request
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/CalendarBookingRequest'
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: Created or exact retry
+          schema:
+            $ref: '#/definitions/Booking'
+        400:
+          $ref: '#/responses/BadRequest'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        409:
+          $ref: '#/responses/Conflict'
+        500:
+          $ref: '#/responses/InternalError'
           
   /groups/{group_name}:
     get:
@@ -1322,6 +1443,166 @@ definitions:
     - revision
     - booking
 
+  CalendarSelector:
+    type: object
+    properties:
+      policy:
+        type: string
+      resource:
+        type: string
+      properties:
+        type: object
+        additionalProperties:
+          type: string
+    required:
+    - policy
+
+  CalendarResource:
+    type: object
+    properties:
+      name:
+        type: string
+      class:
+        type: string
+      properties:
+        type: object
+        additionalProperties:
+          type: string
+    required:
+    - name
+
+  CalendarCatalogueItem:
+    type: object
+    properties:
+      policy:
+        type: string
+      description:
+        $ref: '#/definitions/Description'
+      recommended_duration:
+        type: string
+      booking_increment:
+        type: string
+      resources:
+        type: array
+        items:
+          $ref: '#/definitions/CalendarResource'
+    required:
+    - policy
+    - description
+    - booking_increment
+    - resources
+
+  CalendarCatalogue:
+    type: array
+    items:
+      $ref: '#/definitions/CalendarCatalogueItem'
+
+  CalendarAvailabilityRequest:
+    type: object
+    properties:
+      user_name:
+        type: string
+      selector:
+        $ref: '#/definitions/CalendarSelector'
+      from:
+        type: string
+        format: date-time
+      to:
+        type: string
+        format: date-time
+      duration:
+        type: string
+      resolution:
+        type: string
+    required:
+    - user_name
+    - selector
+    - from
+    - to
+    - duration
+    - resolution
+
+  CalendarAvailabilityBand:
+    type: object
+    properties:
+      start:
+        type: string
+        format: date-time
+      end:
+        type: string
+        format: date-time
+      matching_resources:
+        type: integer
+        format: int64
+      bookable:
+        type: boolean
+      reason:
+        type: string
+      operating_mode:
+        type: string
+    required:
+    - start
+    - end
+    - matching_resources
+    - bookable
+    - operating_mode
+
+  CalendarAvailability:
+    type: array
+    items:
+      $ref: '#/definitions/CalendarAvailabilityBand'
+
+  CalendarBookingRequest:
+    type: object
+    properties:
+      user_name:
+        type: string
+      selector:
+        $ref: '#/definitions/CalendarSelector'
+      when:
+        $ref: '#/definitions/Interval'
+    required:
+    - user_name
+    - selector
+    - when
+
+  CalendarBookingPreview:
+    type: object
+    properties:
+      when:
+        $ref: '#/definitions/Interval'
+      selector:
+        $ref: '#/definitions/CalendarSelector'
+      matching_resources:
+        type: array
+        items:
+          type: string
+      bookable:
+        type: boolean
+      reasons:
+        type: array
+        items:
+          type: string
+      usage_after:
+        type: string
+      usage_limit:
+        type: string
+      manifest_version:
+        type: integer
+        format: int64
+      operational_effects:
+        type: array
+        items:
+          type: string
+    required:
+    - when
+    - selector
+    - matching_resources
+    - bookable
+    - usage_after
+    - manifest_version
+    - operational_effects
+
   Description:
     title: description
     description: Description of a resource e.g. policy, slot, user interface
@@ -1684,11 +1965,19 @@ definitions:
   Resource:
     type: object
     properties:
+      class:
+        description: optional experiment class used for catalogue grouping and search
+        type: string
       config_url: 
         type: string
         format: url
       description:
         type: string
+      properties:
+        description: optional structured, filterable equipment characteristics
+        type: object
+        additionalProperties:
+          type: string
       streams:
         type: array
         items:
@@ -1960,6 +2249,10 @@ definitions:
 
 # Descriptions of common responses
 responses:
+  BadRequest:
+    description: The request is malformed or exceeds calendar query limits
+    schema:
+      $ref: '#/definitions/Error'
   Conflict:
     description: The booking was changed, started, or conflicts with the proposed replacement
     schema:

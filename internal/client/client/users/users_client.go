@@ -78,6 +78,26 @@ func WithContentTypeTextPlain(r *runtime.ClientOperation) {
 	r.ConsumesMediaTypes = []string{"text/plain"}
 }
 
+// WithAccept allows the client to force the Accept header
+// to negotiate a specific Producer from the server.
+//
+// You may use this option to set arbitrary extensions to your MIME media type.
+func WithAccept(mime string) ClientOption {
+	return func(r *runtime.ClientOperation) {
+		r.ProducesMediaTypes = []string{mime}
+	}
+}
+
+// WithAcceptApplicationJSON sets the Accept header to "application/json".
+func WithAcceptApplicationJSON(r *runtime.ClientOperation) {
+	r.ProducesMediaTypes = []string{"application/json"}
+}
+
+// WithAcceptTextPlain sets the Accept header to "text/plain".
+func WithAcceptTextPlain(r *runtime.ClientOperation) {
+	r.ProducesMediaTypes = []string{"text/plain"}
+}
+
 // ClientService is the interface for Client methods
 type ClientService interface {
 	AddGroupForUser(params *AddGroupForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AddGroupForUserNoContent, error)
@@ -92,6 +112,8 @@ type ClientService interface {
 
 	GetBookingsForUser(params *GetBookingsForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetBookingsForUserOK, error)
 
+	GetCalendarCatalogue(params *GetCalendarCatalogueParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetCalendarCatalogueOK, error)
+
 	GetDescription(params *GetDescriptionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetDescriptionOK, error)
 
 	GetGroup(params *GetGroupParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetGroupOK, error)
@@ -105,6 +127,12 @@ type ClientService interface {
 	GetPolicyStatusForUser(params *GetPolicyStatusForUserParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetPolicyStatusForUserOK, error)
 
 	MakeBooking(params *MakeBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeBookingNoContent, error)
+
+	MakeCalendarBooking(params *MakeCalendarBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeCalendarBookingOK, error)
+
+	PreviewCalendarBooking(params *PreviewCalendarBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*PreviewCalendarBookingOK, error)
+
+	QueryCalendarAvailability(params *QueryCalendarAvailabilityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*QueryCalendarAvailabilityOK, error)
 
 	UniqueName(params *UniqueNameParams, opts ...ClientOption) (*UniqueNameOK, error)
 
@@ -348,6 +376,47 @@ func (a *Client) GetBookingsForUser(params *GetBookingsForUserParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for GetBookingsForUser: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetCalendarCatalogue gets the calendar oriented experiment catalogue for a group
+
+Returns one experiment class per policy, including descriptions, recommended duration, booking increment, and candidate resources.
+*/
+func (a *Client) GetCalendarCatalogue(params *GetCalendarCatalogueParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetCalendarCatalogueOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetCalendarCatalogueParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "GetCalendarCatalogue",
+		Method:             "GET",
+		PathPattern:        "/calendar/catalog/{group_name}",
+		ProducesMediaTypes: []string{"application/json", "text/plain"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetCalendarCatalogueReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetCalendarCatalogueOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for GetCalendarCatalogue: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -635,6 +704,129 @@ func (a *Client) MakeBooking(params *MakeBookingParams, authInfo runtime.ClientA
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for MakeBooking: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+MakeCalendarBooking creates a selector aware calendar booking
+
+Atomically assigns one matching resource and returns the booking. Exact retries with the same user and Idempotency-Key return the original booking; reuse for a different request returns 409.
+*/
+func (a *Client) MakeCalendarBooking(params *MakeCalendarBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeCalendarBookingOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewMakeCalendarBookingParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "MakeCalendarBooking",
+		Method:             "POST",
+		PathPattern:        "/calendar/bookings",
+		ProducesMediaTypes: []string{"application/json", "text/plain"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &MakeCalendarBookingReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*MakeCalendarBookingOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for MakeCalendarBooking: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+PreviewCalendarBooking previews an exact calendar booking
+
+Validates policy, usage, resource matching, and current availability without reserving capacity. A successful preview is advisory and must be revalidated during creation.
+*/
+func (a *Client) PreviewCalendarBooking(params *PreviewCalendarBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*PreviewCalendarBookingOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewPreviewCalendarBookingParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "PreviewCalendarBooking",
+		Method:             "POST",
+		PathPattern:        "/calendar/preview",
+		ProducesMediaTypes: []string{"application/json", "text/plain"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &PreviewCalendarBookingReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*PreviewCalendarBookingOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for PreviewCalendarBooking: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+QueryCalendarAvailability queries aggregate availability for a calendar range
+
+Returns sampled availability counts for a policy pool optionally narrowed by resource or structured properties. It never reveals other users.
+*/
+func (a *Client) QueryCalendarAvailability(params *QueryCalendarAvailabilityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*QueryCalendarAvailabilityOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewQueryCalendarAvailabilityParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "QueryCalendarAvailability",
+		Method:             "POST",
+		PathPattern:        "/calendar/availability",
+		ProducesMediaTypes: []string{"application/json", "text/plain"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &QueryCalendarAvailabilityReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*QueryCalendarAvailabilityOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for QueryCalendarAvailability: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

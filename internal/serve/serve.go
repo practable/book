@@ -78,6 +78,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.UsersGetAccessTokenHandler = users.GetAccessTokenHandlerFunc(getAccessTokenHandler(config))
 	api.UsersGetActivityHandler = users.GetActivityHandlerFunc(getActivityHandler(config))
 	api.UsersGetAvailabilityHandler = users.GetAvailabilityHandlerFunc(getAvailabilityHandler(config))
+	api.UsersGetCalendarCatalogueHandler = users.GetCalendarCatalogueHandlerFunc(getCalendarCatalogueHandler(config))
 	api.UsersGetBookingsForUserHandler = users.GetBookingsForUserHandlerFunc(getBookingsForUserHandler(config))
 	api.UsersGetDescriptionHandler = users.GetDescriptionHandlerFunc(getDescriptionHandler(config))
 	api.UsersGetGroupHandler = users.GetGroupHandlerFunc(getGroupHandler(config))
@@ -87,6 +88,9 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.UsersGetPolicyStatusForUserHandler = users.GetPolicyStatusForUserHandlerFunc(getPolicyStatusForUserHandler(config))
 	api.UsersGetStoreStatusUserHandler = users.GetStoreStatusUserHandlerFunc(getStoreStatusUserHandler(config))
 	api.UsersMakeBookingHandler = users.MakeBookingHandlerFunc(makeBookingHandler(config))
+	api.UsersMakeCalendarBookingHandler = users.MakeCalendarBookingHandlerFunc(makeCalendarBookingHandler(config))
+	api.UsersPreviewCalendarBookingHandler = users.PreviewCalendarBookingHandlerFunc(previewCalendarBookingHandler(config))
+	api.UsersQueryCalendarAvailabilityHandler = users.QueryCalendarAvailabilityHandlerFunc(queryCalendarAvailabilityHandler(config))
 	api.UsersUniqueNameHandler = users.UniqueNameHandlerFunc(uniqueNameHandler(config))
 
 	c := make(chan struct{})

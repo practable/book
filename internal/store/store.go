@@ -246,6 +246,11 @@ type Resource struct {
 	// Description is a reference to a named description of the resource
 	// that will probably only be shown on admin dashboards (not to students)
 	Description string `json:"description"  yaml:"description"`
+	// Class and Properties are optional catalogue metadata used by calendar
+	// clients. Existing manifests remain valid and may continue to group
+	// resources only through policies and slots.
+	Class      string            `json:"class,omitempty" yaml:"class,omitempty"`
+	Properties map[string]string `json:"properties,omitempty" yaml:"properties,omitempty"`
 
 	// Diary is held in memory, not in the manifest, so don't unmarshall it.
 	Diary *diary.Diary `json:"-"  yaml:"-"`
@@ -1279,6 +1284,8 @@ func (s *Store) exportManifestLocked() Manifest {
 		rm[k] = Resource{
 			ConfigURL:   v.ConfigURL,
 			Description: v.Description,
+			Class:       v.Class,
+			Properties:  v.Properties,
 			Streams:     v.Streams,
 			Tests:       v.Tests,
 			TopicStub:   v.TopicStub,

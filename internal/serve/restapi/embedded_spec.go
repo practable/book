@@ -941,6 +941,192 @@ func init() {
         }
       }
     },
+    "/calendar/availability": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns sampled availability counts for a policy pool optionally narrowed by resource or structured properties. It never reveals other users.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Query aggregate availability for a calendar range",
+        "operationId": "QueryCalendarAvailability",
+        "parameters": [
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CalendarAvailabilityRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CalendarAvailability"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/calendar/bookings": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Atomically assigns one matching resource and returns the booking. Exact retries with the same user and Idempotency-Key return the original booking; reuse for a different request returns 409.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Create a selector-aware calendar booking",
+        "operationId": "MakeCalendarBooking",
+        "parameters": [
+          {
+            "maxLength": 200,
+            "minLength": 8,
+            "type": "string",
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CalendarBookingRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created or exact retry",
+            "schema": {
+              "$ref": "#/definitions/Booking"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/calendar/catalog/{group_name}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns one experiment class per policy, including descriptions, recommended duration, booking increment, and candidate resources.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Get the calendar-oriented experiment catalogue for a group",
+        "operationId": "GetCalendarCatalogue",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "group_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CalendarCatalogue"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/calendar/preview": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Validates policy, usage, resource matching, and current availability without reserving capacity. A successful preview is advisory and must be revalidated during creation.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Preview an exact calendar booking",
+        "operationId": "PreviewCalendarBooking",
+        "parameters": [
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CalendarBookingRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CalendarBookingPreview"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/descriptions/{description_name}": {
       "get": {
         "security": [
@@ -1854,6 +2040,223 @@ func init() {
         "$ref": "#/definitions/Booking"
       }
     },
+    "CalendarAvailability": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CalendarAvailabilityBand"
+      }
+    },
+    "CalendarAvailabilityBand": {
+      "type": "object",
+      "required": [
+        "start",
+        "end",
+        "matching_resources",
+        "bookable",
+        "operating_mode"
+      ],
+      "properties": {
+        "bookable": {
+          "type": "boolean"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "matching_resources": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "operating_mode": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "CalendarAvailabilityRequest": {
+      "type": "object",
+      "required": [
+        "user_name",
+        "selector",
+        "from",
+        "to",
+        "duration",
+        "resolution"
+      ],
+      "properties": {
+        "duration": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "selector": {
+          "$ref": "#/definitions/CalendarSelector"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "user_name": {
+          "type": "string"
+        }
+      }
+    },
+    "CalendarBookingPreview": {
+      "type": "object",
+      "required": [
+        "when",
+        "selector",
+        "matching_resources",
+        "bookable",
+        "usage_after",
+        "manifest_version",
+        "operational_effects"
+      ],
+      "properties": {
+        "bookable": {
+          "type": "boolean"
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "matching_resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "operational_effects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "selector": {
+          "$ref": "#/definitions/CalendarSelector"
+        },
+        "usage_after": {
+          "type": "string"
+        },
+        "usage_limit": {
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/definitions/Interval"
+        }
+      }
+    },
+    "CalendarBookingRequest": {
+      "type": "object",
+      "required": [
+        "user_name",
+        "selector",
+        "when"
+      ],
+      "properties": {
+        "selector": {
+          "$ref": "#/definitions/CalendarSelector"
+        },
+        "user_name": {
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/definitions/Interval"
+        }
+      }
+    },
+    "CalendarCatalogue": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CalendarCatalogueItem"
+      }
+    },
+    "CalendarCatalogueItem": {
+      "type": "object",
+      "required": [
+        "policy",
+        "description",
+        "booking_increment",
+        "resources"
+      ],
+      "properties": {
+        "booking_increment": {
+          "type": "string"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "policy": {
+          "type": "string"
+        },
+        "recommended_duration": {
+          "type": "string"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CalendarResource"
+          }
+        }
+      }
+    },
+    "CalendarResource": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "class": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CalendarSelector": {
+      "type": "object",
+      "required": [
+        "policy"
+      ],
+      "properties": {
+        "policy": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "resource": {
+          "type": "string"
+        }
+      }
+    },
     "Description": {
       "description": "Description of a resource e.g. policy, slot, user interface",
       "type": "object",
@@ -2377,12 +2780,23 @@ func init() {
         "topic_stub"
       ],
       "properties": {
+        "class": {
+          "description": "optional experiment class used for catalogue grouping and search",
+          "type": "string"
+        },
         "config_url": {
           "type": "string",
           "format": "url"
         },
         "description": {
           "type": "string"
+        },
+        "properties": {
+          "description": "optional structured, filterable equipment characteristics",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "streams": {
           "type": "array",
@@ -2721,6 +3135,12 @@ func init() {
     }
   },
   "responses": {
+    "BadRequest": {
+      "description": "The request is malformed or exceeds calendar query limits",
+      "schema": {
+        "$ref": "#/definitions/Error"
+      }
+    },
     "Conflict": {
       "description": "The booking was changed, started, or conflicts with the proposed replacement",
       "schema": {
@@ -3889,6 +4309,240 @@ func init() {
         }
       }
     },
+    "/calendar/availability": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns sampled availability counts for a policy pool optionally narrowed by resource or structured properties. It never reveals other users.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Query aggregate availability for a calendar range",
+        "operationId": "QueryCalendarAvailability",
+        "parameters": [
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CalendarAvailabilityRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CalendarAvailability"
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/calendar/bookings": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Atomically assigns one matching resource and returns the booking. Exact retries with the same user and Idempotency-Key return the original booking; reuse for a different request returns 409.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Create a selector-aware calendar booking",
+        "operationId": "MakeCalendarBooking",
+        "parameters": [
+          {
+            "maxLength": 200,
+            "minLength": 8,
+            "type": "string",
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CalendarBookingRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Created or exact retry",
+            "schema": {
+              "$ref": "#/definitions/Booking"
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/calendar/catalog/{group_name}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns one experiment class per policy, including descriptions, recommended duration, booking increment, and candidate resources.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Get the calendar-oriented experiment catalogue for a group",
+        "operationId": "GetCalendarCatalogue",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "group_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CalendarCatalogue"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/calendar/preview": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Validates policy, usage, resource matching, and current availability without reserving capacity. A successful preview is advisory and must be revalidated during creation.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Preview an exact calendar booking",
+        "operationId": "PreviewCalendarBooking",
+        "parameters": [
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CalendarBookingRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/CalendarBookingPreview"
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/descriptions/{description_name}": {
       "get": {
         "security": [
@@ -4934,6 +5588,223 @@ func init() {
         "$ref": "#/definitions/Booking"
       }
     },
+    "CalendarAvailability": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CalendarAvailabilityBand"
+      }
+    },
+    "CalendarAvailabilityBand": {
+      "type": "object",
+      "required": [
+        "start",
+        "end",
+        "matching_resources",
+        "bookable",
+        "operating_mode"
+      ],
+      "properties": {
+        "bookable": {
+          "type": "boolean"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "matching_resources": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "operating_mode": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "CalendarAvailabilityRequest": {
+      "type": "object",
+      "required": [
+        "user_name",
+        "selector",
+        "from",
+        "to",
+        "duration",
+        "resolution"
+      ],
+      "properties": {
+        "duration": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "selector": {
+          "$ref": "#/definitions/CalendarSelector"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "user_name": {
+          "type": "string"
+        }
+      }
+    },
+    "CalendarBookingPreview": {
+      "type": "object",
+      "required": [
+        "when",
+        "selector",
+        "matching_resources",
+        "bookable",
+        "usage_after",
+        "manifest_version",
+        "operational_effects"
+      ],
+      "properties": {
+        "bookable": {
+          "type": "boolean"
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "matching_resources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "operational_effects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "selector": {
+          "$ref": "#/definitions/CalendarSelector"
+        },
+        "usage_after": {
+          "type": "string"
+        },
+        "usage_limit": {
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/definitions/Interval"
+        }
+      }
+    },
+    "CalendarBookingRequest": {
+      "type": "object",
+      "required": [
+        "user_name",
+        "selector",
+        "when"
+      ],
+      "properties": {
+        "selector": {
+          "$ref": "#/definitions/CalendarSelector"
+        },
+        "user_name": {
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/definitions/Interval"
+        }
+      }
+    },
+    "CalendarCatalogue": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CalendarCatalogueItem"
+      }
+    },
+    "CalendarCatalogueItem": {
+      "type": "object",
+      "required": [
+        "policy",
+        "description",
+        "booking_increment",
+        "resources"
+      ],
+      "properties": {
+        "booking_increment": {
+          "type": "string"
+        },
+        "description": {
+          "$ref": "#/definitions/Description"
+        },
+        "policy": {
+          "type": "string"
+        },
+        "recommended_duration": {
+          "type": "string"
+        },
+        "resources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CalendarResource"
+          }
+        }
+      }
+    },
+    "CalendarResource": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "class": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "CalendarSelector": {
+      "type": "object",
+      "required": [
+        "policy"
+      ],
+      "properties": {
+        "policy": {
+          "type": "string"
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "resource": {
+          "type": "string"
+        }
+      }
+    },
     "Description": {
       "description": "Description of a resource e.g. policy, slot, user interface",
       "type": "object",
@@ -5457,12 +6328,23 @@ func init() {
         "topic_stub"
       ],
       "properties": {
+        "class": {
+          "description": "optional experiment class used for catalogue grouping and search",
+          "type": "string"
+        },
         "config_url": {
           "type": "string",
           "format": "url"
         },
         "description": {
           "type": "string"
+        },
+        "properties": {
+          "description": "optional structured, filterable equipment characteristics",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "streams": {
           "type": "array",
@@ -5801,6 +6683,12 @@ func init() {
     }
   },
   "responses": {
+    "BadRequest": {
+      "description": "The request is malformed or exceeds calendar query limits",
+      "schema": {
+        "$ref": "#/definitions/Error"
+      }
+    },
     "Conflict": {
       "description": "The booking was changed, started, or conflicts with the proposed replacement",
       "schema": {

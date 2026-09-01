@@ -83,6 +83,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersGetBookingsForUserHandler: users.GetBookingsForUserHandlerFunc(func(params users.GetBookingsForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetBookingsForUser has not yet been implemented")
 		}),
+		UsersGetCalendarCatalogueHandler: users.GetCalendarCatalogueHandlerFunc(func(params users.GetCalendarCatalogueParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.GetCalendarCatalogue has not yet been implemented")
+		}),
 		UsersGetDescriptionHandler: users.GetDescriptionHandlerFunc(func(params users.GetDescriptionParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetDescription has not yet been implemented")
 		}),
@@ -119,11 +122,20 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersMakeBookingHandler: users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
 		}),
+		UsersMakeCalendarBookingHandler: users.MakeCalendarBookingHandlerFunc(func(params users.MakeCalendarBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.MakeCalendarBooking has not yet been implemented")
+		}),
 		AdminMakeMaintenanceBookingHandler: admin.MakeMaintenanceBookingHandlerFunc(func(params admin.MakeMaintenanceBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.MakeMaintenanceBooking has not yet been implemented")
 		}),
 		AdminOverrideCancelBookingHandler: admin.OverrideCancelBookingHandlerFunc(func(params admin.OverrideCancelBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.OverrideCancelBooking has not yet been implemented")
+		}),
+		UsersPreviewCalendarBookingHandler: users.PreviewCalendarBookingHandlerFunc(func(params users.PreviewCalendarBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.PreviewCalendarBooking has not yet been implemented")
+		}),
+		UsersQueryCalendarAvailabilityHandler: users.QueryCalendarAvailabilityHandlerFunc(func(params users.QueryCalendarAvailabilityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.QueryCalendarAvailability has not yet been implemented")
 		}),
 		AdminReplaceBookingHandler: admin.ReplaceBookingHandlerFunc(func(params admin.ReplaceBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceBooking has not yet been implemented")
@@ -235,6 +247,8 @@ type ServeAPI struct {
 	UsersGetAvailabilityHandler users.GetAvailabilityHandler
 	// UsersGetBookingsForUserHandler sets the operation handler for the get bookings for user operation
 	UsersGetBookingsForUserHandler users.GetBookingsForUserHandler
+	// UsersGetCalendarCatalogueHandler sets the operation handler for the get calendar catalogue operation
+	UsersGetCalendarCatalogueHandler users.GetCalendarCatalogueHandler
 	// UsersGetDescriptionHandler sets the operation handler for the get description operation
 	UsersGetDescriptionHandler users.GetDescriptionHandler
 	// UsersGetGroupHandler sets the operation handler for the get group operation
@@ -259,10 +273,16 @@ type ServeAPI struct {
 	AdminGetUsageSummaryHandler admin.GetUsageSummaryHandler
 	// UsersMakeBookingHandler sets the operation handler for the make booking operation
 	UsersMakeBookingHandler users.MakeBookingHandler
+	// UsersMakeCalendarBookingHandler sets the operation handler for the make calendar booking operation
+	UsersMakeCalendarBookingHandler users.MakeCalendarBookingHandler
 	// AdminMakeMaintenanceBookingHandler sets the operation handler for the make maintenance booking operation
 	AdminMakeMaintenanceBookingHandler admin.MakeMaintenanceBookingHandler
 	// AdminOverrideCancelBookingHandler sets the operation handler for the override cancel booking operation
 	AdminOverrideCancelBookingHandler admin.OverrideCancelBookingHandler
+	// UsersPreviewCalendarBookingHandler sets the operation handler for the preview calendar booking operation
+	UsersPreviewCalendarBookingHandler users.PreviewCalendarBookingHandler
+	// UsersQueryCalendarAvailabilityHandler sets the operation handler for the query calendar availability operation
+	UsersQueryCalendarAvailabilityHandler users.QueryCalendarAvailabilityHandler
 	// AdminReplaceBookingHandler sets the operation handler for the replace booking operation
 	AdminReplaceBookingHandler admin.ReplaceBookingHandler
 	// AdminReplaceBookingsHandler sets the operation handler for the replace bookings operation
@@ -406,6 +426,9 @@ func (o *ServeAPI) Validate() error {
 	if o.UsersGetBookingsForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetBookingsForUserHandler")
 	}
+	if o.UsersGetCalendarCatalogueHandler == nil {
+		unregistered = append(unregistered, "users.GetCalendarCatalogueHandler")
+	}
 	if o.UsersGetDescriptionHandler == nil {
 		unregistered = append(unregistered, "users.GetDescriptionHandler")
 	}
@@ -442,11 +465,20 @@ func (o *ServeAPI) Validate() error {
 	if o.UsersMakeBookingHandler == nil {
 		unregistered = append(unregistered, "users.MakeBookingHandler")
 	}
+	if o.UsersMakeCalendarBookingHandler == nil {
+		unregistered = append(unregistered, "users.MakeCalendarBookingHandler")
+	}
 	if o.AdminMakeMaintenanceBookingHandler == nil {
 		unregistered = append(unregistered, "admin.MakeMaintenanceBookingHandler")
 	}
 	if o.AdminOverrideCancelBookingHandler == nil {
 		unregistered = append(unregistered, "admin.OverrideCancelBookingHandler")
+	}
+	if o.UsersPreviewCalendarBookingHandler == nil {
+		unregistered = append(unregistered, "users.PreviewCalendarBookingHandler")
+	}
+	if o.UsersQueryCalendarAvailabilityHandler == nil {
+		unregistered = append(unregistered, "users.QueryCalendarAvailabilityHandler")
 	}
 	if o.AdminReplaceBookingHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceBookingHandler")
@@ -630,6 +662,10 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/calendar/catalog/{group_name}"] = users.NewGetCalendarCatalogue(o.context, o.UsersGetCalendarCatalogueHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/descriptions/{description_name}"] = users.NewGetDescription(o.context, o.UsersGetDescriptionHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
@@ -678,11 +714,23 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/calendar/bookings"] = users.NewMakeCalendarBooking(o.context, o.UsersMakeCalendarBookingHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/admin/maintenance/bookings"] = admin.NewMakeMaintenanceBooking(o.context, o.AdminMakeMaintenanceBookingHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/admin/booking-overrides/{booking_name}/cancel"] = admin.NewOverrideCancelBooking(o.context, o.AdminOverrideCancelBookingHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/calendar/preview"] = users.NewPreviewCalendarBooking(o.context, o.UsersPreviewCalendarBookingHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/calendar/availability"] = users.NewQueryCalendarAvailability(o.context, o.UsersQueryCalendarAvailabilityHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
