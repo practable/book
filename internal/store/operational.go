@@ -29,7 +29,7 @@ type OperationalWorkflow struct {
 	MaximumDuration  time.Duration `json:"maximum_duration" yaml:"maximum_duration"`
 }
 
-func (s *Store) plannedOperationalReservationsLocked(slotName, bookingName string, when interval.Interval) ([]OperationalReservation, error) {
+func (s *Store) plannedOperationalReservationsLocked(slotName, bookingName, excludeBookingName string, when interval.Interval) ([]OperationalReservation, error) {
 	slot := s.Slots[slotName]
 	resource := s.Resources[slot.Resource]
 	if len(resource.Operations.BeforeBooking) == 0 && len(resource.Operations.AfterBooking) == 0 {
@@ -37,7 +37,7 @@ func (s *Store) plannedOperationalReservationsLocked(slotName, bookingName strin
 	}
 	var previous, next *interval.Interval
 	for _, existing := range s.Bookings {
-		if existing.Cancelled || strings.HasPrefix(existing.Policy, "__operations") {
+		if existing.Cancelled || existing.Name == excludeBookingName || strings.HasPrefix(existing.Policy, "__operations") {
 			continue
 		}
 		existingSlot, ok := s.Slots[existing.Slot]
@@ -60,7 +60,8 @@ func (s *Store) plannedOperationalReservationsLocked(slotName, bookingName strin
 	}
 	result := make([]OperationalReservation, 0, len(plans))
 	for _, plan := range plans {
-		identity := bookingName + "\x00" + plan.Kind + "\x00" + plan.Workflow + "\x00" + plan.When.Start.UTC().Format(time.RFC3339Nano)
+		identity := bookingName + "\x00" + plan.Kind + "\x00" + plan.Workflow + "\x00" +
+			plan.When.Start.UTC().Format(time.RFC3339Nano) + "\x00" + plan.When.End.UTC().Format(time.RFC3339Nano)
 		jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("job\x00"+identity)).String()
 		reservationName := uuid.NewSHA1(uuid.NameSpaceURL, []byte("reservation\x00"+identity)).String()
 		deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("delivery\x00"+identity)).String()

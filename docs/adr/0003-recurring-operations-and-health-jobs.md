@@ -187,8 +187,9 @@ existing manifest windows. Operational job persistence, leased outbox delivery,
 direction-bound HMAC authentication, retries, and idempotent callbacks are also
 implemented. Manifest-driven booking guards are created atomically with their
 triggering booking, undispatched reclaimable guards can be superseded by a
-following booking, and cancellation retires undispatched guards atomically.
-Operational-state schedules, edit replanning, runner booking capabilities,
+following booking, cancellation retires undispatched guards atomically, and
+unstarted booking edits atomically replace undispatched guard plans.
+Operational-state schedules, runner booking capabilities,
 health policy, charging, organisation accounts, and block booking remain
 deferred.
 

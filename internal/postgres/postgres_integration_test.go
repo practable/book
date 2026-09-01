@@ -269,6 +269,38 @@ func TestCancellingBookingPreservesLeasedOperationalWork(t *testing.T) {
 	require.Equal(t, "reserved", setupState)
 }
 
+func TestReplacingBookingAtomicallyReplansOperationalWork(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 8, 18, 0, 0, 0, time.UTC)
+	original := request("original-with-guards", "user", "slot-a", "resource-a", start, start.Add(time.Hour))
+	originalPlan := []store.OperationalReservation{
+		operationalReservation("old-setup-job", "old-setup-booking", "old-setup-delivery", original.Booking.Name, "resource-a", start.Add(-10*time.Minute), start),
+		operationalReservation("old-teardown-job", "old-teardown-booking", "old-teardown-delivery", original.Booking.Name, "resource-a", start.Add(time.Hour), start.Add(70*time.Minute)),
+	}
+	created, _, _, err := repository.CreateBookingWithOperations(ctx, original, originalPlan, nil)
+	require.NoError(t, err)
+
+	newStart := start.Add(2 * time.Hour)
+	replacement := request("replacement-with-guards", "user", "slot-a", "resource-a", newStart, newStart.Add(time.Hour))
+	replacementPlan := []store.OperationalReservation{
+		operationalReservation("new-setup-job", "new-setup-booking", "new-setup-delivery", replacement.Booking.Name, "resource-a", newStart.Add(-10*time.Minute), newStart),
+		operationalReservation("new-teardown-job", "new-teardown-booking", "new-teardown-delivery", replacement.Booking.Name, "resource-a", newStart.Add(time.Hour), newStart.Add(70*time.Minute)),
+	}
+	replaced, changed, fresh, err := repository.ReplaceBookingWithOperations(ctx, original.Booking.Name, created.Revision, replacement, replacementPlan, nil)
+	require.NoError(t, err)
+	require.True(t, fresh)
+	require.Equal(t, replacement.Booking.Name, replaced.Booking.Name)
+	require.Len(t, changed, 4)
+	var live, oldCancelled, newJobs int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.bookings WHERE collection='live' AND NOT superseded").Scan(&live))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs WHERE triggering_booking_name=$1 AND state='cancelled'", original.Booking.Name).Scan(&oldCancelled))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs WHERE triggering_booking_name=$1", replacement.Booking.Name).Scan(&newJobs))
+	require.Equal(t, 3, live)
+	require.Equal(t, 2, oldCancelled)
+	require.Equal(t, 2, newJobs)
+}
+
 func operationalReservation(jobID, bookingID, deliveryID, trigger, resource string, start, end time.Time) store.OperationalReservation {
 	body := []byte(`{"version":1}`)
 	booking := store.Booking{Name: bookingID, User: "__operations__", Policy: "__operations__", Slot: "slot-a", Maintenance: true, When: interval.Interval{Start: start, End: end}}

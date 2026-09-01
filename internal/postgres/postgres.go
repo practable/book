@@ -428,22 +428,30 @@ func (r *Repository) ReplaceBooking(ctx context.Context, originalName string, ex
 	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
+	persisted, fresh, err := replaceBookingTx(ctx, tx, originalName, expectedRevision, request)
+	if err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, false, mapWriteError(err)
+	}
+	return persisted, fresh, nil
+}
+
+func replaceBookingTx(ctx context.Context, tx pgx.Tx, originalName string, expectedRevision int64, request store.CreateBookingRequest) (store.PersistentBooking, bool, error) {
 	if !request.Maintenance {
 		if err := assertAvailable(ctx, tx, request.Resource, request.Booking.Slot); err != nil {
 			return store.PersistentBooking{}, false, err
 		}
 	}
 	var oldUser, oldPolicy, oldResource string
-	err = tx.QueryRow(ctx, `SELECT user_name,policy_name,resource_name FROM public.bookings
+	err := tx.QueryRow(ctx, `SELECT user_name,policy_name,resource_name FROM public.bookings
 		WHERE row_id=$1 AND name=$2 AND collection='live' AND NOT superseded`, expectedRevision, originalName).
 		Scan(&oldUser, &oldPolicy, &oldResource)
 	if errors.Is(err, pgx.ErrNoRows) {
 		persisted, fresh, retryErr := replacementRetry(ctx, tx, originalName, expectedRevision, request)
 		if retryErr != nil {
 			return store.PersistentBooking{}, false, retryErr
-		}
-		if err := tx.Commit(ctx); err != nil {
-			return store.PersistentBooking{}, false, err
 		}
 		return persisted, fresh, nil
 	}
@@ -513,9 +521,6 @@ func (r *Repository) ReplaceBooking(ctx context.Context, originalName string, ex
 	persisted, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", newRevision))
 	if err != nil {
 		return store.PersistentBooking{}, false, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return store.PersistentBooking{}, false, mapWriteError(err)
 	}
 	return persisted, true, nil
 }

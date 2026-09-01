@@ -1203,12 +1203,44 @@ func (s *Store) replaceBooking(edit EditableBooking, actor string) (EditableBook
 			break
 		}
 		if found {
+			// Operational reservations are validated by the same PostgreSQL
+			// replacement transaction. Omit them from this user-policy replay
+			// because obsolete guards are retired inside that transaction.
+			filtered := state.Bookings[:0]
+			for _, persisted := range state.Bookings {
+				if strings.HasPrefix(persisted.Booking.Policy, "__operations") {
+					continue
+				}
+				filtered = append(filtered, persisted)
+			}
+			state.Bookings = filtered
 			manifest := s.exportManifestLocked()
 			if err := validateManifestState(manifest, state, s.now); err != nil {
 				return EditableBooking{}, fmt.Errorf("%w: %v", ErrInvalidReplacement, err)
 			}
 		}
-		persisted, _, err := s.repository.ReplaceBooking(context.Background(), edit.OriginalName, edit.Revision, request)
+		planned, err := s.plannedOperationalReservationsLocked(edit.Booking.Slot, edit.Booking.Name, edit.OriginalName, edit.Booking.When)
+		if err != nil {
+			return EditableBooking{}, err
+		}
+		reclaim := make([]string, 0)
+		for _, existing := range s.Bookings {
+			if existing.Policy != "__operations_reclaimable__" || interval.Comparator(existing.When, edit.Booking.When) != 0 {
+				continue
+			}
+			existingSlot, ok := s.Slots[existing.Slot]
+			if ok && existingSlot.Resource == slot.Resource {
+				reclaim = append(reclaim, existing.Name)
+			}
+		}
+		var persisted PersistentBooking
+		if repository, ok := s.repository.(OperationalReplacementRepository); ok {
+			persisted, _, _, err = repository.ReplaceBookingWithOperations(context.Background(), edit.OriginalName, edit.Revision, request, planned, reclaim)
+		} else if len(planned) > 0 || len(reclaim) > 0 {
+			err = errors.New("repository does not support atomic operational replacement")
+		} else {
+			persisted, _, err = s.repository.ReplaceBooking(context.Background(), edit.OriginalName, edit.Revision, request)
+		}
 		if err != nil {
 			if errors.Is(err, ErrStaleManifest) || errors.Is(err, ErrBookingRevision) {
 				_ = s.refreshFromRepositoryLocked(context.Background())
@@ -2669,7 +2701,7 @@ func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, n
 		User:        user,
 		When:        when,
 	}
-	planned, err := s.plannedOperationalReservationsLocked(slot, name, when)
+	planned, err := s.plannedOperationalReservationsLocked(slot, name, "", when)
 	if err != nil {
 		restoreReclaimed()
 		if !p.EnforceUnlimitedUsers {

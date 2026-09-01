@@ -69,3 +69,9 @@ that is still `scheduled` or `reserved` is cancelled, its pending delivery is
 cancelled, and its guard reservation is superseded. Work that has reached
 `dispatched` or a later state is retained because the physical cost may already
 have been incurred.
+
+Editing an unstarted booking also replans atomically. Obsolete undispatched
+guards are retired, boundary guards made reclaimable by the new interval are
+superseded, and the replacement booking and new guard jobs are committed as one
+unit. An edit that conflicts with leased or dispatched physical work is rejected
+and leaves the previous booking and plan unchanged.

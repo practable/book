@@ -132,6 +132,63 @@ func (r *Repository) CancelBookingWithOperations(ctx context.Context, name strin
 	return persisted, retired, nil
 }
 
+func (r *Repository) ReplaceBookingWithOperations(ctx context.Context, originalName string, expectedRevision int64, request store.CreateBookingRequest, planned []store.OperationalReservation, reclaim []string) (store.PersistentBooking, []store.PersistentBooking, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	if request.Booking.Started || request.Booking.Cancelled || request.Booking.Unfulfilled ||
+		request.Booking.StartedAt != "" || !request.Booking.CancelledAt.IsZero() || request.Booking.CancelledBy != "" {
+		return store.PersistentBooking{}, nil, false, errors.New("replacement must be an unstarted, uncancelled booking")
+	}
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	retired, err := retireTriggeredOperationalReservationsTx(ctx, tx, originalName, request.Now, request.Actor)
+	if err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	if err := supersedeReclaimableOperationsTx(ctx, tx, reclaim, request.Now); err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	persisted, fresh, err := replaceBookingTx(ctx, tx, originalName, expectedRevision, request)
+	if err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	if !fresh {
+		if err := tx.Commit(ctx); err != nil {
+			return store.PersistentBooking{}, nil, false, err
+		}
+		return persisted, retired, false, nil
+	}
+	created := make([]store.PersistentBooking, 0, len(planned))
+	for _, item := range planned {
+		reservation, guardFresh, err := createBookingTx(ctx, tx, item.Request)
+		if err != nil {
+			return store.PersistentBooking{}, nil, false, err
+		}
+		if !guardFresh {
+			return store.PersistentBooking{}, nil, false, store.ErrBookingConflict
+		}
+		job := item.Job
+		job.BookingRowID = &reservation.Revision
+		if err := insertOperationalJobTx(ctx, tx, job, item.Delivery); err != nil {
+			return store.PersistentBooking{}, nil, false, err
+		}
+		created = append(created, reservation)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, nil, false, mapWriteError(err)
+	}
+	return persisted, append(retired, created...), true, nil
+}
+
 func retireTriggeredOperationalReservationsTx(ctx context.Context, tx pgx.Tx, triggeringName string, at time.Time, actor string) ([]store.PersistentBooking, error) {
 	rows, err := tx.Query(ctx, `SELECT b.row_id,b.name,j.job_id FROM public.operational_jobs j
 		JOIN public.bookings b ON b.row_id=j.booking_row_id

@@ -99,6 +99,10 @@ type OperationalCancellationRepository interface {
 	CancelBookingWithOperations(context.Context, string, time.Time, string, time.Duration, int64) (PersistentBooking, []PersistentBooking, error)
 }
 
+type OperationalReplacementRepository interface {
+	ReplaceBookingWithOperations(context.Context, string, int64, CreateBookingRequest, []OperationalReservation, []string) (PersistentBooking, []PersistentBooking, bool, error)
+}
+
 // ManifestValidator runs while the repository holds the exclusive maintenance
 // lock and before a candidate becomes active. It must not call the repository.
 type ManifestValidator func(PersistentState) error
