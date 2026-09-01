@@ -652,7 +652,9 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 			s := v
 			rm[k] = models.Resource{
 				ConfigURL:   s.ConfigURL,
+				Class:       s.Class,
 				Description: gog.Ptr(s.Description),
+				Properties:  s.Properties,
 				Streams:     s.Streams,
 				Tests:       s.Tests,
 				TopicStub:   gog.Ptr(s.TopicStub),
@@ -868,13 +870,100 @@ func getOperationalStatusHandler(config config.ServerConfig) func(admin.GetOpera
 	}
 }
 
+func queryBookingRecordsHandler(config config.ServerConfig) func(admin.QueryBookingRecordsParams, interface{}) middleware.Responder {
+	return func(params admin.QueryBookingRecordsParams, principal interface{}) middleware.Responder {
+		if _, err := isAdmin(principal); err != nil {
+			return admin.NewQueryBookingRecordsUnauthorized().WithPayload(calendarError("401", "no scope booking:admin"))
+		}
+		query := store.BookingQuery{}
+		if params.Resource != nil {
+			query.Resource = *params.Resource
+		}
+		if params.Slot != nil {
+			query.Slot = *params.Slot
+		}
+		if params.Policy != nil {
+			query.Policy = *params.Policy
+		}
+		if params.User != nil {
+			query.User = *params.User
+		}
+		if params.State != nil {
+			query.State = *params.State
+		}
+		if params.Limit != nil {
+			query.Limit = int(*params.Limit)
+		}
+		if params.From != nil {
+			value := time.Time(*params.From)
+			query.From = &value
+		}
+		if params.To != nil {
+			value := time.Time(*params.To)
+			query.To = &value
+		}
+		records, err := config.Store.QueryBookings(query)
+		if err != nil {
+			return admin.NewQueryBookingRecordsBadRequest().WithPayload(calendarError("400", err.Error()))
+		}
+		payload := make([]*models.AdminBookingRecord, 0, len(records))
+		for _, record := range records {
+			resource, collection, usage := record.Resource, record.Collection, store.HumaniseDuration(record.ActualUsage)
+			payload = append(payload, &models.AdminBookingRecord{Booking: bookingToModel(record.Booking), Resource: &resource, Collection: &collection, ActualUsage: &usage})
+		}
+		return admin.NewQueryBookingRecordsOK().WithPayload(payload)
+	}
+}
+
+func getBookingEventsHandler(config config.ServerConfig) func(admin.GetBookingEventsParams, interface{}) middleware.Responder {
+	return func(params admin.GetBookingEventsParams, principal interface{}) middleware.Responder {
+		if _, err := isAdmin(principal); err != nil {
+			return admin.NewGetBookingEventsUnauthorized().WithPayload(calendarError("401", "no scope booking:admin"))
+		}
+		events, err := config.Store.GetBookingEvents(params.BookingName)
+		if err != nil {
+			if errors.Is(err, store.ErrPersistentNotFound) {
+				return admin.NewGetBookingEventsNotFound().WithPayload(calendarError("404", "booking events not found"))
+			}
+			return admin.NewGetBookingEventsInternalServerError().WithPayload(calendarError("500", err.Error()))
+		}
+		payload := make([]*models.BookingEvent, 0, len(events))
+		for _, event := range events {
+			name, kind, actor, at := event.BookingName, event.Type, event.Actor, strfmt.DateTime(event.OccurredAt)
+			payload = append(payload, &models.BookingEvent{BookingName: &name, Type: &kind, Actor: &actor, OccurredAt: &at})
+		}
+		return admin.NewGetBookingEventsOK().WithPayload(payload)
+	}
+}
+
 func getUsageSummaryHandler(config config.ServerConfig) func(admin.GetUsageSummaryParams, interface{}) middleware.Responder {
 	return func(params admin.GetUsageSummaryParams, principal interface{}) middleware.Responder {
 		if _, err := isAdmin(principal); err != nil {
 			code, message := "401", "no scope booking:admin"
 			return admin.NewGetUsageSummaryUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
 		}
-		summary := config.Store.GetUsageSummary()
+		query := store.UsageQuery{}
+		if params.Resource != nil {
+			query.Resource = *params.Resource
+		}
+		if params.Slot != nil {
+			query.Slot = *params.Slot
+		}
+		if params.Policy != nil {
+			query.Policy = *params.Policy
+		}
+		if params.User != nil {
+			query.User = *params.User
+		}
+		if params.From != nil {
+			value := time.Time(*params.From)
+			query.From = &value
+		}
+		if params.To != nil {
+			value := time.Time(*params.To)
+			query.To = &value
+		}
+		summary := config.Store.GetFilteredUsageSummary(query)
 		actual := summary.ActualUsage.String()
 		return admin.NewGetUsageSummaryOK().WithPayload(&models.UsageSummary{
 			ActualUsage: &actual, StartedBookings: &summary.StartedBookings, CompletedBookings: &summary.CompletedBookings,
@@ -897,6 +986,23 @@ func makeMaintenanceBookingHandler(config config.ServerConfig) func(admin.MakeMa
 			return admin.NewMakeMaintenanceBookingConflict().WithPayload(&models.Error{Code: &code, Message: &message})
 		}
 		return admin.NewMakeMaintenanceBookingOK().WithPayload(bookingToModel(booking))
+	}
+}
+
+func makeResourceMaintenanceBookingHandler(config config.ServerConfig) func(admin.MakeResourceMaintenanceBookingParams, interface{}) middleware.Responder {
+	return func(params admin.MakeResourceMaintenanceBookingParams, principal interface{}) middleware.Responder {
+		claims, err := isMaintenanceOrAdmin(principal)
+		if err != nil {
+			return admin.NewMakeResourceMaintenanceBookingUnauthorized().WithPayload(calendarError("401", "no scope booking:maintenance"))
+		}
+		booking, err := config.Store.MakeMaintenanceBookingForResource(params.ResourceName, claims.Subject, interval.Interval{Start: time.Time(params.From), End: time.Time(params.To)})
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no slot") {
+				return admin.NewMakeResourceMaintenanceBookingNotFound().WithPayload(calendarError("404", err.Error()))
+			}
+			return admin.NewMakeResourceMaintenanceBookingConflict().WithPayload(calendarError("409", err.Error()))
+		}
+		return admin.NewMakeResourceMaintenanceBookingOK().WithPayload(bookingToModel(booking))
 	}
 }
 

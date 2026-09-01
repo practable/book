@@ -67,3 +67,21 @@ func TestCalendarCreationIsIdempotentAndConsumesAvailability(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, bands[0].Bookable)
 }
+
+func TestCalendarBookingCanBeRescheduledByOwnerWithRevision(t *testing.T) {
+	s, now := newCalendarTestStore(t)
+	selector := CalendarSelector{Policy: "p-a"}
+	original, err := s.MakeCalendarBooking("calendar-user", selector, interval.Interval{Start: now.Add(70 * time.Minute), End: now.Add(80 * time.Minute)}, "reschedule-request")
+	require.NoError(t, err)
+	editable, err := s.GetBookingForEdit(original.Name)
+	require.NoError(t, err)
+	updated, err := s.RescheduleCalendarBooking("calendar-user", original.Name, editable.Revision, selector, interval.Interval{Start: now.Add(80 * time.Minute), End: now.Add(95 * time.Minute)})
+	require.NoError(t, err)
+	require.Equal(t, original.Name, updated.Booking.Name)
+	require.Equal(t, now.Add(95*time.Minute), updated.Booking.When.End)
+
+	_, err = s.RescheduleCalendarBooking("another-user", original.Name, updated.Revision, selector, updated.Booking.When)
+	require.ErrorContains(t, err, "not owned")
+	_, err = s.RescheduleCalendarBooking("calendar-user", original.Name, editable.Revision, selector, updated.Booking.When)
+	require.ErrorIs(t, err, ErrBookingRevision)
+}

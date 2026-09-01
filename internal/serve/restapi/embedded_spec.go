@@ -89,6 +89,98 @@ func init() {
         }
       }
     },
+    "/admin/booking-records": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns a bounded operational projection without exposing booking data through bulk export syntax.",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Search current and historical bookings",
+        "operationId": "QueryBookingRecords",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "slot",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "policy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "user",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "all",
+              "current",
+              "history",
+              "started",
+              "cancelled",
+              "unfulfilled"
+            ],
+            "type": "string",
+            "default": "all",
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int64",
+            "default": 200,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AdminBookingRecord"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/bookings": {
       "get": {
         "security": [
@@ -261,6 +353,48 @@ func init() {
           },
           "409": {
             "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/bookings/{booking_name}/events": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get the durable audit trail for a booking",
+        "operationId": "GetBookingEvents",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BookingEvent"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
           },
           "500": {
             "$ref": "#/responses/InternalError"
@@ -698,6 +832,63 @@ func init() {
         }
       }
     },
+    "/admin/resources/{resource_name}/maintenance-bookings": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Selects an appropriate slot for the resource, may use suspended equipment, and never overlaps another resource-constrained booking.",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create a maintenance booking by physical resource",
+        "operationId": "MakeResourceMaintenanceBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "to",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Booking"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/slots/{slot_name}": {
       "get": {
         "security": [
@@ -890,6 +1081,40 @@ func init() {
         ],
         "summary": "Get actual equipment usage",
         "operationId": "GetUsageSummary",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "slot",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "policy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "user",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "to",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1022,6 +1247,60 @@ func init() {
             "description": "Created or exact retry",
             "schema": {
               "$ref": "#/definitions/Booking"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/calendar/bookings/{booking_name}": {
+      "patch": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Revalidates ownership, policy, usage and availability, then atomically replaces the booking using an optimistic revision.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Move or resize an unstarted booking",
+        "operationId": "RescheduleCalendarBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CalendarBookingEdit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/BookingEdit"
             }
           },
           "400": {
@@ -1941,6 +2220,33 @@ func init() {
         }
       }
     },
+    "AdminBookingRecord": {
+      "type": "object",
+      "required": [
+        "booking",
+        "resource",
+        "collection",
+        "actual_usage"
+      ],
+      "properties": {
+        "actual_usage": {
+          "type": "string"
+        },
+        "booking": {
+          "$ref": "#/definitions/Booking"
+        },
+        "collection": {
+          "type": "string",
+          "enum": [
+            "current",
+            "history"
+          ]
+        },
+        "resource": {
+          "type": "string"
+        }
+      }
+    },
     "Booking": {
       "description": "A booking represents a promise to supply an activity. The booleans are not required because we don't process the booking status when loading old bookings (all old bookings are assumed to have been good bookings)",
       "type": "object",
@@ -2033,6 +2339,30 @@ func init() {
         }
       }
     },
+    "BookingEvent": {
+      "type": "object",
+      "required": [
+        "booking_name",
+        "type",
+        "occurred_at",
+        "actor"
+      ],
+      "properties": {
+        "actor": {
+          "type": "string"
+        },
+        "booking_name": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
     "Bookings": {
       "description": "list of bookings",
       "type": "array",
@@ -2109,6 +2439,30 @@ func init() {
         },
         "user_name": {
           "type": "string"
+        }
+      }
+    },
+    "CalendarBookingEdit": {
+      "type": "object",
+      "required": [
+        "user_name",
+        "revision",
+        "selector",
+        "when"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "selector": {
+          "$ref": "#/definitions/CalendarSelector"
+        },
+        "user_name": {
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/definitions/Interval"
         }
       }
     },
@@ -3274,6 +3628,107 @@ func init() {
         }
       }
     },
+    "/admin/booking-records": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns a bounded operational projection without exposing booking data through bulk export syntax.",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Search current and historical bookings",
+        "operationId": "QueryBookingRecords",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "slot",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "policy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "user",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "all",
+              "current",
+              "history",
+              "started",
+              "cancelled",
+              "unfulfilled"
+            ],
+            "type": "string",
+            "default": "all",
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int64",
+            "default": 200,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AdminBookingRecord"
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/admin/bookings": {
       "get": {
         "security": [
@@ -3479,6 +3934,57 @@ func init() {
           },
           "409": {
             "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/bookings/{booking_name}/events": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get the durable audit trail for a booking",
+        "operationId": "GetBookingEvents",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/BookingEvent"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
             "schema": {
               "$ref": "#/definitions/Error"
             }
@@ -4015,6 +4521,75 @@ func init() {
         }
       }
     },
+    "/admin/resources/{resource_name}/maintenance-bookings": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Selects an appropriate slot for the resource, may use suspended equipment, and never overlaps another resource-constrained booking.",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create a maintenance booking by physical resource",
+        "operationId": "MakeResourceMaintenanceBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "to",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Booking"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/admin/slots/{slot_name}": {
       "get": {
         "security": [
@@ -4243,6 +4818,40 @@ func init() {
         ],
         "summary": "Get actual equipment usage",
         "operationId": "GetUsageSummary",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "slot",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "policy",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "user",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "to",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -4402,6 +5011,75 @@ func init() {
             "description": "Created or exact retry",
             "schema": {
               "$ref": "#/definitions/Booking"
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/calendar/bookings/{booking_name}": {
+      "patch": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Revalidates ownership, policy, usage and availability, then atomically replaces the booking using an optimistic revision.",
+        "tags": [
+          "users"
+        ],
+        "summary": "Move or resize an unstarted booking",
+        "operationId": "RescheduleCalendarBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CalendarBookingEdit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/BookingEdit"
             }
           },
           "400": {
@@ -5489,6 +6167,33 @@ func init() {
         }
       }
     },
+    "AdminBookingRecord": {
+      "type": "object",
+      "required": [
+        "booking",
+        "resource",
+        "collection",
+        "actual_usage"
+      ],
+      "properties": {
+        "actual_usage": {
+          "type": "string"
+        },
+        "booking": {
+          "$ref": "#/definitions/Booking"
+        },
+        "collection": {
+          "type": "string",
+          "enum": [
+            "current",
+            "history"
+          ]
+        },
+        "resource": {
+          "type": "string"
+        }
+      }
+    },
     "Booking": {
       "description": "A booking represents a promise to supply an activity. The booleans are not required because we don't process the booking status when loading old bookings (all old bookings are assumed to have been good bookings)",
       "type": "object",
@@ -5581,6 +6286,30 @@ func init() {
         }
       }
     },
+    "BookingEvent": {
+      "type": "object",
+      "required": [
+        "booking_name",
+        "type",
+        "occurred_at",
+        "actor"
+      ],
+      "properties": {
+        "actor": {
+          "type": "string"
+        },
+        "booking_name": {
+          "type": "string"
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string"
+        }
+      }
+    },
     "Bookings": {
       "description": "list of bookings",
       "type": "array",
@@ -5657,6 +6386,30 @@ func init() {
         },
         "user_name": {
           "type": "string"
+        }
+      }
+    },
+    "CalendarBookingEdit": {
+      "type": "object",
+      "required": [
+        "user_name",
+        "revision",
+        "selector",
+        "when"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "selector": {
+          "$ref": "#/definitions/CalendarSelector"
+        },
+        "user_name": {
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/definitions/Interval"
         }
       }
     },

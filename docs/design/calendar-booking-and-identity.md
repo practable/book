@@ -1,6 +1,6 @@
 # Calendar booking and recoverable ownership
 
-Status: discussion record; implementation deferred.
+Status: calendar catalogue, availability, preview, idempotent creation, and optimistic move/resize APIs implemented; anonymous recovery remains deferred.
 
 ## Calendar interaction
 
@@ -81,6 +81,7 @@ The eventual calendar client requires narrowly scoped operations to:
 - move, shorten, or extend a booking with optimistic concurrency; and
 - recover or claim anonymous bookings using a management capability.
 
-These operations extend the public API only when implemented. The existing API
-and `bookjs` compatibility behaviour remain unchanged by this design record.
-
+Calendar discovery, creation, and owner-authorized move/resize operations are
+now exposed under `/calendar`. The existing API and `bookjs` compatibility
+behaviour remain unchanged. Anonymous recovery remains deliberately deferred
+until its capability lifecycle and delivery mechanism are designed.

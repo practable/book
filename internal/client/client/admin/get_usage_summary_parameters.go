@@ -60,6 +60,29 @@ GetUsageSummaryParams contains all the parameters to send to the API endpoint
 	Typically these are written to a http.Request.
 */
 type GetUsageSummaryParams struct {
+
+	// From.
+	//
+	// Format: date-time
+	From *strfmt.DateTime
+
+	// Policy.
+	Policy *string
+
+	// Resource.
+	Resource *string
+
+	// Slot.
+	Slot *string
+
+	// To.
+	//
+	// Format: date-time
+	To *strfmt.DateTime
+
+	// User.
+	User *string
+
 	timeout    time.Duration
 	Context    context.Context
 	HTTPClient *http.Client
@@ -113,6 +136,72 @@ func (o *GetUsageSummaryParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
+// WithFrom adds the from to the get usage summary params
+func (o *GetUsageSummaryParams) WithFrom(from *strfmt.DateTime) *GetUsageSummaryParams {
+	o.SetFrom(from)
+	return o
+}
+
+// SetFrom adds the from to the get usage summary params
+func (o *GetUsageSummaryParams) SetFrom(from *strfmt.DateTime) {
+	o.From = from
+}
+
+// WithPolicy adds the policy to the get usage summary params
+func (o *GetUsageSummaryParams) WithPolicy(policy *string) *GetUsageSummaryParams {
+	o.SetPolicy(policy)
+	return o
+}
+
+// SetPolicy adds the policy to the get usage summary params
+func (o *GetUsageSummaryParams) SetPolicy(policy *string) {
+	o.Policy = policy
+}
+
+// WithResource adds the resource to the get usage summary params
+func (o *GetUsageSummaryParams) WithResource(resource *string) *GetUsageSummaryParams {
+	o.SetResource(resource)
+	return o
+}
+
+// SetResource adds the resource to the get usage summary params
+func (o *GetUsageSummaryParams) SetResource(resource *string) {
+	o.Resource = resource
+}
+
+// WithSlot adds the slot to the get usage summary params
+func (o *GetUsageSummaryParams) WithSlot(slot *string) *GetUsageSummaryParams {
+	o.SetSlot(slot)
+	return o
+}
+
+// SetSlot adds the slot to the get usage summary params
+func (o *GetUsageSummaryParams) SetSlot(slot *string) {
+	o.Slot = slot
+}
+
+// WithTo adds the to to the get usage summary params
+func (o *GetUsageSummaryParams) WithTo(to *strfmt.DateTime) *GetUsageSummaryParams {
+	o.SetTo(to)
+	return o
+}
+
+// SetTo adds the to to the get usage summary params
+func (o *GetUsageSummaryParams) SetTo(to *strfmt.DateTime) {
+	o.To = to
+}
+
+// WithUser adds the user to the get usage summary params
+func (o *GetUsageSummaryParams) WithUser(user *string) *GetUsageSummaryParams {
+	o.SetUser(user)
+	return o
+}
+
+// SetUser adds the user to the get usage summary params
+func (o *GetUsageSummaryParams) SetUser(user *string) {
+	o.User = user
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *GetUsageSummaryParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -120,6 +209,108 @@ func (o *GetUsageSummaryParams) WriteToRequest(r runtime.ClientRequest, reg strf
 		return err
 	}
 	var res []error
+
+	if o.From != nil {
+
+		// query param from
+		var qrFrom strfmt.DateTime
+
+		if o.From != nil {
+			qrFrom = *o.From
+		}
+		qFrom := qrFrom.String()
+		if qFrom != "" {
+
+			if err := r.SetQueryParam("from", qFrom); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Policy != nil {
+
+		// query param policy
+		var qrPolicy string
+
+		if o.Policy != nil {
+			qrPolicy = *o.Policy
+		}
+		qPolicy := qrPolicy
+		if qPolicy != "" {
+
+			if err := r.SetQueryParam("policy", qPolicy); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Resource != nil {
+
+		// query param resource
+		var qrResource string
+
+		if o.Resource != nil {
+			qrResource = *o.Resource
+		}
+		qResource := qrResource
+		if qResource != "" {
+
+			if err := r.SetQueryParam("resource", qResource); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.Slot != nil {
+
+		// query param slot
+		var qrSlot string
+
+		if o.Slot != nil {
+			qrSlot = *o.Slot
+		}
+		qSlot := qrSlot
+		if qSlot != "" {
+
+			if err := r.SetQueryParam("slot", qSlot); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.To != nil {
+
+		// query param to
+		var qrTo strfmt.DateTime
+
+		if o.To != nil {
+			qrTo = *o.To
+		}
+		qTo := qrTo.String()
+		if qTo != "" {
+
+			if err := r.SetQueryParam("to", qTo); err != nil {
+				return err
+			}
+		}
+	}
+
+	if o.User != nil {
+
+		// query param user
+		var qrUser string
+
+		if o.User != nil {
+			qrUser = *o.User
+		}
+		qUser := qrUser
+		if qUser != "" {
+
+			if err := r.SetQueryParam("user", qUser); err != nil {
+				return err
+			}
+		}
+	}
 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)

@@ -749,6 +749,35 @@ func makeCalendarBookingHandler(config config.ServerConfig) func(users.MakeCalen
 	}
 }
 
+func rescheduleCalendarBookingHandler(config config.ServerConfig) func(users.RescheduleCalendarBookingParams, interface{}) middleware.Responder {
+	return func(params users.RescheduleCalendarBookingParams, principal interface{}) middleware.Responder {
+		request := params.Request
+		if request == nil || request.UserName == nil || request.Selector == nil || request.Revision == nil {
+			return users.NewRescheduleCalendarBookingBadRequest().WithPayload(calendarError("400", "incomplete calendar booking edit"))
+		}
+		isAdmin, _, err := authorizeCalendarUser(principal, *request.UserName)
+		if err != nil {
+			return users.NewRescheduleCalendarBookingUnauthorized().WithPayload(calendarError("401", err.Error()))
+		}
+		selector := calendarSelectorFromModel(request.Selector)
+		if !isAdmin && !calendarPolicyAllowed(config.Store, *request.UserName, selector.Policy) {
+			return users.NewRescheduleCalendarBookingUnauthorized().WithPayload(calendarError("401", "policy is not assigned to this user"))
+		}
+		when, err := calendarInterval(request.When)
+		if err != nil {
+			return users.NewRescheduleCalendarBookingBadRequest().WithPayload(calendarError("400", err.Error()))
+		}
+		updated, err := config.Store.RescheduleCalendarBooking(*request.UserName, params.BookingName, *request.Revision, selector, when)
+		if err != nil {
+			if errors.Is(err, store.ErrPersistentNotFound) {
+				return users.NewRescheduleCalendarBookingNotFound().WithPayload(calendarError("404", "booking not found"))
+			}
+			return users.NewRescheduleCalendarBookingConflict().WithPayload(calendarError("409", err.Error()))
+		}
+		return users.NewRescheduleCalendarBookingOK().WithPayload(editableBookingToModel(updated))
+	}
+}
+
 // getStoreStatusUserHandler
 func getStoreStatusUserHandler(config config.ServerConfig) func(users.GetStoreStatusUserParams, interface{}) middleware.Responder {
 	return func(params users.GetStoreStatusUserParams, principal interface{}) middleware.Responder {

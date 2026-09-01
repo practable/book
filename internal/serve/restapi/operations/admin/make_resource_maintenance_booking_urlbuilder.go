@@ -9,18 +9,17 @@ import (
 	"errors"
 	"net/url"
 	golangswaggerpaths "path"
+	"strings"
 
 	"github.com/go-openapi/strfmt"
 )
 
-// GetUsageSummaryURL generates an URL for the get usage summary operation
-type GetUsageSummaryURL struct {
-	From     *strfmt.DateTime
-	Policy   *string
-	Resource *string
-	Slot     *string
-	To       *strfmt.DateTime
-	User     *string
+// MakeResourceMaintenanceBookingURL generates an URL for the make resource maintenance booking operation
+type MakeResourceMaintenanceBookingURL struct {
+	ResourceName string
+
+	From strfmt.DateTime
+	To   strfmt.DateTime
 
 	_basePath string
 	// avoid unkeyed usage
@@ -30,7 +29,7 @@ type GetUsageSummaryURL struct {
 // WithBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetUsageSummaryURL) WithBasePath(bp string) *GetUsageSummaryURL {
+func (o *MakeResourceMaintenanceBookingURL) WithBasePath(bp string) *MakeResourceMaintenanceBookingURL {
 	o.SetBasePath(bp)
 	return o
 }
@@ -38,15 +37,22 @@ func (o *GetUsageSummaryURL) WithBasePath(bp string) *GetUsageSummaryURL {
 // SetBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetUsageSummaryURL) SetBasePath(bp string) {
+func (o *MakeResourceMaintenanceBookingURL) SetBasePath(bp string) {
 	o._basePath = bp
 }
 
 // Build a url path and query string
-func (o *GetUsageSummaryURL) Build() (*url.URL, error) {
+func (o *MakeResourceMaintenanceBookingURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/admin/usage"
+	var _path = "/admin/resources/{resource_name}/maintenance-bookings"
+
+	resourceName := o.ResourceName
+	if resourceName != "" {
+		_path = strings.Replace(_path, "{resource_name}", resourceName, -1)
+	} else {
+		return nil, errors.New("resourceName is required on MakeResourceMaintenanceBookingURL")
+	}
 
 	_basePath := o._basePath
 	if _basePath == "" {
@@ -56,52 +62,14 @@ func (o *GetUsageSummaryURL) Build() (*url.URL, error) {
 
 	qs := make(url.Values)
 
-	var fromQ string
-	if o.From != nil {
-		fromQ = o.From.String()
-	}
+	fromQ := o.From.String()
 	if fromQ != "" {
 		qs.Set("from", fromQ)
 	}
 
-	var policyQ string
-	if o.Policy != nil {
-		policyQ = *o.Policy
-	}
-	if policyQ != "" {
-		qs.Set("policy", policyQ)
-	}
-
-	var resourceQ string
-	if o.Resource != nil {
-		resourceQ = *o.Resource
-	}
-	if resourceQ != "" {
-		qs.Set("resource", resourceQ)
-	}
-
-	var slotQ string
-	if o.Slot != nil {
-		slotQ = *o.Slot
-	}
-	if slotQ != "" {
-		qs.Set("slot", slotQ)
-	}
-
-	var toQ string
-	if o.To != nil {
-		toQ = o.To.String()
-	}
+	toQ := o.To.String()
 	if toQ != "" {
 		qs.Set("to", toQ)
-	}
-
-	var userQ string
-	if o.User != nil {
-		userQ = *o.User
-	}
-	if userQ != "" {
-		qs.Set("user", userQ)
 	}
 
 	_result.RawQuery = qs.Encode()
@@ -110,7 +78,7 @@ func (o *GetUsageSummaryURL) Build() (*url.URL, error) {
 }
 
 // Must is a helper function to panic when the url builder returns an error
-func (o *GetUsageSummaryURL) Must(u *url.URL, err error) *url.URL {
+func (o *MakeResourceMaintenanceBookingURL) Must(u *url.URL, err error) *url.URL {
 	if err != nil {
 		panic(err)
 	}
@@ -121,17 +89,17 @@ func (o *GetUsageSummaryURL) Must(u *url.URL, err error) *url.URL {
 }
 
 // String returns the string representation of the path with query string
-func (o *GetUsageSummaryURL) String() string {
+func (o *MakeResourceMaintenanceBookingURL) String() string {
 	return o.Must(o.Build()).String()
 }
 
 // BuildFull builds a full url with scheme, host, path and query string
-func (o *GetUsageSummaryURL) BuildFull(scheme, host string) (*url.URL, error) {
+func (o *MakeResourceMaintenanceBookingURL) BuildFull(scheme, host string) (*url.URL, error) {
 	if scheme == "" {
-		return nil, errors.New("scheme is required for a full url on GetUsageSummaryURL")
+		return nil, errors.New("scheme is required for a full url on MakeResourceMaintenanceBookingURL")
 	}
 	if host == "" {
-		return nil, errors.New("host is required for a full url on GetUsageSummaryURL")
+		return nil, errors.New("host is required for a full url on MakeResourceMaintenanceBookingURL")
 	}
 
 	base, err := o.Build()
@@ -145,6 +113,6 @@ func (o *GetUsageSummaryURL) BuildFull(scheme, host string) (*url.URL, error) {
 }
 
 // StringFull returns the string representation of a complete url
-func (o *GetUsageSummaryURL) StringFull(scheme, host string) string {
+func (o *MakeResourceMaintenanceBookingURL) StringFull(scheme, host string) string {
 	return o.Must(o.BuildFull(scheme, host)).String()
 }

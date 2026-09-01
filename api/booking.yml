@@ -109,6 +109,7 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+
     put:
       summary: Atomically replace one unstarted booking
       description: Supersedes the original booking and inserts the replacement in one transaction. The supplied original name and revision must match the exported edit envelope. Exact retries are idempotent; stale, started, or conflicting edits return 409.
@@ -144,6 +145,52 @@ paths:
           $ref: '#/responses/Conflict'
         500:
           $ref: '#/responses/InternalError'
+
+  /admin/booking-records:
+    get:
+      summary: Search current and historical bookings
+      description: Returns a bounded operational projection without exposing booking data through bulk export syntax.
+      tags: [admin]
+      operationId: QueryBookingRecords
+      parameters:
+      - {name: resource, in: query, type: string}
+      - {name: slot, in: query, type: string}
+      - {name: policy, in: query, type: string}
+      - {name: user, in: query, type: string}
+      - {name: state, in: query, type: string, enum: [all, current, history, started, cancelled, unfulfilled], default: all}
+      - {name: from, in: query, type: string, format: date-time}
+      - {name: to, in: query, type: string, format: date-time}
+      - {name: limit, in: query, type: integer, format: int64, minimum: 1, maximum: 1000, default: 200}
+      security:
+      - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            type: array
+            items: {$ref: '#/definitions/AdminBookingRecord'}
+        400: {$ref: '#/responses/BadRequest'}
+        401: {$ref: '#/responses/Unauthorized'}
+        500: {$ref: '#/responses/InternalError'}
+
+  /admin/bookings/{booking_name}/events:
+    get:
+      summary: Get the durable audit trail for a booking
+      tags: [admin]
+      operationId: GetBookingEvents
+      parameters:
+      - {name: booking_name, in: path, required: true, type: string}
+      security:
+      - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            type: array
+            items: {$ref: '#/definitions/BookingEvent'}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        500: {$ref: '#/responses/InternalError'}
 
   /admin/manifest:
     get:
@@ -345,6 +392,13 @@ paths:
       operationId: GetUsageSummary
       produces:
       - application/json
+      parameters:
+      - {name: resource, in: query, type: string}
+      - {name: slot, in: query, type: string}
+      - {name: policy, in: query, type: string}
+      - {name: user, in: query, type: string}
+      - {name: from, in: query, type: string, format: date-time}
+      - {name: to, in: query, type: string, format: date-time}
       security:
         - Bearer: []
       responses:
@@ -396,6 +450,27 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+
+  /admin/resources/{resource_name}/maintenance-bookings:
+    post:
+      summary: Create a maintenance booking by physical resource
+      description: Selects an appropriate slot for the resource, may use suspended equipment, and never overlaps another resource-constrained booking.
+      tags: [admin]
+      operationId: MakeResourceMaintenanceBooking
+      parameters:
+      - {name: resource_name, in: path, required: true, type: string}
+      - {name: from, in: query, required: true, type: string, format: date-time}
+      - {name: to, in: query, required: true, type: string, format: date-time}
+      security:
+      - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema: {$ref: '#/definitions/Booking'}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        409: {$ref: '#/responses/Conflict'}
+        500: {$ref: '#/responses/InternalError'}
 
   /admin/booking-overrides/{booking_name}/cancel:
     post:
@@ -792,6 +867,30 @@ paths:
           $ref: '#/responses/Conflict'
         500:
           $ref: '#/responses/InternalError'
+
+  /calendar/bookings/{booking_name}:
+    patch:
+      summary: Move or resize an unstarted booking
+      description: Revalidates ownership, policy, usage and availability, then atomically replaces the booking using an optimistic revision.
+      tags: [users]
+      operationId: RescheduleCalendarBooking
+      parameters:
+      - {name: booking_name, in: path, required: true, type: string}
+      - name: request
+        in: body
+        required: true
+        schema: {$ref: '#/definitions/CalendarBookingEdit'}
+      security:
+      - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema: {$ref: '#/definitions/BookingEdit'}
+        400: {$ref: '#/responses/BadRequest'}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        409: {$ref: '#/responses/Conflict'}
+        500: {$ref: '#/responses/InternalError'}
           
   /groups/{group_name}:
     get:
@@ -1418,6 +1517,29 @@ definitions:
     - user
     - when
 
+  AdminBookingRecord:
+    type: object
+    properties:
+      booking:
+        $ref: '#/definitions/Booking'
+      resource:
+        type: string
+      collection:
+        type: string
+        enum: [current, history]
+      actual_usage:
+        type: string
+    required: [booking, resource, collection, actual_usage]
+
+  BookingEvent:
+    type: object
+    properties:
+      booking_name: {type: string}
+      type: {type: string}
+      occurred_at: {type: string, format: date-time}
+      actor: {type: string}
+    required: [booking_name, type, occurred_at, actor]
+
   Bookings:
     description: list of bookings
     type: array
@@ -1565,6 +1687,15 @@ definitions:
     - user_name
     - selector
     - when
+
+  CalendarBookingEdit:
+    type: object
+    properties:
+      user_name: {type: string}
+      revision: {type: integer, format: int64}
+      selector: {$ref: '#/definitions/CalendarSelector'}
+      when: {$ref: '#/definitions/Interval'}
+    required: [user_name, revision, selector, when]
 
   CalendarBookingPreview:
     type: object

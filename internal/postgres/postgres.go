@@ -490,15 +490,19 @@ func (r *Repository) ReplaceBooking(ctx context.Context, originalName string, ex
 		return store.PersistentBooking{}, false, mapWriteError(err)
 	}
 	when := request.Now.UTC()
-	if err := insertEvent(ctx, tx, expectedRevision, originalName, "superseded", when, "admin-edit"); err != nil {
+	actor := request.Actor
+	if actor == "" {
+		actor = "admin-edit"
+	}
+	if err := insertEvent(ctx, tx, expectedRevision, originalName, "superseded", when, actor); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
-	if err := insertEvent(ctx, tx, newRevision, request.Booking.Name, "created", when, "admin-edit"); err != nil {
+	if err := insertEvent(ctx, tx, newRevision, request.Booking.Name, "created", when, actor); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO public.booking_replacements
 		(old_booking_row_id,new_booking_row_id,replaced_at,replaced_at_ns,actor)
-		VALUES($1,$2,$3,$4,'admin-edit')`, expectedRevision, newRevision, when, when.UnixNano()); err != nil {
+		VALUES($1,$2,$3,$4,$5)`, expectedRevision, newRevision, when, when.UnixNano(), actor); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
 	persisted, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", newRevision))
@@ -598,6 +602,35 @@ func insertEvent(ctx context.Context, tx pgx.Tx, rowID int64, name, kind string,
 		(booking_row_id,booking_name,event_type,occurred_at,occurred_at_ns,actor)
 		VALUES($1,$2,$3,$4,$5,$6)`, rowID, name, kind, at.UTC(), at.UnixNano(), actor)
 	return err
+}
+
+// ListBookingEvents returns the append-only lifecycle trail for every revision
+// that has carried the public booking name.
+func (r *Repository) ListBookingEvents(ctx context.Context, name string) ([]store.BookingEvent, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	rows, err := r.pool.Query(ctx, `SELECT booking_name,event_type,occurred_at,actor
+		FROM public.booking_events WHERE booking_name=$1 ORDER BY occurred_at_ns,event_id`, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	events := make([]store.BookingEvent, 0)
+	for rows.Next() {
+		var event store.BookingEvent
+		if err := rows.Scan(&event.BookingName, &event.Type, &event.OccurredAt, &event.Actor); err != nil {
+			return nil, err
+		}
+		event.OccurredAt = event.OccurredAt.UTC()
+		events = append(events, event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(events) == 0 {
+		return nil, store.ErrPersistentNotFound
+	}
+	return events, nil
 }
 
 func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Time, actor string, charge time.Duration, manifestVersion int64) (store.PersistentBooking, error) {

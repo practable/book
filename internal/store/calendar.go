@@ -315,3 +315,44 @@ func (s *Store) MakeCalendarBooking(user string, selector CalendarSelector, when
 	}
 	return Booking{}, lastErr
 }
+
+// RescheduleCalendarBooking moves or resizes an unstarted booking using an
+// optimistic revision. The replacement is revalidated against the current
+// manifest, policy usage, and database overlap constraints.
+func (s *Store) RescheduleCalendarBooking(user, name string, revision int64, selector CalendarSelector, when interval.Interval) (EditableBooking, error) {
+	current, err := s.GetBookingForEdit(name)
+	if err != nil {
+		return EditableBooking{}, err
+	}
+	if current.Booking.User != user {
+		return EditableBooking{}, errors.New("booking is not owned by this user")
+	}
+	if current.Revision != revision {
+		return EditableBooking{}, ErrBookingRevision
+	}
+	s.Lock()
+	slots, err := s.calendarSlotsLocked(selector)
+	s.Unlock()
+	if err != nil {
+		return EditableBooking{}, err
+	}
+	var lastErr error
+	for _, slotName := range slots {
+		replacement := current.Booking
+		replacement.Policy = selector.Policy
+		replacement.Slot = slotName
+		replacement.When = when
+		updated, err := s.replaceBooking(EditableBooking{OriginalName: name, Revision: revision, Booking: replacement}, "user:"+user)
+		if err == nil {
+			return updated, nil
+		}
+		lastErr = err
+		if errors.Is(err, ErrBookingRevision) || errors.Is(err, ErrBookingStarted) || errors.Is(err, ErrMaxBookings) || errors.Is(err, ErrMaxUsage) {
+			break
+		}
+	}
+	if lastErr == nil {
+		lastErr = ErrBookingConflict
+	}
+	return EditableBooking{}, lastErr
+}

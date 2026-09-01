@@ -12,22 +12,34 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 	"github.com/go-openapi/validate"
 )
 
-// NewGetUsageSummaryParams creates a new GetUsageSummaryParams object
-//
-// There are no default values defined in the spec.
-func NewGetUsageSummaryParams() GetUsageSummaryParams {
+// NewQueryBookingRecordsParams creates a new QueryBookingRecordsParams object
+// with the default values initialized.
+func NewQueryBookingRecordsParams() QueryBookingRecordsParams {
 
-	return GetUsageSummaryParams{}
+	var (
+		// initialize parameters with default values
+
+		limitDefault = int64(200)
+
+		stateDefault = string("all")
+	)
+
+	return QueryBookingRecordsParams{
+		Limit: &limitDefault,
+
+		State: &stateDefault,
+	}
 }
 
-// GetUsageSummaryParams contains all the bound params for the get usage summary operation
+// QueryBookingRecordsParams contains all the bound params for the query booking records operation
 // typically these are obtained from a http.Request
 //
-// swagger:parameters GetUsageSummary
-type GetUsageSummaryParams struct {
+// swagger:parameters QueryBookingRecords
+type QueryBookingRecordsParams struct {
 
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
@@ -36,6 +48,13 @@ type GetUsageSummaryParams struct {
 	  In: query
 	*/
 	From *strfmt.DateTime
+	/*
+	  Maximum: 1000
+	  Minimum: 1
+	  In: query
+	  Default: 200
+	*/
+	Limit *int64
 	/*
 	  In: query
 	*/
@@ -50,6 +69,11 @@ type GetUsageSummaryParams struct {
 	Slot *string
 	/*
 	  In: query
+	  Default: "all"
+	*/
+	State *string
+	/*
+	  In: query
 	*/
 	To *strfmt.DateTime
 	/*
@@ -61,8 +85,8 @@ type GetUsageSummaryParams struct {
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
 // for simple values it will use straight method calls.
 //
-// To ensure default values, the struct must have been initialized with NewGetUsageSummaryParams() beforehand.
-func (o *GetUsageSummaryParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
+// To ensure default values, the struct must have been initialized with NewQueryBookingRecordsParams() beforehand.
+func (o *QueryBookingRecordsParams) BindRequest(r *http.Request, route *middleware.MatchedRoute) error {
 	var res []error
 
 	o.HTTPRequest = r
@@ -71,6 +95,11 @@ func (o *GetUsageSummaryParams) BindRequest(r *http.Request, route *middleware.M
 
 	qFrom, qhkFrom, _ := qs.GetOK("from")
 	if err := o.bindFrom(qFrom, qhkFrom, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qLimit, qhkLimit, _ := qs.GetOK("limit")
+	if err := o.bindLimit(qLimit, qhkLimit, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -86,6 +115,11 @@ func (o *GetUsageSummaryParams) BindRequest(r *http.Request, route *middleware.M
 
 	qSlot, qhkSlot, _ := qs.GetOK("slot")
 	if err := o.bindSlot(qSlot, qhkSlot, route.Formats); err != nil {
+		res = append(res, err)
+	}
+
+	qState, qhkState, _ := qs.GetOK("state")
+	if err := o.bindState(qState, qhkState, route.Formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -105,7 +139,7 @@ func (o *GetUsageSummaryParams) BindRequest(r *http.Request, route *middleware.M
 }
 
 // bindFrom binds and validates parameter From from query.
-func (o *GetUsageSummaryParams) bindFrom(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *QueryBookingRecordsParams) bindFrom(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -133,7 +167,7 @@ func (o *GetUsageSummaryParams) bindFrom(rawData []string, hasKey bool, formats 
 }
 
 // validateFrom carries on validations for parameter From
-func (o *GetUsageSummaryParams) validateFrom(formats strfmt.Registry) error {
+func (o *QueryBookingRecordsParams) validateFrom(formats strfmt.Registry) error {
 
 	if err := validate.FormatOf("from", "query", "date-time", o.From.String(), formats); err != nil {
 		return err
@@ -141,8 +175,50 @@ func (o *GetUsageSummaryParams) validateFrom(formats strfmt.Registry) error {
 	return nil
 }
 
+// bindLimit binds and validates parameter Limit from query.
+func (o *QueryBookingRecordsParams) bindLimit(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewQueryBookingRecordsParams()
+		return nil
+	}
+
+	value, err := swag.ConvertInt64(raw)
+	if err != nil {
+		return errors.InvalidType("limit", "query", "int64", raw)
+	}
+	o.Limit = &value
+
+	if err := o.validateLimit(formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateLimit carries on validations for parameter Limit
+func (o *QueryBookingRecordsParams) validateLimit(formats strfmt.Registry) error {
+
+	if err := validate.MinimumInt("limit", "query", *o.Limit, 1, false); err != nil {
+		return err
+	}
+
+	if err := validate.MaximumInt("limit", "query", *o.Limit, 1000, false); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // bindPolicy binds and validates parameter Policy from query.
-func (o *GetUsageSummaryParams) bindPolicy(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *QueryBookingRecordsParams) bindPolicy(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -160,7 +236,7 @@ func (o *GetUsageSummaryParams) bindPolicy(rawData []string, hasKey bool, format
 }
 
 // bindResource binds and validates parameter Resource from query.
-func (o *GetUsageSummaryParams) bindResource(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *QueryBookingRecordsParams) bindResource(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -178,7 +254,7 @@ func (o *GetUsageSummaryParams) bindResource(rawData []string, hasKey bool, form
 }
 
 // bindSlot binds and validates parameter Slot from query.
-func (o *GetUsageSummaryParams) bindSlot(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *QueryBookingRecordsParams) bindSlot(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -195,8 +271,41 @@ func (o *GetUsageSummaryParams) bindSlot(rawData []string, hasKey bool, formats 
 	return nil
 }
 
+// bindState binds and validates parameter State from query.
+func (o *QueryBookingRecordsParams) bindState(rawData []string, hasKey bool, formats strfmt.Registry) error {
+	var raw string
+	if len(rawData) > 0 {
+		raw = rawData[len(rawData)-1]
+	}
+
+	// Required: false
+	// AllowEmptyValue: false
+
+	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewQueryBookingRecordsParams()
+		return nil
+	}
+	o.State = &raw
+
+	if err := o.validateState(formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateState carries on validations for parameter State
+func (o *QueryBookingRecordsParams) validateState(formats strfmt.Registry) error {
+
+	if err := validate.EnumCase("state", "query", *o.State, []interface{}{"all", "current", "history", "started", "cancelled", "unfulfilled"}, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // bindTo binds and validates parameter To from query.
-func (o *GetUsageSummaryParams) bindTo(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *QueryBookingRecordsParams) bindTo(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]
@@ -224,7 +333,7 @@ func (o *GetUsageSummaryParams) bindTo(rawData []string, hasKey bool, formats st
 }
 
 // validateTo carries on validations for parameter To
-func (o *GetUsageSummaryParams) validateTo(formats strfmt.Registry) error {
+func (o *QueryBookingRecordsParams) validateTo(formats strfmt.Registry) error {
 
 	if err := validate.FormatOf("to", "query", "date-time", o.To.String(), formats); err != nil {
 		return err
@@ -233,7 +342,7 @@ func (o *GetUsageSummaryParams) validateTo(formats strfmt.Registry) error {
 }
 
 // bindUser binds and validates parameter User from query.
-func (o *GetUsageSummaryParams) bindUser(rawData []string, hasKey bool, formats strfmt.Registry) error {
+func (o *QueryBookingRecordsParams) bindUser(rawData []string, hasKey bool, formats strfmt.Registry) error {
 	var raw string
 	if len(rawData) > 0 {
 		raw = rawData[len(rawData)-1]

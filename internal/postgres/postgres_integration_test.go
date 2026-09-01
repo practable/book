@@ -105,6 +105,37 @@ func TestMigrationAndRestartRecovery(t *testing.T) {
 	require.Equal(t, []string{"course-group"}, state.Groups["opaque-user"])
 }
 
+func TestBookingEventsAreAvailableForAdminAudit(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	created, _, err := repository.CreateBooking(ctx, request("audit-api", "opaque-user", "slot-a", "resource-a", start, start.Add(time.Hour)))
+	require.NoError(t, err)
+	_, err = repository.StartBooking(ctx, created.Booking.Name, start.Add(time.Minute), 0)
+	require.NoError(t, err)
+	_, err = repository.CancelBooking(ctx, created.Booking.Name, start.Add(10*time.Minute), "technician: repair", 10*time.Minute, 0)
+	require.NoError(t, err)
+	events, err := repository.ListBookingEvents(ctx, created.Booking.Name)
+	require.NoError(t, err)
+	require.Equal(t, []string{"created", "started", "cancelled"}, []string{events[0].Type, events[1].Type, events[2].Type})
+	require.Equal(t, "technician: repair", events[2].Actor)
+}
+
+func TestBookingReplacementRecordsItsActualActor(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	created, _, err := repository.CreateBooking(ctx, request("self-edit", "opaque-user", "slot-a", "resource-a", start, start.Add(time.Hour)))
+	require.NoError(t, err)
+	replacement := request("self-edit", "opaque-user", "slot-a", "resource-a", start.Add(time.Hour), start.Add(2*time.Hour))
+	replacement.Actor = "user:opaque-user"
+	_, _, err = repository.ReplaceBooking(ctx, created.Booking.Name, created.Revision, replacement)
+	require.NoError(t, err)
+	events, err := repository.ListBookingEvents(ctx, created.Booking.Name)
+	require.NoError(t, err)
+	require.Equal(t, "user:opaque-user", events[len(events)-1].Actor)
+}
+
 func TestMaintenanceStateSurvivesRestart(t *testing.T) {
 	repository := integrationRepository(t)
 	message := "Technicians replacing camera"

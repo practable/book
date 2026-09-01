@@ -11,14 +11,17 @@ import (
 	golangswaggerpaths "path"
 
 	"github.com/go-openapi/strfmt"
+	"github.com/go-openapi/swag"
 )
 
-// GetUsageSummaryURL generates an URL for the get usage summary operation
-type GetUsageSummaryURL struct {
+// QueryBookingRecordsURL generates an URL for the query booking records operation
+type QueryBookingRecordsURL struct {
 	From     *strfmt.DateTime
+	Limit    *int64
 	Policy   *string
 	Resource *string
 	Slot     *string
+	State    *string
 	To       *strfmt.DateTime
 	User     *string
 
@@ -30,7 +33,7 @@ type GetUsageSummaryURL struct {
 // WithBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetUsageSummaryURL) WithBasePath(bp string) *GetUsageSummaryURL {
+func (o *QueryBookingRecordsURL) WithBasePath(bp string) *QueryBookingRecordsURL {
 	o.SetBasePath(bp)
 	return o
 }
@@ -38,15 +41,15 @@ func (o *GetUsageSummaryURL) WithBasePath(bp string) *GetUsageSummaryURL {
 // SetBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetUsageSummaryURL) SetBasePath(bp string) {
+func (o *QueryBookingRecordsURL) SetBasePath(bp string) {
 	o._basePath = bp
 }
 
 // Build a url path and query string
-func (o *GetUsageSummaryURL) Build() (*url.URL, error) {
+func (o *QueryBookingRecordsURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/admin/usage"
+	var _path = "/admin/booking-records"
 
 	_basePath := o._basePath
 	if _basePath == "" {
@@ -62,6 +65,14 @@ func (o *GetUsageSummaryURL) Build() (*url.URL, error) {
 	}
 	if fromQ != "" {
 		qs.Set("from", fromQ)
+	}
+
+	var limitQ string
+	if o.Limit != nil {
+		limitQ = swag.FormatInt64(*o.Limit)
+	}
+	if limitQ != "" {
+		qs.Set("limit", limitQ)
 	}
 
 	var policyQ string
@@ -88,6 +99,14 @@ func (o *GetUsageSummaryURL) Build() (*url.URL, error) {
 		qs.Set("slot", slotQ)
 	}
 
+	var stateQ string
+	if o.State != nil {
+		stateQ = *o.State
+	}
+	if stateQ != "" {
+		qs.Set("state", stateQ)
+	}
+
 	var toQ string
 	if o.To != nil {
 		toQ = o.To.String()
@@ -110,7 +129,7 @@ func (o *GetUsageSummaryURL) Build() (*url.URL, error) {
 }
 
 // Must is a helper function to panic when the url builder returns an error
-func (o *GetUsageSummaryURL) Must(u *url.URL, err error) *url.URL {
+func (o *QueryBookingRecordsURL) Must(u *url.URL, err error) *url.URL {
 	if err != nil {
 		panic(err)
 	}
@@ -121,17 +140,17 @@ func (o *GetUsageSummaryURL) Must(u *url.URL, err error) *url.URL {
 }
 
 // String returns the string representation of the path with query string
-func (o *GetUsageSummaryURL) String() string {
+func (o *QueryBookingRecordsURL) String() string {
 	return o.Must(o.Build()).String()
 }
 
 // BuildFull builds a full url with scheme, host, path and query string
-func (o *GetUsageSummaryURL) BuildFull(scheme, host string) (*url.URL, error) {
+func (o *QueryBookingRecordsURL) BuildFull(scheme, host string) (*url.URL, error) {
 	if scheme == "" {
-		return nil, errors.New("scheme is required for a full url on GetUsageSummaryURL")
+		return nil, errors.New("scheme is required for a full url on QueryBookingRecordsURL")
 	}
 	if host == "" {
-		return nil, errors.New("host is required for a full url on GetUsageSummaryURL")
+		return nil, errors.New("host is required for a full url on QueryBookingRecordsURL")
 	}
 
 	base, err := o.Build()
@@ -145,6 +164,6 @@ func (o *GetUsageSummaryURL) BuildFull(scheme, host string) (*url.URL, error) {
 }
 
 // StringFull returns the string representation of a complete url
-func (o *GetUsageSummaryURL) StringFull(scheme, host string) string {
+func (o *QueryBookingRecordsURL) StringFull(scheme, host string) string {
 	return o.Must(o.BuildFull(scheme, host)).String()
 }

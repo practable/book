@@ -80,6 +80,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersGetAvailabilityHandler: users.GetAvailabilityHandlerFunc(func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetAvailability has not yet been implemented")
 		}),
+		AdminGetBookingEventsHandler: admin.GetBookingEventsHandlerFunc(func(params admin.GetBookingEventsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetBookingEvents has not yet been implemented")
+		}),
 		UsersGetBookingsForUserHandler: users.GetBookingsForUserHandlerFunc(func(params users.GetBookingsForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetBookingsForUser has not yet been implemented")
 		}),
@@ -128,11 +131,17 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminMakeMaintenanceBookingHandler: admin.MakeMaintenanceBookingHandlerFunc(func(params admin.MakeMaintenanceBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.MakeMaintenanceBooking has not yet been implemented")
 		}),
+		AdminMakeResourceMaintenanceBookingHandler: admin.MakeResourceMaintenanceBookingHandlerFunc(func(params admin.MakeResourceMaintenanceBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.MakeResourceMaintenanceBooking has not yet been implemented")
+		}),
 		AdminOverrideCancelBookingHandler: admin.OverrideCancelBookingHandlerFunc(func(params admin.OverrideCancelBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.OverrideCancelBooking has not yet been implemented")
 		}),
 		UsersPreviewCalendarBookingHandler: users.PreviewCalendarBookingHandlerFunc(func(params users.PreviewCalendarBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.PreviewCalendarBooking has not yet been implemented")
+		}),
+		AdminQueryBookingRecordsHandler: admin.QueryBookingRecordsHandlerFunc(func(params admin.QueryBookingRecordsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.QueryBookingRecords has not yet been implemented")
 		}),
 		UsersQueryCalendarAvailabilityHandler: users.QueryCalendarAvailabilityHandlerFunc(func(params users.QueryCalendarAvailabilityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.QueryCalendarAvailability has not yet been implemented")
@@ -148,6 +157,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		}),
 		AdminReplaceOldBookingsHandler: admin.ReplaceOldBookingsHandlerFunc(func(params admin.ReplaceOldBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceOldBookings has not yet been implemented")
+		}),
+		UsersRescheduleCalendarBookingHandler: users.RescheduleCalendarBookingHandlerFunc(func(params users.RescheduleCalendarBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation users.RescheduleCalendarBooking has not yet been implemented")
 		}),
 		AdminSetResourceIsAvailableHandler: admin.SetResourceIsAvailableHandlerFunc(func(params admin.SetResourceIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.SetResourceIsAvailable has not yet been implemented")
@@ -245,6 +257,8 @@ type ServeAPI struct {
 	UsersGetActivityHandler users.GetActivityHandler
 	// UsersGetAvailabilityHandler sets the operation handler for the get availability operation
 	UsersGetAvailabilityHandler users.GetAvailabilityHandler
+	// AdminGetBookingEventsHandler sets the operation handler for the get booking events operation
+	AdminGetBookingEventsHandler admin.GetBookingEventsHandler
 	// UsersGetBookingsForUserHandler sets the operation handler for the get bookings for user operation
 	UsersGetBookingsForUserHandler users.GetBookingsForUserHandler
 	// UsersGetCalendarCatalogueHandler sets the operation handler for the get calendar catalogue operation
@@ -277,10 +291,14 @@ type ServeAPI struct {
 	UsersMakeCalendarBookingHandler users.MakeCalendarBookingHandler
 	// AdminMakeMaintenanceBookingHandler sets the operation handler for the make maintenance booking operation
 	AdminMakeMaintenanceBookingHandler admin.MakeMaintenanceBookingHandler
+	// AdminMakeResourceMaintenanceBookingHandler sets the operation handler for the make resource maintenance booking operation
+	AdminMakeResourceMaintenanceBookingHandler admin.MakeResourceMaintenanceBookingHandler
 	// AdminOverrideCancelBookingHandler sets the operation handler for the override cancel booking operation
 	AdminOverrideCancelBookingHandler admin.OverrideCancelBookingHandler
 	// UsersPreviewCalendarBookingHandler sets the operation handler for the preview calendar booking operation
 	UsersPreviewCalendarBookingHandler users.PreviewCalendarBookingHandler
+	// AdminQueryBookingRecordsHandler sets the operation handler for the query booking records operation
+	AdminQueryBookingRecordsHandler admin.QueryBookingRecordsHandler
 	// UsersQueryCalendarAvailabilityHandler sets the operation handler for the query calendar availability operation
 	UsersQueryCalendarAvailabilityHandler users.QueryCalendarAvailabilityHandler
 	// AdminReplaceBookingHandler sets the operation handler for the replace booking operation
@@ -291,6 +309,8 @@ type ServeAPI struct {
 	AdminReplaceManifestHandler admin.ReplaceManifestHandler
 	// AdminReplaceOldBookingsHandler sets the operation handler for the replace old bookings operation
 	AdminReplaceOldBookingsHandler admin.ReplaceOldBookingsHandler
+	// UsersRescheduleCalendarBookingHandler sets the operation handler for the reschedule calendar booking operation
+	UsersRescheduleCalendarBookingHandler users.RescheduleCalendarBookingHandler
 	// AdminSetResourceIsAvailableHandler sets the operation handler for the set resource is available operation
 	AdminSetResourceIsAvailableHandler admin.SetResourceIsAvailableHandler
 	// AdminSetSlotIsAvailableHandler sets the operation handler for the set slot is available operation
@@ -423,6 +443,9 @@ func (o *ServeAPI) Validate() error {
 	if o.UsersGetAvailabilityHandler == nil {
 		unregistered = append(unregistered, "users.GetAvailabilityHandler")
 	}
+	if o.AdminGetBookingEventsHandler == nil {
+		unregistered = append(unregistered, "admin.GetBookingEventsHandler")
+	}
 	if o.UsersGetBookingsForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetBookingsForUserHandler")
 	}
@@ -471,11 +494,17 @@ func (o *ServeAPI) Validate() error {
 	if o.AdminMakeMaintenanceBookingHandler == nil {
 		unregistered = append(unregistered, "admin.MakeMaintenanceBookingHandler")
 	}
+	if o.AdminMakeResourceMaintenanceBookingHandler == nil {
+		unregistered = append(unregistered, "admin.MakeResourceMaintenanceBookingHandler")
+	}
 	if o.AdminOverrideCancelBookingHandler == nil {
 		unregistered = append(unregistered, "admin.OverrideCancelBookingHandler")
 	}
 	if o.UsersPreviewCalendarBookingHandler == nil {
 		unregistered = append(unregistered, "users.PreviewCalendarBookingHandler")
+	}
+	if o.AdminQueryBookingRecordsHandler == nil {
+		unregistered = append(unregistered, "admin.QueryBookingRecordsHandler")
 	}
 	if o.UsersQueryCalendarAvailabilityHandler == nil {
 		unregistered = append(unregistered, "users.QueryCalendarAvailabilityHandler")
@@ -491,6 +520,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.AdminReplaceOldBookingsHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceOldBookingsHandler")
+	}
+	if o.UsersRescheduleCalendarBookingHandler == nil {
+		unregistered = append(unregistered, "users.RescheduleCalendarBookingHandler")
 	}
 	if o.AdminSetResourceIsAvailableHandler == nil {
 		unregistered = append(unregistered, "admin.SetResourceIsAvailableHandler")
@@ -658,6 +690,10 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/admin/bookings/{booking_name}/events"] = admin.NewGetBookingEvents(o.context, o.AdminGetBookingEventsHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/users/{user_name}/bookings"] = users.NewGetBookingsForUser(o.context, o.UsersGetBookingsForUserHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
@@ -722,11 +758,19 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/admin/resources/{resource_name}/maintenance-bookings"] = admin.NewMakeResourceMaintenanceBooking(o.context, o.AdminMakeResourceMaintenanceBookingHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/admin/booking-overrides/{booking_name}/cancel"] = admin.NewOverrideCancelBooking(o.context, o.AdminOverrideCancelBookingHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/calendar/preview"] = users.NewPreviewCalendarBooking(o.context, o.UsersPreviewCalendarBookingHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/admin/booking-records"] = admin.NewQueryBookingRecords(o.context, o.AdminQueryBookingRecordsHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
@@ -747,6 +791,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/admin/oldbookings"] = admin.NewReplaceOldBookings(o.context, o.AdminReplaceOldBookingsHandler)
+	if o.handlers["PATCH"] == nil {
+		o.handlers["PATCH"] = make(map[string]http.Handler)
+	}
+	o.handlers["PATCH"]["/calendar/bookings/{booking_name}"] = users.NewRescheduleCalendarBooking(o.context, o.UsersRescheduleCalendarBookingHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

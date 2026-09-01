@@ -1133,6 +1133,10 @@ func (s *Store) persistentStateLocked() PersistentState {
 // ReplaceBooking atomically supersedes one unstarted booking and installs its
 // validated replacement. Exact retries are idempotent; stale revisions fail.
 func (s *Store) ReplaceBooking(edit EditableBooking) (EditableBooking, error) {
+	return s.replaceBooking(edit, "admin-edit")
+}
+
+func (s *Store) replaceBooking(edit EditableBooking, actor string) (EditableBooking, error) {
 	s.Lock()
 	defer s.Unlock()
 	if !replacementIsPlain(edit.Booking) {
@@ -1145,7 +1149,7 @@ func (s *Store) ReplaceBooking(edit EditableBooking) (EditableBooking, error) {
 	policy := s.Policies[edit.Booking.Policy]
 	request := CreateBookingRequest{
 		Booking: edit.Booking, Resource: slot.Resource, ResourceConstrained: !policy.EnforceUnlimitedUsers,
-		ManifestVersion: s.manifestVersion, Now: s.now(),
+		ManifestVersion: s.manifestVersion, Now: s.now(), Actor: actor,
 		EnforceMaxBookings: policy.EnforceMaxBookings, MaxBookings: policy.MaxBookings,
 		EnforceMaxUsage: policy.EnforceMaxUsage, MaxUsage: policy.MaxUsage,
 	}
@@ -2147,23 +2151,7 @@ func (s *Store) GetOperationalStatus() OperationalStatus {
 
 // GetUsageSummary reports actual use from current and historical bookings.
 func (s *Store) GetUsageSummary() UsageSummary {
-	s.Lock()
-	defer s.Unlock()
-	now := s.now()
-	result := UsageSummary{}
-	for _, collection := range []map[string]*Booking{s.Bookings, s.OldBookings} {
-		for _, booking := range collection {
-			if booking.StartedAt == "" {
-				continue
-			}
-			result.StartedBookings++
-			if booking.Cancelled || !booking.When.End.After(now) {
-				result.CompletedBookings++
-			}
-			result.ActualUsage += booking.ActualUsage(now)
-		}
-	}
-	return result
+	return s.GetFilteredUsageSummary(UsageQuery{})
 }
 
 // GetStoreStatusUser returns the store status without entity counts

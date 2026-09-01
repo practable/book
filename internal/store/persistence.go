@@ -76,6 +76,7 @@ type CreateBookingRequest struct {
 	EnforceMaxUsage     bool
 	MaxUsage            time.Duration
 	Maintenance         bool
+	Actor               string
 }
 
 // ManifestValidator runs while the repository holds the exclusive maintenance
