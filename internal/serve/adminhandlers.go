@@ -277,7 +277,9 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 		m := v
 		rm[k] = store.Resource{
 			ConfigURL:   m.ConfigURL,
+			Class:       m.Class,
 			Description: *(m.Description),
+			Properties:  m.Properties,
 			Streams:     m.Streams,
 			Tests:       m.Tests,
 			TopicStub:   *(m.TopicStub),
@@ -372,10 +374,21 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 			dd = append(dd, mi)
 		}
 
-		wm[k] = store.Window{
-			Allowed: aa,
-			Denied:  dd,
+		convertRecurrences := func(values []*models.WeeklyRecurrence) []store.WeeklyRecurrence {
+			var result []store.WeeklyRecurrence
+			for _, value := range values {
+				if value == nil {
+					continue
+				}
+				exceptions := make([]string, 0, len(value.Exceptions))
+				for _, exception := range value.Exceptions {
+					exceptions = append(exceptions, exception.String())
+				}
+				result = append(result, store.WeeklyRecurrence{Timezone: *value.Timezone, StartDate: value.StartDate.String(), EndDate: value.EndDate.String(), Weekdays: value.Weekdays, StartTime: *value.StartTime, EndTime: *value.EndTime, Exceptions: exceptions})
+			}
+			return result
 		}
+		wm[k] = store.Window{Allowed: aa, Denied: dd, RecurringAllowed: convertRecurrences(m.RecurringAllowed), RecurringDenied: convertRecurrences(m.RecurringDenied)}
 	}
 
 	sm := store.Manifest{
@@ -730,10 +743,23 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 				dd = append(dd, &mi)
 			}
 
-			wm[k] = models.Window{
-				Allowed: aa,
-				Denied:  dd,
+			convertRecurrences := func(values []store.WeeklyRecurrence) []*models.WeeklyRecurrence {
+				var result []*models.WeeklyRecurrence
+				for _, value := range values {
+					startValue, _ := time.Parse("2006-01-02", value.StartDate)
+					endValue, _ := time.Parse("2006-01-02", value.EndDate)
+					startDate, endDate := strfmt.Date(startValue), strfmt.Date(endValue)
+					exceptions := make([]strfmt.Date, 0, len(value.Exceptions))
+					for _, item := range value.Exceptions {
+						parsed, _ := time.Parse("2006-01-02", item)
+						exceptions = append(exceptions, strfmt.Date(parsed))
+					}
+					timezone, startTime, endTime := value.Timezone, value.StartTime, value.EndTime
+					result = append(result, &models.WeeklyRecurrence{Timezone: &timezone, StartDate: &startDate, EndDate: &endDate, Weekdays: value.Weekdays, StartTime: &startTime, EndTime: &endTime, Exceptions: exceptions})
+				}
+				return result
 			}
+			wm[k] = models.Window{Allowed: aa, Denied: dd, RecurringAllowed: convertRecurrences(s.RecurringAllowed), RecurringDenied: convertRecurrences(s.RecurringDenied)}
 		}
 
 		mm := models.Manifest{

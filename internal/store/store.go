@@ -479,8 +479,10 @@ type UserExternal struct {
 
 // Window represents allowed and denied periods for slots
 type Window struct {
-	Allowed []interval.Interval `json:"allowed"  yaml:"allowed"`
-	Denied  []interval.Interval `json:"denied"  yaml:"denied"`
+	Allowed          []interval.Interval `json:"allowed"  yaml:"allowed"`
+	Denied           []interval.Interval `json:"denied"  yaml:"denied"`
+	RecurringAllowed []WeeklyRecurrence  `json:"recurring_allowed,omitempty" yaml:"recurring_allowed,omitempty"`
+	RecurringDenied  []WeeklyRecurrence  `json:"recurring_denied,omitempty" yaml:"recurring_denied,omitempty"`
 }
 
 // New returns an empty store
@@ -2933,11 +2935,15 @@ func (s *Store) applyManifestLocked(m Manifest) error {
 	}
 	fm := make(map[string]*filter.Filter)
 	for k, w := range m.Windows {
+		expanded, err := expandWindow(w)
+		if err != nil {
+			return errors.New("failed to expand recurring window " + k + ": " + err.Error())
+		}
 		f := filter.New()
-		if err := f.SetAllowed(w.Allowed); err != nil {
+		if err := f.SetAllowed(expanded.Allowed); err != nil {
 			return errors.New("failed to create allowed intervals for window " + k + ":" + err.Error())
 		}
-		if err := f.SetDenied(w.Denied); err != nil {
+		if err := f.SetDenied(expanded.Denied); err != nil {
 			return errors.New("failed to create denied intervals for window " + k + ":" + err.Error())
 		}
 		fm[k] = f
@@ -3822,7 +3828,7 @@ func checkWindows(items map[string]Window) (error, []string) {
 	for k, item := range items {
 		// a window has to have at least one allowed period to be valid
 		// a slot should be deleted rather than have a window with no allowed periods
-		if item.Allowed == nil {
+		if item.Allowed == nil && len(item.RecurringAllowed) == 0 {
 			msg = append(msg, "missing allowed field in window "+k)
 		}
 	}
@@ -3834,6 +3840,11 @@ func checkWindows(items map[string]Window) (error, []string) {
 	// we can get errors making filters, so check that
 
 	for k, w := range items {
+		w, expandErr := expandWindow(w)
+		if expandErr != nil {
+			msg = append(msg, "failed to expand recurring intervals for window "+k+": "+expandErr.Error())
+			continue
+		}
 
 		f := filter.New()
 		err := f.SetAllowed(w.Allowed)

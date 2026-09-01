@@ -12,7 +12,6 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	"github.com/go-openapi/validate"
 )
 
 // Window window
@@ -21,11 +20,16 @@ import (
 type Window struct {
 
 	// allowed
-	// Required: true
 	Allowed []*Interval `json:"allowed"`
 
 	// denied
 	Denied []*Interval `json:"denied"`
+
+	// recurring allowed
+	RecurringAllowed []*WeeklyRecurrence `json:"recurring_allowed"`
+
+	// recurring denied
+	RecurringDenied []*WeeklyRecurrence `json:"recurring_denied"`
 }
 
 // Validate validates this window
@@ -40,6 +44,14 @@ func (m *Window) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateRecurringAllowed(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateRecurringDenied(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -47,9 +59,8 @@ func (m *Window) Validate(formats strfmt.Registry) error {
 }
 
 func (m *Window) validateAllowed(formats strfmt.Registry) error {
-
-	if err := validate.Required("allowed", "body", m.Allowed); err != nil {
-		return err
+	if swag.IsZero(m.Allowed) { // not required
+		return nil
 	}
 
 	for i := 0; i < len(m.Allowed); i++ {
@@ -99,6 +110,58 @@ func (m *Window) validateDenied(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *Window) validateRecurringAllowed(formats strfmt.Registry) error {
+	if swag.IsZero(m.RecurringAllowed) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.RecurringAllowed); i++ {
+		if swag.IsZero(m.RecurringAllowed[i]) { // not required
+			continue
+		}
+
+		if m.RecurringAllowed[i] != nil {
+			if err := m.RecurringAllowed[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("recurring_allowed" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("recurring_allowed" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Window) validateRecurringDenied(formats strfmt.Registry) error {
+	if swag.IsZero(m.RecurringDenied) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.RecurringDenied); i++ {
+		if swag.IsZero(m.RecurringDenied[i]) { // not required
+			continue
+		}
+
+		if m.RecurringDenied[i] != nil {
+			if err := m.RecurringDenied[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("recurring_denied" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("recurring_denied" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
 // ContextValidate validate this window based on the context it is used
 func (m *Window) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
@@ -108,6 +171,14 @@ func (m *Window) ContextValidate(ctx context.Context, formats strfmt.Registry) e
 	}
 
 	if err := m.contextValidateDenied(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRecurringAllowed(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateRecurringDenied(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -157,6 +228,56 @@ func (m *Window) contextValidateDenied(ctx context.Context, formats strfmt.Regis
 					return ve.ValidateName("denied" + "." + strconv.Itoa(i))
 				} else if ce, ok := err.(*errors.CompositeError); ok {
 					return ce.ValidateName("denied" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Window) contextValidateRecurringAllowed(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.RecurringAllowed); i++ {
+
+		if m.RecurringAllowed[i] != nil {
+
+			if swag.IsZero(m.RecurringAllowed[i]) { // not required
+				return nil
+			}
+
+			if err := m.RecurringAllowed[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("recurring_allowed" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("recurring_allowed" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Window) contextValidateRecurringDenied(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.RecurringDenied); i++ {
+
+		if m.RecurringDenied[i] != nil {
+
+			if swag.IsZero(m.RecurringDenied[i]) { // not required
+				return nil
+			}
+
+			if err := m.RecurringDenied[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("recurring_denied" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("recurring_denied" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

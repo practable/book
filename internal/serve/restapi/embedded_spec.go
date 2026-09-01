@@ -3467,11 +3467,59 @@ func init() {
         "$ref": "#/definitions/User"
       }
     },
-    "Window": {
+    "WeeklyRecurrence": {
+      "description": "A finite weekly civil-time interval. end_date is inclusive and an end_time not after start_time denotes an overnight interval.",
       "type": "object",
       "required": [
-        "allowed"
+        "timezone",
+        "start_date",
+        "end_date",
+        "weekdays",
+        "start_time",
+        "end_time"
       ],
+      "properties": {
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-12-18"
+        },
+        "end_time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "example": "17:00"
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-09-14"
+        },
+        "start_time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "example": "09:00"
+        },
+        "timezone": {
+          "type": "string",
+          "example": "Europe/London"
+        },
+        "weekdays": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Window": {
+      "type": "object",
       "properties": {
         "allowed": {
           "type": "array",
@@ -3483,6 +3531,18 @@ func init() {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Interval"
+          }
+        },
+        "recurring_allowed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WeeklyRecurrence"
+          }
+        },
+        "recurring_denied": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WeeklyRecurrence"
           }
         }
       }
@@ -7414,11 +7474,59 @@ func init() {
         "$ref": "#/definitions/User"
       }
     },
-    "Window": {
+    "WeeklyRecurrence": {
+      "description": "A finite weekly civil-time interval. end_date is inclusive and an end_time not after start_time denotes an overnight interval.",
       "type": "object",
       "required": [
-        "allowed"
+        "timezone",
+        "start_date",
+        "end_date",
+        "weekdays",
+        "start_time",
+        "end_time"
       ],
+      "properties": {
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-12-18"
+        },
+        "end_time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "example": "17:00"
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-09-14"
+        },
+        "start_time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "example": "09:00"
+        },
+        "timezone": {
+          "type": "string",
+          "example": "Europe/London"
+        },
+        "weekdays": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Window": {
+      "type": "object",
       "properties": {
         "allowed": {
           "type": "array",
@@ -7430,6 +7538,18 @@ func init() {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Interval"
+          }
+        },
+        "recurring_allowed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WeeklyRecurrence"
+          }
+        },
+        "recurring_denied": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WeeklyRecurrence"
           }
         }
       }
