@@ -469,6 +469,24 @@ paths:
         401: {$ref: '#/responses/Unauthorized'}
         500: {$ref: '#/responses/InternalError'}
 
+  /admin/resources/{resource_name}/streams/{stream_name}/health-checks:
+    post:
+      summary: Reserve a resource and run its manifest-approved stream health pipeline
+      tags: [admin]
+      operationId: BeginOperationalHealthCheck
+      produces: [application/json]
+      security: [{Bearer: []}]
+      parameters:
+      - {name: resource_name, in: path, required: true, type: string}
+      - {name: stream_name, in: path, required: true, type: string}
+      - {name: Idempotency-Key, in: header, required: true, type: string, minLength: 1, maxLength: 200}
+      responses:
+        202: {description: Health check reserved and queued, schema: {$ref: '#/definitions/BookingActivation'}}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        409: {$ref: '#/responses/Conflict'}
+        500: {$ref: '#/responses/InternalError'}
+
   /admin/resource-holds:
     get:
       summary: List resources deliberately held offline by technicians

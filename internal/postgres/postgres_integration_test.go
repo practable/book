@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 24, versions)
+	require.Equal(t, 25, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -321,6 +321,61 @@ func TestActivationRollsBackWhenDeliveryInsertFails(t *testing.T) {
 	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.booking_activation_runs WHERE run_id=$1", req.RunID).Scan(&count))
 	require.Zero(t, count)
 	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs WHERE job_id=$1", req.FirstJob.ID).Scan(&count))
+	require.Zero(t, count)
+}
+
+func TestManualHealthCheckIsAtomicIdempotentAndAutoCloses(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+	bookingRequest := request("manual-health-booking", "technician", "slot-a", "resource-a", now, now.Add(time.Minute))
+	bookingRequest.Maintenance = true
+	bookingRequest.Booking.Maintenance = true
+	bookingRequest.Booking.Policy = "__operations__:health"
+	req := activationRequest(bookingRequest.Booking.Name, bookingRequest.Booking.User, "manual-health", now)
+	req.Stages = req.Stages[1:]
+	req.Stages[0].DueAt, req.Stages[0].TimeoutAt, req.Stages[0].MaximumAttempts = now, now.Add(4*time.Second), 1
+	req.FirstJob.Workflow = "video-health"
+	req.AutoClose = true
+	booking, run, fresh, err := repository.CreateHealthCheck(ctx, bookingRequest, req)
+	require.NoError(t, err)
+	require.True(t, fresh)
+	require.Equal(t, bookingRequest.Booking.Name, booking.Booking.Name)
+	_, replay, fresh, err := repository.CreateHealthCheck(ctx, bookingRequest, req)
+	require.NoError(t, err)
+	require.False(t, fresh)
+	require.Equal(t, run.ID, replay.ID)
+
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "manual-health-accepted", JobID: run.Stages[0].JobID, State: "accepted", At: now}, "manual-health-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "manual-health-succeeded", JobID: run.Stages[0].JobID, State: "succeeded", At: now.Add(time.Second)}, "manual-health-succeeded-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "closed", run.State)
+	require.Equal(t, "not_required", run.CleanupState)
+	state, err := repository.Load(ctx)
+	require.NoError(t, err)
+	require.Len(t, state.Bookings, 1)
+	require.False(t, state.Bookings[0].Current)
+	require.True(t, state.Bookings[0].Booking.Started)
+}
+
+func TestManualHealthCheckRollsBackReservationWithActivation(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 9, 30, 0, 0, time.UTC)
+	dummyJob, dummyDelivery := operationalJob(now)
+	_, _, err := repository.CreateJob(ctx, dummyJob, dummyDelivery)
+	require.NoError(t, err)
+	bookingRequest := request("rolled-back-health-booking", "technician", "slot-a", "resource-a", now, now.Add(time.Minute))
+	bookingRequest.Maintenance, bookingRequest.Booking.Maintenance = true, true
+	req := activationRequest(bookingRequest.Booking.Name, bookingRequest.Booking.User, "rolled-back-health", now)
+	req.FirstDelivery.ID = dummyDelivery.ID
+	_, _, _, err = repository.CreateHealthCheck(ctx, bookingRequest, req)
+	require.Error(t, err)
+	var count int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.bookings WHERE name=$1", bookingRequest.Booking.Name).Scan(&count))
 	require.Zero(t, count)
 }
 

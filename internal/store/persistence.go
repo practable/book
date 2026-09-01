@@ -121,6 +121,10 @@ type BookingActivationRepository interface {
 	GetLatestActivationForBooking(context.Context, string) (operations.ActivationRun, error)
 }
 
+type OperationalHealthCheckRepository interface {
+	CreateHealthCheck(context.Context, CreateBookingRequest, operations.CreateActivationRequest) (PersistentBooking, operations.ActivationRun, bool, error)
+}
+
 type OperationalScheduleResult struct {
 	State   string
 	Created bool

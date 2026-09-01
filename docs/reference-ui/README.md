@@ -16,8 +16,9 @@ a production administrator token in an untrusted browser or shared profile.
 The student view exercises catalogue, manifest images, aggregate availability,
 preview and idempotent creation. The administrator view exercises operational
 status, resource metadata and suspension, booking pause/message, bounded booking
-search, booking audit, and override cancellation. Relay restart and health-check
-execution intentionally remain outside this client.
+search, booking audit, override cancellation, technician holds, stream health,
+alert acknowledgement, and manifest-approved manual health checks. Relay
+restart intentionally remains outside this client.
 
 Run the adapter tests with:
 

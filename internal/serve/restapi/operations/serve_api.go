@@ -60,6 +60,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersBeginBookingActivationHandler: users.BeginBookingActivationHandlerFunc(func(params users.BeginBookingActivationParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.BeginBookingActivation has not yet been implemented")
 		}),
+		AdminBeginOperationalHealthCheckHandler: admin.BeginOperationalHealthCheckHandlerFunc(func(params admin.BeginOperationalHealthCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.BeginOperationalHealthCheck has not yet been implemented")
+		}),
 		UsersCancelBookingHandler: users.CancelBookingHandlerFunc(func(params users.CancelBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.CancelBooking has not yet been implemented")
 		}),
@@ -274,6 +277,8 @@ type ServeAPI struct {
 	UsersAddGroupForUserHandler users.AddGroupForUserHandler
 	// UsersBeginBookingActivationHandler sets the operation handler for the begin booking activation operation
 	UsersBeginBookingActivationHandler users.BeginBookingActivationHandler
+	// AdminBeginOperationalHealthCheckHandler sets the operation handler for the begin operational health check operation
+	AdminBeginOperationalHealthCheckHandler admin.BeginOperationalHealthCheckHandler
 	// UsersCancelBookingHandler sets the operation handler for the cancel booking operation
 	UsersCancelBookingHandler users.CancelBookingHandler
 	// AdminCheckManifestHandler sets the operation handler for the check manifest operation
@@ -472,6 +477,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.UsersBeginBookingActivationHandler == nil {
 		unregistered = append(unregistered, "users.BeginBookingActivationHandler")
+	}
+	if o.AdminBeginOperationalHealthCheckHandler == nil {
+		unregistered = append(unregistered, "admin.BeginOperationalHealthCheckHandler")
 	}
 	if o.UsersCancelBookingHandler == nil {
 		unregistered = append(unregistered, "users.CancelBookingHandler")
@@ -740,6 +748,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/users/{user_name}/bookings/{booking_name}/activations"] = users.NewBeginBookingActivation(o.context, o.UsersBeginBookingActivationHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/admin/resources/{resource_name}/streams/{stream_name}/health-checks"] = admin.NewBeginOperationalHealthCheck(o.context, o.AdminBeginOperationalHealthCheckHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}

@@ -75,6 +75,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.BeginBookingActivation has not yet been implemented")
 		})
 	}
+	if api.AdminBeginOperationalHealthCheckHandler == nil {
+		api.AdminBeginOperationalHealthCheckHandler = admin.BeginOperationalHealthCheckHandlerFunc(func(params admin.BeginOperationalHealthCheckParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.BeginOperationalHealthCheck has not yet been implemented")
+		})
+	}
 	if api.UsersCancelBookingHandler == nil {
 		api.UsersCancelBookingHandler = users.CancelBookingHandlerFunc(func(params users.CancelBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.CancelBooking has not yet been implemented")

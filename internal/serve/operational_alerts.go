@@ -11,6 +11,34 @@ import (
 	"github.com/practable/book/internal/store"
 )
 
+func beginOperationalHealthCheckHandler(cfg config.ServerConfig) func(admin.BeginOperationalHealthCheckParams, interface{}) middleware.Responder {
+	return func(params admin.BeginOperationalHealthCheckParams, principal interface{}) middleware.Responder {
+		claims, err := isMaintenanceOrAdmin(principal)
+		if err != nil {
+			code, message := "401", "no scope booking:maintenance"
+			return admin.NewBeginOperationalHealthCheckUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		operator := claims.Subject
+		if operator == "" {
+			operator = "maintenance"
+		}
+		run, _, err := cfg.Store.BeginOperationalHealthCheck(params.HTTPRequest.Context(), params.ResourceName, params.StreamName, operator, params.IdempotencyKey)
+		if err == nil {
+			return admin.NewBeginOperationalHealthCheckAccepted().WithPayload(activationToModel(run))
+		}
+		code, message := "500", err.Error()
+		if errors.Is(err, store.ErrPersistentNotFound) {
+			code = "404"
+			return admin.NewBeginOperationalHealthCheckNotFound().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		if errors.Is(err, store.ErrBookingConflict) || errors.Is(err, store.ErrBookingIDConflict) {
+			code = "409"
+			return admin.NewBeginOperationalHealthCheckConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		return admin.NewBeginOperationalHealthCheckInternalServerError().WithPayload(&models.Error{Code: &code, Message: &message})
+	}
+}
+
 func operationalAlertToModel(value store.OperationalAlert) *models.OperationalAlert {
 	first, last := strfmt.DateTime(value.FirstSeen), strfmt.DateTime(value.LastSeen)
 	result := &models.OperationalAlert{ID: &value.ID, Resource: &value.Resource, Stream: &value.Stream, Code: &value.Code,

@@ -1176,6 +1176,65 @@ func init() {
         }
       }
     },
+    "/admin/resources/{resource_name}/streams/{stream_name}/health-checks": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Reserve a resource and run its manifest-approved stream health pipeline",
+        "operationId": "BeginOperationalHealthCheck",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "stream_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string",
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Health check reserved and queued",
+            "schema": {
+              "$ref": "#/definitions/BookingActivation"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/slots/{slot_name}": {
       "get": {
         "security": [
@@ -6364,6 +6423,77 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/Booking"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/resources/{resource_name}/streams/{stream_name}/health-checks": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Reserve a resource and run its manifest-approved stream health pipeline",
+        "operationId": "BeginOperationalHealthCheck",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "stream_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string",
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Health check reserved and queued",
+            "schema": {
+              "$ref": "#/definitions/BookingActivation"
             }
           },
           "401": {

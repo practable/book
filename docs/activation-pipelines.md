@@ -102,8 +102,8 @@ overlapping work that is physically returning the equipment to its safe state.
 If preparation fails while the user's booking still owns the resource, cleanup
 uses that existing reservation. Retry attempts reuse the same reservation.
 
-When an activation check exhausts its retries, Book records a durable
-retry policy, a pipeline with `recovery` stages first runs those owner-approved
+When an activation check exhausts its retry policy, a pipeline with `recovery`
+stages first runs those owner-approved
 action workflows, waits as configured, and repeats the failed health-check
 stage. Recovery stages and the target check are persisted before execution;
 callbacks, retries, process restarts, and multiple Book instances therefore
@@ -130,6 +130,23 @@ Administrators can poll:
 - `POST /api/v1/admin/operational-alerts/{id}/resolve`;
 - `GET /api/v1/admin/operational-health` for the latest automated stream decisions;
 - `GET /api/v1/admin/resource-holds` for technician-held resources, including reason, actor, and original hold time.
+
+Technicians with `booking:maintenance` (and administrators) can request an
+immediate check with:
+
+```text
+POST /api/v1/admin/resources/{resource}/streams/{stream}/health-checks
+Idempotency-Key: <opaque retry key>
+```
+
+Book selects only the pipeline already bound to that resource and stream in the
+active manifest; callers cannot supply a workflow or executable parameters.
+PostgreSQL atomically creates the resource-constrained maintenance reservation,
+immutable activation/recovery/cleanup plan, and first runner delivery. Exact
+retries return the original run. A successful check closes its reservation
+immediately and starts configured cleanup rather than holding the resource for
+the full worst-case retry window. Conflicting bookings return `409` without
+creating partial state.
 
 Releasing a technician hold continues to use the resource availability endpoint
 and is always an explicit technician action. Detailed metrics and diagnostics

@@ -19,6 +19,18 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 		return operations.ActivationRun{}, false, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	run, fresh, err := createActivationTx(ctx, tx, request)
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	return run, fresh, nil
+}
+
+func createActivationTx(ctx context.Context, tx pgx.Tx, request operations.CreateActivationRequest) (operations.ActivationRun, bool, error) {
+	var err error
 	if len(request.Stages) == 0 || request.RunID == "" || request.IdempotencyKey == "" || request.FirstJob.ID == "" || request.FirstDelivery.ID == "" || request.FirstDelivery.JobID != request.FirstJob.ID || request.RecoveryAttempts < 0 || request.RecoveryAttempts > 5 || (len(request.RecoveryStages) == 0) != (request.RecoveryAttempts == 0) {
 		return operations.ActivationRun{}, false, errors.New("activation requires at least one stage")
 	}
@@ -51,7 +63,7 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 		if err != nil {
 			return operations.ActivationRun{}, false, err
 		}
-		return run, false, tx.Commit(ctx)
+		return run, false, nil
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return operations.ActivationRun{}, false, err
@@ -70,9 +82,9 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 		cleanupState = "not_required"
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO public.booking_activation_runs
-		(run_id,booking_row_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,current_stage,resolved_plan,progress_message,cleanup_state,maximum_recovery_attempts)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'preparing',0,$10,$11,$12,$13)`, request.RunID, rowID, request.BookingName, request.User,
-		request.Resource, request.Stream, request.Pipeline, request.ManifestVersion, request.IdempotencyKey, string(request.ResolvedPlan), progress, cleanupState, request.RecoveryAttempts)
+		(run_id,booking_row_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,current_stage,resolved_plan,progress_message,cleanup_state,maximum_recovery_attempts,auto_close)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'preparing',0,$10,$11,$12,$13,$14)`, request.RunID, rowID, request.BookingName, request.User,
+		request.Resource, request.Stream, request.Pipeline, request.ManifestVersion, request.IdempotencyKey, string(request.ResolvedPlan), progress, cleanupState, request.RecoveryAttempts, request.AutoClose)
 	if err != nil {
 		return operations.ActivationRun{}, false, err
 	}
@@ -140,10 +152,49 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 	if err != nil {
 		return operations.ActivationRun{}, false, err
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return operations.ActivationRun{}, false, err
-	}
 	return run, true, nil
+}
+
+// CreateHealthCheck atomically reserves the physical resource and creates the
+// immutable activation plan and first runner delivery. A process failure can
+// therefore leave neither an orphan reservation nor an unreserved check.
+func (r *Repository) CreateHealthCheck(ctx context.Context, bookingRequest store.CreateBookingRequest, activationRequest operations.CreateActivationRequest) (store.PersistentBooking, operations.ActivationRun, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if existing, err := getActivationTx(ctx, tx, activationRequest.RunID); err == nil {
+		booking, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE name=$1 AND NOT superseded", existing.BookingName))
+		if err != nil {
+			return store.PersistentBooking{}, operations.ActivationRun{}, false, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return store.PersistentBooking{}, operations.ActivationRun{}, false, err
+		}
+		return booking, existing, false, nil
+	} else if !errors.Is(err, operations.ErrNotFound) {
+		return store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	booking, created, err := createBookingTx(ctx, tx, bookingRequest)
+	if err != nil {
+		return store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	if !created {
+		return store.PersistentBooking{}, operations.ActivationRun{}, false, store.ErrBookingIDConflict
+	}
+	activationRequest.BookingName = booking.Booking.Name
+	activationRequest.User = booking.Booking.User
+	run, _, err := createActivationTx(ctx, tx, activationRequest)
+	if err != nil {
+		return store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	return booking, run, true, nil
 }
 
 func normalizedBackoff(value float64) float64 {

@@ -758,7 +758,8 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 			if err := finishOperationalReservationTx(ctx, tx, job, callback); err != nil {
 				return err
 			}
-			_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET cleanup_state='succeeded',updated_at=$2 WHERE run_id=$1`, runID, callback.At.UTC())
+			_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET cleanup_state='succeeded',
+				state=CASE WHEN auto_close THEN 'closed' ELSE state END,updated_at=$2 WHERE run_id=$1`, runID, callback.At.UTC())
 			return err
 		}
 		if phase == "recovery" {
@@ -816,7 +817,8 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 		if err := finishOperationalReservationTx(ctx, tx, job, callback); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET cleanup_state='failed',updated_at=$2 FROM public.booking_activation_stages s
+		_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET cleanup_state='failed',
+			state=CASE WHEN r.auto_close THEN 'cleanup_failed' ELSE r.state END,updated_at=$2 FROM public.booking_activation_stages s
 			WHERE r.run_id=$1 AND s.run_id=r.run_id AND s.stage_index=$3`, runID, callback.At.UTC(), stageIndex)
 		return err
 	}
@@ -1094,6 +1096,28 @@ func activatePreparedBookingTx(ctx context.Context, tx pgx.Tx, runID string, at 
 		}
 	}
 	if err := recordActivationHealthSuccessTx(ctx, tx, runID, jobID, at); err != nil {
+		return err
+	}
+	var autoClose bool
+	if err := tx.QueryRow(ctx, `SELECT auto_close FROM public.booking_activation_runs WHERE run_id=$1`, runID).Scan(&autoClose); err != nil {
+		return err
+	}
+	if autoClose {
+		job, err := scanJob(tx.QueryRow(ctx, jobSelect+" WHERE job_id=$1", jobID))
+		if err != nil {
+			return err
+		}
+		callback := operations.Callback{JobID: jobID, State: "succeeded", At: at}
+		if err := finishOperationalReservationTx(ctx, tx, job, callback); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='cleaning',completed_at=$2,updated_at=$2 WHERE run_id=$1`, runID, at); err != nil {
+			return err
+		}
+		if err := startActivationCleanupRunTx(ctx, tx, runID, at); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='closed' WHERE run_id=$1 AND cleanup_state='not_required'`, runID)
 		return err
 	}
 	_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='active',progress_message='Ready',completed_at=$2,updated_at=$2 WHERE run_id=$1`, runID, at)

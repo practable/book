@@ -43,6 +43,7 @@ type CreateActivationRequest struct {
 	CleanupStages    []ActivationStageSpec
 	RecoveryStages   []ActivationStageSpec
 	RecoveryAttempts int
+	AutoClose        bool
 	FirstJob         Job
 	FirstDelivery    Delivery
 }

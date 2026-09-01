@@ -61,6 +61,11 @@ export class BookApi {
   operationalStatus() { return this.request("/admin/operations"); }
   resources() { return this.request("/admin/resources"); }
   operationalHealth() { return this.request("/admin/operational-health"); }
+  beginOperationalHealthCheck(resource, stream, idempotencyKey = crypto.randomUUID()) {
+    return this.request(`/admin/resources/${encodeURIComponent(resource)}/streams/${encodeURIComponent(stream)}/health-checks`, {
+      method: "POST", headers: { "Idempotency-Key": idempotencyKey },
+    });
+  }
   resourceHolds() { return this.request("/admin/resource-holds"); }
   operationalAlerts(status = "active") {
     return this.request(`/admin/operational-alerts?${new URLSearchParams({ status })}`);

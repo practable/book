@@ -58,6 +58,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.AdminAcknowledgeOperationalAlertHandler = admin.AcknowledgeOperationalAlertHandlerFunc(acknowledgeOperationalAlertHandler(config))
 	api.AdminResolveOperationalAlertHandler = admin.ResolveOperationalAlertHandlerFunc(resolveOperationalAlertHandler(config))
 	api.AdminListOperationalHealthHandler = admin.ListOperationalHealthHandlerFunc(listOperationalHealthHandler(config))
+	api.AdminBeginOperationalHealthCheckHandler = admin.BeginOperationalHealthCheckHandlerFunc(beginOperationalHealthCheckHandler(config))
 	api.AdminListResourceHoldsHandler = admin.ListResourceHoldsHandlerFunc(listResourceHoldsHandler(config))
 	api.AdminQueryBookingRecordsHandler = admin.QueryBookingRecordsHandlerFunc(queryBookingRecordsHandler(config))
 	api.AdminGetBookingEventsHandler = admin.GetBookingEventsHandlerFunc(getBookingEventsHandler(config))

@@ -240,6 +240,135 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 	return repository.CreateActivation(ctx, request)
 }
 
+// BeginOperationalHealthCheck creates a resource-constrained maintenance
+// reservation and its immutable check plan in one repository transaction.
+func (s *Store) BeginOperationalHealthCheck(ctx context.Context, resourceName, streamName, operator, idempotencyKey string) (operations.ActivationRun, bool, error) {
+	s.Lock()
+	defer s.Unlock()
+	if err := s.expireAndRefreshLocked(ctx); err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	repository, ok := s.repository.(OperationalHealthCheckRepository)
+	if !ok {
+		return operations.ActivationRun{}, false, errors.New("manual health checks require durable persistence")
+	}
+	if strings.TrimSpace(operator) == "" || strings.TrimSpace(idempotencyKey) == "" {
+		return operations.ActivationRun{}, false, errors.New("health check operator and idempotency key are required")
+	}
+	resource, ok := s.Resources[resourceName]
+	if !ok {
+		return operations.ActivationRun{}, false, ErrPersistentNotFound
+	}
+	if _, ok := resource.StreamOperations[streamName]; !ok {
+		return operations.ActivationRun{}, false, ErrPersistentNotFound
+	}
+	slots := make([]string, 0)
+	for name, slot := range s.Slots {
+		if slot.Resource == resourceName {
+			slots = append(slots, name)
+		}
+	}
+	sort.Strings(slots)
+	if len(slots) == 0 {
+		return operations.ActivationRun{}, false, errors.New("resource has no bookable slot")
+	}
+	manifest := s.exportManifestLocked()
+	stages, recovery, cleanup, err := ResolveOperationalPipeline(manifest, resourceName, streamName)
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	if len(stages) == 0 {
+		return operations.ActivationRun{}, false, errors.New("health check pipeline has no stages")
+	}
+	hasHealth := false
+	for _, stage := range stages {
+		hasHealth = hasHealth || stage.Kind == "health_check"
+	}
+	if !hasHealth {
+		return operations.ActivationRun{}, false, errors.New("pipeline has no health_check stage")
+	}
+	now := s.now().UTC()
+	binding := manifest.Resources[resourceName].StreamOperations[streamName]
+	pipeline := manifest.OperationalPipelineTemplates[binding.ActivationPipeline]
+	stageBudget := func(values []ResolvedOperationalStage) time.Duration {
+		var total time.Duration
+		for _, stage := range values {
+			attempts := stage.Retry.Attempts
+			if attempts < 1 {
+				attempts = 1
+			}
+			budget := stage.Retry.TotalTimeout
+			if budget <= 0 {
+				budget = time.Duration(attempts) * (stage.Timeout + stage.Retry.MaximumDelay)
+			}
+			total += budget + stage.WaitAfter
+		}
+		return total
+	}
+	duration := stageBudget(stages) + time.Duration(pipeline.RecoveryAttempts)*(stageBudget(recovery)+stageBudget(stages))
+	if duration < time.Second {
+		duration = time.Second
+	}
+	bookingName := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-booking\x00"+resourceName+"\x00"+streamName+"\x00"+idempotencyKey)).String()
+	runID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-run\x00"+resourceName+"\x00"+streamName+"\x00"+idempotencyKey)).String()
+	makeSpecs := func(values []ResolvedOperationalStage) []operations.ActivationStageSpec {
+		result := make([]operations.ActivationStageSpec, 0, len(values))
+		due := now
+		for _, stage := range values {
+			attempts := stage.Retry.Attempts
+			if attempts < 1 {
+				attempts = 1
+			}
+			result = append(result, operations.ActivationStageSpec{Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow, Kind: stage.Kind,
+				DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters, ProgressMessage: stage.ProgressMessages.Initial,
+				RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter, InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff,
+				MaximumDelay: stage.Retry.MaximumDelay, TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes,
+				FailureGuidance: mustMarshalOperationalGuidance(stage.FailureGuidance)})
+			due = due.Add(stage.Timeout + stage.WaitAfter)
+		}
+		return result
+	}
+	stageSpecs, recoverySpecs, cleanupSpecs := makeSpecs(stages), makeSpecs(recovery), makeSpecs(cleanup)
+	plan, err := json.Marshal(map[string]interface{}{"stages": stages, "recovery": recovery, "cleanup": cleanup})
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	first := stages[0]
+	jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-job\x00"+runID+"\x000\x001")).String()
+	deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-delivery\x00"+jobID)).String()
+	jobKey := "manual-health:" + runID + ":0:1"
+	command := operations.Command{Version: 1, JobID: jobID, Workflow: first.Workflow, Resource: resourceName, Kind: "health", StartsAt: now,
+		EndsAt: now.Add(first.Timeout), BookingName: bookingName, PlanRevision: 1, IdempotencyKey: jobKey, Parameters: first.Parameters}
+	body, err := json.Marshal(command)
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	booking := Booking{Name: bookingName, User: operator, Policy: "__operations__:health", Slot: slots[0], Maintenance: true,
+		When: interval.Interval{Start: now, End: now.Add(duration)}}
+	bookingRequest := CreateBookingRequest{Booking: booking, Resource: resourceName, ResourceConstrained: true, Now: now,
+		ManifestVersion: s.manifestVersion, Maintenance: true, Actor: "manual-health:" + operator}
+	activationRequest := operations.CreateActivationRequest{RunID: runID, BookingName: bookingName, User: operator, Resource: resourceName, Stream: streamName,
+		Pipeline: binding.ActivationPipeline, ManifestVersion: s.manifestVersion, IdempotencyKey: idempotencyKey, RequestedAt: now, ResolvedPlan: plan,
+		Stages: stageSpecs, RecoveryStages: recoverySpecs, CleanupStages: cleanupSpecs, RecoveryAttempts: pipeline.RecoveryAttempts, AutoClose: true,
+		FirstJob: operations.Job{ID: jobID, Resource: resourceName, Workflow: first.Workflow, Kind: "health", State: "reserved", DueAt: now,
+			StartsAt: now, EndsAt: now.Add(first.Timeout), TriggeringBookingName: bookingName, ManifestVersion: s.manifestVersion, PlanRevision: 1,
+			IdempotencyKey: jobKey, Payload: body}, FirstDelivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body}}
+	persisted, run, fresh, err := repository.CreateHealthCheck(ctx, bookingRequest, activationRequest)
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	if fresh {
+		stored := persisted.Booking
+		s.Bookings[stored.Name] = &stored
+		if s.Users[stored.User] == nil {
+			s.Users[stored.User] = NewUser()
+		}
+		s.Users[stored.User].Bookings[stored.Name] = &stored
+		_ = resource.Diary.RequestRegardlessAvailability(stored.When, stored.Name)
+	}
+	return run, fresh, nil
+}
+
 func mustMarshalOperationalGuidance(value OperationalFailureGuidance) json.RawMessage {
 	if value.Title == "" && value.Message == "" && len(value.Actions) == 0 {
 		return nil

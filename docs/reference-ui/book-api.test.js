@@ -44,3 +44,11 @@ test("technician dashboard uses bounded health and alert endpoints", async () =>
     ["/api/v1/admin/operational-alerts/17/acknowledge", "POST"],
   ]);
 });
+
+test("manual health check carries an idempotency key", async () => {
+  let request;
+  const api = new BookApi({ fetchImpl: async (url, options) => { request = [url, options]; return response(202, { id: "run" }); }});
+  await api.beginOperationalHealthCheck("spin 66", "front/video", "check-key");
+  assert.equal(request[0], "/api/v1/admin/resources/spin%2066/streams/front%2Fvideo/health-checks");
+  assert.equal(request[1].headers["Idempotency-Key"], "check-key");
+});

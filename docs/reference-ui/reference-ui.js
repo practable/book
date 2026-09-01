@@ -145,7 +145,22 @@ function renderHolds(holds) {
 }
 
 function renderHealth(health) {
-  $("a-health-rows").innerHTML = health.length ? health.map(item => `<tr><td>${escapeHTML(item.resource)}</td><td>${escapeHTML(item.stream)}</td><td><span class="badge ${item.status === "healthy" ? "good" : "bad"}">${escapeHTML(item.status)}</span></td><td>${escapeHTML(new Date(item.checked_at).toLocaleString())}</td><td>${escapeHTML(item.code || item.message || "—")}</td></tr>`).join("") : `<tr><td colspan="5" class="muted">No automated health results yet.</td></tr>`;
+  const known = new Map(health.map(item => [`${item.resource}\0${item.stream}`, item]));
+  Object.entries(resourceMetadata).forEach(([resource, metadata]) => (metadata.streams || []).forEach(stream => {
+    const key = `${resource}\0${stream}`;
+    if (!known.has(key)) known.set(key, { resource, stream, status: "unknown" });
+  }));
+  const rows = [...known.values()];
+  $("a-health-rows").innerHTML = rows.length ? rows.map(item => `<tr><td>${escapeHTML(item.resource)}</td><td>${escapeHTML(item.stream)}</td><td><span class="badge ${item.status === "healthy" ? "good" : "bad"}">${escapeHTML(item.status)}</span></td><td>${item.checked_at ? escapeHTML(new Date(item.checked_at).toLocaleString()) : "Never"}</td><td>${escapeHTML(item.code || item.message || "—")}</td><td><button class="button" data-run-check-resource="${escapeHTML(item.resource)}" data-run-check-stream="${escapeHTML(item.stream)}">Run check</button></td></tr>`).join("") : `<tr><td colspan="6" class="muted">No configured streams.</td></tr>`;
+  document.querySelectorAll("[data-run-check-resource]").forEach(button => button.addEventListener("click", async () => {
+    button.disabled = true;
+    setStatus($("a-status"), `Reserving ${button.dataset.runCheckResource} and starting ${button.dataset.runCheckStream} check…`);
+    try {
+      const run = await adminApi.beginOperationalHealthCheck(button.dataset.runCheckResource, button.dataset.runCheckStream);
+      setStatus($("a-status"), `Health check ${run.id} queued. Refreshing status…`);
+      setTimeout(() => loadOperations().catch(error => setStatus($("a-status"), error.message, true)), 1500);
+    } catch (error) { button.disabled = false; setStatus($("a-status"), error.message, true); }
+  }));
 }
 
 function renderAlerts(alerts) {
