@@ -28,7 +28,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.operational_alerts, public.operational_stream_health, public.operational_usage_ledger, public.booking_activation_stages, public.booking_activation_runs, public.operational_schedule_occurrences, public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.resource_release_events, public.resource_release_state, public.operational_alerts, public.operational_stream_health, public.operational_usage_ledger, public.booking_activation_stages, public.booking_activation_runs, public.operational_schedule_occurrences, public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(), "INSERT INTO public.service_state(singleton,updated_at_ns) VALUES(true,0)")
 	require.NoError(t, err)
@@ -1025,6 +1025,41 @@ func TestStoreReturnsActivityForAcceptedOperationalReservation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, activity.BookingID)
 	require.Equal(t, now, activity.NotBefore)
+}
+
+func TestCalendarDisclosesDegradedResources(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	manifest.Descriptions["d-g-a"] = store.Description{Name: "group-a", Type: "group", Short: "Group A"}
+	manifest.Groups = map[string]store.Group{"g-a": {Description: "d-g-a", Policies: []string{"p-a"}}}
+	now := time.Date(2022, 11, 4, 10, 0, 0, 0, time.UTC)
+	s := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, s.WithRepository(repository))
+	require.NoError(t, s.ReplaceManifest(manifest))
+	require.NoError(t, s.AddGroupForUser("calendar-user", "g-a"))
+	require.NoError(t, s.SetResourceIsAvailableBy("r-a", false, "camera fault", "technician"))
+	_, err = repository.OverrideResourceRelease(context.Background(), "r-a", []string{"st-a"}, []string{"st-a"}, "technician", "video unavailable; data remains usable", s.ManifestVersion(), now)
+	require.NoError(t, err)
+
+	catalogue, err := s.GetCalendarCatalogue("g-a")
+	require.NoError(t, err)
+	require.True(t, catalogue[0].Resources[0].Degraded)
+	require.Equal(t, []string{"st-a"}, catalogue[0].Resources[0].UnavailableStreams)
+
+	selector := store.CalendarSelector{Policy: "p-a"}
+	when := interval.Interval{Start: now.Add(time.Hour), End: now.Add(70 * time.Minute)}
+	bands, err := s.GetCalendarAvailability(selector, when.Start, when.End, 10*time.Minute, 10*time.Minute)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, bands[0].DegradedResources)
+	require.Equal(t, "degraded", bands[0].OperatingMode)
+	preview, err := s.PreviewCalendarBooking("calendar-user", selector, when)
+	require.NoError(t, err)
+	require.True(t, preview.Bookable)
+	require.Len(t, preview.DegradedResources, 1)
+	require.Equal(t, "video unavailable; data remains usable", preview.DegradedResources[0].DegradedReason)
 }
 
 func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing.T) {

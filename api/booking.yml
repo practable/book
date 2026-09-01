@@ -1931,6 +1931,15 @@ definitions:
         type: object
         additionalProperties:
           type: string
+      degraded:
+        type: boolean
+        description: true when a technician explicitly released the resource with known failed checks
+      degraded_reason:
+        type: string
+      unavailable_streams:
+        type: array
+        items:
+          type: string
     required:
     - name
 
@@ -1995,6 +2004,9 @@ definitions:
         type: string
         format: date-time
       matching_resources:
+        type: integer
+        format: int64
+      degraded_resources:
         type: integer
         format: int64
       bookable:
@@ -2066,6 +2078,11 @@ definitions:
         type: array
         items:
           type: string
+      degraded_resources:
+        type: array
+        description: bookable resources currently offered with known unavailable streams
+        items:
+          $ref: '#/definitions/CalendarResource'
     required:
     - when
     - selector

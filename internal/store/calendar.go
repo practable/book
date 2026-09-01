@@ -21,9 +21,12 @@ type CalendarSelector struct {
 }
 
 type CalendarResource struct {
-	Name       string            `json:"name" yaml:"name"`
-	Class      string            `json:"class,omitempty" yaml:"class,omitempty"`
-	Properties map[string]string `json:"properties,omitempty" yaml:"properties,omitempty"`
+	Name               string            `json:"name" yaml:"name"`
+	Class              string            `json:"class,omitempty" yaml:"class,omitempty"`
+	Properties         map[string]string `json:"properties,omitempty" yaml:"properties,omitempty"`
+	Degraded           bool              `json:"degraded" yaml:"degraded"`
+	DegradedReason     string            `json:"degraded_reason,omitempty" yaml:"degraded_reason,omitempty"`
+	UnavailableStreams []string          `json:"unavailable_streams,omitempty" yaml:"unavailable_streams,omitempty"`
 }
 
 type CalendarCatalogueItem struct {
@@ -38,21 +41,41 @@ type CalendarAvailabilityBand struct {
 	Start             time.Time `json:"start" yaml:"start"`
 	End               time.Time `json:"end" yaml:"end"`
 	MatchingResources int64     `json:"matching_resources" yaml:"matching_resources"`
+	DegradedResources int64     `json:"degraded_resources" yaml:"degraded_resources"`
 	Bookable          bool      `json:"bookable" yaml:"bookable"`
 	Reason            string    `json:"reason,omitempty" yaml:"reason,omitempty"`
 	OperatingMode     string    `json:"operating_mode" yaml:"operating_mode"`
 }
 
 type CalendarPreview struct {
-	When               interval.Interval `json:"when" yaml:"when"`
-	Selector           CalendarSelector  `json:"selector" yaml:"selector"`
-	MatchingResources  []string          `json:"matching_resources" yaml:"matching_resources"`
-	Bookable           bool              `json:"bookable" yaml:"bookable"`
-	Reasons            []string          `json:"reasons,omitempty" yaml:"reasons,omitempty"`
-	UsageAfter         time.Duration     `json:"usage_after" yaml:"usage_after"`
-	UsageLimit         time.Duration     `json:"usage_limit,omitempty" yaml:"usage_limit,omitempty"`
-	ManifestVersion    int64             `json:"manifest_version" yaml:"manifest_version"`
-	OperationalEffects []string          `json:"operational_effects" yaml:"operational_effects"`
+	When               interval.Interval  `json:"when" yaml:"when"`
+	Selector           CalendarSelector   `json:"selector" yaml:"selector"`
+	MatchingResources  []string           `json:"matching_resources" yaml:"matching_resources"`
+	Bookable           bool               `json:"bookable" yaml:"bookable"`
+	Reasons            []string           `json:"reasons,omitempty" yaml:"reasons,omitempty"`
+	UsageAfter         time.Duration      `json:"usage_after" yaml:"usage_after"`
+	UsageLimit         time.Duration      `json:"usage_limit,omitempty" yaml:"usage_limit,omitempty"`
+	ManifestVersion    int64              `json:"manifest_version" yaml:"manifest_version"`
+	OperationalEffects []string           `json:"operational_effects" yaml:"operational_effects"`
+	DegradedResources  []CalendarResource `json:"degraded_resources,omitempty" yaml:"degraded_resources,omitempty"`
+}
+
+func (s *Store) degradedCalendarResourcesLocked() (map[string]ResourceReleaseState, error) {
+	result := make(map[string]ResourceReleaseState)
+	repository, ok := s.repository.(ResourceReleaseRepository)
+	if !ok {
+		return result, nil
+	}
+	states, err := repository.ListResourceReleaseStates(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	for _, state := range states {
+		if state.State == "degraded_override" {
+			result[state.Resource] = state
+		}
+	}
+	return result, nil
 }
 
 func resourceMatches(resourceName string, resource Resource, selector CalendarSelector) bool {
@@ -162,6 +185,10 @@ func (s *Store) GetCalendarCatalogue(groupName string) ([]CalendarCatalogueItem,
 	if !ok {
 		return nil, fmt.Errorf("group %s not found", groupName)
 	}
+	degraded, err := s.degradedCalendarResourcesLocked()
+	if err != nil {
+		return nil, err
+	}
 	items := make([]CalendarCatalogueItem, 0, len(group.Policies))
 	for _, policyName := range group.Policies {
 		policy, ok := s.Policies[policyName]
@@ -186,7 +213,13 @@ func (s *Store) GetCalendarCatalogue(groupName string) ([]CalendarCatalogueItem,
 				continue
 			}
 			seen[slot.Resource] = true
-			item.Resources = append(item.Resources, CalendarResource{Name: slot.Resource, Class: resource.Class, Properties: resource.Properties})
+			calendarResource := CalendarResource{Name: slot.Resource, Class: resource.Class, Properties: resource.Properties}
+			if release, ok := degraded[slot.Resource]; ok {
+				calendarResource.Degraded = true
+				calendarResource.DegradedReason = release.OverrideReason
+				calendarResource.UnavailableStreams = append([]string(nil), release.FailingStreams...)
+			}
+			item.Resources = append(item.Resources, calendarResource)
 		}
 		sort.Slice(item.Resources, func(i, j int) bool { return item.Resources[i].Name < item.Resources[j].Name })
 		items = append(items, item)
@@ -206,6 +239,10 @@ func (s *Store) GetCalendarAvailability(selector CalendarSelector, from, to time
 	if to.Sub(from) > 62*24*time.Hour || resolution < time.Minute {
 		return nil, errors.New("calendar query exceeds range or resolution limit")
 	}
+	degraded, err := s.degradedCalendarResourcesLocked()
+	if err != nil {
+		return nil, err
+	}
 	result := make([]CalendarAvailabilityBand, 0, int(to.Sub(from)/resolution)+1)
 	for start := from.UTC(); start.Before(to); start = start.Add(resolution) {
 		end := start.Add(duration)
@@ -213,7 +250,17 @@ func (s *Store) GetCalendarAvailability(selector CalendarSelector, from, to time
 		if err != nil {
 			return nil, err
 		}
-		band := CalendarAvailabilityBand{Start: start, End: start.Add(resolution), MatchingResources: int64(len(resources)), Bookable: len(resources) > 0, OperatingMode: "normal"}
+		degradedCount := int64(0)
+		for _, resource := range resources {
+			if _, ok := degraded[resource]; ok {
+				degradedCount++
+			}
+		}
+		mode := "normal"
+		if degradedCount > 0 {
+			mode = "degraded"
+		}
+		band := CalendarAvailabilityBand{Start: start, End: start.Add(resolution), MatchingResources: int64(len(resources)), DegradedResources: degradedCount, Bookable: len(resources) > 0, OperatingMode: mode}
 		if !band.Bookable {
 			band.Reason = "unavailable"
 		}
@@ -289,6 +336,17 @@ func (s *Store) PreviewCalendarBooking(user string, selector CalendarSelector, w
 		return preview, err
 	}
 	preview.MatchingResources = resources
+	degraded, err := s.degradedCalendarResourcesLocked()
+	if err != nil {
+		return preview, err
+	}
+	for _, resourceName := range resources {
+		if release, ok := degraded[resourceName]; ok {
+			resource := s.Resources[resourceName]
+			preview.DegradedResources = append(preview.DegradedResources, CalendarResource{Name: resourceName, Class: resource.Class, Properties: resource.Properties,
+				Degraded: true, DegradedReason: release.OverrideReason, UnavailableStreams: append([]string(nil), release.FailingStreams...)})
+		}
+	}
 	if len(resources) == 0 {
 		preview.Reasons = append(preview.Reasons, "unavailable")
 	}
@@ -327,6 +385,17 @@ func (s *Store) MakeCalendarBooking(user string, selector CalendarSelector, when
 	if len(slots) == 0 {
 		return Booking{}, ErrBookingConflict
 	}
+	// For a fungible pool, prefer fully healthy equipment. A degraded resource
+	// remains a valid fallback only because a technician explicitly released it.
+	degraded, err := s.degradedCalendarResourcesLocked()
+	if err != nil {
+		return Booking{}, err
+	}
+	sort.SliceStable(slots, func(i, j int) bool {
+		_, iDegraded := degraded[s.Slots[slots[i]].Resource]
+		_, jDegraded := degraded[s.Slots[slots[j]].Resource]
+		return !iDegraded && jDegraded
+	})
 	var lastErr error
 	for _, slotName := range slots {
 		booking, err := s.makeBookingWithName(slotName, user, when, name, true)

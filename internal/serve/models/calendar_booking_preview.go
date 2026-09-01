@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -22,6 +23,9 @@ type CalendarBookingPreview struct {
 	// bookable
 	// Required: true
 	Bookable *bool `json:"bookable"`
+
+	// bookable resources currently offered with known unavailable streams
+	DegradedResources []*CalendarResource `json:"degraded_resources"`
 
 	// manifest version
 	// Required: true
@@ -62,6 +66,10 @@ func (m *CalendarBookingPreview) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateDegradedResources(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateManifestVersion(formats); err != nil {
 		res = append(res, err)
 	}
@@ -96,6 +104,32 @@ func (m *CalendarBookingPreview) validateBookable(formats strfmt.Registry) error
 
 	if err := validate.Required("bookable", "body", m.Bookable); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (m *CalendarBookingPreview) validateDegradedResources(formats strfmt.Registry) error {
+	if swag.IsZero(m.DegradedResources) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.DegradedResources); i++ {
+		if swag.IsZero(m.DegradedResources[i]) { // not required
+			continue
+		}
+
+		if m.DegradedResources[i] != nil {
+			if err := m.DegradedResources[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("degraded_resources" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("degraded_resources" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil
@@ -181,6 +215,10 @@ func (m *CalendarBookingPreview) validateWhen(formats strfmt.Registry) error {
 func (m *CalendarBookingPreview) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.contextValidateDegradedResources(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateSelector(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -192,6 +230,31 @@ func (m *CalendarBookingPreview) ContextValidate(ctx context.Context, formats st
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *CalendarBookingPreview) contextValidateDegradedResources(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.DegradedResources); i++ {
+
+		if m.DegradedResources[i] != nil {
+
+			if swag.IsZero(m.DegradedResources[i]) { // not required
+				return nil
+			}
+
+			if err := m.DegradedResources[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("degraded_resources" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("degraded_resources" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 

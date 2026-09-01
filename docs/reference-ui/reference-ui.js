@@ -63,7 +63,7 @@ $("s-connect").addEventListener("click", async () => {
   setStatus($("s-status"), "Loading catalogue…");
   try {
     catalogue = await studentApi.calendarCatalogue($("s-group").value.trim());
-    $("catalogue").innerHTML = catalogue.map((item,index) => `<button class="card tile" data-item="${index}">${item.description?.image || item.description?.thumb ? `<img src="${escapeHTML(item.description.image || item.description.thumb)}" alt="">` : ""}<div class="tile-body"><h2>${escapeHTML(item.description?.short || item.policy)}</h2><p class="muted">${escapeHTML(item.description?.long || item.description?.further || "Choose an available resource and time.")}</p><p>${item.resources?.length || 0} matching resources · suggested ${escapeHTML(item.recommended_duration || "policy duration")}</p></div></button>`).join("");
+    $("catalogue").innerHTML = catalogue.map((item,index) => { const degraded = (item.resources || []).filter(resource => resource.degraded).length; return `<button class="card tile" data-item="${index}">${item.description?.image || item.description?.thumb ? `<img src="${escapeHTML(item.description.image || item.description.thumb)}" alt="">` : ""}<div class="tile-body"><h2>${escapeHTML(item.description?.short || item.policy)}</h2><p class="muted">${escapeHTML(item.description?.long || item.description?.further || "Choose an available resource and time.")}</p><p>${item.resources?.length || 0} matching resources · suggested ${escapeHTML(item.recommended_duration || "policy duration")}</p>${degraded ? `<p class="warning">${degraded} currently offered with reduced capability</p>` : ""}</div></button>`; }).join("");
     document.querySelectorAll("[data-item]").forEach(tile => tile.addEventListener("click", () => configurePlanner(catalogue[Number(tile.dataset.item)])));
     setStatus($("s-status"), `${catalogue.length} experiment classes loaded.`);
   } catch (error) { setStatus($("s-status"), error.message, true); }
@@ -78,7 +78,7 @@ async function refreshAvailability() {
   setStatus($("s-status"), "Checking availability…");
   try {
     const bands = await studentApi.calendarAvailability(request);
-    $("bands").innerHTML = bands.map((band,index) => `<button class="band ${band.matching_resources > 2 ? "good" : band.matching_resources > 0 ? "limited" : "none"}" data-band="${index}" ${band.bookable ? "" : "disabled"}>${formatTime(band.start)}<br>${band.matching_resources} available</button>`).join("");
+    $("bands").innerHTML = bands.map((band,index) => `<button class="band ${band.degraded_resources > 0 ? "degraded" : band.matching_resources > 2 ? "good" : band.matching_resources > 0 ? "limited" : "none"}" data-band="${index}" ${band.bookable ? "" : "disabled"}>${formatTime(band.start)}<br>${band.matching_resources} available${band.degraded_resources ? `<br>${band.degraded_resources} degraded` : ""}</button>`).join("");
     document.querySelectorAll("[data-band]").forEach(button => button.addEventListener("click", () => previewBand(bands[Number(button.dataset.band)])));
     setStatus($("s-status"), "Availability is current; final creation is rechecked transactionally.");
   } catch (error) { setStatus($("s-status"), error.message, true); }
@@ -91,7 +91,10 @@ async function previewBand(band) {
   try {
     const preview = await studentApi.previewBooking(proposedRequest);
     $("preview-title").textContent = `${formatTime(start)}–${new Intl.DateTimeFormat(undefined,{hour:"2-digit",minute:"2-digit"}).format(end)}`;
-    $("preview-detail").textContent = preview.bookable ? `${preview.matching_resources.length} possible resources · usage after booking ${preview.usage_after}` : `Cannot book: ${(preview.reasons || []).join(", ")}`;
+    const degraded = preview.degraded_resources || [];
+    const warning = degraded.length ? ` · Reduced capability: ${degraded.map(resource => `${resource.name} (${(resource.unavailable_streams || []).join(", ") || resource.degraded_reason})`).join("; ")}` : "";
+    $("preview-detail").textContent = preview.bookable ? `${preview.matching_resources.length} possible resources · usage after booking ${preview.usage_after}${warning}` : `Cannot book: ${(preview.reasons || []).join(", ")}`;
+	$("preview-detail").classList.toggle("warning", degraded.length > 0);
     $("book").disabled = !preview.bookable;
     $("preview").classList.remove("hidden");
   } catch (error) { setStatus($("s-status"), error.message, true); }

@@ -3250,6 +3250,10 @@ func init() {
         "bookable": {
           "type": "boolean"
         },
+        "degraded_resources": {
+          "type": "integer",
+          "format": "int64"
+        },
         "end": {
           "type": "string",
           "format": "date-time"
@@ -3341,6 +3345,13 @@ func init() {
       "properties": {
         "bookable": {
           "type": "boolean"
+        },
+        "degraded_resources": {
+          "description": "bookable resources currently offered with known unavailable streams",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CalendarResource"
+          }
         },
         "manifest_version": {
           "type": "integer",
@@ -3441,12 +3452,25 @@ func init() {
         "class": {
           "type": "string"
         },
+        "degraded": {
+          "description": "true when a technician explicitly released the resource with known failed checks",
+          "type": "boolean"
+        },
+        "degraded_reason": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
         "properties": {
           "type": "object",
           "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "unavailable_streams": {
+          "type": "array",
+          "items": {
             "type": "string"
           }
         }
@@ -8998,6 +9022,10 @@ func init() {
         "bookable": {
           "type": "boolean"
         },
+        "degraded_resources": {
+          "type": "integer",
+          "format": "int64"
+        },
         "end": {
           "type": "string",
           "format": "date-time"
@@ -9089,6 +9117,13 @@ func init() {
       "properties": {
         "bookable": {
           "type": "boolean"
+        },
+        "degraded_resources": {
+          "description": "bookable resources currently offered with known unavailable streams",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CalendarResource"
+          }
         },
         "manifest_version": {
           "type": "integer",
@@ -9189,12 +9224,25 @@ func init() {
         "class": {
           "type": "string"
         },
+        "degraded": {
+          "description": "true when a technician explicitly released the resource with known failed checks",
+          "type": "boolean"
+        },
+        "degraded_reason": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
         "properties": {
           "type": "object",
           "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "unavailable_streams": {
+          "type": "array",
+          "items": {
             "type": "string"
           }
         }

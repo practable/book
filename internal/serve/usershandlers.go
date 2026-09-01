@@ -635,7 +635,7 @@ func getCalendarCatalogueHandler(config config.ServerConfig) func(users.GetCalen
 				model.RecommendedDuration = store.HumaniseDuration(item.RecommendedDuration)
 			}
 			for _, resource := range item.Resources {
-				model.Resources = append(model.Resources, &models.CalendarResource{Name: gog.Ptr(resource.Name), Class: resource.Class, Properties: resource.Properties})
+				model.Resources = append(model.Resources, calendarResourceToModel(resource))
 			}
 			payload = append(payload, model)
 		}
@@ -672,7 +672,7 @@ func queryCalendarAvailabilityHandler(config config.ServerConfig) func(users.Que
 		payload := make(models.CalendarAvailability, 0, len(bands))
 		for _, band := range bands {
 			start, end, bookable, count, mode := strfmt.DateTime(band.Start), strfmt.DateTime(band.End), band.Bookable, band.MatchingResources, band.OperatingMode
-			payload = append(payload, &models.CalendarAvailabilityBand{Start: &start, End: &end, Bookable: &bookable, MatchingResources: &count, OperatingMode: &mode, Reason: band.Reason})
+			payload = append(payload, &models.CalendarAvailabilityBand{Start: &start, End: &end, Bookable: &bookable, MatchingResources: &count, DegradedResources: band.DegradedResources, OperatingMode: &mode, Reason: band.Reason})
 		}
 		return users.NewQueryCalendarAvailabilityOK().WithPayload(payload)
 	}
@@ -713,11 +713,19 @@ func previewCalendarBookingHandler(config config.ServerConfig) func(users.Previe
 			Bookable: &bookable, Reasons: preview.Reasons, UsageAfter: &usageAfter, ManifestVersion: &version,
 			OperationalEffects: preview.OperationalEffects,
 		}
+		for _, resource := range preview.DegradedResources {
+			payload.DegradedResources = append(payload.DegradedResources, calendarResourceToModel(resource))
+		}
 		if preview.UsageLimit > 0 {
 			payload.UsageLimit = store.HumaniseDuration(preview.UsageLimit)
 		}
 		return users.NewPreviewCalendarBookingOK().WithPayload(payload)
 	}
+}
+
+func calendarResourceToModel(resource store.CalendarResource) *models.CalendarResource {
+	return &models.CalendarResource{Name: gog.Ptr(resource.Name), Class: resource.Class, Properties: resource.Properties,
+		Degraded: resource.Degraded, DegradedReason: resource.DegradedReason, UnavailableStreams: resource.UnavailableStreams}
 }
 
 func makeCalendarBookingHandler(config config.ServerConfig) func(users.MakeCalendarBookingParams, interface{}) middleware.Responder {

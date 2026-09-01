@@ -23,6 +23,9 @@ type CalendarAvailabilityBand struct {
 	// Required: true
 	Bookable *bool `json:"bookable"`
 
+	// degraded resources
+	DegradedResources int64 `json:"degraded_resources,omitempty"`
+
 	// end
 	// Required: true
 	// Format: date-time

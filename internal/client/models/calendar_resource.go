@@ -22,12 +22,21 @@ type CalendarResource struct {
 	// class
 	Class string `json:"class,omitempty"`
 
+	// true when a technician explicitly released the resource with known failed checks
+	Degraded bool `json:"degraded,omitempty"`
+
+	// degraded reason
+	DegradedReason string `json:"degraded_reason,omitempty"`
+
 	// name
 	// Required: true
 	Name *string `json:"name"`
 
 	// properties
 	Properties map[string]string `json:"properties,omitempty"`
+
+	// unavailable streams
+	UnavailableStreams []string `json:"unavailable_streams"`
 }
 
 // Validate validates this calendar resource
