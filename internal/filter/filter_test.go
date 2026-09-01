@@ -10,28 +10,28 @@ import (
 
 // Graphical representation of the intervals used in this test (a = allowed, d = denied, s = session to try)
 //
-//               20                      50                            120                          180
-//               |-------a0------------|                               |-----------a2------------------|
-//                             |-------------a1------|                 |-------------a3---------|
-//                            40	                  60              120                      161
-//                                                                     |---------a4-----|
-//                                                                    120             150  //force a same-time slot at least once
+//	              20                      50                            120                          180
+//	              |-------a0------------|                               |-----------a2------------------|
+//	                            |-------------a1------|                 |-------------a3---------|
+//	                           40	                  60              120                      161
+//	                                                                    |---------a4-----|
+//	                                                                   120             150  //force a same-time slot at least once
 //
 //
-//	5	  10                35    42                       80      90             150       161             200       220
-//  |--d0-|                 |--d2-|                        |---d3--|              |---d4----|               |---d5----|
-//          |--d1----|                                                            |---d6--|                 |----d7------|
-//          15      30                                                                    159                           230
+//		5	  10                35    42                       80      90             150       161             200       220
+//	 |--d0-|                 |--d2-|                        |---d3--|              |---d4----|               |---d5----|
+//	         |--d1----|                                                            |---d6--|                 |----d7------|
+//	         15      30                                                                    159                           230
 //
-//1    8     18   22     34     43  44     55  56       80              125  130       160      162            201  205   230     240
-//|-s0-|     |-s1-|      |--s2---|  |--s4--|   |---s5---|               |-s7-|         |---s8---|              |-s9-|     |--s10--|
+// 1    8     18   22     34     43  44     55  56       80              125  130       160      162            201  205   230     240
+// |-s0-|     |-s1-|      |--s2---|  |--s4--|   |---s5---|               |-s7-|         |---s8---|              |-s9-|     |--s10--|
 //
-//                       34 38                              82    86                           163     168
-//                       |s3|                               |--s6-|                            |--s11--|
+//	34 38                              82    86                           163     168
+//	|s3|                               |--s6-|                            |--s11--|
 //
 // The resulting list of denied regions (Dn) is
-//0               30  35     42                60+1ns                120      150           161      180+1ns
-//|-----D0--------|   |--D1--|                 |---------D2-----------|        |----D3-------|       |----D4-----> infinity
+// 0               30  35     42                60+1ns                120      150           161      180+1ns
+// |-----D0--------|   |--D1--|                 |---------D2-----------|        |----D3-------|       |----D4-----> infinity
 var w = time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
 
 var a0 = interval.Interval{
@@ -191,15 +191,15 @@ func TestFilter(t *testing.T) {
 			End:   w.Add(42 * time.Second),
 		},
 		interval.Interval{
-			Start: w.Add(60 * time.Second).Add(time.Nanosecond),
-			End:   w.Add(120 * time.Second).Add(-time.Nanosecond),
+			Start: w.Add(60 * time.Second),
+			End:   w.Add(120 * time.Second),
 		},
 		interval.Interval{
 			Start: w.Add(150 * time.Second),
 			End:   w.Add(161 * time.Second),
 		},
 		interval.Interval{
-			Start: w.Add(180 * time.Second).Add(time.Nanosecond),
+			Start: w.Add(180 * time.Second),
 			End:   interval.DistantFuture,
 		},
 	}
@@ -238,9 +238,9 @@ func TestExport(t *testing.T) {
 
 	assert.Equal(t, []interval.Interval{interval.Interval{
 		Start: interval.ZeroTime,
-		End:   a0.Start.Add(-time.Nanosecond),
+		End:   a0.Start,
 	}, interval.Interval{
-		Start: a0.End.Add(time.Nanosecond),
+		Start: a0.End,
 		End:   interval.DistantFuture,
 	}}, d)
 
@@ -249,12 +249,12 @@ func TestExport(t *testing.T) {
 	d = f.Export()
 	assert.Equal(t, []interval.Interval{interval.Interval{
 		Start: interval.ZeroTime,
-		End:   a0.Start.Add(-time.Nanosecond),
+		End:   a0.Start,
 	}, interval.Interval{
 		Start: d2.Start,
 		End:   d2.End,
 	}, interval.Interval{
-		Start: a0.End.Add(time.Nanosecond),
+		Start: a0.End,
 		End:   interval.DistantFuture,
 	}}, d)
 
@@ -275,12 +275,12 @@ func TestExport(t *testing.T) {
 	d = f.Export()
 	assert.Equal(t, []interval.Interval{interval.Interval{
 		Start: interval.ZeroTime,
-		End:   a0.Start.Add(-time.Nanosecond),
+		End:   a0.Start,
 	}, interval.Interval{
 		Start: d2.Start,
 		End:   d2.End,
 	}, interval.Interval{
-		Start: a0.End.Add(time.Nanosecond),
+		Start: a0.End,
 		End:   interval.DistantFuture,
 	}}, d)
 

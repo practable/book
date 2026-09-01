@@ -28,6 +28,11 @@ func TestComparator(t *testing.T) {
 
 	assert.Equal(t, 0, Comparator(a, c))
 
+	// Half-open intervals may share a boundary.
+	touching := Interval{Start: a.End, End: a.End.Add(time.Second)}
+	assert.Equal(t, -1, Comparator(a, touching))
+	assert.Equal(t, 1, Comparator(touching, a))
+
 }
 
 func TestAVL(t *testing.T) {
@@ -140,11 +145,11 @@ func TestInvert(t *testing.T) {
 	// check order is now correct, with inverted intervals
 
 	expected := []Interval{
-		Interval{Start: ZeroTime, End: a.Start.Add(-time.Nanosecond)},
-		Interval{Start: a.End.Add(time.Nanosecond), End: b.Start.Add(-time.Nanosecond)},
-		Interval{Start: b.End.Add(time.Nanosecond), End: c.Start.Add(-time.Nanosecond)},
-		Interval{Start: c.End.Add(time.Nanosecond), End: d.Start.Add(-time.Nanosecond)},
-		Interval{Start: d.End.Add(time.Nanosecond), End: DistantFuture},
+		Interval{Start: ZeroTime, End: a.Start},
+		Interval{Start: a.End, End: b.Start},
+		Interval{Start: b.End, End: c.Start},
+		Interval{Start: c.End, End: d.Start},
+		Interval{Start: d.End, End: DistantFuture},
 	}
 
 	assert.Equal(t, expected, inverted)
@@ -174,11 +179,11 @@ func TestInvertOverlapping(t *testing.T) {
 	// check order is now correct, with inverted intervals
 
 	expected := []Interval{
-		Interval{Start: ZeroTime, End: a.Start.Add(-time.Nanosecond)},
-		Interval{Start: a.End.Add(time.Nanosecond), End: b.Start.Add(-time.Nanosecond)},
+		Interval{Start: ZeroTime, End: a.Start},
+		Interval{Start: a.End, End: b.Start},
 		//skip b.End, c.Start because within overlapped allow intervals
-		Interval{Start: c.End.Add(time.Nanosecond), End: d.Start.Add(-time.Nanosecond)},
-		Interval{Start: d.End.Add(time.Nanosecond), End: DistantFuture},
+		Interval{Start: c.End, End: d.Start},
+		Interval{Start: d.End, End: DistantFuture},
 	}
 
 	assert.Equal(t, inverted, expected)

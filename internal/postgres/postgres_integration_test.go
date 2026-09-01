@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 9, versions)
+	require.Equal(t, 10, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -715,7 +715,7 @@ func TestConcurrentOverlapAndExactRetry(t *testing.T) {
 	require.Equal(t, existing.Booking.Name, got.Booking.Name)
 }
 
-func TestClosedNanosecondBoundariesAndIdentifierConflict(t *testing.T) {
+func TestHalfOpenBoundariesAndIdentifierConflict(t *testing.T) {
 	repository := integrationRepository(t)
 	ctx := context.Background()
 	start := time.Date(2026, 9, 2, 14, 0, 0, 123, time.UTC)
@@ -725,10 +725,10 @@ func TestClosedNanosecondBoundariesAndIdentifierConflict(t *testing.T) {
 	require.NoError(t, err)
 	_, _, err = repository.CreateBooking(ctx,
 		request("touching", "user-b", "slot-b", "resource-a", end, end.Add(time.Minute)))
-	require.ErrorIs(t, err, store.ErrBookingConflict)
-	_, _, err = repository.CreateBooking(ctx,
-		request("one-nanosecond-gap", "user-c", "slot-c", "resource-a", end.Add(time.Nanosecond), end.Add(time.Minute)))
 	require.NoError(t, err)
+	_, _, err = repository.CreateBooking(ctx,
+		request("overlap-after-boundary", "user-c", "slot-c", "resource-a", end.Add(time.Nanosecond), end.Add(time.Minute)))
+	require.ErrorIs(t, err, store.ErrBookingConflict)
 	differentPayload := request("boundary", "user-d", "slot-d", "resource-b", start.Add(2*time.Hour), start.Add(3*time.Hour))
 	_, _, err = repository.CreateBooking(ctx, differentPayload)
 	require.ErrorIs(t, err, store.ErrBookingIDConflict)

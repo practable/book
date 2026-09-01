@@ -26,6 +26,11 @@ Operational job and webhook tables are installed by migration 0009. Their
 service configuration and recovery semantics are documented in
 [Operational job webhooks](operational-webhooks.md).
 
+Migration 0010 changes resource exclusion ranges to half-open `[start,end)`
+semantics, permitting back-to-back reservations. Its down migration can fail
+safely if adjacent reservations have since been created; move or cancel those
+reservations before retrying the rollback.
+
 A disposable local instance can be started with Docker (choose your own local
 password):
 

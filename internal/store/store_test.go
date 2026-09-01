@@ -924,14 +924,14 @@ func TestAvailability(t *testing.T) {
 	exp := []interval.Interval{
 		interval.Interval{
 			Start: start,
-			End:   s1.Add(-time.Nanosecond),
+			End:   s1,
 		},
 		interval.Interval{
-			Start: e1.Add(time.Nanosecond),
-			End:   s2.Add(-time.Nanosecond),
+			Start: e1,
+			End:   s2,
 		},
 		interval.Interval{
-			Start: e2.Add(time.Nanosecond),
+			Start: e2,
 			End:   end,
 		},
 	}
@@ -3338,7 +3338,7 @@ func TestNextAvailable(t *testing.T) {
 
 	assert.Error(t, err)
 
-	expected := "due to next available policy setting, booking cannot start more than 1m0s after the last booking ends, i.e. 2022-11-05 00:11:30.000000001 +0000 UTC"
+	expected := "due to next available policy setting, booking cannot start more than 1m0s after the last booking ends, i.e. 2022-11-05 00:11:30 +0000 UTC"
 	assert.Equal(t, expected, err.Error())
 
 	if expected != err.Error() {

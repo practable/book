@@ -26,9 +26,9 @@ func Comparator(a, b interface{}) int {
 	t2 := b.(Interval)
 
 	switch {
-	case t1.Start.After(t2.End):
+	case !t1.Start.Before(t2.End):
 		return 1
-	case t1.End.Before(t2.Start):
+	case !t1.End.After(t2.Start):
 		return -1
 	default:
 		return 0 //this implies some degree of overlap
@@ -101,24 +101,19 @@ func Invert(intervals []Interval) []Interval {
 
 	merged := Merge(intervals)
 
-	// set the start of the first deny interval to zero time
-	inverted := []Interval{Interval{Start: ZeroTime}}
-
+	inverted := make([]Interval, 0, len(merged)+1)
+	cursor := ZeroTime
 	for _, next := range merged {
-
-		last := &inverted[len(inverted)-1]
-
-		// set the end of the last deny interval, minus a nanosecond to prevent overlap
-		last.End = next.Start.Add(-time.Nanosecond)
-
-		// set the start time of the next deny interval, plus a nanosecond to prevent overlap
-		inverted = append(inverted, Interval{Start: next.End.Add(time.Nanosecond)})
-
+		if cursor.Before(next.Start) {
+			inverted = append(inverted, Interval{Start: cursor, End: next.Start})
+		}
+		if cursor.Before(next.End) {
+			cursor = next.End
+		}
 	}
-
-	// set the end of the last deny interval to infinity
-	p := &inverted[len(inverted)-1]
-	p.End = DistantFuture
+	if cursor.Before(DistantFuture) {
+		inverted = append(inverted, Interval{Start: cursor, End: DistantFuture})
+	}
 
 	return inverted
 

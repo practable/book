@@ -87,6 +87,9 @@ func (d *Diary) request(when interval.Interval, name string, requireAvailable bo
 	if name == "" {
 		return errors.New("must not have empty name")
 	}
+	if !when.End.After(when.Start) {
+		return errors.New("booking end must be after start")
+	}
 
 	bs, err := d.GetBookings()
 
@@ -202,7 +205,7 @@ func (d *Diary) ClearBefore(t time.Time) {
 	slots := d.bookings.Keys() //these are given in order
 
 	for _, when := range slots {
-		if when.(interval.Interval).End.Before(t) {
+		if !when.(interval.Interval).End.After(t) {
 			d.bookings.Remove(when)
 		}
 	}

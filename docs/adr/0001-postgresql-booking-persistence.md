@@ -41,8 +41,9 @@ The database model contains:
 
 Database timestamps use `timestamptz` for operations and audit readability, while
 parallel epoch-nanosecond integers are authoritative for identity and interval
-comparison. This avoids PostgreSQL's microsecond timestamp precision changing the
-existing nanosecond and closed-endpoint behaviour. Callers and API conversion
+comparison. This avoids PostgreSQL's microsecond timestamp precision changing
+nanosecond behaviour. Migration 0010 adopts half-open `[start,end)` ranges, so
+one reservation may start exactly when another ends. Callers and API conversion
 continue to use Go `time.Time`. Durations are stored as integer nanoseconds.
 
 ## Transactions and concurrency

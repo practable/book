@@ -1562,7 +1562,7 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err := ioutil.ReadAll(resp.Body)
-	expected := `[{"end":"2022-11-05T00:09:59.999Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:19:59.999Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:34:59.999Z","start":"2022-11-05T00:30:00.000Z"},{"end":"2022-11-05T00:44:59.999Z","start":"2022-11-05T00:40:00.000Z"},{"end":"2022-11-05T00:54:59.999Z","start":"2022-11-05T00:50:00.000Z"},{"end":"2022-11-05T01:04:59.999Z","start":"2022-11-05T01:00:00.000Z"},{"end":"2022-11-05T01:14:59.999Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:24:59.999Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2022-11-05T02:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
+	expected := `[{"end":"2022-11-05T00:10:00.000Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:20:00.000Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:35:00.000Z","start":"2022-11-05T00:30:00.000Z"},{"end":"2022-11-05T00:45:00.000Z","start":"2022-11-05T00:40:00.000Z"},{"end":"2022-11-05T00:55:00.000Z","start":"2022-11-05T00:50:00.000Z"},{"end":"2022-11-05T01:05:00.000Z","start":"2022-11-05T01:00:00.000Z"},{"end":"2022-11-05T01:15:00.000Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:25:00.000Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2022-11-05T02:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
 	assert.Equal(t, expected, string(body))
 	im := []*models.Interval{}
 	err = json.Unmarshal(body, &im)
@@ -1587,7 +1587,7 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err = ioutil.ReadAll(resp.Body)
-	expected = `[{"end":"2022-11-05T00:09:59.999Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:19:59.999Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:34:59.999Z","start":"2022-11-05T00:30:00.000Z"}]` + "\n"
+	expected = `[{"end":"2022-11-05T00:10:00.000Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:20:00.000Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:35:00.000Z","start":"2022-11-05T00:30:00.000Z"}]` + "\n"
 	assert.Equal(t, expected, string(body))
 	err = json.Unmarshal(body, &im)
 	assert.NoError(t, err)
@@ -1611,7 +1611,7 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err = ioutil.ReadAll(resp.Body)
-	expected = `[{"end":"2022-11-05T00:09:59.999Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:19:59.999Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:34:59.999Z","start":"2022-11-05T00:30:00.000Z"}]` + "\n"
+	expected = `[{"end":"2022-11-05T00:10:00.000Z","start":"2022-11-05T00:00:00.000Z"},{"end":"2022-11-05T00:20:00.000Z","start":"2022-11-05T00:15:00.000Z"},{"end":"2022-11-05T00:35:00.000Z","start":"2022-11-05T00:30:00.000Z"}]` + "\n"
 	assert.Equal(t, expected, string(body))
 	err = json.Unmarshal(body, &im)
 	assert.NoError(t, err)
@@ -1635,7 +1635,7 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err = ioutil.ReadAll(resp.Body)
-	expected = `[{"end":"2022-11-05T00:44:59.999Z","start":"2022-11-05T00:40:00.000Z"},{"end":"2022-11-05T00:54:59.999Z","start":"2022-11-05T00:50:00.000Z"},{"end":"2022-11-05T01:04:59.999Z","start":"2022-11-05T01:00:00.000Z"}]` + "\n"
+	expected = `[{"end":"2022-11-05T00:45:00.000Z","start":"2022-11-05T00:40:00.000Z"},{"end":"2022-11-05T00:55:00.000Z","start":"2022-11-05T00:50:00.000Z"},{"end":"2022-11-05T01:05:00.000Z","start":"2022-11-05T01:00:00.000Z"}]` + "\n"
 	assert.Equal(t, expected, string(body))
 	err = json.Unmarshal(body, &im)
 	assert.NoError(t, err)
@@ -1658,7 +1658,7 @@ func TestGetAvailability(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, resp.StatusCode) //should be ok!
 	body, err = ioutil.ReadAll(resp.Body)
-	expected = `[{"end":"2022-11-05T01:14:59.999Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:24:59.999Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2022-11-05T02:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
+	expected = `[{"end":"2022-11-05T01:15:00.000Z","start":"2022-11-05T01:10:00.000Z"},{"end":"2022-11-05T01:25:00.000Z","start":"2022-11-05T01:20:00.000Z"},{"end":"2022-11-05T02:00:00.000Z","start":"2022-11-05T01:30:00.000Z"}]` + "\n"
 	assert.Equal(t, expected, string(body))
 	err = json.Unmarshal(body, &im)
 	assert.NoError(t, err)

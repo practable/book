@@ -153,8 +153,8 @@ scope.
 
 ## Open questions before implementation
 
-- Exact interval handover semantics between preparation, user activity, and
-  shutdown, given the current public behavior that touching bookings conflict.
+- Interval handover uses half-open `[start,end)` reservations, allowing
+  preparation, user activity, and shutdown to share exact boundaries.
 - Whether a preflight consumes part of the user's interval or requires a
   separately reserved lead interval.
 - Failure, refund, substitution, and notification policy after a failed
