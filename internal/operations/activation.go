@@ -17,6 +17,14 @@ type ActivationStageSpec struct {
 	MaximumAttempts int
 	Parameters      map[string]string
 	ProgressMessage string
+	RetryMessage    string
+	WaitAfter       time.Duration
+	InitialDelay    time.Duration
+	Backoff         float64
+	MaximumDelay    time.Duration
+	TotalTimeout    time.Duration
+	RetryableCodes  []string
+	FailureGuidance json.RawMessage
 }
 
 type CreateActivationRequest struct {
@@ -50,6 +58,14 @@ type ActivationStage struct {
 	LastErrorCode   string
 	LastError       string
 	JobID           string
+	RetryMessage    string
+	WaitAfter       time.Duration
+	InitialDelay    time.Duration
+	Backoff         float64
+	MaximumDelay    time.Duration
+	TotalTimeout    time.Duration
+	RetryableCodes  []string
+	FailureGuidance json.RawMessage
 }
 
 type ActivationRun struct {

@@ -192,7 +192,9 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 		}
 		stageSpecs = append(stageSpecs, operations.ActivationStageSpec{Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow,
 			DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters,
-			ProgressMessage: stage.ProgressMessages.Initial})
+			ProgressMessage: stage.ProgressMessages.Initial, RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter,
+			InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff, MaximumDelay: stage.Retry.MaximumDelay,
+			TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes, FailureGuidance: mustMarshalOperationalGuidance(stage.FailureGuidance)})
 		due = due.Add(stage.Timeout + stage.WaitAfter)
 	}
 	resolvedPlan, err := json.Marshal(struct {
@@ -220,6 +222,14 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 			PlanRevision: 1, IdempotencyKey: jobKey, Payload: body},
 		FirstDelivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body}}
 	return repository.CreateActivation(ctx, request)
+}
+
+func mustMarshalOperationalGuidance(value OperationalFailureGuidance) json.RawMessage {
+	if value.Title == "" && value.Message == "" && len(value.Actions) == 0 {
+		return nil
+	}
+	body, _ := json.Marshal(value)
+	return body
 }
 
 func (s *Store) GetBookingActivation(ctx context.Context, runID string) (operations.ActivationRun, error) {

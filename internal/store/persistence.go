@@ -110,6 +110,7 @@ type OperationalActivationRepository interface {
 type BookingActivationRepository interface {
 	CreateActivation(context.Context, operations.CreateActivationRequest) (operations.ActivationRun, bool, error)
 	GetActivation(context.Context, string) (operations.ActivationRun, error)
+	GetLatestActivationForBooking(context.Context, string) (operations.ActivationRun, error)
 }
 
 type OperationalScheduleResult struct {

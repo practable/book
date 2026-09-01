@@ -1523,6 +1523,16 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 	if !ok {
 		return Activity{}, errors.New("resource " + sl.Resource + " not found")
 	}
+	if len(r.StreamOperations) > 0 {
+		repository, ok := s.repository.(BookingActivationRepository)
+		if !ok {
+			return Activity{}, errors.New("booking preparation requires durable persistence")
+		}
+		activation, err := repository.GetLatestActivationForBooking(context.Background(), b.Name)
+		if err != nil || activation.State != "active" {
+			return Activity{}, errors.New("booking preparation has not completed")
+		}
+	}
 
 	a := Activity{
 		BookingID:   b.Name,

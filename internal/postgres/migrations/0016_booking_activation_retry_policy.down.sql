@@ -1,0 +1,9 @@
+ALTER TABLE booking_activation_stages
+    DROP COLUMN failure_guidance,
+    DROP COLUMN retry_message,
+    DROP COLUMN retryable_codes,
+    DROP COLUMN retry_total_timeout_ns,
+    DROP COLUMN retry_maximum_delay_ns,
+    DROP COLUMN retry_backoff,
+    DROP COLUMN retry_initial_delay_ns,
+    DROP COLUMN wait_after_ns;

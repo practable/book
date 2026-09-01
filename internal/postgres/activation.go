@@ -81,10 +81,21 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 		if err != nil {
 			return operations.ActivationRun{}, false, err
 		}
+		retryCodes, err := json.Marshal(stage.RetryableCodes)
+		if err != nil {
+			return operations.ActivationRun{}, false, err
+		}
+		guidance := interface{}(nil)
+		if len(stage.FailureGuidance) > 0 {
+			guidance = string(stage.FailureGuidance)
+		}
 		_, err = tx.Exec(ctx, `INSERT INTO public.booking_activation_stages
-			(run_id,stage_index,stage_name,job_template_name,workflow_name,state,maximum_attempts,due_at,timeout_at,parameters,progress_message)
-			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`, request.RunID, index, stage.Name, stage.JobTemplate, stage.Workflow, state,
-			stage.MaximumAttempts, stage.DueAt.UTC(), stage.TimeoutAt.UTC(), string(parameters), stage.ProgressMessage)
+			(run_id,stage_index,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,parameters,
+			 progress_message,retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,failure_guidance)
+			VALUES($1,$2,$3,$4,$5,$6,1,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`, request.RunID, index, stage.Name, stage.JobTemplate, stage.Workflow, state,
+			stage.MaximumAttempts, stage.DueAt.UTC(), stage.TimeoutAt.UTC(), string(parameters), stage.ProgressMessage, stage.RetryMessage,
+			stage.WaitAfter.Nanoseconds(), stage.InitialDelay.Nanoseconds(), normalizedBackoff(stage.Backoff), stage.MaximumDelay.Nanoseconds(),
+			stage.TotalTimeout.Nanoseconds(), string(retryCodes), guidance)
 		if err != nil {
 			return operations.ActivationRun{}, false, err
 		}
@@ -118,9 +129,31 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 	return run, true, nil
 }
 
+func normalizedBackoff(value float64) float64 {
+	if value < 1 {
+		return 1
+	}
+	return value
+}
+
 func (r *Repository) GetActivation(ctx context.Context, id string) (operations.ActivationRun, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
 	defer cancel()
+	return getActivation(ctx, r.pool, id)
+}
+
+func (r *Repository) GetLatestActivationForBooking(ctx context.Context, bookingName string) (operations.ActivationRun, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	var id string
+	err := r.pool.QueryRow(ctx, `SELECT r.run_id FROM public.booking_activation_runs r JOIN public.bookings b ON b.row_id=r.booking_row_id
+		WHERE b.name=$1 AND b.collection='live' AND NOT b.superseded ORDER BY r.started_at DESC,r.run_id DESC LIMIT 1`, bookingName).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return operations.ActivationRun{}, operations.ErrNotFound
+	}
+	if err != nil {
+		return operations.ActivationRun{}, err
+	}
 	return getActivation(ctx, r.pool, id)
 }
 
@@ -145,22 +178,31 @@ func getActivation(ctx context.Context, queryer activationQueryer, id string) (o
 	}
 	run.FailureGuidance = guidance
 	rows, err := queryer.Query(ctx, `SELECT stage_index,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,
-		parameters,progress_message,last_error_code,last_error,COALESCE(job_id,'') FROM public.booking_activation_stages WHERE run_id=$1 ORDER BY stage_index`, id)
+		parameters,progress_message,last_error_code,last_error,COALESCE(job_id,''),retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,
+		retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,COALESCE(failure_guidance,'null'::jsonb)
+		FROM public.booking_activation_stages WHERE run_id=$1 ORDER BY stage_index`, id)
 	if err != nil {
 		return run, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var stage operations.ActivationStage
-		var parameters []byte
+		var parameters, retryCodes, guidance []byte
+		var waitAfter, initialDelay, maximumDelay, totalTimeout int64
 		if err := rows.Scan(&stage.Index, &stage.Name, &stage.JobTemplate, &stage.Workflow, &stage.State, &stage.Attempt, &stage.MaximumAttempts,
-			&stage.DueAt, &stage.TimeoutAt, &parameters, &stage.ProgressMessage, &stage.LastErrorCode, &stage.LastError, &stage.JobID); err != nil {
+			&stage.DueAt, &stage.TimeoutAt, &parameters, &stage.ProgressMessage, &stage.LastErrorCode, &stage.LastError, &stage.JobID,
+			&stage.RetryMessage, &waitAfter, &initialDelay, &stage.Backoff, &maximumDelay, &totalTimeout, &retryCodes, &guidance); err != nil {
 			return run, err
 		}
 		if err := json.Unmarshal(parameters, &stage.Parameters); err != nil {
 			return run, err
 		}
 		stage.DueAt, stage.TimeoutAt = stage.DueAt.UTC(), stage.TimeoutAt.UTC()
+		stage.WaitAfter, stage.InitialDelay, stage.MaximumDelay, stage.TotalTimeout = time.Duration(waitAfter), time.Duration(initialDelay), time.Duration(maximumDelay), time.Duration(totalTimeout)
+		if err := json.Unmarshal(retryCodes, &stage.RetryableCodes); err != nil {
+			return run, err
+		}
+		stage.FailureGuidance = guidance
 		run.Stages = append(run.Stages, stage)
 	}
 	return run, rows.Err()

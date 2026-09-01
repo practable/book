@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 15, versions)
+	require.Equal(t, 16, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -222,6 +222,60 @@ func TestActivationRollsBackWhenDeliveryInsertFails(t *testing.T) {
 	require.Zero(t, count)
 	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs WHERE job_id=$1", req.FirstJob.ID).Scan(&count))
 	require.Zero(t, count)
+}
+
+func TestActivationCallbacksAdvanceStagesRetryAndStartBooking(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("advance-activation", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("advance-activation", "opaque-user", "advance", now)
+	req.Stages[1].InitialDelay = time.Second
+	req.Stages[1].Backoff = 2
+	req.Stages[1].MaximumDelay = 5 * time.Second
+	req.Stages[1].TotalTimeout = time.Minute
+	req.Stages[1].RetryableCodes = []string{"not_ready"}
+	req.Stages[1].RetryMessage = "Video is not ready; trying again"
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-accepted-1", JobID: run.Stages[0].JobID, State: "accepted", At: now}, "hash-accepted-1")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-succeeded-1", JobID: run.Stages[0].JobID, State: "succeeded", At: now.Add(time.Second)}, "hash-succeeded-1")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, 1, run.CurrentStage)
+	require.Equal(t, "pending", run.Stages[1].State)
+	secondJob := run.Stages[1].JobID
+
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-accepted-2", JobID: secondJob, State: "accepted", At: now.Add(2 * time.Second)}, "hash-accepted-2")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-failed-2", JobID: secondJob, State: "failed", At: now.Add(3 * time.Second), Error: "not_ready"}, "hash-failed-2")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "preparing", run.State)
+	require.Equal(t, "pending", run.Stages[1].State)
+	require.Equal(t, 2, run.Stages[1].Attempt)
+	require.NotEqual(t, secondJob, run.Stages[1].JobID)
+	require.Equal(t, req.Stages[1].RetryMessage, run.ProgressMessage)
+
+	retryJob := run.Stages[1].JobID
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-accepted-3", JobID: retryJob, State: "accepted", At: now.Add(4 * time.Second)}, "hash-accepted-3")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-succeeded-3", JobID: retryJob, State: "succeeded", At: now.Add(5 * time.Second)}, "hash-succeeded-3")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", run.State)
+	latest, err := repository.GetLatestActivationForBooking(ctx, req.BookingName)
+	require.NoError(t, err)
+	require.Equal(t, run.ID, latest.ID)
+	booking, err := repository.GetBooking(ctx, req.BookingName)
+	require.NoError(t, err)
+	require.True(t, booking.Booking.Started)
 }
 
 func TestOperationalJobOutboxIsTransactionalIdempotentAndClaimedOnce(t *testing.T) {
