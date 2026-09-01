@@ -60,6 +60,17 @@ export class BookApi {
 
   operationalStatus() { return this.request("/admin/operations"); }
   resources() { return this.request("/admin/resources"); }
+  operationalHealth() { return this.request("/admin/operational-health"); }
+  resourceHolds() { return this.request("/admin/resource-holds"); }
+  operationalAlerts(status = "active") {
+    return this.request(`/admin/operational-alerts?${new URLSearchParams({ status })}`);
+  }
+  acknowledgeOperationalAlert(id) {
+    return this.request(`/admin/operational-alerts/${encodeURIComponent(id)}/acknowledge`, { method: "POST" });
+  }
+  resolveOperationalAlert(id) {
+    return this.request(`/admin/operational-alerts/${encodeURIComponent(id)}/resolve`, { method: "POST" });
+  }
 
   bookingRecords(filters = {}) {
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== "" && value != null));

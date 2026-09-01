@@ -118,15 +118,41 @@ let operations;
 let resourceMetadata = {};
 
 async function loadOperations() {
-  operations = await adminApi.operationalStatus();
-  resourceMetadata = await adminApi.resources();
+  const [status, metadata, holds, health, alerts] = await Promise.all([
+    adminApi.operationalStatus(), adminApi.resources(), adminApi.resourceHolds(), adminApi.operationalHealth(), adminApi.operationalAlerts(),
+  ]);
+  operations = status;
+  resourceMetadata = metadata;
   const statuses = Object.entries(operations.resources || {});
   $("a-lock").textContent = operations.status.locked ? "Paused" : "Open";
   $("a-toggle").textContent = operations.status.locked ? "Resume" : "Pause";
   $("a-resources").textContent = `${statuses.filter(([,status]) => status.available).length}/${statuses.length}`;
   $("a-bookings").textContent = operations.status.bookings;
   renderResources(statuses);
+  renderHolds(holds);
+  renderHealth(health);
+  renderAlerts(alerts);
   setStatus($("a-status"), `Manifest v${operations.manifest_version}; refreshed ${new Date().toLocaleTimeString()}.`);
+}
+
+function renderHolds(holds) {
+  $("a-hold-rows").innerHTML = holds.length ? holds.map(hold => `<tr><td>${escapeHTML(hold.resource)}</td><td>${escapeHTML(new Date(hold.held_since).toLocaleString())}</td><td>${escapeHTML(hold.held_by)}</td><td>${escapeHTML(hold.reason)}</td><td><button class="button" data-release-hold="${escapeHTML(hold.resource)}">Mark ready</button></td></tr>`).join("") : `<tr><td colspan="5" class="muted">No technician-held resources.</td></tr>`;
+  document.querySelectorAll("[data-release-hold]").forEach(button => button.addEventListener("click", async () => {
+    const resource = button.dataset.releaseHold;
+    if (!confirm(`Mark ${resource} ready? Automated health remains visible separately.`)) return;
+    try { await adminApi.setResourceAvailable(resource, true, "Released by technician"); await loadOperations(); } catch (error) { setStatus($("a-status"), error.message, true); }
+  }));
+}
+
+function renderHealth(health) {
+  $("a-health-rows").innerHTML = health.length ? health.map(item => `<tr><td>${escapeHTML(item.resource)}</td><td>${escapeHTML(item.stream)}</td><td><span class="badge ${item.status === "healthy" ? "good" : "bad"}">${escapeHTML(item.status)}</span></td><td>${escapeHTML(new Date(item.checked_at).toLocaleString())}</td><td>${escapeHTML(item.code || item.message || "—")}</td></tr>`).join("") : `<tr><td colspan="5" class="muted">No automated health results yet.</td></tr>`;
+}
+
+function renderAlerts(alerts) {
+  $("a-alert-rows").innerHTML = alerts.length ? alerts.map(alert => `<tr><td>${escapeHTML(alert.resource)} / ${escapeHTML(alert.stream)}</td><td>${escapeHTML(alert.status)}</td><td>${escapeHTML(new Date(alert.last_seen).toLocaleString())}</td><td>${escapeHTML(alert.occurrences)}</td><td>${escapeHTML(alert.message || alert.code)}</td><td>${alert.status === "open" ? `<button class="button" data-ack-alert="${escapeHTML(alert.id)}">Acknowledge</button>` : "Being investigated"}</td></tr>`).join("") : `<tr><td colspan="6" class="muted">No active operational alerts.</td></tr>`;
+  document.querySelectorAll("[data-ack-alert]").forEach(button => button.addEventListener("click", async () => {
+    try { await adminApi.acknowledgeOperationalAlert(button.dataset.ackAlert); await loadOperations(); } catch (error) { setStatus($("a-status"), error.message, true); }
+  }));
 }
 
 function renderResources(entries = Object.entries(operations?.resources || {})) {

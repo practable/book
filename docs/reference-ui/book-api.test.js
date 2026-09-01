@@ -31,3 +31,16 @@ test("maintenance lock uses the legacy-compatible query names", async () => {
   await api.setMaintenance(true, "Manifest update");
   assert.equal(called, "/api/v1/admin/status?lock=true&msg=Manifest+update");
 });
+
+test("technician dashboard uses bounded health and alert endpoints", async () => {
+  const calls = [];
+  const api = new BookApi({ fetchImpl: async (url, options = {}) => { calls.push([url, options.method || "GET"]); return response(200, []); }});
+  await Promise.all([api.resourceHolds(), api.operationalHealth(), api.operationalAlerts()]);
+  await api.acknowledgeOperationalAlert(17);
+  assert.deepEqual(calls, [
+    ["/api/v1/admin/resource-holds", "GET"],
+    ["/api/v1/admin/operational-health", "GET"],
+    ["/api/v1/admin/operational-alerts?status=active", "GET"],
+    ["/api/v1/admin/operational-alerts/17/acknowledge", "POST"],
+  ]);
+});
