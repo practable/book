@@ -113,6 +113,7 @@ type UsageSummary struct {
 	ActualUsage       time.Duration `json:"actual_usage" yaml:"actual_usage"`
 	PreparationUsage  time.Duration `json:"preparation_usage" yaml:"preparation_usage"`
 	CleanupUsage      time.Duration `json:"cleanup_usage" yaml:"cleanup_usage"`
+	ScheduledUsage    time.Duration `json:"scheduled_usage" yaml:"scheduled_usage"`
 	OperationalJobs   int64         `json:"operational_jobs" yaml:"operational_jobs"`
 	StartedBookings   int64         `json:"started_bookings" yaml:"started_bookings"`
 	CompletedBookings int64         `json:"completed_bookings" yaml:"completed_bookings"`

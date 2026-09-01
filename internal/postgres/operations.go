@@ -277,6 +277,12 @@ func (r *Repository) CreateScheduledOperation(ctx context.Context, schedule stri
 	if err := insertOperationalJobTx(ctx, tx, job, item.Delivery); err != nil {
 		return store.OperationalScheduleResult{}, err
 	}
+	if item.Usage == nil || item.Usage.Phase != "scheduled" || item.Usage.PayerKind != "experiment_owner" || item.Usage.PayerID == "" {
+		return store.OperationalScheduleResult{}, errors.New("scheduled operation has no experiment-owner cost attribution")
+	}
+	if err := insertAttributedOperationalUsageTx(ctx, tx, job, reservation, *item.Usage); err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
 	if _, err := tx.Exec(ctx, `INSERT INTO public.operational_schedule_occurrences
 		(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,booking_row_id,job_id,slot_name,resource_name,workflow_name)
 		VALUES($1,$2,$3,$4,'planned',$5,$6,$7,$8,$9)`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion,
@@ -431,14 +437,20 @@ func insertGuardOperationalUsageTx(ctx context.Context, tx pgx.Tx, job operation
 	if job.Kind == "teardown" || job.Kind == "settling" {
 		phase = "cleanup"
 	}
+	return insertAttributedOperationalUsageTx(ctx, tx, job, triggering, store.OperationalUsageAttribution{
+		Phase: phase, PayerKind: "user", PayerID: triggering.Booking.User, Chargeable: true,
+	})
+}
+
+func insertAttributedOperationalUsageTx(ctx context.Context, tx pgx.Tx, job operations.Job, triggering store.PersistentBooking, usage store.OperationalUsageAttribution) error {
 	planned := job.EndsAt.Sub(job.StartsAt)
 	if planned < 0 {
 		return errors.New("operational job ends before it starts")
 	}
 	_, err := tx.Exec(ctx, `INSERT INTO public.operational_usage_ledger
 		(job_id,triggering_booking_row_id,triggering_booking_name,user_name,phase,payer_kind,payer_id,chargeable,state,planned_duration_ns)
-		VALUES($1,$2,$3,$4,$5,'user',$4,true,'reserved',$6) ON CONFLICT (job_id) DO NOTHING`,
-		job.ID, triggering.Revision, triggering.Booking.Name, triggering.Booking.User, phase, planned.Nanoseconds())
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,'reserved',$9) ON CONFLICT (job_id) DO NOTHING`,
+		job.ID, triggering.Revision, job.TriggeringBookingName, triggering.Booking.User, usage.Phase, usage.PayerKind, usage.PayerID, usage.Chargeable, planned.Nanoseconds())
 	return err
 }
 

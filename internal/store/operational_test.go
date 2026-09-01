@@ -148,6 +148,25 @@ func TestOperationalSchedulesUseCivilTimeAndSemesterBounds(t *testing.T) {
 	}
 }
 
+func TestScheduledOperationRequiresExperimentCostOwner(t *testing.T) {
+	m := operationalManifest()
+	m.Slots = map[string]Slot{"tank-slot": {Resource: "tank"}}
+	m.OperationalSchedules = map[string]OperationalSchedule{"daily-qc": {
+		Slot: "tank-slot", Workflow: "fill", Duration: time.Minute, Conflict: OperationalConflictSkip,
+		Recurrence: OperationalRecurrence{Timezone: "UTC", StartDate: "2026-09-01", EndDate: "2026-09-01", Weekdays: []string{"tue"}, Time: "09:00"},
+	}}
+	messages := validateOperationalManifest(m)
+	if len(messages) != 1 || messages[0] != "operational schedule daily-qc resource tank has no operations cost_owner" {
+		t.Fatalf("messages = %#v", messages)
+	}
+	resource := m.Resources["tank"]
+	resource.Operations.CostOwner = "physics-teaching-lab"
+	m.Resources["tank"] = resource
+	if messages := validateOperationalManifest(m); len(messages) != 0 {
+		t.Fatalf("messages after owner = %#v", messages)
+	}
+}
+
 func TestReusableStreamPipelineResolvesTypedResourceBinding(t *testing.T) {
 	m := operationalManifest()
 	m.OperationalWorkflows["enable-video"] = OperationalWorkflow{Description: "Enable video", Kind: "action", ExpectedDuration: time.Second, MaximumDuration: 4 * time.Second}

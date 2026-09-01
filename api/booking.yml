@@ -2481,6 +2481,7 @@ definitions:
     type: object
     properties:
       operating_window: {type: string}
+      cost_owner: {type: string, description: Opaque experiment-owner identifier charged for scheduled operational work.}
       before_booking:
         type: array
         items: {$ref: '#/definitions/OperationalGuard'}
@@ -2565,6 +2566,8 @@ definitions:
         type: string
       cleanup_usage:
         type: string
+      scheduled_usage:
+        type: string
       operational_jobs:
         type: integer
         format: int64
@@ -2578,6 +2581,7 @@ definitions:
     - actual_usage
     - preparation_usage
     - cleanup_usage
+    - scheduled_usage
     - operational_jobs
     - started_bookings
     - completed_bookings

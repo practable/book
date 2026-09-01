@@ -3732,6 +3732,10 @@ func init() {
             "$ref": "#/definitions/OperationalGuard"
           }
         },
+        "cost_owner": {
+          "description": "Opaque experiment-owner identifier charged for scheduled operational work.",
+          "type": "string"
+        },
         "operating_window": {
           "type": "string"
         }
@@ -4408,6 +4412,7 @@ func init() {
         "actual_usage",
         "preparation_usage",
         "cleanup_usage",
+        "scheduled_usage",
         "operational_jobs",
         "started_bookings",
         "completed_bookings"
@@ -4428,6 +4433,9 @@ func init() {
           "format": "int64"
         },
         "preparation_usage": {
+          "type": "string"
+        },
+        "scheduled_usage": {
           "type": "string"
         },
         "started_bookings": {
@@ -8815,6 +8823,10 @@ func init() {
             "$ref": "#/definitions/OperationalGuard"
           }
         },
+        "cost_owner": {
+          "description": "Opaque experiment-owner identifier charged for scheduled operational work.",
+          "type": "string"
+        },
         "operating_window": {
           "type": "string"
         }
@@ -9492,6 +9504,7 @@ func init() {
         "actual_usage",
         "preparation_usage",
         "cleanup_usage",
+        "scheduled_usage",
         "operational_jobs",
         "started_bookings",
         "completed_bookings"
@@ -9512,6 +9525,9 @@ func init() {
           "format": "int64"
         },
         "preparation_usage": {
+          "type": "string"
+        },
+        "scheduled_usage": {
           "type": "string"
         },
         "started_bookings": {

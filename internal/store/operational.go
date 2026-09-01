@@ -320,6 +320,8 @@ func (s *Store) MaterializeOperationalSchedules(ctx context.Context, from, until
 				TriggeringBookingName: "schedule:" + occurrence.Schedule, ManifestVersion: s.manifestVersion, PlanRevision: 1,
 				IdempotencyKey: idempotencyKey, Payload: body},
 			Delivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body},
+			Usage: &OperationalUsageAttribution{Phase: "scheduled", PayerKind: "experiment_owner",
+				PayerID: s.Resources[slot.Resource].Operations.CostOwner, Chargeable: true},
 		}
 		result, err := repository.CreateScheduledOperation(ctx, occurrence.Schedule, occurrence.When.Start, occurrence.Conflict, item)
 		if err != nil {
@@ -450,6 +452,7 @@ type OperationalGuard struct {
 
 type OperationalProfile struct {
 	OperatingWindow string             `json:"operating_window,omitempty" yaml:"operating_window,omitempty"`
+	CostOwner       string             `json:"cost_owner,omitempty" yaml:"cost_owner,omitempty"`
 	BeforeBooking   []OperationalGuard `json:"before_booking,omitempty" yaml:"before_booking,omitempty"`
 	AfterBooking    []OperationalGuard `json:"after_booking,omitempty" yaml:"after_booking,omitempty"`
 }
@@ -690,8 +693,11 @@ func validateOperationalManifest(m Manifest) []string {
 		if !workflowOK {
 			messages = append(messages, "operational schedule "+name+" references non-existent workflow: "+schedule.Workflow)
 		}
-		if _, ok := m.Slots[schedule.Slot]; !ok {
+		slot, slotOK := m.Slots[schedule.Slot]
+		if !slotOK {
 			messages = append(messages, "operational schedule "+name+" references non-existent slot: "+schedule.Slot)
+		} else if resource, ok := m.Resources[slot.Resource]; ok && strings.TrimSpace(resource.Operations.CostOwner) == "" {
+			messages = append(messages, "operational schedule "+name+" resource "+slot.Resource+" has no operations cost_owner")
 		}
 		if schedule.Duration <= 0 || (workflowOK && schedule.Duration > workflow.MaximumDuration) {
 			messages = append(messages, "operational schedule "+name+" duration must be positive and within workflow maximum")

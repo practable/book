@@ -39,6 +39,10 @@ type UsageSummary struct {
 	// Required: true
 	PreparationUsage *string `json:"preparation_usage"`
 
+	// scheduled usage
+	// Required: true
+	ScheduledUsage *string `json:"scheduled_usage"`
+
 	// started bookings
 	// Required: true
 	StartedBookings *int64 `json:"started_bookings"`
@@ -65,6 +69,10 @@ func (m *UsageSummary) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validatePreparationUsage(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScheduledUsage(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -117,6 +125,15 @@ func (m *UsageSummary) validateOperationalJobs(formats strfmt.Registry) error {
 func (m *UsageSummary) validatePreparationUsage(formats strfmt.Registry) error {
 
 	if err := validate.Required("preparation_usage", "body", m.PreparationUsage); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *UsageSummary) validateScheduledUsage(formats strfmt.Registry) error {
+
+	if err := validate.Required("scheduled_usage", "body", m.ScheduledUsage); err != nil {
 		return err
 	}
 

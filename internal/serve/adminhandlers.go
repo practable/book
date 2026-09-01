@@ -475,7 +475,7 @@ func modelOperationalProfileToStore(profile *models.OperationalProfile) (store.O
 	if err != nil {
 		return store.OperationalProfile{}, err
 	}
-	return store.OperationalProfile{OperatingWindow: profile.OperatingWindow, BeforeBooking: before, AfterBooking: after}, nil
+	return store.OperationalProfile{OperatingWindow: profile.OperatingWindow, CostOwner: profile.CostOwner, BeforeBooking: before, AfterBooking: after}, nil
 }
 
 func storeOperationalProfileToModel(profile store.OperationalProfile) *models.OperationalProfile {
@@ -490,7 +490,7 @@ func storeOperationalProfileToModel(profile store.OperationalProfile) *models.Op
 		}
 		return result
 	}
-	return &models.OperationalProfile{OperatingWindow: profile.OperatingWindow, BeforeBooking: convert(profile.BeforeBooking), AfterBooking: convert(profile.AfterBooking)}
+	return &models.OperationalProfile{OperatingWindow: profile.OperatingWindow, CostOwner: profile.CostOwner, BeforeBooking: convert(profile.BeforeBooking), AfterBooking: convert(profile.AfterBooking)}
 }
 
 // exportBookingsHandler
@@ -1164,9 +1164,9 @@ func getUsageSummaryHandler(config config.ServerConfig) func(admin.GetUsageSumma
 			return admin.NewGetUsageSummaryInternalServerError().WithPayload(&models.Error{Code: &code, Message: &message})
 		}
 		actual := summary.ActualUsage.String()
-		preparation, cleanup := summary.PreparationUsage.String(), summary.CleanupUsage.String()
+		preparation, cleanup, scheduled := summary.PreparationUsage.String(), summary.CleanupUsage.String(), summary.ScheduledUsage.String()
 		return admin.NewGetUsageSummaryOK().WithPayload(&models.UsageSummary{
-			ActualUsage: &actual, PreparationUsage: &preparation, CleanupUsage: &cleanup, OperationalJobs: &summary.OperationalJobs,
+			ActualUsage: &actual, PreparationUsage: &preparation, CleanupUsage: &cleanup, ScheduledUsage: &scheduled, OperationalJobs: &summary.OperationalJobs,
 			StartedBookings: &summary.StartedBookings, CompletedBookings: &summary.CompletedBookings,
 		})
 	}

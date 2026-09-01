@@ -12,6 +12,12 @@ operational_workflows:
     expected_duration: 10m
     maximum_duration: 15m
 
+resources:
+  ripple-tank-resource:
+    # Existing resource fields omitted.
+    operations:
+      cost_owner: physics-teaching-lab
+
 operational_schedules:
   weekday-fill:
     slot: ripple-tank-01
@@ -30,6 +36,13 @@ operational_schedules:
 `end_date` is inclusive. `exceptions` omit individual civil dates. The slot is
 explicit because it determines the activity configuration supplied to the job
 runner as well as the underlying resource.
+
+`cost_owner` is an opaque identifier for the team or service responsible for
+the experiment. A manifest that schedules work for a resource without a cost
+owner is rejected. Completed scheduled runner time is reported separately as
+`scheduled_usage`, attributed to `experiment_owner`; it is never charged to a
+student or included in student usage-policy limits. The owner identifier is
+accounting metadata and does not grant access to the resource.
 
 Conflict modes are:
 
@@ -68,3 +81,7 @@ occurrence time, manifest version, state, slot, resource, workflow, and—where
 planned—the booking and job identifiers. Migration 0014 persists this display
 context so skipped and conflicted occurrences remain explainable after a
 manifest change.
+
+Migration 0021 permits explicit experiment-owner attribution in the operational
+usage ledger. The scheduled reservation, job, delivery, and owner-funded ledger
+entry are committed atomically.

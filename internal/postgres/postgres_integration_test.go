@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 20, versions)
+	require.Equal(t, 21, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -442,10 +442,11 @@ func TestCancellationStartsDurableCleanupAfterActiveSession(t *testing.T) {
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT payer_id,user_name FROM public.operational_usage_ledger WHERE job_id=$1`, cleanupJob).Scan(&payer, &user))
 	require.Equal(t, "opaque-user", payer)
 	require.Equal(t, "opaque-user", user)
-	preparationUsage, cleanupUsage, jobs, err := repository.GetOperationalUsageSummary(ctx, store.UsageQuery{User: "opaque-user"})
+	preparationUsage, cleanupUsage, scheduledUsage, jobs, err := repository.GetOperationalUsageSummary(ctx, store.UsageQuery{User: "opaque-user"})
 	require.NoError(t, err)
 	require.Equal(t, 2*time.Second, preparationUsage)
 	require.Equal(t, time.Second, cleanupUsage)
+	require.Zero(t, scheduledUsage)
 	require.Equal(t, int64(3), jobs)
 }
 
@@ -512,10 +513,11 @@ func TestCleanupRunAndAccountingSurviveRepositoryRestart(t *testing.T) {
 	job, err := reopened.GetJob(ctx, cleanupJob)
 	require.NoError(t, err)
 	require.Equal(t, "teardown", job.Kind)
-	preparationUsage, cleanupUsage, jobs, err := reopened.GetOperationalUsageSummary(ctx, store.UsageQuery{User: "opaque-user"})
+	preparationUsage, cleanupUsage, scheduledUsage, jobs, err := reopened.GetOperationalUsageSummary(ctx, store.UsageQuery{User: "opaque-user"})
 	require.NoError(t, err)
 	require.Equal(t, time.Second, preparationUsage)
 	require.Zero(t, cleanupUsage)
+	require.Zero(t, scheduledUsage)
 	require.Equal(t, int64(1), jobs)
 	var ledgerRows int64
 	require.NoError(t, reopened.pool.QueryRow(ctx, `SELECT count(*) FROM public.operational_usage_ledger WHERE triggering_booking_name=$1`, req.BookingName).Scan(&ledgerRows))
@@ -739,10 +741,11 @@ func TestAcceptedOperationalJobActivatesOnlyItsReservation(t *testing.T) {
 	require.Equal(t, "history", collection)
 	require.Equal(t, (4 * time.Minute).Nanoseconds(), usage)
 	require.Equal(t, 1, revocations)
-	preparationUsage, cleanupUsage, jobs, err := repository.GetOperationalUsageSummary(ctx, store.UsageQuery{User: primary.Booking.User})
+	preparationUsage, cleanupUsage, scheduledUsage, jobs, err := repository.GetOperationalUsageSummary(ctx, store.UsageQuery{User: primary.Booking.User})
 	require.NoError(t, err)
 	require.Equal(t, 4*time.Minute, preparationUsage)
 	require.Zero(t, cleanupUsage)
+	require.Zero(t, scheduledUsage)
 	require.Equal(t, int64(1), jobs)
 	_, _, err = repository.ActivateOperationalJob(ctx, "missing-job", "activate-missing", "missing-hash", start)
 	require.ErrorIs(t, err, operations.ErrNotFound)
@@ -785,6 +788,9 @@ func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing
 	manifest.OperationalWorkflows = map[string]store.OperationalWorkflow{
 		"daily-check": {Description: "Daily check", ExpectedDuration: 10 * time.Minute, MaximumDuration: 10 * time.Minute},
 	}
+	resource := manifest.Resources["r-a"]
+	resource.Operations.CostOwner = "physics-teaching-lab"
+	manifest.Resources["r-a"] = resource
 	recurrence := store.OperationalRecurrence{Timezone: "UTC", StartDate: "2022-11-05", EndDate: "2022-11-05", Weekdays: []string{"sat"}, Time: "10:00"}
 	manifest.OperationalSchedules = map[string]store.OperationalSchedule{
 		"a-required": {Slot: "sl-a", Workflow: "daily-check", Duration: 10 * time.Minute, Conflict: store.OperationalConflictRequire, Recurrence: recurrence},
@@ -815,6 +821,15 @@ func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing
 	require.Equal(t, 3, occurrences)
 	require.Equal(t, 1, jobs)
 	require.Equal(t, 1, live)
+	var scheduledJobID, payerKind, payerID, phase string
+	var chargeable bool
+	require.NoError(t, repository.pool.QueryRow(context.Background(), `SELECT job_id,payer_kind,payer_id,phase,chargeable
+		FROM public.operational_usage_ledger WHERE job_id IN (SELECT job_id FROM public.operational_jobs WHERE workflow_name='daily-check')`).
+		Scan(&scheduledJobID, &payerKind, &payerID, &phase, &chargeable))
+	require.Equal(t, "experiment_owner", payerKind)
+	require.Equal(t, "physics-teaching-lab", payerID)
+	require.Equal(t, "scheduled", phase)
+	require.True(t, chargeable)
 	listed, err := repository.ListScheduleOccurrences(context.Background(), now.Add(-2*time.Hour), now.Add(2*time.Hour), "", 20)
 	require.NoError(t, err)
 	require.Len(t, listed, 3)
@@ -825,6 +840,19 @@ func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing
 	require.NoError(t, err)
 	require.Len(t, conflicts, 1)
 	require.Equal(t, "b-skipped", conflicts[0].Schedule)
+	operationStart := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	_, _, err = repository.ApplyCallback(context.Background(), operations.Callback{DeliveryID: "scheduled-accepted", JobID: scheduledJobID, State: "accepted", At: operationStart}, "scheduled-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ActivateOperationalJob(context.Background(), scheduledJobID, "scheduled-activate", "scheduled-activate-hash", operationStart.Add(time.Minute))
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(context.Background(), operations.Callback{DeliveryID: "scheduled-succeeded", JobID: scheduledJobID, State: "succeeded", At: operationStart.Add(5 * time.Minute)}, "scheduled-succeeded-hash")
+	require.NoError(t, err)
+	preparationUsage, cleanupUsage, scheduledUsage, completedJobs, err := repository.GetOperationalUsageSummary(context.Background(), store.UsageQuery{Resource: "r-a"})
+	require.NoError(t, err)
+	require.Zero(t, preparationUsage)
+	require.Zero(t, cleanupUsage)
+	require.Equal(t, 4*time.Minute, scheduledUsage)
+	require.Equal(t, int64(1), completedJobs)
 }
 
 func operationalReservation(jobID, bookingID, deliveryID, trigger, resource string, start, end time.Time) store.OperationalReservation {

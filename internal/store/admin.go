@@ -49,7 +49,7 @@ type UsageQuery struct {
 }
 
 type OperationalUsageReader interface {
-	GetOperationalUsageSummary(context.Context, UsageQuery) (time.Duration, time.Duration, int64, error)
+	GetOperationalUsageSummary(context.Context, UsageQuery) (time.Duration, time.Duration, time.Duration, int64, error)
 }
 
 func (s *Store) GetFilteredUsageSummary(query UsageQuery) UsageSummary {
@@ -98,11 +98,11 @@ func (s *Store) GetFilteredUsageSummaryPersistent(query UsageQuery) (UsageSummar
 		}
 	}
 	if reader, ok := s.repository.(OperationalUsageReader); ok {
-		preparation, cleanup, jobs, err := reader.GetOperationalUsageSummary(context.Background(), query)
+		preparation, cleanup, scheduled, jobs, err := reader.GetOperationalUsageSummary(context.Background(), query)
 		if err != nil {
 			return UsageSummary{}, err
 		}
-		result.PreparationUsage, result.CleanupUsage, result.OperationalJobs = preparation, cleanup, jobs
+		result.PreparationUsage, result.CleanupUsage, result.ScheduledUsage, result.OperationalJobs = preparation, cleanup, scheduled, jobs
 	}
 	return result, nil
 }

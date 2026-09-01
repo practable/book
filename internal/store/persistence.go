@@ -85,6 +85,14 @@ type OperationalReservation struct {
 	Request  CreateBookingRequest
 	Job      operations.Job
 	Delivery operations.Delivery
+	Usage    *OperationalUsageAttribution
+}
+
+type OperationalUsageAttribution struct {
+	Phase      string
+	PayerKind  string
+	PayerID    string
+	Chargeable bool
 }
 
 // OperationalBookingRepository is an optional atomic extension. A store must

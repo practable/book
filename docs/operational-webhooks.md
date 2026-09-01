@@ -136,6 +136,7 @@ event; migrations 0015 and 0016 add durable booking activation runs, stages,
 deadlines, retry policy, and failure guidance. Migrations 0017 and 0018 add the
 independent cleanup plan and lifecycle; migration 0019 adds operational usage
 accounting; migration 0020 extends that accounting to per-booking setup and
-teardown guards. Apply migrations using the normal process in
+teardown guards; migration 0021 adds experiment-owner-funded scheduled work.
+Apply migrations using the normal process in
 [PostgreSQL](postgresql.md). Rollback is safe only after dispatch is disabled
 and retained operational history has been exported or deliberately discarded.
