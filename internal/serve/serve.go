@@ -55,6 +55,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.AdminGetStoreStatusAdminHandler = admin.GetStoreStatusAdminHandlerFunc(getStoreStatusAdminHandler(config))
 	api.AdminGetSlotIsAvailableHandler = admin.GetSlotIsAvailableHandlerFunc(getSlotIsAvailableHandler(config))
 	api.AdminGetResourcesHandler = admin.GetResourcesHandlerFunc(getResourcesHandler(config))
+	api.AdminGetOperationalStatusHandler = admin.GetOperationalStatusHandlerFunc(getOperationalStatusHandler(config))
 	api.AdminExportBookingsHandler = admin.ExportBookingsHandlerFunc(exportBookingsHandler(config))
 	api.AdminExportBookingForEditHandler = admin.ExportBookingForEditHandlerFunc(exportBookingForEditHandler(config))
 	api.AdminExportManifestHandler = admin.ExportManifestHandlerFunc(exportManifestHandler(config))

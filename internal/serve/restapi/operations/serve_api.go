@@ -95,6 +95,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		UsersGetOldBookingsForUserHandler: users.GetOldBookingsForUserHandlerFunc(func(params users.GetOldBookingsForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetOldBookingsForUser has not yet been implemented")
 		}),
+		AdminGetOperationalStatusHandler: admin.GetOperationalStatusHandlerFunc(func(params admin.GetOperationalStatusParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetOperationalStatus has not yet been implemented")
+		}),
 		UsersGetPolicyHandler: users.GetPolicyHandlerFunc(func(params users.GetPolicyParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetPolicy has not yet been implemented")
 		}),
@@ -231,6 +234,8 @@ type ServeAPI struct {
 	UsersGetGroupsForUserHandler users.GetGroupsForUserHandler
 	// UsersGetOldBookingsForUserHandler sets the operation handler for the get old bookings for user operation
 	UsersGetOldBookingsForUserHandler users.GetOldBookingsForUserHandler
+	// AdminGetOperationalStatusHandler sets the operation handler for the get operational status operation
+	AdminGetOperationalStatusHandler admin.GetOperationalStatusHandler
 	// UsersGetPolicyHandler sets the operation handler for the get policy operation
 	UsersGetPolicyHandler users.GetPolicyHandler
 	// UsersGetPolicyStatusForUserHandler sets the operation handler for the get policy status for user operation
@@ -397,6 +402,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.UsersGetOldBookingsForUserHandler == nil {
 		unregistered = append(unregistered, "users.GetOldBookingsForUserHandler")
+	}
+	if o.AdminGetOperationalStatusHandler == nil {
+		unregistered = append(unregistered, "admin.GetOperationalStatusHandler")
 	}
 	if o.UsersGetPolicyHandler == nil {
 		unregistered = append(unregistered, "users.GetPolicyHandler")
@@ -611,6 +619,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/users/{user_name}/oldbookings"] = users.NewGetOldBookingsForUser(o.context, o.UsersGetOldBookingsForUserHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/admin/operations"] = admin.NewGetOperationalStatus(o.context, o.AdminGetOperationalStatusHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

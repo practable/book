@@ -314,6 +314,27 @@ paths:
           $ref: '#/responses/NotFound'
         500:
           $ref: '#/responses/InternalError'
+
+  /admin/operations:
+    get:
+      summary: Get operational dashboard summary
+      description: Returns the active manifest version, store status, and effective availability for every resource and slot in one admin request.
+      tags:
+      - admin
+      operationId: GetOperationalStatus
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/OperationalStatus'
+        401:
+          $ref: '#/responses/Unauthorized'
+        500:
+          $ref: '#/responses/InternalError'
     
       
   /admin/resources/{resource_name}:
@@ -1633,9 +1654,34 @@ definitions:
       reason:
         type: string
     required:
-      - available
-      - reason
-      
+    - available
+    - reason
+
+  ResourceStatuses:
+    description: statuses keyed by resource or slot name
+    type: object
+    additionalProperties:
+      $ref: '#/definitions/ResourceStatus'
+
+  OperationalStatus:
+    description: summary used by an administrator operations dashboard
+    type: object
+    properties:
+      manifest_version:
+        type: integer
+        format: int64
+      status:
+        $ref: '#/definitions/StoreStatusAdmin'
+      resources:
+        $ref: '#/definitions/ResourceStatuses'
+      slots:
+        $ref: '#/definitions/ResourceStatuses'
+    required:
+    - manifest_version
+    - status
+    - resources
+    - slots
+
   StoreStatusAdmin:
     type: object
     properties:

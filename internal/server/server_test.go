@@ -1457,6 +1457,28 @@ func TestSetGetSlotIsAvailable(t *testing.T) {
 	resp.Body.Close()
 }
 
+func TestGetOperationalStatus(t *testing.T) {
+	stoken := loadTestManifest(t)
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", cfg.Host+"/api/v1/admin/operations", nil)
+	require.NoError(t, err)
+	req.Header.Add("Authorization", stoken)
+	response, err := client.Do(req)
+	require.NoError(t, err)
+	defer response.Body.Close()
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	var summary models.OperationalStatus
+	body, err := ioutil.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(body, &summary))
+	require.NotNil(t, summary.ManifestVersion)
+	require.NotNil(t, summary.Status)
+	require.Len(t, summary.Resources, 2)
+	require.Len(t, summary.Slots, 3)
+	require.True(t, *summary.Resources["r-a"].Available)
+	require.True(t, *summary.Slots["sl-a"].Available)
+}
+
 func TestGetDescription(t *testing.T) {
 
 	loadTestManifest(t)

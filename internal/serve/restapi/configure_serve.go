@@ -134,6 +134,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation users.GetOldBookingsForUser has not yet been implemented")
 		})
 	}
+	if api.AdminGetOperationalStatusHandler == nil {
+		api.AdminGetOperationalStatusHandler = admin.GetOperationalStatusHandlerFunc(func(params admin.GetOperationalStatusParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetOperationalStatus has not yet been implemented")
+		})
+	}
 	if api.UsersGetPolicyHandler == nil {
 		api.UsersGetPolicyHandler = users.GetPolicyHandlerFunc(func(params users.GetPolicyParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.GetPolicy has not yet been implemented")

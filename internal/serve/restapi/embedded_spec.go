@@ -432,6 +432,38 @@ func init() {
         }
       }
     },
+    "/admin/operations": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns the active manifest version, store status, and effective availability for every resource and slot in one admin request.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get operational dashboard summary",
+        "operationId": "GetOperationalStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/OperationalStatus"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/resources": {
       "get": {
         "security": [
@@ -1976,6 +2008,31 @@ func init() {
         }
       }
     },
+    "OperationalStatus": {
+      "description": "summary used by an administrator operations dashboard",
+      "type": "object",
+      "required": [
+        "manifest_version",
+        "status",
+        "resources",
+        "slots"
+      ],
+      "properties": {
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resources": {
+          "$ref": "#/definitions/ResourceStatuses"
+        },
+        "slots": {
+          "$ref": "#/definitions/ResourceStatuses"
+        },
+        "status": {
+          "$ref": "#/definitions/StoreStatusAdmin"
+        }
+      }
+    },
     "PoliciesDescribed": {
       "type": "object",
       "additionalProperties": {
@@ -2215,6 +2272,13 @@ func init() {
         "reason": {
           "type": "string"
         }
+      }
+    },
+    "ResourceStatuses": {
+      "description": "statuses keyed by resource or slot name",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/ResourceStatus"
       }
     },
     "Resources": {
@@ -3044,6 +3108,44 @@ func init() {
         }
       }
     },
+    "/admin/operations": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns the active manifest version, store status, and effective availability for every resource and slot in one admin request.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get operational dashboard summary",
+        "operationId": "GetOperationalStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/OperationalStatus"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/admin/resources": {
       "get": {
         "security": [
@@ -4792,6 +4894,31 @@ func init() {
         }
       }
     },
+    "OperationalStatus": {
+      "description": "summary used by an administrator operations dashboard",
+      "type": "object",
+      "required": [
+        "manifest_version",
+        "status",
+        "resources",
+        "slots"
+      ],
+      "properties": {
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resources": {
+          "$ref": "#/definitions/ResourceStatuses"
+        },
+        "slots": {
+          "$ref": "#/definitions/ResourceStatuses"
+        },
+        "status": {
+          "$ref": "#/definitions/StoreStatusAdmin"
+        }
+      }
+    },
     "PoliciesDescribed": {
       "type": "object",
       "additionalProperties": {
@@ -5031,6 +5158,13 @@ func init() {
         "reason": {
           "type": "string"
         }
+      }
+    },
+    "ResourceStatuses": {
+      "description": "statuses keyed by resource or slot name",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/ResourceStatus"
       }
     },
     "Resources": {

@@ -361,6 +361,16 @@ type StoreStatusUser struct {
 	Now     time.Time `json:"now" yaml:"now"`
 }
 
+// OperationalStatus is the read-only snapshot used by an administrator
+// dashboard. Resource status is intrinsic; slot status is effective and hence
+// includes a resource-wide suspension.
+type OperationalStatus struct {
+	ManifestVersion int64
+	Status          StoreStatusAdmin
+	Resources       map[string]AvailabilityStatus
+	Slots           map[string]AvailabilityStatus
+}
+
 // Stream represents a prototype for a type of stream from a relay
 // Streams will typically be either data, video, or logging.
 // If multiple relay access servers r1, r2 etc are used,just define separate prototypes for
@@ -2040,6 +2050,33 @@ func (s *Store) GetStoreStatusAdmin() StoreStatusAdmin {
 		Users:        int64(len(s.Users)),
 		Windows:      int64(len(s.Windows)),
 	}
+}
+
+// GetOperationalStatus returns one consistent in-memory dashboard snapshot.
+func (s *Store) GetOperationalStatus() OperationalStatus {
+	s.Lock()
+	defer s.Unlock()
+	result := OperationalStatus{
+		ManifestVersion: s.manifestVersion,
+		Status: StoreStatusAdmin{
+			Locked: s.Locked, Message: s.Message, Now: s.now(), Bookings: int64(len(s.Bookings)),
+			Descriptions: int64(len(s.Descriptions)), Filters: int64(len(s.Filters)), OldBookings: int64(len(s.OldBookings)),
+			Policies: int64(len(s.Policies)), Resources: int64(len(s.Resources)), Slots: int64(len(s.Slots)),
+			Streams: int64(len(s.Streams)), UIs: int64(len(s.UIs)), UISets: int64(len(s.UISets)),
+			Users: int64(len(s.Users)), Windows: int64(len(s.Windows)), Groups: int64(len(s.Groups)),
+		},
+		Resources: make(map[string]AvailabilityStatus, len(s.Resources)),
+		Slots:     make(map[string]AvailabilityStatus, len(s.Slots)),
+	}
+	for name := range s.Resources {
+		available, reason, _ := s.getResourceIsAvailable(name)
+		result.Resources[name] = AvailabilityStatus{Available: available, Reason: reason}
+	}
+	for name := range s.Slots {
+		available, reason, _ := s.getSlotIsAvailable(name)
+		result.Slots[name] = AvailabilityStatus{Available: available, Reason: reason}
+	}
+	return result
 }
 
 // GetStoreStatusUser returns the store status without entity counts

@@ -15,6 +15,7 @@ import (
 	"github.com/practable/book/internal/interval"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
@@ -1127,6 +1128,26 @@ func TestSetSlotIsAvailable(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "bar", reason)
 
+}
+
+func TestOperationalStatusShowsResourceAndEffectiveSlotAvailability(t *testing.T) {
+	s := New()
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
+	var m Manifest
+	require.NoError(t, yaml.Unmarshal(manifestYAML, &m))
+	require.NoError(t, s.ReplaceManifest(m))
+	require.NoError(t, s.SetSlotIsAvailable("sl-a", false, "UI maintenance"))
+	require.NoError(t, s.SetResourceIsAvailable("r-b", false, "failed health check"))
+
+	summary := s.GetOperationalStatus()
+	require.Equal(t, s.ManifestVersion(), summary.ManifestVersion)
+	require.True(t, summary.Resources["r-a"].Available)
+	require.False(t, summary.Resources["r-b"].Available)
+	require.Equal(t, "unavailable because failed health check", summary.Resources["r-b"].Reason)
+	require.False(t, summary.Slots["sl-a"].Available)
+	require.Equal(t, "unavailable because UI maintenance", summary.Slots["sl-a"].Reason)
+	require.False(t, summary.Slots["sl-b"].Available)
+	require.Equal(t, "unavailable because failed health check", summary.Slots["sl-b"].Reason)
 }
 
 func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {

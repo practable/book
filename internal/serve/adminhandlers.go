@@ -1,6 +1,7 @@
 package serve
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -831,6 +832,39 @@ func getResourcesHandler(config config.ServerConfig) func(admin.GetResourcesPara
 		}
 
 		return admin.NewGetResourcesOK().WithPayload(rm)
+	}
+}
+
+func getOperationalStatusHandler(config config.ServerConfig) func(admin.GetOperationalStatusParams, interface{}) middleware.Responder {
+	return func(params admin.GetOperationalStatusParams, principal interface{}) middleware.Responder {
+		if _, err := isAdmin(principal); err != nil {
+			c, m := "401", "no scope booking:admin"
+			return admin.NewGetOperationalStatusUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+		if err := config.Store.RefreshManifest(context.Background()); err != nil {
+			c, m := "500", err.Error()
+			return admin.NewGetOperationalStatusInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+		snapshot := config.Store.GetOperationalStatus()
+		status, err := convertStoreStatusAdminToModel(snapshot.Status)
+		if err != nil {
+			c, m := "500", err.Error()
+			return admin.NewGetOperationalStatusInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+		resources := make(models.ResourceStatuses, len(snapshot.Resources))
+		for name, value := range snapshot.Resources {
+			available, reason := value.Available, value.Reason
+			resources[name] = models.ResourceStatus{Available: &available, Reason: &reason}
+		}
+		slots := make(models.ResourceStatuses, len(snapshot.Slots))
+		for name, value := range snapshot.Slots {
+			available, reason := value.Available, value.Reason
+			slots[name] = models.ResourceStatus{Available: &available, Reason: &reason}
+		}
+		version := snapshot.ManifestVersion
+		return admin.NewGetOperationalStatusOK().WithPayload(&models.OperationalStatus{
+			ManifestVersion: &version, Status: &status, Resources: resources, Slots: slots,
+		})
 	}
 }
 

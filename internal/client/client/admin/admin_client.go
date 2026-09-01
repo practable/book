@@ -92,6 +92,8 @@ type ClientService interface {
 
 	ExportUsers(params *ExportUsersParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportUsersOK, error)
 
+	GetOperationalStatus(params *GetOperationalStatusParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOperationalStatusOK, error)
+
 	GetResourceIsAvailable(params *GetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourceIsAvailableOK, error)
 
 	GetResources(params *GetResourcesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourcesOK, error)
@@ -361,6 +363,47 @@ func (a *Client) ExportUsers(params *ExportUsersParams, authInfo runtime.ClientA
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for ExportUsers: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetOperationalStatus gets operational dashboard summary
+
+Returns the active manifest version, store status, and effective availability for every resource and slot in one admin request.
+*/
+func (a *Client) GetOperationalStatus(params *GetOperationalStatusParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetOperationalStatusOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetOperationalStatusParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "GetOperationalStatus",
+		Method:             "GET",
+		PathPattern:        "/admin/operations",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetOperationalStatusReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetOperationalStatusOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for GetOperationalStatus: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
