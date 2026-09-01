@@ -1942,6 +1942,10 @@ definitions:
         type: object
         additionalProperties:
           $ref: '#/definitions/Policy'
+      operational_workflows:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/OperationalWorkflow'
       resources:
         type: object
         additionalProperties:
@@ -2154,6 +2158,8 @@ definitions:
         type: object
         additionalProperties:
           type: string
+      operations:
+        $ref: '#/definitions/OperationalProfile'
       streams:
         type: array
         items:
@@ -2173,6 +2179,35 @@ definitions:
     type: object
     additionalProperties:
       $ref: '#/definitions/Resource'
+
+  OperationalWorkflow:
+    description: Owner-approved bounded task contract; never an executable command or URL.
+    type: object
+    properties:
+      description: {type: string}
+      expected_duration: {type: string, example: 10m}
+      maximum_duration: {type: string, example: 15m}
+    required: [description, expected_duration, maximum_duration]
+
+  OperationalGuard:
+    type: object
+    properties:
+      workflow: {type: string}
+      duration: {type: string, example: 10m}
+      applies: {type: string, enum: [always, outside_operating_window]}
+      reclaimable: {type: boolean}
+    required: [workflow, duration, applies]
+
+  OperationalProfile:
+    type: object
+    properties:
+      operating_window: {type: string}
+      before_booking:
+        type: array
+        items: {$ref: '#/definitions/OperationalGuard'}
+      after_booking:
+        type: array
+        items: {$ref: '#/definitions/OperationalGuard'}
         
   Slot:
     type: object

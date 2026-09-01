@@ -166,16 +166,17 @@ type GroupDescribed struct {
 // Manifest represents all the available equipment and how to access it
 // Slots are the primary entities, so reference checking starts with them
 type Manifest struct {
-	Descriptions  map[string]Description  `json:"descriptions" yaml:"descriptions"`
-	DisplayGuides map[string]DisplayGuide `json:"display_guides" yaml:"display_guides"`
-	Groups        map[string]Group        `json:"groups" yaml:"groups"`
-	Policies      map[string]Policy       `json:"policies" yaml:"policies"`
-	Resources     map[string]Resource     `json:"resources" yaml:"resources"`
-	Slots         map[string]Slot         `json:"slots" yaml:"slots"`
-	Streams       map[string]Stream       `json:"streams" yaml:"streams"`
-	UIs           map[string]UI           `json:"uis" yaml:"uis"`
-	UISets        map[string]UISet        `json:"ui_sets" yaml:"ui_sets"`
-	Windows       map[string]Window       `json:"windows" yaml:"windows"`
+	Descriptions         map[string]Description         `json:"descriptions" yaml:"descriptions"`
+	DisplayGuides        map[string]DisplayGuide        `json:"display_guides" yaml:"display_guides"`
+	Groups               map[string]Group               `json:"groups" yaml:"groups"`
+	Policies             map[string]Policy              `json:"policies" yaml:"policies"`
+	OperationalWorkflows map[string]OperationalWorkflow `json:"operational_workflows,omitempty" yaml:"operational_workflows,omitempty"`
+	Resources            map[string]Resource            `json:"resources" yaml:"resources"`
+	Slots                map[string]Slot                `json:"slots" yaml:"slots"`
+	Streams              map[string]Stream              `json:"streams" yaml:"streams"`
+	UIs                  map[string]UI                  `json:"uis" yaml:"uis"`
+	UISets               map[string]UISet               `json:"ui_sets" yaml:"ui_sets"`
+	Windows              map[string]Window              `json:"windows" yaml:"windows"`
 }
 
 // Policy represents what a user can book, and any limits on bookings/usage
@@ -249,8 +250,9 @@ type Resource struct {
 	// Class and Properties are optional catalogue metadata used by calendar
 	// clients. Existing manifests remain valid and may continue to group
 	// resources only through policies and slots.
-	Class      string            `json:"class,omitempty" yaml:"class,omitempty"`
-	Properties map[string]string `json:"properties,omitempty" yaml:"properties,omitempty"`
+	Class      string             `json:"class,omitempty" yaml:"class,omitempty"`
+	Properties map[string]string  `json:"properties,omitempty" yaml:"properties,omitempty"`
+	Operations OperationalProfile `json:"operations,omitempty" yaml:"operations,omitempty"`
 
 	// Diary is held in memory, not in the manifest, so don't unmarshall it.
 	Diary *diary.Diary `json:"-"  yaml:"-"`
@@ -347,6 +349,8 @@ type Store struct {
 
 	// Resources represent all the actual physical experiments, indexed by name
 	Resources map[string]Resource
+
+	OperationalWorkflows map[string]OperationalWorkflow
 
 	// Slots represent the combinations of virtual equipments and booking policies that apply to them
 	Slots map[string]Slot
@@ -509,6 +513,7 @@ func New() *Store {
 		"replaceme",
 		time.Second,
 		make(map[string]Resource),
+		make(map[string]OperationalWorkflow),
 		make(map[string]Slot),
 		make(map[string]AvailabilityStatus),
 		make(map[string]Stream),
@@ -1292,6 +1297,7 @@ func (s *Store) exportManifestLocked() Manifest {
 			Description: v.Description,
 			Class:       v.Class,
 			Properties:  v.Properties,
+			Operations:  v.Operations,
 			Streams:     v.Streams,
 			Tests:       v.Tests,
 			TopicStub:   v.TopicStub,
@@ -1305,16 +1311,17 @@ func (s *Store) exportManifestLocked() Manifest {
 	}
 
 	return Manifest{
-		Descriptions:  s.Descriptions,
-		DisplayGuides: s.DisplayGuides,
-		Groups:        gm,
-		Policies:      pm,
-		Resources:     rm,
-		Slots:         s.Slots,
-		Streams:       s.Streams,
-		UIs:           uis,
-		UISets:        s.UISets,
-		Windows:       s.Windows,
+		Descriptions:         s.Descriptions,
+		DisplayGuides:        s.DisplayGuides,
+		Groups:               gm,
+		Policies:             pm,
+		OperationalWorkflows: s.OperationalWorkflows,
+		Resources:            rm,
+		Slots:                s.Slots,
+		Streams:              s.Streams,
+		UIs:                  uis,
+		UISets:               s.UISets,
+		Windows:              s.Windows,
 	}
 }
 
@@ -2999,6 +3006,7 @@ func (s *Store) applyManifestLocked(m Manifest) error {
 	s.Groups = groups
 	s.Policies = policies
 	s.Resources = resources
+	s.OperationalWorkflows = m.OperationalWorkflows
 	s.Slots = m.Slots
 	s.Streams = m.Streams
 	s.UIs = uis
@@ -3669,6 +3677,8 @@ func checkManifest(m Manifest) (error, []string) {
 			}
 		}
 	}
+
+	msg = append(msg, validateOperationalManifest(m)...)
 
 	if len(msg) > 0 {
 		return errors.New("missing reference(s)"), msg

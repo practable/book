@@ -2903,6 +2903,12 @@ func init() {
             "$ref": "#/definitions/Group"
           }
         },
+        "operational_workflows": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalWorkflow"
+          }
+        },
         "policies": {
           "type": "object",
           "additionalProperties": {
@@ -2983,6 +2989,33 @@ func init() {
         }
       }
     },
+    "OperationalGuard": {
+      "type": "object",
+      "required": [
+        "workflow",
+        "duration",
+        "applies"
+      ],
+      "properties": {
+        "applies": {
+          "type": "string",
+          "enum": [
+            "always",
+            "outside_operating_window"
+          ]
+        },
+        "duration": {
+          "type": "string",
+          "example": "10m"
+        },
+        "reclaimable": {
+          "type": "boolean"
+        },
+        "workflow": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalJobCallback": {
       "type": "object",
       "required": [
@@ -3042,6 +3075,26 @@ func init() {
         }
       }
     },
+    "OperationalProfile": {
+      "type": "object",
+      "properties": {
+        "after_booking": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalGuard"
+          }
+        },
+        "before_booking": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalGuard"
+          }
+        },
+        "operating_window": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalStatus": {
       "description": "summary used by an administrator operations dashboard",
       "type": "object",
@@ -3064,6 +3117,28 @@ func init() {
         },
         "status": {
           "$ref": "#/definitions/StoreStatusAdmin"
+        }
+      }
+    },
+    "OperationalWorkflow": {
+      "description": "Owner-approved bounded task contract; never an executable command or URL.",
+      "type": "object",
+      "required": [
+        "description",
+        "expected_duration",
+        "maximum_duration"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "expected_duration": {
+          "type": "string",
+          "example": "10m"
+        },
+        "maximum_duration": {
+          "type": "string",
+          "example": "15m"
         }
       }
     },
@@ -3279,6 +3354,9 @@ func init() {
         },
         "description": {
           "type": "string"
+        },
+        "operations": {
+          "$ref": "#/definitions/OperationalProfile"
         },
         "properties": {
           "description": "optional structured, filterable equipment characteristics",
@@ -7060,6 +7138,12 @@ func init() {
             "$ref": "#/definitions/Group"
           }
         },
+        "operational_workflows": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalWorkflow"
+          }
+        },
         "policies": {
           "type": "object",
           "additionalProperties": {
@@ -7140,6 +7224,33 @@ func init() {
         }
       }
     },
+    "OperationalGuard": {
+      "type": "object",
+      "required": [
+        "workflow",
+        "duration",
+        "applies"
+      ],
+      "properties": {
+        "applies": {
+          "type": "string",
+          "enum": [
+            "always",
+            "outside_operating_window"
+          ]
+        },
+        "duration": {
+          "type": "string",
+          "example": "10m"
+        },
+        "reclaimable": {
+          "type": "boolean"
+        },
+        "workflow": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalJobCallback": {
       "type": "object",
       "required": [
@@ -7199,6 +7310,26 @@ func init() {
         }
       }
     },
+    "OperationalProfile": {
+      "type": "object",
+      "properties": {
+        "after_booking": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalGuard"
+          }
+        },
+        "before_booking": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalGuard"
+          }
+        },
+        "operating_window": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalStatus": {
       "description": "summary used by an administrator operations dashboard",
       "type": "object",
@@ -7221,6 +7352,28 @@ func init() {
         },
         "status": {
           "$ref": "#/definitions/StoreStatusAdmin"
+        }
+      }
+    },
+    "OperationalWorkflow": {
+      "description": "Owner-approved bounded task contract; never an executable command or URL.",
+      "type": "object",
+      "required": [
+        "description",
+        "expected_duration",
+        "maximum_duration"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "expected_duration": {
+          "type": "string",
+          "example": "10m"
+        },
+        "maximum_duration": {
+          "type": "string",
+          "example": "15m"
         }
       }
     },
@@ -7436,6 +7589,9 @@ func init() {
         },
         "description": {
           "type": "string"
+        },
+        "operations": {
+          "$ref": "#/definitions/OperationalProfile"
         },
         "properties": {
           "description": "optional structured, filterable equipment characteristics",

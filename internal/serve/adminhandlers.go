@@ -122,6 +122,18 @@ func convertManifestToStore(m string) (store.Manifest, error) {
 }
 
 func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
+	workflows := make(map[string]store.OperationalWorkflow, len(mm.OperationalWorkflows))
+	for name, value := range mm.OperationalWorkflows {
+		expected, err := time.ParseDuration(*value.ExpectedDuration)
+		if err != nil {
+			return store.Manifest{}, errors.New("error parsing expected_duration in operational workflow " + name + ": " + err.Error())
+		}
+		maximum, err := time.ParseDuration(*value.MaximumDuration)
+		if err != nil {
+			return store.Manifest{}, errors.New("error parsing maximum_duration in operational workflow " + name + ": " + err.Error())
+		}
+		workflows[name] = store.OperationalWorkflow{Description: *value.Description, ExpectedDuration: expected, MaximumDuration: maximum}
+	}
 
 	dm := make(map[string]store.Description)
 
@@ -275,11 +287,16 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 
 	for k, v := range mm.Resources {
 		m := v
+		operations, err := modelOperationalProfileToStore(m.Operations)
+		if err != nil {
+			return store.Manifest{}, errors.New("resource " + k + ": " + err.Error())
+		}
 		rm[k] = store.Resource{
 			ConfigURL:   m.ConfigURL,
 			Class:       m.Class,
 			Description: *(m.Description),
 			Properties:  m.Properties,
+			Operations:  operations,
 			Streams:     m.Streams,
 			Tests:       m.Tests,
 			TopicStub:   *(m.TopicStub),
@@ -392,20 +409,65 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 	}
 
 	sm := store.Manifest{
-		Descriptions:  dm,
-		DisplayGuides: dgm,
-		Groups:        gm,
-		Policies:      pm,
-		Resources:     rm,
-		Slots:         slm,
-		Streams:       stm,
-		UIs:           uim,
-		UISets:        usm,
-		Windows:       wm,
+		Descriptions:         dm,
+		DisplayGuides:        dgm,
+		Groups:               gm,
+		Policies:             pm,
+		OperationalWorkflows: workflows,
+		Resources:            rm,
+		Slots:                slm,
+		Streams:              stm,
+		UIs:                  uim,
+		UISets:               usm,
+		Windows:              wm,
 	}
 
 	return sm, nil
 
+}
+
+func modelOperationalProfileToStore(profile *models.OperationalProfile) (store.OperationalProfile, error) {
+	if profile == nil {
+		return store.OperationalProfile{}, nil
+	}
+	convert := func(values []*models.OperationalGuard) ([]store.OperationalGuard, error) {
+		result := make([]store.OperationalGuard, 0, len(values))
+		for _, value := range values {
+			if value == nil {
+				continue
+			}
+			duration, err := time.ParseDuration(*value.Duration)
+			if err != nil {
+				return nil, errors.New("invalid operational guard duration: " + err.Error())
+			}
+			result = append(result, store.OperationalGuard{Workflow: *value.Workflow, Duration: duration, Applies: *value.Applies, Reclaimable: value.Reclaimable})
+		}
+		return result, nil
+	}
+	before, err := convert(profile.BeforeBooking)
+	if err != nil {
+		return store.OperationalProfile{}, err
+	}
+	after, err := convert(profile.AfterBooking)
+	if err != nil {
+		return store.OperationalProfile{}, err
+	}
+	return store.OperationalProfile{OperatingWindow: profile.OperatingWindow, BeforeBooking: before, AfterBooking: after}, nil
+}
+
+func storeOperationalProfileToModel(profile store.OperationalProfile) *models.OperationalProfile {
+	if profile.OperatingWindow == "" && len(profile.BeforeBooking) == 0 && len(profile.AfterBooking) == 0 {
+		return nil
+	}
+	convert := func(values []store.OperationalGuard) []*models.OperationalGuard {
+		result := make([]*models.OperationalGuard, 0, len(values))
+		for _, value := range values {
+			workflow, duration, applies := value.Workflow, value.Duration.String(), value.Applies
+			result = append(result, &models.OperationalGuard{Workflow: &workflow, Duration: &duration, Applies: &applies, Reclaimable: value.Reclaimable})
+		}
+		return result
+	}
+	return &models.OperationalProfile{OperatingWindow: profile.OperatingWindow, BeforeBooking: convert(profile.BeforeBooking), AfterBooking: convert(profile.AfterBooking)}
 }
 
 // exportBookingsHandler
@@ -668,10 +730,17 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 				Class:       s.Class,
 				Description: gog.Ptr(s.Description),
 				Properties:  s.Properties,
+				Operations:  storeOperationalProfileToModel(s.Operations),
 				Streams:     s.Streams,
 				Tests:       s.Tests,
 				TopicStub:   gog.Ptr(s.TopicStub),
 			}
+		}
+
+		workflows := make(map[string]models.OperationalWorkflow, len(sm.OperationalWorkflows))
+		for name, workflow := range sm.OperationalWorkflows {
+			description, expected, maximum := workflow.Description, workflow.ExpectedDuration.String(), workflow.MaximumDuration.String()
+			workflows[name] = models.OperationalWorkflow{Description: &description, ExpectedDuration: &expected, MaximumDuration: &maximum}
 		}
 
 		slm := make(map[string]models.Slot)
@@ -763,16 +832,17 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 		}
 
 		mm := models.Manifest{
-			Descriptions:  dm,
-			DisplayGuides: dgm,
-			Groups:        gm,
-			Policies:      pm,
-			Resources:     rm,
-			Slots:         slm,
-			Streams:       stm,
-			Uis:           uim,
-			UISets:        usm,
-			Windows:       wm,
+			Descriptions:         dm,
+			DisplayGuides:        dgm,
+			Groups:               gm,
+			Policies:             pm,
+			OperationalWorkflows: workflows,
+			Resources:            rm,
+			Slots:                slm,
+			Streams:              stm,
+			Uis:                  uim,
+			UISets:               usm,
+			Windows:              wm,
 		}
 
 		return admin.NewExportManifestOK().WithPayload(&mm)

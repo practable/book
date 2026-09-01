@@ -29,6 +29,9 @@ type Resource struct {
 	// Required: true
 	Description *string `json:"description"`
 
+	// operations
+	Operations *OperationalProfile `json:"operations,omitempty"`
+
 	// optional structured, filterable equipment characteristics
 	Properties map[string]string `json:"properties,omitempty"`
 
@@ -49,6 +52,10 @@ func (m *Resource) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateDescription(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOperations(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -75,6 +82,25 @@ func (m *Resource) validateDescription(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *Resource) validateOperations(formats strfmt.Registry) error {
+	if swag.IsZero(m.Operations) { // not required
+		return nil
+	}
+
+	if m.Operations != nil {
+		if err := m.Operations.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("operations")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("operations")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (m *Resource) validateStreams(formats strfmt.Registry) error {
 
 	if err := validate.Required("streams", "body", m.Streams); err != nil {
@@ -93,8 +119,38 @@ func (m *Resource) validateTopicStub(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this resource based on context it is used
+// ContextValidate validate this resource based on the context it is used
 func (m *Resource) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateOperations(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Resource) contextValidateOperations(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Operations != nil {
+
+		if swag.IsZero(m.Operations) { // not required
+			return nil
+		}
+
+		if err := m.Operations.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("operations")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("operations")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
