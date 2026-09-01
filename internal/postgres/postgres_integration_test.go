@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 10, versions)
+	require.Equal(t, 11, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -322,6 +322,22 @@ func TestAcceptedOperationalJobActivatesOnlyItsReservation(t *testing.T) {
 	require.Equal(t, "running", retriedJob.State)
 	_, _, err = repository.ActivateOperationalJob(ctx, guard.Job.ID, "activate-1", "changed-hash", start.Add(2*time.Minute))
 	require.ErrorIs(t, err, operations.ErrCallbackConflict)
+	completion := operations.Callback{DeliveryID: "complete-activation", JobID: guard.Job.ID, State: "succeeded", At: start.Add(5 * time.Minute)}
+	completed, fresh, err := repository.ApplyCallback(ctx, completion, "complete-hash")
+	require.NoError(t, err)
+	require.True(t, fresh)
+	require.Equal(t, "succeeded", completed.State)
+	_, fresh, err = repository.ApplyCallback(ctx, completion, "complete-hash")
+	require.NoError(t, err)
+	require.False(t, fresh)
+	var collection string
+	var usage int64
+	var revocations int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT collection,usage_charge_ns FROM public.bookings WHERE name=$1", guard.Request.Booking.Name).Scan(&collection, &usage))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.relay_revocations WHERE booking_name=$1", guard.Request.Booking.Name).Scan(&revocations))
+	require.Equal(t, "history", collection)
+	require.Equal(t, (4 * time.Minute).Nanoseconds(), usage)
+	require.Equal(t, 1, revocations)
 	_, _, err = repository.ActivateOperationalJob(ctx, "missing-job", "activate-missing", "missing-hash", start)
 	require.ErrorIs(t, err, operations.ErrNotFound)
 }

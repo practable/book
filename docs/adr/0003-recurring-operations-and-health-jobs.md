@@ -191,6 +191,8 @@ following booking, cancellation retires undispatched guards atomically, and
 unstarted booking edits atomically replace undispatched guard plans.
 The HMAC-authenticated runner activation action transactionally starts only the
 reservation bound to an accepted job and returns its activity configuration.
+Terminal callbacks atomically close that reservation, record actual occupied
+time, and durably revoke relay access for a started job.
 Operational-state schedules, health policy, charging, organisation accounts,
 and block booking remain deferred.
 

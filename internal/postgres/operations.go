@@ -517,6 +517,11 @@ func (r *Repository) ApplyCallback(ctx context.Context, callback operations.Call
 	if err != nil {
 		return operations.Job{}, false, err
 	}
+	if callback.State == "succeeded" || callback.State == "failed" || callback.State == "cancelled" || callback.State == "expired" {
+		if err := finishOperationalReservationTx(ctx, tx, job, callback); err != nil {
+			return operations.Job{}, false, err
+		}
+	}
 	updated, err := scanJob(tx.QueryRow(ctx, jobSelect+" WHERE job_id=$1", callback.JobID))
 	if err != nil {
 		return operations.Job{}, false, err
@@ -525,6 +530,68 @@ func (r *Repository) ApplyCallback(ctx context.Context, callback operations.Call
 		return operations.Job{}, false, err
 	}
 	return updated, true, nil
+}
+
+func finishOperationalReservationTx(ctx context.Context, tx pgx.Tx, job operations.Job, callback operations.Callback) error {
+	if job.BookingRowID == nil {
+		return nil
+	}
+	var bookingName string
+	var started bool
+	var startedAt *time.Time
+	var endsAt time.Time
+	err := tx.QueryRow(ctx, `SELECT name,started,started_at,ends_at FROM public.bookings
+		WHERE row_id=$1 AND collection='live' AND NOT superseded FOR UPDATE`, *job.BookingRowID).
+		Scan(&bookingName, &started, &startedAt, &endsAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	usage := time.Duration(0)
+	if started && startedAt != nil {
+		effectiveEnd := callback.At.UTC()
+		if effectiveEnd.After(endsAt) {
+			effectiveEnd = endsAt
+		}
+		if effectiveEnd.After(*startedAt) {
+			usage = effectiveEnd.Sub(*startedAt)
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO public.relay_revocations
+			(booking_row_id,booking_name,expires_at,expires_at_ns,revoked_by)
+			VALUES($1,$2,$3,$4,$5) ON CONFLICT (booking_row_id) DO NOTHING`,
+			*job.BookingRowID, bookingName, endsAt.UTC(), endsAt.UnixNano(), "operational-runner:"+callback.State); err != nil {
+			return err
+		}
+	}
+	if err := supersedeHistoryName(ctx, tx, bookingName, callback.At, "operational-runner:"+callback.State); err != nil {
+		return err
+	}
+	eventType := "completed"
+	cancelled := false
+	unfulfilled := false
+	if callback.State != "succeeded" {
+		cancelled = true
+		eventType = "cancelled"
+		unfulfilled = !started
+		if callback.State == "expired" {
+			eventType = "expired"
+		}
+	}
+	if cancelled {
+		_, err = tx.Exec(ctx, `UPDATE public.bookings SET collection='history',cancelled=true,cancelled_at=$2,
+			cancelled_at_ns=$3,cancelled_by=$4,cancelled_by_text=$4,unfulfilled=$5,usage_charge_ns=$6,
+			updated_at=clock_timestamp() WHERE row_id=$1`, *job.BookingRowID, callback.At.UTC(), callback.At.UnixNano(),
+			"operational-runner:"+callback.State, unfulfilled, usage.Nanoseconds())
+	} else {
+		_, err = tx.Exec(ctx, `UPDATE public.bookings SET collection='history',usage_charge_ns=$2,
+			updated_at=clock_timestamp() WHERE row_id=$1`, *job.BookingRowID, usage.Nanoseconds())
+	}
+	if err != nil {
+		return err
+	}
+	return insertEvent(ctx, tx, *job.BookingRowID, bookingName, eventType, callback.At, "operational-runner:"+callback.State)
 }
 
 var _ operations.Repository = (*Repository)(nil)

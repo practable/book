@@ -72,6 +72,15 @@ the same transaction that starts the reservation and moves the job to
 interval. An exact retry returns the same activity without changing its
 original start time. A booking identifier by itself grants no runner access.
 
+Terminal callbacks (`succeeded`, `failed`, `cancelled`, or `expired`) also close
+the bound reservation transactionally. Book records actual occupied time from
+activation until the callback (capped at the planned end). If the reservation
+was active, a durable relay revocation is inserted before the callback is
+acknowledged, so access is withdrawn even when a different Book instance or
+relay observes the result. Successful work is recorded as completed history;
+other terminal outcomes retain their failure/cancellation state and audit
+actor.
+
 ## Failure and recovery
 
 Booking commits do not wait for the runner. Network and non-2xx failures are
@@ -81,6 +90,7 @@ durable. Restarting book or moving dispatch to another instance does not lose
 pending work.
 
 Migration 0009 creates `operational_jobs`, `webhook_deliveries`, and
-`webhook_callback_receipts`. Apply migrations using the normal process in
+`webhook_callback_receipts`; migration 0011 adds the completed booking audit
+event. Apply migrations using the normal process in
 [PostgreSQL](postgresql.md). Rollback is safe only after dispatch is disabled
 and retained operational history has been exported or deliberately discarded.
