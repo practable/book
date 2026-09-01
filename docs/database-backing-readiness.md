@@ -17,6 +17,9 @@ maintenance, health, job-runner, and activation APIs support the reference
 student and technician interfaces. Domain policy remains in `internal/store`;
 durable mutations cross narrow repository interfaces in
 `internal/store/persistence.go` and `internal/store/admin.go`.
+Student activation prepares all manifest-bound streams in one durable run.
+Technician release similarly queues every required stream check atomically;
+the dashboard is an observer and a browser restart cannot strand the workflow.
 
 ## Changed files
 
@@ -26,7 +29,7 @@ reviewed as contract output. The hand-maintained production changes are grouped
 as follows:
 
 - PostgreSQL: `internal/postgres/postgres.go`, `operations.go`, `activation.go`,
-  `alerts.go`, `releases.go`, `usage.go`, and migrations `0001` through `0026`
+  `alerts.go`, `releases.go`, `usage.go`, and migrations `0001` through `0027`
   (each with a down migration).
 - Storage/domain: `internal/store/store.go`, `persistence.go`, `admin.go`,
   `calendar.go`, `operational.go`, and `recurrence.go`.
@@ -56,10 +59,10 @@ On 2026-09-01, against disposable PostgreSQL on `127.0.0.1:5432`:
 
 - `go test ./...` passed with PostgreSQL integration enabled.
 - `go vet ./...` passed.
-- `npm test --prefix docs/reference-ui` passed (7 tests).
+- `node --test docs/reference-ui/book-api.test.js` passed (8 tests).
 - `go test -race ./internal/postgres ./internal/server ./internal/store ./internal/serve`
   passed.
-- `TestMigrationsFromEmptyDatabase` passed through migration `0026` in a newly
+- `TestMigrationsFromEmptyDatabase` passed through migration `0027` in a newly
   created temporary database.
 - An external production-sized manifest passed CLI validation, database
   activation, and recovery through a newly opened repository with resource,
@@ -68,8 +71,9 @@ On 2026-09-01, against disposable PostgreSQL on `127.0.0.1:5432`:
 - Tests cover restart recovery, simultaneous overlap rejection, cancellation
   and rebooking, exact retry/idempotency behavior, historical usage and policy
   limits, transaction rollback, manifest fencing, half-open adjacency,
-  maintenance access, multi-stream verified release, degraded override, and
-  PostgreSQL-backed HTTP disclosure.
+  maintenance access, arbitrary-stream experiment activation, atomically
+  queued multi-stream verified release, degraded override, and PostgreSQL-backed
+  HTTP disclosure.
 
 Commands and disposable-database warnings are in `docs/postgresql.md`.
 
@@ -108,7 +112,7 @@ Commands and disposable-database warnings are in `docs/postgresql.md`.
    `btree_gist`. Use a migration role to install schema, then a least-privilege
    runtime role. Do not reuse the Docker test password.
 3. Run all migrations once before starting new Book instances. Verify schema
-   version `0026` and run the documented smoke/restart checks.
+   version `0027` and run the documented smoke/restart checks.
 4. Validate the current production manifest with the new binary. Activate it
    while booking creation is paused, inspect replay findings, then resume. No
    operational bindings are required for the initial database migration.
