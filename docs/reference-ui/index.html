@@ -20,6 +20,7 @@
     <div class="tiles" id="catalogue"></div>
     <section class="card hidden" id="planner"><div class="row"><label>Experiment<select id="policy"></select></label><label>Resource choice<select id="resource"></select></label><label>Date<input id="date" type="date"></label><label>Duration<select id="duration"><option value="10m">10 minutes</option><option value="20m">20 minutes</option><option value="30m">30 minutes</option><option value="1h">1 hour</option></select></label><button class="button" id="availability">Refresh</button></div><h2>Choose a start time</h2><div class="calendar" id="bands"></div></section>
     <section class="card preview hidden" id="preview"><div><h2 id="preview-title"></h2><div class="muted" id="preview-detail"></div></div><button class="button primary" id="book">Confirm booking</button></section>
+    <section class="card hidden" id="activation"><h2>Prepare your experiment</h2><p class="muted" id="activation-booking"></p><div class="row"><label>Connection to prepare<select id="activation-stream"></select></label><button class="button primary" id="activation-start">Start preparation</button></div><div class="status" id="activation-status">Choose a connection when your booking is ready to use.</div></section>
   </section>
 
   <section class="panel" id="admin">

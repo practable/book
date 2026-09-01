@@ -19,6 +19,9 @@ import (
 // swagger:model CalendarResource
 type CalendarResource struct {
 
+	// activation streams
+	ActivationStreams []string `json:"activation_streams"`
+
 	// class
 	Class string `json:"class,omitempty"`
 

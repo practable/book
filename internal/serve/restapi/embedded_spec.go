@@ -3461,6 +3461,12 @@ func init() {
         "name"
       ],
       "properties": {
+        "activation_streams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "class": {
           "type": "string"
         },
@@ -9245,6 +9251,12 @@ func init() {
         "name"
       ],
       "properties": {
+        "activation_streams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "class": {
           "type": "string"
         },

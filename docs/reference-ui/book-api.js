@@ -54,6 +54,16 @@ export class BookApi {
     });
   }
 
+  beginBookingActivation(user, booking, stream, idempotencyKey = crypto.randomUUID()) {
+    return this.request(`/users/${encodeURIComponent(user)}/bookings/${encodeURIComponent(booking)}/activations`, {
+      method: "POST", body: { stream }, headers: { "Idempotency-Key": idempotencyKey },
+    });
+  }
+
+  bookingActivation(user, booking, activation) {
+    return this.request(`/users/${encodeURIComponent(user)}/bookings/${encodeURIComponent(booking)}/activations/${encodeURIComponent(activation)}`);
+  }
+
   rescheduleBooking(name, request) {
     return this.request(`/calendar/bookings/${encodeURIComponent(name)}`, { method: "PATCH", body: request });
   }

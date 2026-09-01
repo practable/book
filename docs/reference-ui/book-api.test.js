@@ -59,3 +59,15 @@ test("degraded release requires an explicit encoded reason", async () => {
   await api.requestResourceRelease("spin 66", "video failed; data usable");
   assert.equal(called, "/api/v1/admin/resource-holds/spin%2066/release?override_reason=video+failed%3B+data+usable");
 });
+
+test("booking activation uses the booking identity and idempotency key", async () => {
+  const calls = [];
+  const api = new BookApi({ baseUrl: "https://book.example", token: "Bearer user", fetchImpl: async (url, options) => {
+    calls.push({ url, options });
+    return response(202, { id: "activation-1", state: "preparing" });
+  }});
+  await api.beginBookingActivation("student/1", "booking 1", "st-video", "activation-key");
+  assert.equal(calls[0].url, "https://book.example/api/v1/users/student%2F1/bookings/booking%201/activations");
+  assert.equal(calls[0].options.headers["Idempotency-Key"], "activation-key");
+  assert.deepEqual(JSON.parse(calls[0].options.body), { stream: "st-video" });
+});

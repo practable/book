@@ -24,6 +24,7 @@ type CalendarResource struct {
 	Name               string            `json:"name" yaml:"name"`
 	Class              string            `json:"class,omitempty" yaml:"class,omitempty"`
 	Properties         map[string]string `json:"properties,omitempty" yaml:"properties,omitempty"`
+	ActivationStreams  []string          `json:"activation_streams,omitempty" yaml:"activation_streams,omitempty"`
 	Degraded           bool              `json:"degraded" yaml:"degraded"`
 	DegradedReason     string            `json:"degraded_reason,omitempty" yaml:"degraded_reason,omitempty"`
 	UnavailableStreams []string          `json:"unavailable_streams,omitempty" yaml:"unavailable_streams,omitempty"`
@@ -104,7 +105,7 @@ func (s *Store) GetBookingDegradation(bookingName string) (CalendarResource, boo
 		return CalendarResource{}, false, nil
 	}
 	resource := s.Resources[slot.Resource]
-	return CalendarResource{Name: slot.Resource, Class: resource.Class, Properties: resource.Properties, Degraded: true,
+	return CalendarResource{Name: slot.Resource, Class: resource.Class, Properties: resource.Properties, ActivationStreams: operationalStreamNames(resource), Degraded: true,
 		DegradedReason: release.OverrideReason, UnavailableStreams: append([]string(nil), release.FailingStreams...)}, true, nil
 }
 
@@ -118,6 +119,15 @@ func resourceMatches(resourceName string, resource Resource, selector CalendarSe
 		}
 	}
 	return true
+}
+
+func operationalStreamNames(resource Resource) []string {
+	result := make([]string, 0, len(resource.StreamOperations))
+	for stream := range resource.StreamOperations {
+		result = append(result, stream)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func (s *Store) calendarSlotsLocked(selector CalendarSelector) ([]string, error) {
@@ -243,7 +253,7 @@ func (s *Store) GetCalendarCatalogue(groupName string) ([]CalendarCatalogueItem,
 				continue
 			}
 			seen[slot.Resource] = true
-			calendarResource := CalendarResource{Name: slot.Resource, Class: resource.Class, Properties: resource.Properties}
+			calendarResource := CalendarResource{Name: slot.Resource, Class: resource.Class, Properties: resource.Properties, ActivationStreams: operationalStreamNames(resource)}
 			if release, ok := degraded[slot.Resource]; ok {
 				calendarResource.Degraded = true
 				calendarResource.DegradedReason = release.OverrideReason
@@ -373,7 +383,7 @@ func (s *Store) PreviewCalendarBooking(user string, selector CalendarSelector, w
 	for _, resourceName := range resources {
 		if release, ok := degraded[resourceName]; ok {
 			resource := s.Resources[resourceName]
-			preview.DegradedResources = append(preview.DegradedResources, CalendarResource{Name: resourceName, Class: resource.Class, Properties: resource.Properties,
+			preview.DegradedResources = append(preview.DegradedResources, CalendarResource{Name: resourceName, Class: resource.Class, Properties: resource.Properties, ActivationStreams: operationalStreamNames(resource),
 				Degraded: true, DegradedReason: release.OverrideReason, UnavailableStreams: append([]string(nil), release.FailingStreams...)})
 		}
 	}

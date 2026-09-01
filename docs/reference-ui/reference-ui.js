@@ -23,6 +23,8 @@ let studentApi;
 let catalogue = [];
 let selectedItem;
 let proposedRequest;
+let currentBooking;
+let activationPoll;
 
 function studentSelector() {
   const resource = $("resource").value;
@@ -107,10 +109,53 @@ $("duration").addEventListener("change", refreshAvailability);
 $("book").addEventListener("click", async () => {
   try {
     const booking = await studentApi.createBooking(proposedRequest);
+    currentBooking = booking;
     setStatus($("s-status"), `Booked ${booking.name} on ${booking.slot}. Save this reference.`);
     $("preview").classList.add("hidden");
+    const selectedResource = $("resource").value;
+    const candidates = (selectedItem.resources || []).filter(resource => !selectedResource || resource.name === selectedResource);
+    const streams = [...new Set(candidates.flatMap(resource => resource.activation_streams || []))].sort();
+    $("activation-booking").textContent = `Booking ${booking.name}. Preparation is idempotent and may be retried safely.`;
+    $("activation-stream").innerHTML = streams.map(stream => `<option value="${escapeHTML(stream)}">${escapeHTML(stream)}</option>`).join("");
+    $("activation-start").disabled = streams.length === 0;
+    setStatus($("activation-status"), streams.length ? "Choose the connection you need, then start preparation." : "This experiment has no managed preparation pipeline; use the normal booking link when its time starts.");
+    $("activation").classList.remove("hidden");
     await refreshAvailability();
   } catch (error) { setStatus($("s-status"), error.message, true); }
+});
+
+function showActivation(run) {
+  const stages = [...(run.stages || []), ...(run.recovery_stages || []), ...(run.cleanup_stages || [])];
+  const activeStage = stages.find(stage => ["pending", "dispatched", "accepted", "running"].includes(stage.state));
+  const degraded = run.degraded ? ` Reduced capability: ${run.degraded_reason || "some connections are unavailable"}${run.unavailable_streams?.length ? ` (${run.unavailable_streams.join(", ")})` : ""}.` : "";
+  const failure = run.failure_message ? ` ${run.failure_message}` : "";
+  setStatus($("activation-status"), `${run.progress_message || activeStage?.progress_message || run.state}.${degraded}${failure}`, run.state === "failed" || run.state === "cleanup_failed");
+  $("activation-status").classList.toggle("warning", Boolean(run.degraded) && run.state !== "failed");
+}
+
+async function pollActivation(run) {
+  clearTimeout(activationPoll);
+  showActivation(run);
+  if (["active", "failed", "cancelled", "expired", "closed", "cleanup_failed"].includes(run.state)) return;
+  activationPoll = setTimeout(async () => {
+    try {
+      pollActivation(await studentApi.bookingActivation($("s-user").value.trim(), currentBooking.name, run.id));
+    } catch (error) { setStatus($("activation-status"), error.message, true); }
+  }, 750);
+}
+
+$("activation-start").addEventListener("click", async () => {
+  if (!studentApi || !currentBooking) return;
+  $("activation-start").disabled = true;
+  setStatus($("activation-status"), "Starting preparation…");
+  try {
+    const run = await studentApi.beginBookingActivation($("s-user").value.trim(), currentBooking.name, $("activation-stream").value);
+    pollActivation(run);
+  } catch (error) {
+    const message = error.status === 409 ? `This connection cannot be started: ${error.message}` : error.message;
+    setStatus($("activation-status"), message, true);
+    $("activation-start").disabled = false;
+  }
 });
 
 const adminConnection = loadConnection("book.admin");

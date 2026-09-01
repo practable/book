@@ -725,7 +725,7 @@ func previewCalendarBookingHandler(config config.ServerConfig) func(users.Previe
 
 func calendarResourceToModel(resource store.CalendarResource) *models.CalendarResource {
 	return &models.CalendarResource{Name: gog.Ptr(resource.Name), Class: resource.Class, Properties: resource.Properties,
-		Degraded: resource.Degraded, DegradedReason: resource.DegradedReason, UnavailableStreams: resource.UnavailableStreams}
+		ActivationStreams: resource.ActivationStreams, Degraded: resource.Degraded, DegradedReason: resource.DegradedReason, UnavailableStreams: resource.UnavailableStreams}
 }
 
 func makeCalendarBookingHandler(config config.ServerConfig) func(users.MakeCalendarBookingParams, interface{}) middleware.Responder {

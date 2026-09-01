@@ -114,6 +114,7 @@ func TestPostgresBackedReleaseHTTPContract(t *testing.T) {
 	var catalogue []struct {
 		Resources []struct {
 			Name               string   `json:"name"`
+			ActivationStreams  []string `json:"activation_streams"`
 			Degraded           bool     `json:"degraded"`
 			DegradedReason     string   `json:"degraded_reason"`
 			UnavailableStreams []string `json:"unavailable_streams"`
@@ -121,6 +122,7 @@ func TestPostgresBackedReleaseHTTPContract(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(body, &catalogue))
 	require.True(t, catalogue[0].Resources[0].Degraded)
+	require.Equal(t, []string{"st-b"}, catalogue[0].Resources[0].ActivationStreams)
 	require.Equal(t, "video unavailable; data usable", catalogue[0].Resources[0].DegradedReason)
 	require.Equal(t, []string{"st-b"}, catalogue[0].Resources[0].UnavailableStreams)
 }
