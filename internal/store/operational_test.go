@@ -81,6 +81,35 @@ func TestMandatorySettlingIsNeverReclaimed(t *testing.T) {
 	}
 }
 
+func TestMultipleOperationalRulesAreSequencedInManifestOrder(t *testing.T) {
+	m := operationalManifest()
+	m.OperationalWorkflows["power"] = OperationalWorkflow{Description: "Power equipment", ExpectedDuration: 5 * time.Minute, MaximumDuration: 5 * time.Minute}
+	r := m.Resources["fridge"]
+	r.Operations.BeforeBooking = []OperationalGuard{
+		{Workflow: "power", Duration: 5 * time.Minute, Applies: OperationalAlways},
+		{Workflow: "fill", Duration: 10 * time.Minute, Applies: OperationalAlways},
+	}
+	r.Operations.AfterBooking = []OperationalGuard{
+		{Workflow: "drain", Duration: 10 * time.Minute, Applies: OperationalAlways},
+		{Workflow: "power", Duration: 5 * time.Minute, Applies: OperationalAlways},
+	}
+	m.Resources["fridge"] = r
+	booking := interval.Interval{Start: time.Date(2026, 9, 7, 10, 0, 0, 0, time.UTC), End: time.Date(2026, 9, 7, 11, 0, 0, 0, time.UTC)}
+	plan, err := PlanOperationalGuards(m, "fridge", booking, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan) != 4 {
+		t.Fatalf("plan = %#v", plan)
+	}
+	if plan[0].Workflow != "power" || plan[1].Workflow != "fill" || !plan[0].When.End.Equal(plan[1].When.Start) || !plan[1].When.End.Equal(booking.Start) {
+		t.Fatalf("setup order = %#v", plan[:2])
+	}
+	if plan[2].Workflow != "drain" || plan[3].Workflow != "power" || !plan[2].When.End.Equal(plan[3].When.Start) {
+		t.Fatalf("teardown order = %#v", plan[2:])
+	}
+}
+
 func TestOperationalManifestRejectsUnknownAndOverlongWorkflow(t *testing.T) {
 	m := operationalManifest()
 	r := m.Resources["tank"]

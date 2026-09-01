@@ -146,21 +146,30 @@ func PlanOperationalGuards(manifest Manifest, resourceName string, booking inter
 	}
 	result := make([]OperationalGuardPlan, 0, len(profile.BeforeBooking)+len(profile.AfterBooking))
 	appendRules := func(kind string, rules []OperationalGuard) {
-		for _, rule := range rules {
+		cursor := booking.End
+		first, last, step := 0, len(rules), 1
+		if kind == OperationalBeforeBooking {
+			cursor = booking.Start
+			first, last, step = len(rules)-1, -1, -1
+		}
+		for index := first; index != last; index += step {
+			rule := rules[index]
 			if rule.Applies == OperationalOutsideOperatingWindow && !outside {
 				continue
 			}
 			var when interval.Interval
 			if kind == OperationalBeforeBooking {
-				when = interval.Interval{Start: booking.Start.Add(-rule.Duration), End: booking.Start}
+				when = interval.Interval{Start: cursor.Add(-rule.Duration), End: cursor}
 				if rule.Reclaimable && previous != nil && previous.End.After(when.Start) {
 					continue
 				}
+				cursor = when.Start
 			} else {
-				when = interval.Interval{Start: booking.End, End: booking.End.Add(rule.Duration)}
+				when = interval.Interval{Start: cursor, End: cursor.Add(rule.Duration)}
 				if rule.Reclaimable && next != nil && next.Start.Before(when.End) {
 					continue
 				}
+				cursor = when.End
 			}
 			result = append(result, OperationalGuardPlan{Workflow: rule.Workflow, Kind: kind, When: when, DueAt: when.Start, Reclaimable: rule.Reclaimable})
 		}

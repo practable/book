@@ -48,6 +48,11 @@ Manifest validation rejects missing workflows, unknown operating windows,
 non-positive durations, durations beyond the workflow maximum, and invalid
 conditions. Existing manifests need no new fields and remain compatible.
 
+When a profile contains multiple before or after rules, their manifest order is
+their execution order. The planner places them as adjacent half-open intervals:
+all before-work finishes at the booking start and all after-work begins at the
+booking end.
+
 The implementation validates and persists this vocabulary, computes
 deterministic plans, and transactionally creates the user booking, operational
 guard reservations, jobs, audit events, and delivery outbox records. Any
