@@ -14,6 +14,7 @@ import (
 	"github.com/practable/book/internal/config"
 	dt "github.com/practable/book/internal/datetime"
 	"github.com/practable/book/internal/interval"
+	operational "github.com/practable/book/internal/operations"
 	"github.com/practable/book/internal/serve/models"
 	"github.com/practable/book/internal/serve/restapi/operations/admin"
 	"github.com/practable/book/internal/store"
@@ -995,6 +996,61 @@ func getOperationalStatusHandler(config config.ServerConfig) func(admin.GetOpera
 		return admin.NewGetOperationalStatusOK().WithPayload(&models.OperationalStatus{
 			ManifestVersion: &version, Status: &status, Resources: resources, Slots: slots,
 		})
+	}
+}
+
+func listOperationalOccurrencesHandler(config config.ServerConfig) func(admin.ListOperationalOccurrencesParams, interface{}) middleware.Responder {
+	return func(params admin.ListOperationalOccurrencesParams, principal interface{}) middleware.Responder {
+		if _, err := isAdmin(principal); err != nil {
+			c, m := "401", "no scope booking:admin"
+			return admin.NewListOperationalOccurrencesUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+		repository, ok := config.OperationsRepository.(operational.ScheduleReader)
+		if !ok {
+			c, m := "500", "operational occurrence storage is not configured"
+			return admin.NewListOperationalOccurrencesInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+		now := time.Now().UTC()
+		if config.Now != nil {
+			now = config.Now().UTC()
+		}
+		from, until := now.Add(-24*time.Hour), now.Add(7*24*time.Hour)
+		if params.From != nil {
+			from = time.Time(*params.From).UTC()
+		}
+		if params.Until != nil {
+			until = time.Time(*params.Until).UTC()
+		}
+		if !until.After(from) {
+			c, m := "400", "until must be after from"
+			return admin.NewListOperationalOccurrencesBadRequest().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+		state := ""
+		if params.State != nil {
+			state = *params.State
+		}
+		limit := 200
+		if params.Limit != nil {
+			limit = int(*params.Limit)
+		}
+		ctx := context.Background()
+		if params.HTTPRequest != nil {
+			ctx = params.HTTPRequest.Context()
+		}
+		items, err := repository.ListScheduleOccurrences(ctx, from, until, state, limit)
+		if err != nil {
+			c, m := "500", err.Error()
+			return admin.NewListOperationalOccurrencesInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
+		result := make([]*models.OperationalOccurrence, 0, len(items))
+		for _, item := range items {
+			occurred := strfmt.DateTime(item.OccurrenceAt)
+			schedule, occurrenceState, slot, resource, workflow, version := item.Schedule, item.State, item.Slot, item.Resource, item.Workflow, item.ManifestVersion
+			result = append(result, &models.OperationalOccurrence{Schedule: &schedule, OccurrenceAt: &occurred,
+				ManifestVersion: &version, State: &occurrenceState, Slot: &slot, Resource: &resource, Workflow: &workflow,
+				BookingName: item.BookingName, JobID: item.JobID, Detail: item.Detail})
+		}
+		return admin.NewListOperationalOccurrencesOK().WithPayload(result)
 	}
 }
 

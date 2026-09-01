@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 13, versions)
+	require.Equal(t, 14, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -409,6 +409,16 @@ func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing
 	require.Equal(t, 3, occurrences)
 	require.Equal(t, 1, jobs)
 	require.Equal(t, 1, live)
+	listed, err := repository.ListScheduleOccurrences(context.Background(), now.Add(-2*time.Hour), now.Add(2*time.Hour), "", 20)
+	require.NoError(t, err)
+	require.Len(t, listed, 3)
+	require.Equal(t, "sl-a", listed[0].Slot)
+	require.Equal(t, "r-a", listed[0].Resource)
+	require.Equal(t, "daily-check", listed[0].Workflow)
+	conflicts, err := repository.ListScheduleOccurrences(context.Background(), now.Add(-2*time.Hour), now.Add(2*time.Hour), "skipped", 20)
+	require.NoError(t, err)
+	require.Len(t, conflicts, 1)
+	require.Equal(t, "b-skipped", conflicts[0].Schedule)
 }
 
 func operationalReservation(jobID, bookingID, deliveryID, trigger, resource string, start, end time.Time) store.OperationalReservation {

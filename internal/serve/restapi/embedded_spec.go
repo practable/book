@@ -672,6 +672,78 @@ func init() {
         }
       }
     },
+    "/admin/operational-occurrences": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns a bounded authoritative list of planned, skipped, conflicted, or missed schedule occurrences.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List scheduled operational occurrences",
+        "operationId": "ListOperationalOccurrences",
+        "parameters": [
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "until",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "planned",
+              "skipped",
+              "conflict",
+              "missed"
+            ],
+            "type": "string",
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "maximum": 500,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int64",
+            "default": 200,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/OperationalOccurrence"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/operations": {
       "get": {
         "security": [
@@ -3178,6 +3250,58 @@ func init() {
           "type": "string"
         },
         "state": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalOccurrence": {
+      "type": "object",
+      "required": [
+        "schedule",
+        "occurrence_at",
+        "manifest_version",
+        "state",
+        "slot",
+        "resource",
+        "workflow"
+      ],
+      "properties": {
+        "booking_name": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "occurrence_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "skipped",
+            "conflict",
+            "missed"
+          ]
+        },
+        "workflow": {
           "type": "string"
         }
       }
@@ -4785,6 +4909,87 @@ func init() {
         }
       }
     },
+    "/admin/operational-occurrences": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns a bounded authoritative list of planned, skipped, conflicted, or missed schedule occurrences.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List scheduled operational occurrences",
+        "operationId": "ListOperationalOccurrences",
+        "parameters": [
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "until",
+            "in": "query"
+          },
+          {
+            "enum": [
+              "planned",
+              "skipped",
+              "conflict",
+              "missed"
+            ],
+            "type": "string",
+            "name": "state",
+            "in": "query"
+          },
+          {
+            "maximum": 500,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int64",
+            "default": 200,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/OperationalOccurrence"
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/admin/operations": {
       "get": {
         "security": [
@@ -7612,6 +7817,58 @@ func init() {
           "type": "string"
         },
         "state": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalOccurrence": {
+      "type": "object",
+      "required": [
+        "schedule",
+        "occurrence_at",
+        "manifest_version",
+        "state",
+        "slot",
+        "resource",
+        "workflow"
+      ],
+      "properties": {
+        "booking_name": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "occurrence_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "schedule": {
+          "type": "string"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "planned",
+            "skipped",
+            "conflict",
+            "missed"
+          ]
+        },
+        "workflow": {
           "type": "string"
         }
       }

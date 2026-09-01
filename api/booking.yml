@@ -383,6 +383,30 @@ paths:
         500:
           $ref: '#/responses/InternalError'
 
+  /admin/operational-occurrences:
+    get:
+      summary: List scheduled operational occurrences
+      description: Returns a bounded authoritative list of planned, skipped, conflicted, or missed schedule occurrences.
+      tags: [admin]
+      operationId: ListOperationalOccurrences
+      produces: [application/json]
+      security:
+        - Bearer: []
+      parameters:
+      - {name: from, in: query, type: string, format: date-time}
+      - {name: until, in: query, type: string, format: date-time}
+      - {name: state, in: query, type: string, enum: [planned, skipped, conflict, missed]}
+      - {name: limit, in: query, type: integer, format: int64, minimum: 1, maximum: 500, default: 200}
+      responses:
+        200:
+          description: OK
+          schema:
+            type: array
+            items: {$ref: '#/definitions/OperationalOccurrence'}
+        400: {$ref: '#/responses/BadRequest'}
+        401: {$ref: '#/responses/Unauthorized'}
+        500: {$ref: '#/responses/InternalError'}
+
   /admin/usage:
     get:
       summary: Get actual equipment usage
@@ -1401,6 +1425,21 @@ paths:
           $ref: '#/responses/InternalError'
           
 definitions:
+
+  OperationalOccurrence:
+    type: object
+    properties:
+      schedule: {type: string}
+      occurrence_at: {type: string, format: date-time}
+      manifest_version: {type: integer, format: int64}
+      state: {type: string, enum: [planned, skipped, conflict, missed]}
+      slot: {type: string}
+      resource: {type: string}
+      workflow: {type: string}
+      booking_name: {type: string}
+      job_id: {type: string}
+      detail: {type: string}
+    required: [schedule, occurrence_at, manifest_version, state, slot, resource, workflow]
 
   OperationalJobActivation:
     type: object

@@ -46,6 +46,23 @@ type Callback struct {
 	Error      string
 }
 
+type ScheduleOccurrence struct {
+	Schedule        string
+	OccurrenceAt    time.Time
+	ManifestVersion int64
+	State           string
+	Slot            string
+	Resource        string
+	Workflow        string
+	BookingName     string
+	JobID           string
+	Detail          string
+}
+
+type ScheduleReader interface {
+	ListScheduleOccurrences(context.Context, time.Time, time.Time, string, int) ([]ScheduleOccurrence, error)
+}
+
 type Repository interface {
 	CreateJob(context.Context, Job, Delivery) (Job, bool, error)
 	ClaimDeliveries(context.Context, string, time.Time, time.Duration, int) ([]Delivery, error)

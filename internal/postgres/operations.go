@@ -219,8 +219,9 @@ func (r *Repository) CreateScheduledOperation(ctx context.Context, schedule stri
 	}
 	if !item.Request.Booking.When.End.After(item.Request.Now) {
 		if _, err := tx.Exec(ctx, `INSERT INTO public.operational_schedule_occurrences
-			(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,detail)
-			VALUES($1,$2,$3,$4,'missed','occurrence ended before scheduler recovery')`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion); err != nil {
+			(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,detail,slot_name,resource_name,workflow_name)
+			VALUES($1,$2,$3,$4,'missed','occurrence ended before scheduler recovery',$5,$6,$7)`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion,
+			item.Request.Booking.Slot, item.Request.Resource, item.Job.Workflow); err != nil {
 			return store.OperationalScheduleResult{}, err
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -241,8 +242,9 @@ func (r *Repository) CreateScheduledOperation(ctx context.Context, schedule stri
 			state = "skipped"
 		}
 		if _, err := tx.Exec(ctx, `INSERT INTO public.operational_schedule_occurrences
-			(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,detail)
-			VALUES($1,$2,$3,$4,$5,'resource already reserved')`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion, state); err != nil {
+			(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,detail,slot_name,resource_name,workflow_name)
+			VALUES($1,$2,$3,$4,$5,'resource already reserved',$6,$7,$8)`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion, state,
+			item.Request.Booking.Slot, item.Request.Resource, item.Job.Workflow); err != nil {
 			return store.OperationalScheduleResult{}, err
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -263,14 +265,43 @@ func (r *Repository) CreateScheduledOperation(ctx context.Context, schedule stri
 		return store.OperationalScheduleResult{}, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO public.operational_schedule_occurrences
-		(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,booking_row_id,job_id)
-		VALUES($1,$2,$3,$4,'planned',$5,$6)`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion, reservation.Revision, job.ID); err != nil {
+		(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,booking_row_id,job_id,slot_name,resource_name,workflow_name)
+		VALUES($1,$2,$3,$4,'planned',$5,$6,$7,$8,$9)`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion,
+		reservation.Revision, job.ID, item.Request.Booking.Slot, item.Request.Resource, item.Job.Workflow); err != nil {
 		return store.OperationalScheduleResult{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return store.OperationalScheduleResult{}, err
 	}
 	return store.OperationalScheduleResult{State: "planned", Created: true}, nil
+}
+
+func (r *Repository) ListScheduleOccurrences(ctx context.Context, from, until time.Time, state string, limit int) ([]operations.ScheduleOccurrence, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	rows, err := r.pool.Query(ctx, `SELECT o.schedule_name,o.occurrence_at,o.manifest_version,o.state,
+		o.slot_name,o.resource_name,o.workflow_name,coalesce(b.name,''),coalesce(o.job_id,''),o.detail
+		FROM public.operational_schedule_occurrences o LEFT JOIN public.bookings b ON b.row_id=o.booking_row_id
+		WHERE o.occurrence_at >= $1 AND o.occurrence_at < $2 AND ($3='' OR o.state=$3)
+		ORDER BY o.occurrence_at,o.schedule_name LIMIT $4`, from.UTC(), until.UTC(), state, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]operations.ScheduleOccurrence, 0)
+	for rows.Next() {
+		var item operations.ScheduleOccurrence
+		if err := rows.Scan(&item.Schedule, &item.OccurrenceAt, &item.ManifestVersion, &item.State, &item.Slot,
+			&item.Resource, &item.Workflow, &item.BookingName, &item.JobID, &item.Detail); err != nil {
+			return nil, err
+		}
+		item.OccurrenceAt = item.OccurrenceAt.UTC()
+		result = append(result, item)
+	}
+	return result, rows.Err()
 }
 
 func retireTriggeredOperationalReservationsTx(ctx context.Context, tx pgx.Tx, triggeringName string, at time.Time, actor string) ([]store.PersistentBooking, error) {

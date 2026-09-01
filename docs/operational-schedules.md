@@ -61,3 +61,10 @@ Scheduling runs when the job-runner webhook integration is configured. Keep
 the horizon comfortably longer than the longest expected Book outage. Migration
 0012 stores occurrence decisions and their links to bookings and jobs; 0013
 adds explicit missed-occurrence recovery records.
+
+Administrators can inspect these decisions through
+`GET /api/v1/admin/operational-occurrences`. Responses include schedule, UTC
+occurrence time, manifest version, state, slot, resource, workflow, and—where
+planned—the booking and job identifiers. Migration 0014 persists this display
+context so skipped and conflicted occurrences remain explainable after a
+manifest change.

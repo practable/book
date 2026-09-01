@@ -29,6 +29,10 @@ stored in UTC.
 
 - `GET /admin/operations` returns the current manifest version, persistent
   booking lock/message, and effective resource and slot availability.
+- `GET /admin/operational-occurrences` returns authoritative scheduled work.
+  Optional `from`, `until`, `state`, and `limit` parameters support upcoming,
+  conflict, and missed-work queues. The default range is the preceding day
+  through the next seven days and callers may request at most 500 rows.
 - `GET /admin/booking-records` searches live and historical bookings by
   resource, slot, policy, opaque user, state, and overlapping time range. The
   result is bounded by `limit` and includes actual usage.

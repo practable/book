@@ -126,6 +126,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminGetUsageSummaryHandler: admin.GetUsageSummaryHandlerFunc(func(params admin.GetUsageSummaryParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetUsageSummary has not yet been implemented")
 		}),
+		AdminListOperationalOccurrencesHandler: admin.ListOperationalOccurrencesHandlerFunc(func(params admin.ListOperationalOccurrencesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ListOperationalOccurrences has not yet been implemented")
+		}),
 		UsersMakeBookingHandler: users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
 		}),
@@ -294,6 +297,8 @@ type ServeAPI struct {
 	AdminGetSlotIsAvailableHandler admin.GetSlotIsAvailableHandler
 	// AdminGetUsageSummaryHandler sets the operation handler for the get usage summary operation
 	AdminGetUsageSummaryHandler admin.GetUsageSummaryHandler
+	// AdminListOperationalOccurrencesHandler sets the operation handler for the list operational occurrences operation
+	AdminListOperationalOccurrencesHandler admin.ListOperationalOccurrencesHandler
 	// UsersMakeBookingHandler sets the operation handler for the make booking operation
 	UsersMakeBookingHandler users.MakeBookingHandler
 	// UsersMakeCalendarBookingHandler sets the operation handler for the make calendar booking operation
@@ -498,6 +503,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.AdminGetUsageSummaryHandler == nil {
 		unregistered = append(unregistered, "admin.GetUsageSummaryHandler")
+	}
+	if o.AdminListOperationalOccurrencesHandler == nil {
+		unregistered = append(unregistered, "admin.ListOperationalOccurrencesHandler")
 	}
 	if o.UsersMakeBookingHandler == nil {
 		unregistered = append(unregistered, "users.MakeBookingHandler")
@@ -764,6 +772,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/admin/usage"] = admin.NewGetUsageSummary(o.context, o.AdminGetUsageSummaryHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/admin/operational-occurrences"] = admin.NewListOperationalOccurrences(o.context, o.AdminListOperationalOccurrencesHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

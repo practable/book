@@ -53,6 +53,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.AdminGetSlotIsAvailableHandler = admin.GetSlotIsAvailableHandlerFunc(getSlotIsAvailableHandler(config))
 	api.AdminGetResourcesHandler = admin.GetResourcesHandlerFunc(getResourcesHandler(config))
 	api.AdminGetOperationalStatusHandler = admin.GetOperationalStatusHandlerFunc(getOperationalStatusHandler(config))
+	api.AdminListOperationalOccurrencesHandler = admin.ListOperationalOccurrencesHandlerFunc(listOperationalOccurrencesHandler(config))
 	api.AdminQueryBookingRecordsHandler = admin.QueryBookingRecordsHandlerFunc(queryBookingRecordsHandler(config))
 	api.AdminGetBookingEventsHandler = admin.GetBookingEventsHandlerFunc(getBookingEventsHandler(config))
 	api.AdminGetUsageSummaryHandler = admin.GetUsageSummaryHandlerFunc(getUsageSummaryHandler(config))

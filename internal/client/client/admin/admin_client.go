@@ -124,6 +124,8 @@ type ClientService interface {
 
 	GetUsageSummary(params *GetUsageSummaryParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetUsageSummaryOK, error)
 
+	ListOperationalOccurrences(params *ListOperationalOccurrencesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOperationalOccurrencesOK, error)
+
 	MakeMaintenanceBooking(params *MakeMaintenanceBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeMaintenanceBookingOK, error)
 
 	MakeResourceMaintenanceBooking(params *MakeResourceMaintenanceBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeResourceMaintenanceBookingOK, error)
@@ -639,6 +641,47 @@ func (a *Client) GetUsageSummary(params *GetUsageSummaryParams, authInfo runtime
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for GetUsageSummary: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+ListOperationalOccurrences lists scheduled operational occurrences
+
+Returns a bounded authoritative list of planned, skipped, conflicted, or missed schedule occurrences.
+*/
+func (a *Client) ListOperationalOccurrences(params *ListOperationalOccurrencesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOperationalOccurrencesOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListOperationalOccurrencesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "ListOperationalOccurrences",
+		Method:             "GET",
+		PathPattern:        "/admin/operational-occurrences",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ListOperationalOccurrencesReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListOperationalOccurrencesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for ListOperationalOccurrences: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
