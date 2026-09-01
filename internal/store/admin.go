@@ -52,6 +52,94 @@ type OperationalUsageReader interface {
 	GetOperationalUsageSummary(context.Context, UsageQuery) (time.Duration, time.Duration, time.Duration, int64, error)
 }
 
+type OperationalAlert struct {
+	ID              int64
+	Resource        string
+	Stream          string
+	Code            string
+	Message         string
+	JobID           string
+	ManifestVersion int64
+	Status          string
+	Occurrences     int64
+	FirstSeen       time.Time
+	LastSeen        time.Time
+	AcknowledgedAt  *time.Time
+	AcknowledgedBy  string
+	ResolvedAt      *time.Time
+	ResolvedBy      string
+}
+
+type OperationalStreamHealth struct {
+	Resource        string
+	Stream          string
+	Status          string
+	Code            string
+	Message         string
+	JobID           string
+	ManifestVersion int64
+	CheckedAt       time.Time
+}
+
+type ResourceHold struct {
+	Resource  string
+	Reason    string
+	HeldSince time.Time
+	HeldBy    string
+}
+
+type ResourceHoldRepository interface {
+	ListResourceHolds(context.Context) ([]ResourceHold, error)
+	SetResourceAvailabilityBy(context.Context, string, bool, string, string, int64) error
+}
+
+type OperationalAlertRepository interface {
+	ListOperationalAlerts(context.Context, string, int) ([]OperationalAlert, error)
+	ListOperationalStreamHealth(context.Context) ([]OperationalStreamHealth, error)
+	SetOperationalAlertStatus(context.Context, int64, string, string, time.Time) (OperationalAlert, error)
+}
+
+func (s *Store) ListOperationalAlerts(ctx context.Context, status string, limit int) ([]OperationalAlert, error) {
+	s.RLock()
+	repository, ok := s.repository.(OperationalAlertRepository)
+	s.RUnlock()
+	if !ok {
+		return nil, errors.New("operational alerts require durable persistence")
+	}
+	return repository.ListOperationalAlerts(ctx, status, limit)
+}
+
+func (s *Store) ListOperationalStreamHealth(ctx context.Context) ([]OperationalStreamHealth, error) {
+	s.RLock()
+	repository, ok := s.repository.(OperationalAlertRepository)
+	s.RUnlock()
+	if !ok {
+		return nil, errors.New("operational health requires durable persistence")
+	}
+	return repository.ListOperationalStreamHealth(ctx)
+}
+
+func (s *Store) SetOperationalAlertStatus(ctx context.Context, id int64, status, actor string) (OperationalAlert, error) {
+	s.RLock()
+	repository, ok := s.repository.(OperationalAlertRepository)
+	now := s.now()
+	s.RUnlock()
+	if !ok {
+		return OperationalAlert{}, errors.New("operational alerts require durable persistence")
+	}
+	return repository.SetOperationalAlertStatus(ctx, id, status, actor, now)
+}
+
+func (s *Store) ListResourceHolds(ctx context.Context) ([]ResourceHold, error) {
+	s.RLock()
+	repository, ok := s.repository.(ResourceHoldRepository)
+	s.RUnlock()
+	if !ok {
+		return nil, errors.New("resource hold audit requires durable persistence")
+	}
+	return repository.ListResourceHolds(ctx)
+}
+
 func (s *Store) GetFilteredUsageSummary(query UsageQuery) UsageSummary {
 	result, _ := s.GetFilteredUsageSummaryPersistent(query)
 	return result

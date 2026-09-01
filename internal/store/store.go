@@ -3489,6 +3489,10 @@ func (s *Store) Run(ctx context.Context, pruneEvery time.Duration, checkEvery ti
 
 // SetResourceIsAvailable sets the underlying resource's availability
 func (s *Store) SetResourceIsAvailable(resource string, available bool, reason string) error {
+	return s.SetResourceIsAvailableBy(resource, available, reason, "")
+}
+
+func (s *Store) SetResourceIsAvailableBy(resource string, available bool, reason, actor string) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -3498,7 +3502,13 @@ func (s *Store) SetResourceIsAvailable(resource string, available bool, reason s
 		return errors.New("resource " + resource + " not found")
 	}
 	if s.repository != nil {
-		if err := s.repository.SetResourceAvailability(context.Background(), resource, available, reason, s.manifestVersion); err != nil {
+		var err error
+		if repository, ok := s.repository.(ResourceHoldRepository); ok {
+			err = repository.SetResourceAvailabilityBy(context.Background(), resource, available, reason, actor, s.manifestVersion)
+		} else {
+			err = s.repository.SetResourceAvailability(context.Background(), resource, available, reason, s.manifestVersion)
+		}
+		if err != nil {
 			if errors.Is(err, ErrStaleManifest) {
 				_ = s.refreshFromRepositoryLocked(context.Background())
 			}

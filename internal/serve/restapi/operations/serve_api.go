@@ -48,6 +48,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		JSONProducer: runtime.JSONProducer(),
 		TxtProducer:  runtime.TextProducer(),
 
+		AdminAcknowledgeOperationalAlertHandler: admin.AcknowledgeOperationalAlertHandlerFunc(func(params admin.AcknowledgeOperationalAlertParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.AcknowledgeOperationalAlert has not yet been implemented")
+		}),
 		OperationsopsActivateOperationalJobHandler: operationsops.ActivateOperationalJobHandlerFunc(func(params operationsops.ActivateOperationalJobParams) middleware.Responder {
 			return middleware.NotImplemented("operation operationsops.ActivateOperationalJob has not yet been implemented")
 		}),
@@ -132,8 +135,17 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminGetUsageSummaryHandler: admin.GetUsageSummaryHandlerFunc(func(params admin.GetUsageSummaryParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetUsageSummary has not yet been implemented")
 		}),
+		AdminListOperationalAlertsHandler: admin.ListOperationalAlertsHandlerFunc(func(params admin.ListOperationalAlertsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ListOperationalAlerts has not yet been implemented")
+		}),
+		AdminListOperationalHealthHandler: admin.ListOperationalHealthHandlerFunc(func(params admin.ListOperationalHealthParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ListOperationalHealth has not yet been implemented")
+		}),
 		AdminListOperationalOccurrencesHandler: admin.ListOperationalOccurrencesHandlerFunc(func(params admin.ListOperationalOccurrencesParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ListOperationalOccurrences has not yet been implemented")
+		}),
+		AdminListResourceHoldsHandler: admin.ListResourceHoldsHandlerFunc(func(params admin.ListResourceHoldsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ListResourceHolds has not yet been implemented")
 		}),
 		UsersMakeBookingHandler: users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
@@ -176,6 +188,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		}),
 		UsersRescheduleCalendarBookingHandler: users.RescheduleCalendarBookingHandlerFunc(func(params users.RescheduleCalendarBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.RescheduleCalendarBooking has not yet been implemented")
+		}),
+		AdminResolveOperationalAlertHandler: admin.ResolveOperationalAlertHandlerFunc(func(params admin.ResolveOperationalAlertParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ResolveOperationalAlert has not yet been implemented")
 		}),
 		AdminSetResourceIsAvailableHandler: admin.SetResourceIsAvailableHandlerFunc(func(params admin.SetResourceIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.SetResourceIsAvailable has not yet been implemented")
@@ -251,6 +266,8 @@ type ServeAPI struct {
 	// APIAuthorizer provides access control (ACL/RBAC/ABAC) by providing access to the request and authenticated principal
 	APIAuthorizer runtime.Authorizer
 
+	// AdminAcknowledgeOperationalAlertHandler sets the operation handler for the acknowledge operational alert operation
+	AdminAcknowledgeOperationalAlertHandler admin.AcknowledgeOperationalAlertHandler
 	// OperationsopsActivateOperationalJobHandler sets the operation handler for the activate operational job operation
 	OperationsopsActivateOperationalJobHandler operationsops.ActivateOperationalJobHandler
 	// UsersAddGroupForUserHandler sets the operation handler for the add group for user operation
@@ -307,8 +324,14 @@ type ServeAPI struct {
 	AdminGetSlotIsAvailableHandler admin.GetSlotIsAvailableHandler
 	// AdminGetUsageSummaryHandler sets the operation handler for the get usage summary operation
 	AdminGetUsageSummaryHandler admin.GetUsageSummaryHandler
+	// AdminListOperationalAlertsHandler sets the operation handler for the list operational alerts operation
+	AdminListOperationalAlertsHandler admin.ListOperationalAlertsHandler
+	// AdminListOperationalHealthHandler sets the operation handler for the list operational health operation
+	AdminListOperationalHealthHandler admin.ListOperationalHealthHandler
 	// AdminListOperationalOccurrencesHandler sets the operation handler for the list operational occurrences operation
 	AdminListOperationalOccurrencesHandler admin.ListOperationalOccurrencesHandler
+	// AdminListResourceHoldsHandler sets the operation handler for the list resource holds operation
+	AdminListResourceHoldsHandler admin.ListResourceHoldsHandler
 	// UsersMakeBookingHandler sets the operation handler for the make booking operation
 	UsersMakeBookingHandler users.MakeBookingHandler
 	// UsersMakeCalendarBookingHandler sets the operation handler for the make calendar booking operation
@@ -337,6 +360,8 @@ type ServeAPI struct {
 	AdminReplaceOldBookingsHandler admin.ReplaceOldBookingsHandler
 	// UsersRescheduleCalendarBookingHandler sets the operation handler for the reschedule calendar booking operation
 	UsersRescheduleCalendarBookingHandler users.RescheduleCalendarBookingHandler
+	// AdminResolveOperationalAlertHandler sets the operation handler for the resolve operational alert operation
+	AdminResolveOperationalAlertHandler admin.ResolveOperationalAlertHandler
 	// AdminSetResourceIsAvailableHandler sets the operation handler for the set resource is available operation
 	AdminSetResourceIsAvailableHandler admin.SetResourceIsAvailableHandler
 	// AdminSetSlotIsAvailableHandler sets the operation handler for the set slot is available operation
@@ -436,6 +461,9 @@ func (o *ServeAPI) Validate() error {
 		unregistered = append(unregistered, "AuthorizationAuth")
 	}
 
+	if o.AdminAcknowledgeOperationalAlertHandler == nil {
+		unregistered = append(unregistered, "admin.AcknowledgeOperationalAlertHandler")
+	}
 	if o.OperationsopsActivateOperationalJobHandler == nil {
 		unregistered = append(unregistered, "operationsops.ActivateOperationalJobHandler")
 	}
@@ -520,8 +548,17 @@ func (o *ServeAPI) Validate() error {
 	if o.AdminGetUsageSummaryHandler == nil {
 		unregistered = append(unregistered, "admin.GetUsageSummaryHandler")
 	}
+	if o.AdminListOperationalAlertsHandler == nil {
+		unregistered = append(unregistered, "admin.ListOperationalAlertsHandler")
+	}
+	if o.AdminListOperationalHealthHandler == nil {
+		unregistered = append(unregistered, "admin.ListOperationalHealthHandler")
+	}
 	if o.AdminListOperationalOccurrencesHandler == nil {
 		unregistered = append(unregistered, "admin.ListOperationalOccurrencesHandler")
+	}
+	if o.AdminListResourceHoldsHandler == nil {
+		unregistered = append(unregistered, "admin.ListResourceHoldsHandler")
 	}
 	if o.UsersMakeBookingHandler == nil {
 		unregistered = append(unregistered, "users.MakeBookingHandler")
@@ -564,6 +601,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.UsersRescheduleCalendarBookingHandler == nil {
 		unregistered = append(unregistered, "users.RescheduleCalendarBookingHandler")
+	}
+	if o.AdminResolveOperationalAlertHandler == nil {
+		unregistered = append(unregistered, "admin.ResolveOperationalAlertHandler")
 	}
 	if o.AdminSetResourceIsAvailableHandler == nil {
 		unregistered = append(unregistered, "admin.SetResourceIsAvailableHandler")
@@ -687,6 +727,10 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/admin/operational-alerts/{alert_id}/acknowledge"] = admin.NewAcknowledgeOperationalAlert(o.context, o.AdminAcknowledgeOperationalAlertHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/operations/jobs/{job_id}/activate"] = operationsops.NewActivateOperationalJob(o.context, o.OperationsopsActivateOperationalJobHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -799,7 +843,19 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/admin/operational-alerts"] = admin.NewListOperationalAlerts(o.context, o.AdminListOperationalAlertsHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/admin/operational-health"] = admin.NewListOperationalHealth(o.context, o.AdminListOperationalHealthHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/admin/operational-occurrences"] = admin.NewListOperationalOccurrences(o.context, o.AdminListOperationalOccurrencesHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/admin/resource-holds"] = admin.NewListResourceHolds(o.context, o.AdminListResourceHoldsHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
@@ -856,6 +912,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
 	o.handlers["PATCH"]["/calendar/bookings/{booking_name}"] = users.NewRescheduleCalendarBooking(o.context, o.UsersRescheduleCalendarBookingHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/admin/operational-alerts/{alert_id}/resolve"] = admin.NewResolveOperationalAlert(o.context, o.AdminResolveOperationalAlertHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

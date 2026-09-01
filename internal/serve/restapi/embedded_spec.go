@@ -672,6 +672,187 @@ func init() {
         }
       }
     },
+    "/admin/operational-alerts": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List actionable operational alerts",
+        "operationId": "ListOperationalAlerts",
+        "parameters": [
+          {
+            "enum": [
+              "active",
+              "open",
+              "acknowledged",
+              "resolved",
+              "all"
+            ],
+            "type": "string",
+            "default": "active",
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int64",
+            "default": 200,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/OperationalAlert"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/operational-alerts/{alert_id}/acknowledge": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Acknowledge an operational alert",
+        "operationId": "AcknowledgeOperationalAlert",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "name": "alert_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/OperationalAlert"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/operational-alerts/{alert_id}/resolve": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Resolve an operational alert without changing technician suspension",
+        "operationId": "ResolveOperationalAlert",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "name": "alert_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/OperationalAlert"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/operational-health": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List latest automated stream-health decisions",
+        "operationId": "ListOperationalHealth",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/OperationalStreamHealth"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/operational-occurrences": {
       "get": {
         "security": [
@@ -765,6 +946,40 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/OperationalStatus"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/resource-holds": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List resources deliberately held offline by technicians",
+        "operationId": "ListResourceHolds",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ResourceHold"
+              }
             }
           },
           "401": {
@@ -3419,6 +3634,83 @@ func init() {
         }
       }
     },
+    "OperationalAlert": {
+      "type": "object",
+      "required": [
+        "id",
+        "resource",
+        "stream",
+        "code",
+        "message",
+        "job_id",
+        "manifest_version",
+        "status",
+        "occurrences",
+        "first_seen",
+        "last_seen",
+        "acknowledged_by",
+        "resolved_by"
+      ],
+      "properties": {
+        "acknowledged_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "acknowledged_by": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "first_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "last_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "message": {
+          "type": "string"
+        },
+        "occurrences": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolved_by": {
+          "type": "string"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "acknowledged",
+            "resolved"
+          ]
+        },
+        "stream": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalFailureAction": {
       "type": "object",
       "required": [
@@ -3898,6 +4190,52 @@ func init() {
         }
       }
     },
+    "OperationalStreamHealth": {
+      "type": "object",
+      "required": [
+        "resource",
+        "stream",
+        "status",
+        "code",
+        "message",
+        "job_id",
+        "manifest_version",
+        "checked_at"
+      ],
+      "properties": {
+        "checked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "code": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "healthy",
+            "unhealthy",
+            "unknown"
+          ]
+        },
+        "stream": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalWorkflow": {
       "description": "Owner-approved bounded task contract; never an executable command or URL.",
       "type": "object",
@@ -4169,6 +4507,30 @@ func init() {
           }
         },
         "topic_stub": {
+          "type": "string"
+        }
+      }
+    },
+    "ResourceHold": {
+      "type": "object",
+      "required": [
+        "resource",
+        "reason",
+        "held_since",
+        "held_by"
+      ],
+      "properties": {
+        "held_by": {
+          "type": "string"
+        },
+        "held_since": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "resource": {
           "type": "string"
         }
       }
@@ -5409,6 +5771,220 @@ func init() {
         }
       }
     },
+    "/admin/operational-alerts": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List actionable operational alerts",
+        "operationId": "ListOperationalAlerts",
+        "parameters": [
+          {
+            "enum": [
+              "active",
+              "open",
+              "acknowledged",
+              "resolved",
+              "all"
+            ],
+            "type": "string",
+            "default": "active",
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "maximum": 1000,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int64",
+            "default": 200,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/OperationalAlert"
+              }
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/operational-alerts/{alert_id}/acknowledge": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Acknowledge an operational alert",
+        "operationId": "AcknowledgeOperationalAlert",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "name": "alert_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/OperationalAlert"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/operational-alerts/{alert_id}/resolve": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Resolve an operational alert without changing technician suspension",
+        "operationId": "ResolveOperationalAlert",
+        "parameters": [
+          {
+            "type": "integer",
+            "format": "int64",
+            "name": "alert_id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/OperationalAlert"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/operational-health": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List latest automated stream-health decisions",
+        "operationId": "ListOperationalHealth",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/OperationalStreamHealth"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/admin/operational-occurrences": {
       "get": {
         "security": [
@@ -5511,6 +6087,46 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/OperationalStatus"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/resource-holds": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List resources deliberately held offline by technicians",
+        "operationId": "ListResourceHolds",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ResourceHold"
+              }
             }
           },
           "401": {
@@ -8510,6 +9126,83 @@ func init() {
         }
       }
     },
+    "OperationalAlert": {
+      "type": "object",
+      "required": [
+        "id",
+        "resource",
+        "stream",
+        "code",
+        "message",
+        "job_id",
+        "manifest_version",
+        "status",
+        "occurrences",
+        "first_seen",
+        "last_seen",
+        "acknowledged_by",
+        "resolved_by"
+      ],
+      "properties": {
+        "acknowledged_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "acknowledged_by": {
+          "type": "string"
+        },
+        "code": {
+          "type": "string"
+        },
+        "first_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "id": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "last_seen": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "message": {
+          "type": "string"
+        },
+        "occurrences": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolved_by": {
+          "type": "string"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "acknowledged",
+            "resolved"
+          ]
+        },
+        "stream": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalFailureAction": {
       "type": "object",
       "required": [
@@ -8990,6 +9683,52 @@ func init() {
         }
       }
     },
+    "OperationalStreamHealth": {
+      "type": "object",
+      "required": [
+        "resource",
+        "stream",
+        "status",
+        "code",
+        "message",
+        "job_id",
+        "manifest_version",
+        "checked_at"
+      ],
+      "properties": {
+        "checked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "code": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "message": {
+          "type": "string"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "healthy",
+            "unhealthy",
+            "unknown"
+          ]
+        },
+        "stream": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalWorkflow": {
       "description": "Owner-approved bounded task contract; never an executable command or URL.",
       "type": "object",
@@ -9261,6 +10000,30 @@ func init() {
           }
         },
         "topic_stub": {
+          "type": "string"
+        }
+      }
+    },
+    "ResourceHold": {
+      "type": "object",
+      "required": [
+        "resource",
+        "reason",
+        "held_since",
+        "held_by"
+      ],
+      "properties": {
+        "held_by": {
+          "type": "string"
+        },
+        "held_since": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "resource": {
           "type": "string"
         }
       }

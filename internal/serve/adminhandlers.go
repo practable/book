@@ -1511,7 +1511,7 @@ func setLockHandler(config config.ServerConfig) func(admin.SetLockParams, interf
 func setResourceIsAvailableHandler(config config.ServerConfig) func(admin.SetResourceIsAvailableParams, interface{}) middleware.Responder {
 	return func(params admin.SetResourceIsAvailableParams, principal interface{}) middleware.Responder {
 
-		_, err := isAdmin(principal)
+		claims, err := isAdmin(principal)
 
 		if err != nil {
 			c := "401"
@@ -1519,7 +1519,7 @@ func setResourceIsAvailableHandler(config config.ServerConfig) func(admin.SetRes
 			return admin.NewSetResourceIsAvailableUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		err = config.Store.SetResourceIsAvailable(params.ResourceName, params.Available, params.Reason)
+		err = config.Store.SetResourceIsAvailableBy(params.ResourceName, params.Available, params.Reason, claims.Subject)
 
 		if err != nil {
 			c := "404"

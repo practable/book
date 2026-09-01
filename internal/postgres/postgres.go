@@ -1114,7 +1114,7 @@ func (r *Repository) ReplaceManifest(ctx context.Context, manifest store.Manifes
 }
 
 func (r *Repository) SetResourceAvailability(ctx context.Context, resource string, available bool, reason string, manifestVersion int64) error {
-	return r.setAvailability(ctx, "public.resource_availability", "resource_name", resource, available, reason, manifestVersion)
+	return r.SetResourceAvailabilityBy(ctx, resource, available, reason, "", manifestVersion)
 }
 
 func (r *Repository) SetMaintenance(ctx context.Context, paused bool, message *string) (store.PersistentMaintenance, error) {

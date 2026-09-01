@@ -823,7 +823,58 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 	if err != nil {
 		return err
 	}
+	if callback.State == "failed" {
+		if err := recordActivationHealthFailureTx(ctx, tx, runID, job.ID, code, callback.Error, callback.At.UTC()); err != nil {
+			return err
+		}
+	}
 	return startActivationCleanupRunTx(ctx, tx, runID, callback.At.UTC())
+}
+
+func recordActivationHealthFailureTx(ctx context.Context, tx pgx.Tx, runID, jobID, code, message string, at time.Time) error {
+	if code == "" {
+		code = "activation_failed"
+	}
+	var resource, stream string
+	var manifestVersion int64
+	if err := tx.QueryRow(ctx, `SELECT resource_name,stream_name,manifest_version FROM public.booking_activation_runs WHERE run_id=$1`, runID).
+		Scan(&resource, &stream, &manifestVersion); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO public.operational_stream_health
+		(resource_name,stream_name,status,result_code,message,job_id,manifest_version,checked_at)
+		VALUES($1,$2,'unhealthy',$3,$4,$5,$6,$7)
+		ON CONFLICT (resource_name,stream_name) DO UPDATE SET status='unhealthy',result_code=EXCLUDED.result_code,
+		message=EXCLUDED.message,job_id=EXCLUDED.job_id,manifest_version=EXCLUDED.manifest_version,
+		checked_at=EXCLUDED.checked_at,updated_at=clock_timestamp()`, resource, stream, code, message, jobID, manifestVersion, at); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `INSERT INTO public.operational_alerts
+		(resource_name,stream_name,result_code,message,job_id,manifest_version,status,first_seen_at,last_seen_at)
+		VALUES($1,$2,$3,$4,$5,$6,'open',$7,$7)
+		ON CONFLICT (resource_name,stream_name,result_code) WHERE status IN ('open','acknowledged')
+		DO UPDATE SET occurrences=operational_alerts.occurrences+1,last_seen_at=EXCLUDED.last_seen_at,message=EXCLUDED.message,
+		job_id=EXCLUDED.job_id,manifest_version=EXCLUDED.manifest_version,updated_at=clock_timestamp()`, resource, stream, code, message, jobID, manifestVersion, at)
+	return err
+}
+
+func recordActivationHealthSuccessTx(ctx context.Context, tx pgx.Tx, runID, jobID string, at time.Time) error {
+	var resource, stream string
+	var manifestVersion int64
+	if err := tx.QueryRow(ctx, `SELECT resource_name,stream_name,manifest_version FROM public.booking_activation_runs WHERE run_id=$1`, runID).
+		Scan(&resource, &stream, &manifestVersion); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO public.operational_stream_health
+		(resource_name,stream_name,status,result_code,message,job_id,manifest_version,checked_at)
+		VALUES($1,$2,'healthy','','',$3,$4,$5)
+		ON CONFLICT (resource_name,stream_name) DO UPDATE SET status='healthy',result_code='',message='',job_id=EXCLUDED.job_id,
+		manifest_version=EXCLUDED.manifest_version,checked_at=EXCLUDED.checked_at,updated_at=clock_timestamp()`, resource, stream, jobID, manifestVersion, at); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `UPDATE public.operational_alerts SET status='resolved',resolved_at=$3,resolved_by='successful_activation_check',
+		updated_at=clock_timestamp() WHERE resource_name=$1 AND stream_name=$2 AND status IN ('open','acknowledged')`, resource, stream, at)
+	return err
 }
 
 func createActivationStageJobTx(ctx context.Context, tx pgx.Tx, runID string, stageIndex, attempt int, due time.Time) error {
@@ -939,16 +990,24 @@ func updateOperationalUsageTx(ctx context.Context, tx pgx.Tx, callback operation
 
 func activatePreparedBookingTx(ctx context.Context, tx pgx.Tx, runID string, at time.Time, jobID string) error {
 	var rowID int64
-	var bookingName string
+	var bookingName, resource, slot string
 	var started bool
 	var startsAt, endsAt time.Time
-	if err := tx.QueryRow(ctx, `SELECT b.row_id,b.name,b.started,b.starts_at,b.ends_at FROM public.booking_activation_runs r
-		JOIN public.bookings b ON b.row_id=r.booking_row_id WHERE r.run_id=$1 FOR UPDATE OF b,r`, runID).Scan(&rowID, &bookingName, &started, &startsAt, &endsAt); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT b.row_id,b.name,b.started,b.starts_at,b.ends_at,b.resource_name,b.slot_name FROM public.booking_activation_runs r
+		JOIN public.bookings b ON b.row_id=r.booking_row_id WHERE r.run_id=$1 FOR UPDATE OF b,r`, runID).Scan(&rowID, &bookingName, &started, &startsAt, &endsAt, &resource, &slot); err != nil {
 		return err
 	}
 	if at.Before(startsAt) || !at.Before(endsAt) {
 		_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='expired',failure_code='booking_ended',failure_message='The booking is no longer active',completed_at=$2,updated_at=$2 WHERE run_id=$1`, runID, at)
 		return err
+	}
+	if err := assertAvailable(ctx, tx, resource, slot); err != nil {
+		if _, updateErr := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='failed',failure_code='technician_suspended',
+			failure_message='This experiment is temporarily offline for maintenance. Please choose another experiment or contact the laboratory.',
+			completed_at=$2,updated_at=$2 WHERE run_id=$1`, runID, at); updateErr != nil {
+			return updateErr
+		}
+		return startActivationCleanupRunTx(ctx, tx, runID, at)
 	}
 	if !started {
 		if _, err := tx.Exec(ctx, `UPDATE public.bookings SET started=true,started_at=$2,started_at_ns=$3,started_at_text=$4,updated_at=clock_timestamp() WHERE row_id=$1`, rowID, at, at.UnixNano(), at.Format(time.RFC3339Nano)); err != nil {
@@ -957,6 +1016,9 @@ func activatePreparedBookingTx(ctx context.Context, tx pgx.Tx, runID string, at 
 		if err := insertEvent(ctx, tx, rowID, bookingName, "started", at, "activation-runner:"+jobID); err != nil {
 			return err
 		}
+	}
+	if err := recordActivationHealthSuccessTx(ctx, tx, runID, jobID, at); err != nil {
+		return err
 	}
 	_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='active',progress_message='Ready',completed_at=$2,updated_at=$2 WHERE run_id=$1`, runID, at)
 	return err

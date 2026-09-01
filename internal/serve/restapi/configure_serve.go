@@ -55,6 +55,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	// Example:
 	// api.APIAuthorizer = security.Authorized()
 
+	if api.AdminAcknowledgeOperationalAlertHandler == nil {
+		api.AdminAcknowledgeOperationalAlertHandler = admin.AcknowledgeOperationalAlertHandlerFunc(func(params admin.AcknowledgeOperationalAlertParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.AcknowledgeOperationalAlert has not yet been implemented")
+		})
+	}
 	if api.OperationsopsActivateOperationalJobHandler == nil {
 		api.OperationsopsActivateOperationalJobHandler = operationsops.ActivateOperationalJobHandlerFunc(func(params operationsops.ActivateOperationalJobParams) middleware.Responder {
 			return middleware.NotImplemented("operation operationsops.ActivateOperationalJob has not yet been implemented")
@@ -195,9 +200,24 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation admin.GetUsageSummary has not yet been implemented")
 		})
 	}
+	if api.AdminListOperationalAlertsHandler == nil {
+		api.AdminListOperationalAlertsHandler = admin.ListOperationalAlertsHandlerFunc(func(params admin.ListOperationalAlertsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ListOperationalAlerts has not yet been implemented")
+		})
+	}
+	if api.AdminListOperationalHealthHandler == nil {
+		api.AdminListOperationalHealthHandler = admin.ListOperationalHealthHandlerFunc(func(params admin.ListOperationalHealthParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ListOperationalHealth has not yet been implemented")
+		})
+	}
 	if api.AdminListOperationalOccurrencesHandler == nil {
 		api.AdminListOperationalOccurrencesHandler = admin.ListOperationalOccurrencesHandlerFunc(func(params admin.ListOperationalOccurrencesParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ListOperationalOccurrences has not yet been implemented")
+		})
+	}
+	if api.AdminListResourceHoldsHandler == nil {
+		api.AdminListResourceHoldsHandler = admin.ListResourceHoldsHandlerFunc(func(params admin.ListResourceHoldsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ListResourceHolds has not yet been implemented")
 		})
 	}
 	if api.UsersMakeBookingHandler == nil {
@@ -268,6 +288,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	if api.UsersRescheduleCalendarBookingHandler == nil {
 		api.UsersRescheduleCalendarBookingHandler = users.RescheduleCalendarBookingHandlerFunc(func(params users.RescheduleCalendarBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.RescheduleCalendarBooking has not yet been implemented")
+		})
+	}
+	if api.AdminResolveOperationalAlertHandler == nil {
+		api.AdminResolveOperationalAlertHandler = admin.ResolveOperationalAlertHandlerFunc(func(params admin.ResolveOperationalAlertParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ResolveOperationalAlert has not yet been implemented")
 		})
 	}
 	if api.AdminSetResourceIsAvailableHandler == nil {

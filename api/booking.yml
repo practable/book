@@ -407,6 +407,82 @@ paths:
         401: {$ref: '#/responses/Unauthorized'}
         500: {$ref: '#/responses/InternalError'}
 
+  /admin/operational-alerts:
+    get:
+      summary: List actionable operational alerts
+      tags: [admin]
+      operationId: ListOperationalAlerts
+      produces: [application/json]
+      security: [{Bearer: []}]
+      parameters:
+      - {name: status, in: query, type: string, enum: [active, open, acknowledged, resolved, all], default: active}
+      - {name: limit, in: query, type: integer, format: int64, minimum: 1, maximum: 1000, default: 200}
+      responses:
+        200:
+          description: OK
+          schema: {type: array, items: {$ref: '#/definitions/OperationalAlert'}}
+        400: {$ref: '#/responses/BadRequest'}
+        401: {$ref: '#/responses/Unauthorized'}
+        500: {$ref: '#/responses/InternalError'}
+
+  /admin/operational-alerts/{alert_id}/acknowledge:
+    post:
+      summary: Acknowledge an operational alert
+      tags: [admin]
+      operationId: AcknowledgeOperationalAlert
+      produces: [application/json]
+      security: [{Bearer: []}]
+      parameters:
+      - {name: alert_id, in: path, required: true, type: integer, format: int64}
+      responses:
+        200: {description: OK, schema: {$ref: '#/definitions/OperationalAlert'}}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        500: {$ref: '#/responses/InternalError'}
+
+  /admin/operational-alerts/{alert_id}/resolve:
+    post:
+      summary: Resolve an operational alert without changing technician suspension
+      tags: [admin]
+      operationId: ResolveOperationalAlert
+      produces: [application/json]
+      security: [{Bearer: []}]
+      parameters:
+      - {name: alert_id, in: path, required: true, type: integer, format: int64}
+      responses:
+        200: {description: OK, schema: {$ref: '#/definitions/OperationalAlert'}}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        500: {$ref: '#/responses/InternalError'}
+
+  /admin/operational-health:
+    get:
+      summary: List latest automated stream-health decisions
+      tags: [admin]
+      operationId: ListOperationalHealth
+      produces: [application/json]
+      security: [{Bearer: []}]
+      responses:
+        200:
+          description: OK
+          schema: {type: array, items: {$ref: '#/definitions/OperationalStreamHealth'}}
+        401: {$ref: '#/responses/Unauthorized'}
+        500: {$ref: '#/responses/InternalError'}
+
+  /admin/resource-holds:
+    get:
+      summary: List resources deliberately held offline by technicians
+      tags: [admin]
+      operationId: ListResourceHolds
+      produces: [application/json]
+      security: [{Bearer: []}]
+      responses:
+        200:
+          description: OK
+          schema: {type: array, items: {$ref: '#/definitions/ResourceHold'}}
+        401: {$ref: '#/responses/Unauthorized'}
+        500: {$ref: '#/responses/InternalError'}
+
   /admin/usage:
     get:
       summary: Get actual equipment usage
@@ -2555,6 +2631,48 @@ definitions:
     - status
     - resources
     - slots
+
+  OperationalAlert:
+    type: object
+    required: [id, resource, stream, code, message, job_id, manifest_version, status, occurrences, first_seen, last_seen, acknowledged_by, resolved_by]
+    properties:
+      id: {type: integer, format: int64}
+      resource: {type: string}
+      stream: {type: string}
+      code: {type: string}
+      message: {type: string}
+      job_id: {type: string}
+      manifest_version: {type: integer, format: int64}
+      status: {type: string, enum: [open, acknowledged, resolved]}
+      occurrences: {type: integer, format: int64}
+      first_seen: {type: string, format: date-time}
+      last_seen: {type: string, format: date-time}
+      acknowledged_at: {type: string, format: date-time}
+      acknowledged_by: {type: string}
+      resolved_at: {type: string, format: date-time}
+      resolved_by: {type: string}
+
+  OperationalStreamHealth:
+    type: object
+    required: [resource, stream, status, code, message, job_id, manifest_version, checked_at]
+    properties:
+      resource: {type: string}
+      stream: {type: string}
+      status: {type: string, enum: [healthy, unhealthy, unknown]}
+      code: {type: string}
+      message: {type: string}
+      job_id: {type: string}
+      manifest_version: {type: integer, format: int64}
+      checked_at: {type: string, format: date-time}
+
+  ResourceHold:
+    type: object
+    required: [resource, reason, held_since, held_by]
+    properties:
+      resource: {type: string}
+      reason: {type: string}
+      held_since: {type: string, format: date-time}
+      held_by: {type: string}
 
   UsageSummary:
     description: aggregate actual equipment use derived from booking lifecycle timestamps

@@ -100,6 +100,8 @@ func WithAcceptTextPlain(r *runtime.ClientOperation) {
 
 // ClientService is the interface for Client methods
 type ClientService interface {
+	AcknowledgeOperationalAlert(params *AcknowledgeOperationalAlertParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AcknowledgeOperationalAlertOK, error)
+
 	CheckManifest(params *CheckManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CheckManifestOK, *CheckManifestNoContent, error)
 
 	ExportBookingForEdit(params *ExportBookingForEditParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExportBookingForEditOK, error)
@@ -124,7 +126,13 @@ type ClientService interface {
 
 	GetUsageSummary(params *GetUsageSummaryParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetUsageSummaryOK, error)
 
+	ListOperationalAlerts(params *ListOperationalAlertsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOperationalAlertsOK, error)
+
+	ListOperationalHealth(params *ListOperationalHealthParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOperationalHealthOK, error)
+
 	ListOperationalOccurrences(params *ListOperationalOccurrencesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOperationalOccurrencesOK, error)
+
+	ListResourceHolds(params *ListResourceHoldsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListResourceHoldsOK, error)
 
 	MakeMaintenanceBooking(params *MakeMaintenanceBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeMaintenanceBookingOK, error)
 
@@ -142,6 +150,8 @@ type ClientService interface {
 
 	ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceOldBookingsOK, error)
 
+	ResolveOperationalAlert(params *ResolveOperationalAlertParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ResolveOperationalAlertOK, error)
+
 	SetResourceIsAvailable(params *SetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetResourceIsAvailableNoContent, error)
 
 	SetSlotIsAvailable(params *SetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetSlotIsAvailableNoContent, error)
@@ -151,6 +161,45 @@ type ClientService interface {
 	SetLock(params *SetLockParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetLockOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
+}
+
+/*
+AcknowledgeOperationalAlert acknowledges an operational alert
+*/
+func (a *Client) AcknowledgeOperationalAlert(params *AcknowledgeOperationalAlertParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*AcknowledgeOperationalAlertOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewAcknowledgeOperationalAlertParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "AcknowledgeOperationalAlert",
+		Method:             "POST",
+		PathPattern:        "/admin/operational-alerts/{alert_id}/acknowledge",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &AcknowledgeOperationalAlertReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*AcknowledgeOperationalAlertOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for AcknowledgeOperationalAlert: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
 }
 
 /*
@@ -645,6 +694,84 @@ func (a *Client) GetUsageSummary(params *GetUsageSummaryParams, authInfo runtime
 }
 
 /*
+ListOperationalAlerts lists actionable operational alerts
+*/
+func (a *Client) ListOperationalAlerts(params *ListOperationalAlertsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOperationalAlertsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListOperationalAlertsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "ListOperationalAlerts",
+		Method:             "GET",
+		PathPattern:        "/admin/operational-alerts",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ListOperationalAlertsReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListOperationalAlertsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for ListOperationalAlerts: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+ListOperationalHealth lists latest automated stream health decisions
+*/
+func (a *Client) ListOperationalHealth(params *ListOperationalHealthParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListOperationalHealthOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListOperationalHealthParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "ListOperationalHealth",
+		Method:             "GET",
+		PathPattern:        "/admin/operational-health",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ListOperationalHealthReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListOperationalHealthOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for ListOperationalHealth: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 ListOperationalOccurrences lists scheduled operational occurrences
 
 Returns a bounded authoritative list of planned, skipped, conflicted, or missed schedule occurrences.
@@ -682,6 +809,45 @@ func (a *Client) ListOperationalOccurrences(params *ListOperationalOccurrencesPa
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for ListOperationalOccurrences: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+ListResourceHolds lists resources deliberately held offline by technicians
+*/
+func (a *Client) ListResourceHolds(params *ListResourceHoldsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListResourceHoldsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListResourceHoldsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "ListResourceHolds",
+		Method:             "GET",
+		PathPattern:        "/admin/resource-holds",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ListResourceHoldsReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListResourceHoldsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for ListResourceHolds: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
@@ -1010,6 +1176,45 @@ func (a *Client) ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for ReplaceOldBookings: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+ResolveOperationalAlert resolves an operational alert without changing technician suspension
+*/
+func (a *Client) ResolveOperationalAlert(params *ResolveOperationalAlertParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ResolveOperationalAlertOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewResolveOperationalAlertParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "ResolveOperationalAlert",
+		Method:             "POST",
+		PathPattern:        "/admin/operational-alerts/{alert_id}/resolve",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ResolveOperationalAlertReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ResolveOperationalAlertOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for ResolveOperationalAlert: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

@@ -89,3 +89,27 @@ resource-constrained maintenance reservation. That prevents a new booking from
 overlapping work that is physically returning the equipment to its safe state.
 If preparation fails while the user's booking still owns the resource, cleanup
 uses that existing reservation. Retry attempts reuse the same reservation.
+
+When an activation check exhausts its retries, Book records a durable
+`unhealthy` decision for that resource and stream and opens (or increments) a
+deduplicated technician alert. The activation response retains its stable
+failure code, user-safe guidance, and actions such as choosing another
+experiment. A later successful automated check may restore automated health and
+resolve its active alert.
+
+Automated health is independent of technician availability controls. A resource
+held offline by a technician remains unavailable even when checks pass. The
+final activation transaction rechecks that manual state, so a suspension made
+while preparation is running cannot accidentally admit the user.
+
+Administrators can poll:
+
+- `GET /api/v1/admin/operational-alerts` for open, acknowledged, resolved, or all alerts;
+- `POST /api/v1/admin/operational-alerts/{id}/acknowledge`;
+- `POST /api/v1/admin/operational-alerts/{id}/resolve`;
+- `GET /api/v1/admin/operational-health` for the latest automated stream decisions;
+- `GET /api/v1/admin/resource-holds` for technician-held resources, including reason, actor, and original hold time.
+
+Releasing a technician hold continues to use the resource availability endpoint
+and is always an explicit technician action. Detailed metrics and diagnostics
+remain the responsibility of the job runner and monitoring system.

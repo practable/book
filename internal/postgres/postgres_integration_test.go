@@ -28,7 +28,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.operational_usage_ledger, public.booking_activation_stages, public.booking_activation_runs, public.operational_schedule_occurrences, public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.operational_alerts, public.operational_stream_health, public.operational_usage_ledger, public.booking_activation_stages, public.booking_activation_runs, public.operational_schedule_occurrences, public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(), "INSERT INTO public.service_state(singleton,updated_at_ns) VALUES(true,0)")
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 21, versions)
+	require.Equal(t, 23, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -433,6 +433,9 @@ func TestCancellationStartsDurableCleanupAfterActiveSession(t *testing.T) {
 	require.Equal(t, "active", run.State)
 	require.Equal(t, "succeeded", run.CleanupState)
 	require.Equal(t, "succeeded", run.CleanupStages[0].State)
+	var healthStatus string
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT status FROM public.operational_stream_health WHERE resource_name=$1 AND stream_name=$2`, req.Resource, req.Stream).Scan(&healthStatus))
+	require.Equal(t, "healthy", healthStatus)
 	var preparationActual, cleanupActual int64
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT COALESCE(sum(actual_duration_ns),0) FROM public.operational_usage_ledger WHERE triggering_booking_name=$1 AND phase='preparation'`, req.BookingName).Scan(&preparationActual))
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT COALESCE(sum(actual_duration_ns),0) FROM public.operational_usage_ledger WHERE triggering_booking_name=$1 AND phase='cleanup'`, req.BookingName).Scan(&cleanupActual))
@@ -473,6 +476,56 @@ func TestPreparationFailureStartsCleanupWithoutHidingFailure(t *testing.T) {
 	require.Equal(t, "video_not_ready", run.FailureCode)
 	require.Equal(t, "running", run.CleanupState)
 	require.Equal(t, "pending", run.CleanupStages[0].State)
+	var status, resultCode, alertStatus string
+	var occurrences int64
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT status,result_code FROM public.operational_stream_health WHERE resource_name=$1 AND stream_name=$2`, req.Resource, req.Stream).Scan(&status, &resultCode))
+	require.Equal(t, "unhealthy", status)
+	require.Equal(t, "video_not_ready", resultCode)
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT status,occurrences FROM public.operational_alerts WHERE resource_name=$1 AND stream_name=$2`, req.Resource, req.Stream).Scan(&alertStatus, &occurrences))
+	require.Equal(t, "open", alertStatus)
+	require.Equal(t, int64(1), occurrences)
+	alerts, err := repository.ListOperationalAlerts(ctx, "active", 20)
+	require.NoError(t, err)
+	require.Len(t, alerts, 1)
+	acknowledged, err := repository.SetOperationalAlertStatus(ctx, alerts[0].ID, "acknowledged", "technician", now.Add(2*time.Second))
+	require.NoError(t, err)
+	require.Equal(t, "acknowledged", acknowledged.Status)
+	require.Equal(t, "technician", acknowledged.AcknowledgedBy)
+}
+
+func TestSuccessfulAutomatedCheckDoesNotOverrideTechnicianSuspension(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("manual-suspension", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("manual-suspension", "opaque-user", "manual-suspension", now)
+	req.Stages = req.Stages[:1]
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+	require.NoError(t, repository.SetResourceAvailabilityBy(ctx, "resource-a", false, "technician maintenance", "technician", 0))
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "manual-suspension-accepted", JobID: run.Stages[0].JobID,
+		State: "accepted", At: now}, "manual-suspension-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "manual-suspension-success", JobID: run.Stages[0].JobID,
+		State: "succeeded", At: now.Add(time.Second)}, "manual-suspension-success-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "failed", run.State)
+	require.Equal(t, "technician_suspended", run.FailureCode)
+	state, err := repository.Load(ctx)
+	require.NoError(t, err)
+	require.False(t, state.ResourceAvailability["resource-a"].Available)
+	holds, err := repository.ListResourceHolds(ctx)
+	require.NoError(t, err)
+	require.Len(t, holds, 1)
+	require.Equal(t, "resource-a", holds[0].Resource)
+	require.Equal(t, "technician", holds[0].HeldBy)
+	require.False(t, holds[0].HeldSince.IsZero())
+	var healthRows int
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT count(*) FROM public.operational_stream_health WHERE resource_name='resource-a'`).Scan(&healthRows))
+	require.Zero(t, healthRows)
 }
 
 func TestCleanupRunAndAccountingSurviveRepositoryRestart(t *testing.T) {
