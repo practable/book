@@ -29,12 +29,12 @@ func NewGetResources(ctx *middleware.Context, handler GetResourcesHandler) *GetR
 	return &GetResources{Context: ctx, Handler: handler}
 }
 
-/* GetResources swagger:route GET /admin/resources admin getResources
+/*
+	GetResources swagger:route GET /admin/resources admin getResources
 
-Get the list of resources in the manifest
+# Get the list of resources in the manifest
 
 Gets a list of all resources, including their availability and any tests specified
-
 */
 type GetResources struct {
 	Context *middleware.Context

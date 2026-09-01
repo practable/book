@@ -16,7 +16,8 @@ import (
 // SetLockOKCode is the HTTP code returned for type SetLockOK
 const SetLockOKCode int = 200
 
-/*SetLockOK OK
+/*
+SetLockOK OK
 
 swagger:response setLockOK
 */
@@ -60,7 +61,8 @@ func (o *SetLockOK) WriteResponse(rw http.ResponseWriter, producer runtime.Produ
 // SetLockUnauthorizedCode is the HTTP code returned for type SetLockUnauthorized
 const SetLockUnauthorizedCode int = 401
 
-/*SetLockUnauthorized Unauthorized
+/*
+SetLockUnauthorized Unauthorized
 
 swagger:response setLockUnauthorized
 */
@@ -104,7 +106,8 @@ func (o *SetLockUnauthorized) WriteResponse(rw http.ResponseWriter, producer run
 // SetLockNotFoundCode is the HTTP code returned for type SetLockNotFound
 const SetLockNotFoundCode int = 404
 
-/*SetLockNotFound The specified resource was not found
+/*
+SetLockNotFound The specified resource was not found
 
 swagger:response setLockNotFound
 */
@@ -148,7 +151,8 @@ func (o *SetLockNotFound) WriteResponse(rw http.ResponseWriter, producer runtime
 // SetLockInternalServerErrorCode is the HTTP code returned for type SetLockInternalServerError
 const SetLockInternalServerErrorCode int = 500
 
-/*SetLockInternalServerError Internal Error
+/*
+SetLockInternalServerError Internal Error
 
 swagger:response setLockInternalServerError
 */

@@ -29,12 +29,12 @@ func NewGetGroup(ctx *middleware.Context, handler GetGroupHandler) *GetGroup {
 	return &GetGroup{Context: ctx, Handler: handler}
 }
 
-/* GetGroup swagger:route GET /groups/{group_name} users getGroup
+/*
+	GetGroup swagger:route GET /groups/{group_name} users getGroup
 
-Get group
+# Get group
 
 Get fully described group, including described policies, and described slots
-
 */
 type GetGroup struct {
 	Context *middleware.Context

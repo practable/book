@@ -29,12 +29,12 @@ func NewSetResourceIsAvailable(ctx *middleware.Context, handler SetResourceIsAva
 	return &SetResourceIsAvailable{Context: ctx, Handler: handler}
 }
 
-/* SetResourceIsAvailable swagger:route PUT /admin/resources/{resource_name} admin setResourceIsAvailable
+/*
+	SetResourceIsAvailable swagger:route PUT /admin/resources/{resource_name} admin setResourceIsAvailable
 
-Set the availability of the resource
+# Set the availability of the resource
 
 Sets the availability of a resource, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
-
 */
 type SetResourceIsAvailable struct {
 	Context *middleware.Context

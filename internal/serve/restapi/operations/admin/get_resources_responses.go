@@ -16,7 +16,8 @@ import (
 // GetResourcesOKCode is the HTTP code returned for type GetResourcesOK
 const GetResourcesOKCode int = 200
 
-/*GetResourcesOK OK
+/*
+GetResourcesOK OK
 
 swagger:response getResourcesOK
 */
@@ -63,7 +64,8 @@ func (o *GetResourcesOK) WriteResponse(rw http.ResponseWriter, producer runtime.
 // GetResourcesUnauthorizedCode is the HTTP code returned for type GetResourcesUnauthorized
 const GetResourcesUnauthorizedCode int = 401
 
-/*GetResourcesUnauthorized Unauthorized
+/*
+GetResourcesUnauthorized Unauthorized
 
 swagger:response getResourcesUnauthorized
 */
@@ -107,7 +109,8 @@ func (o *GetResourcesUnauthorized) WriteResponse(rw http.ResponseWriter, produce
 // GetResourcesNotFoundCode is the HTTP code returned for type GetResourcesNotFound
 const GetResourcesNotFoundCode int = 404
 
-/*GetResourcesNotFound The specified resource was not found
+/*
+GetResourcesNotFound The specified resource was not found
 
 swagger:response getResourcesNotFound
 */
@@ -151,7 +154,8 @@ func (o *GetResourcesNotFound) WriteResponse(rw http.ResponseWriter, producer ru
 // GetResourcesInternalServerErrorCode is the HTTP code returned for type GetResourcesInternalServerError
 const GetResourcesInternalServerErrorCode int = 500
 
-/*GetResourcesInternalServerError Internal Error
+/*
+GetResourcesInternalServerError Internal Error
 
 swagger:response getResourcesInternalServerError
 */

@@ -122,3 +122,23 @@ whole-set replacement operation.
 `booking_events` records creation, take-up, cancellation, expiry, import, and
 supersession in the same transaction as the state change. It stores only the
 existing opaque user/booking values and adds no student account data.
+
+## Correcting one booking
+
+Use the individual administrative workflow when a timetable entry is wrong but
+the remaining bookings must stay untouched:
+
+```sh
+book bookings export-one booking-id > booking-edit.yaml
+# edit booking.name, booking.user, booking.slot, booking.policy, or booking.when
+book bookings replace-one booking-edit.yaml
+```
+
+Keep `original_name` and `revision` unchanged. The command uses a stable YAML
+shape with snake_case fields, avoiding the generated-client YAML naming problem
+in the older whole-collection export. The server accepts only unstarted,
+uncancelled replacements. It validates policy, windows, historical usage and
+resource conflicts, then supersedes the old row and inserts the replacement in
+one transaction. A retry of the same file is safe; an edit based on a stale
+revision returns a conflict rather than overwriting another administrator's
+work.

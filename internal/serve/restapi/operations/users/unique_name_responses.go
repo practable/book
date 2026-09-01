@@ -16,7 +16,8 @@ import (
 // UniqueNameOKCode is the HTTP code returned for type UniqueNameOK
 const UniqueNameOKCode int = 200
 
-/*UniqueNameOK OK
+/*
+UniqueNameOK OK
 
 swagger:response uniqueNameOK
 */
@@ -60,7 +61,8 @@ func (o *UniqueNameOK) WriteResponse(rw http.ResponseWriter, producer runtime.Pr
 // UniqueNameUnauthorizedCode is the HTTP code returned for type UniqueNameUnauthorized
 const UniqueNameUnauthorizedCode int = 401
 
-/*UniqueNameUnauthorized Unauthorized
+/*
+UniqueNameUnauthorized Unauthorized
 
 swagger:response uniqueNameUnauthorized
 */
@@ -104,7 +106,8 @@ func (o *UniqueNameUnauthorized) WriteResponse(rw http.ResponseWriter, producer 
 // UniqueNameInternalServerErrorCode is the HTTP code returned for type UniqueNameInternalServerError
 const UniqueNameInternalServerErrorCode int = 500
 
-/*UniqueNameInternalServerError Internal Error
+/*
+UniqueNameInternalServerError Internal Error
 
 swagger:response uniqueNameInternalServerError
 */

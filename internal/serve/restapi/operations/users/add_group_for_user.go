@@ -29,12 +29,12 @@ func NewAddGroupForUser(ctx *middleware.Context, handler AddGroupForUserHandler)
 	return &AddGroupForUser{Context: ctx, Handler: handler}
 }
 
-/* AddGroupForUser swagger:route POST /users/{user_name}/groups/{group_name} users addGroupForUser
+/*
+	AddGroupForUser swagger:route POST /users/{user_name}/groups/{group_name} users addGroupForUser
 
-Add group to user account
+# Add group to user account
 
 Add group to the list of groups with which this user is allowed to make bookings
-
 */
 type AddGroupForUser struct {
 	Context *middleware.Context

@@ -447,6 +447,121 @@ func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookings
 	}
 }
 
+func bookingToModel(booking store.Booking) *models.Booking {
+	model := &models.Booking{
+		Name: gog.Ptr(booking.Name), Policy: gog.Ptr(booking.Policy), Slot: gog.Ptr(booking.Slot), User: gog.Ptr(booking.User),
+		Cancelled: booking.Cancelled, Started: booking.Started, Unfulfilled: booking.Unfulfilled,
+		When: gog.Ptr(models.Interval{Start: strfmt.DateTime(booking.When.Start), End: strfmt.DateTime(booking.When.End)}),
+	}
+	if !booking.CancelledAt.IsZero() {
+		model.CancelledAt = strfmt.DateTime(booking.CancelledAt)
+		model.CancelledBy = booking.CancelledBy
+	}
+	if booking.StartedAt != "" {
+		if started, err := dt.Parse(booking.StartedAt); err == nil {
+			model.StartedAt = strfmt.DateTime(started)
+		}
+	}
+	if booking.UsageCharged != 0 {
+		model.UsageCharged = booking.UsageCharged.String()
+	}
+	return model
+}
+
+func modelToReplacement(model *models.Booking) (store.Booking, error) {
+	if model == nil || model.Name == nil || model.Policy == nil || model.Slot == nil || model.User == nil || model.When == nil {
+		return store.Booking{}, errors.New("booking name, policy, slot, user, and interval are required")
+	}
+	start, err := dt.Parse(model.When.Start.String())
+	if err != nil {
+		return store.Booking{}, err
+	}
+	end, err := dt.Parse(model.When.End.String())
+	if err != nil {
+		return store.Booking{}, err
+	}
+	booking := store.Booking{Name: *model.Name, Policy: *model.Policy, Slot: *model.Slot, User: *model.User,
+		Cancelled: model.Cancelled, CancelledBy: model.CancelledBy, Started: model.Started, Unfulfilled: model.Unfulfilled,
+		When: interval.Interval{Start: start, End: end}}
+	if !time.Time(model.CancelledAt).IsZero() {
+		booking.CancelledAt = time.Time(model.CancelledAt)
+	}
+	if !time.Time(model.StartedAt).IsZero() {
+		booking.StartedAt = time.Time(model.StartedAt).UTC().Format(time.RFC3339Nano)
+	}
+	if model.UsageCharged != "" {
+		usage, err := time.ParseDuration(model.UsageCharged)
+		if err != nil {
+			return store.Booking{}, err
+		}
+		booking.UsageCharged = usage
+	}
+	return booking, nil
+}
+
+func editableBookingToModel(edit store.EditableBooking) *models.BookingEdit {
+	return &models.BookingEdit{OriginalName: gog.Ptr(edit.OriginalName), Revision: gog.Ptr(edit.Revision), Booking: bookingToModel(edit.Booking)}
+}
+
+func exportBookingForEditHandler(config config.ServerConfig) func(admin.ExportBookingForEditParams, interface{}) middleware.Responder {
+	return func(params admin.ExportBookingForEditParams, principal interface{}) middleware.Responder {
+		if _, err := isAdmin(principal); err != nil {
+			code, message := "401", "no scope booking:admin"
+			return admin.NewExportBookingForEditUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		edit, err := config.Store.GetBookingForEdit(params.BookingName)
+		if errors.Is(err, store.ErrPersistentNotFound) {
+			code, message := "404", err.Error()
+			return admin.NewExportBookingForEditNotFound().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		if err != nil {
+			code, message := "500", err.Error()
+			return admin.NewExportBookingForEditInternalServerError().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		return admin.NewExportBookingForEditOK().WithPayload(editableBookingToModel(edit))
+	}
+}
+
+func replaceBookingHandler(config config.ServerConfig) func(admin.ReplaceBookingParams, interface{}) middleware.Responder {
+	return func(params admin.ReplaceBookingParams, principal interface{}) middleware.Responder {
+		if _, err := isAdmin(principal); err != nil {
+			code, message := "401", "no scope booking:admin"
+			return admin.NewReplaceBookingUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		if params.BookingEdit == nil || params.BookingEdit.OriginalName == nil || params.BookingEdit.Revision == nil {
+			code, message := "409", "booking edit original_name and revision are required"
+			return admin.NewReplaceBookingConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		if *params.BookingEdit.OriginalName != params.BookingName {
+			code, message := "409", "booking edit original_name does not match path"
+			return admin.NewReplaceBookingConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		booking, err := modelToReplacement(params.BookingEdit.Booking)
+		if err != nil {
+			code, message := "409", err.Error()
+			return admin.NewReplaceBookingConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		result, err := config.Store.ReplaceBooking(store.EditableBooking{
+			OriginalName: *params.BookingEdit.OriginalName, Revision: *params.BookingEdit.Revision, Booking: booking,
+		})
+		if errors.Is(err, store.ErrPersistentNotFound) {
+			code, message := "404", err.Error()
+			return admin.NewReplaceBookingNotFound().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		if errors.Is(err, store.ErrBookingRevision) || errors.Is(err, store.ErrBookingStarted) ||
+			errors.Is(err, store.ErrInvalidReplacement) || errors.Is(err, store.ErrBookingConflict) ||
+			errors.Is(err, store.ErrMaxBookings) || errors.Is(err, store.ErrMaxUsage) || errors.Is(err, store.ErrStaleManifest) {
+			code, message := "409", err.Error()
+			return admin.NewReplaceBookingConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		if err != nil {
+			code, message := "500", err.Error()
+			return admin.NewReplaceBookingInternalServerError().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		return admin.NewReplaceBookingOK().WithPayload(editableBookingToModel(result))
+	}
+}
+
 // exportManifestHandler
 func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifestParams, interface{}) middleware.Responder {
 	return func(params admin.ExportManifestParams, principal interface{}) middleware.Responder {

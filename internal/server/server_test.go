@@ -30,6 +30,7 @@ import (
 	"github.com/practable/book/internal/store"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml" //see note below
 )
 
@@ -1097,6 +1098,48 @@ func TestReplaceExportBookingsExportUsers(t *testing.T) {
 
 	resp.Body.Close()
 
+}
+
+func TestIndividualBookingEditAPI(t *testing.T) {
+	stoken := loadTestManifest(t)
+	removeAllBookings(t)
+	setNow(s, time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC))
+
+	var bookings cmodels.Bookings
+	require.NoError(t, yaml.Unmarshal(bookingsYAML, &bookings))
+	bc := newBc()
+	auth := httptransport.APIKeyAuth("Authorization", "header", stoken)
+	_, err := bc.Admin.ReplaceBookings(admin.NewReplaceBookingsParams().WithTimeout(timeout).WithBookings(bookings), auth)
+	require.NoError(t, err)
+
+	exported, err := bc.Admin.ExportBookingForEdit(admin.NewExportBookingForEditParams().WithTimeout(timeout).WithBookingName("bk-0"), auth)
+	require.NoError(t, err)
+	require.NotNil(t, exported.Payload.Revision)
+	originalRevision := *exported.Payload.Revision
+	exported.Payload.Booking.When.Start = strfmt.DateTime(time.Date(2022, 11, 5, 0, 16, 0, 0, time.UTC))
+	exported.Payload.Booking.When.End = strfmt.DateTime(time.Date(2022, 11, 5, 0, 19, 0, 0, time.UTC))
+
+	replaced, err := bc.Admin.ReplaceBooking(admin.NewReplaceBookingParams().WithTimeout(timeout).
+		WithBookingName("bk-0").WithBookingEdit(exported.Payload), auth)
+	require.NoError(t, err)
+	require.NotEqual(t, originalRevision, *replaced.Payload.Revision)
+	require.Equal(t, "2022-11-05T00:16:00.000Z", replaced.Payload.Booking.When.Start.String())
+
+	// A network retry of the exported envelope is safe.
+	retried, err := bc.Admin.ReplaceBooking(admin.NewReplaceBookingParams().WithTimeout(timeout).
+		WithBookingName("bk-0").WithBookingEdit(exported.Payload), auth)
+	require.NoError(t, err)
+	require.Equal(t, *replaced.Payload.Revision, *retried.Payload.Revision)
+
+	stale := *exported.Payload
+	stale.Booking = &cmodels.Booking{
+		Name: exported.Payload.Booking.Name, Policy: exported.Payload.Booking.Policy,
+		Slot: exported.Payload.Booking.Slot, User: exported.Payload.Booking.User,
+		When: &cmodels.Interval{Start: strfmt.DateTime(time.Date(2022, 11, 5, 0, 17, 0, 0, time.UTC)), End: strfmt.DateTime(time.Date(2022, 11, 5, 0, 18, 0, 0, time.UTC))},
+	}
+	_, err = bc.Admin.ReplaceBooking(admin.NewReplaceBookingParams().WithTimeout(timeout).
+		WithBookingName("bk-0").WithBookingEdit(&stale), auth)
+	require.Error(t, err)
 }
 
 func TestReplaceExportOldBookingsExportUsers(t *testing.T) {

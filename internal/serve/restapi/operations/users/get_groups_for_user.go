@@ -29,12 +29,12 @@ func NewGetGroupsForUser(ctx *middleware.Context, handler GetGroupsForUserHandle
 	return &GetGroupsForUser{Context: ctx, Handler: handler}
 }
 
-/* GetGroupsForUser swagger:route GET /users/{user_name}/groups users getGroupsForUser
+/*
+	GetGroupsForUser swagger:route GET /users/{user_name}/groups users getGroupsForUser
 
-Get all current groups for user
+# Get all current groups for user
 
 Get all current groups for user. This only returns groups that are currently listed within the user's groups. Group data includes a description, but not policies.
-
 */
 type GetGroupsForUser struct {
 	Context *middleware.Context

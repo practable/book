@@ -29,12 +29,12 @@ func NewExportUsers(ctx *middleware.Context, handler ExportUsersHandler) *Export
 	return &ExportUsers{Context: ctx, Handler: handler}
 }
 
-/* ExportUsers swagger:route GET /admin/users admin exportUsers
+/*
+	ExportUsers swagger:route GET /admin/users admin exportUsers
 
-Export users
+# Export users
 
 Export bookings and usage data for each user
-
 */
 type ExportUsers struct {
 	Context *middleware.Context

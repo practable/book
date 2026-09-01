@@ -29,12 +29,12 @@ func NewGetResourceIsAvailable(ctx *middleware.Context, handler GetResourceIsAva
 	return &GetResourceIsAvailable{Context: ctx, Handler: handler}
 }
 
-/* GetResourceIsAvailable swagger:route GET /admin/resources/{resource_name} admin getResourceIsAvailable
+/*
+	GetResourceIsAvailable swagger:route GET /admin/resources/{resource_name} admin getResourceIsAvailable
 
-Get the availability of the resource
+# Get the availability of the resource
 
 Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
-
 */
 type GetResourceIsAvailable struct {
 	Context *middleware.Context

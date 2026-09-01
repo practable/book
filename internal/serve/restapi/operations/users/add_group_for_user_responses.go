@@ -16,7 +16,8 @@ import (
 // AddGroupForUserNoContentCode is the HTTP code returned for type AddGroupForUserNoContent
 const AddGroupForUserNoContentCode int = 204
 
-/*AddGroupForUserNoContent OK - No Content
+/*
+AddGroupForUserNoContent OK - No Content
 
 swagger:response addGroupForUserNoContent
 */
@@ -40,7 +41,8 @@ func (o *AddGroupForUserNoContent) WriteResponse(rw http.ResponseWriter, produce
 // AddGroupForUserUnauthorizedCode is the HTTP code returned for type AddGroupForUserUnauthorized
 const AddGroupForUserUnauthorizedCode int = 401
 
-/*AddGroupForUserUnauthorized Unauthorized
+/*
+AddGroupForUserUnauthorized Unauthorized
 
 swagger:response addGroupForUserUnauthorized
 */
@@ -84,7 +86,8 @@ func (o *AddGroupForUserUnauthorized) WriteResponse(rw http.ResponseWriter, prod
 // AddGroupForUserNotFoundCode is the HTTP code returned for type AddGroupForUserNotFound
 const AddGroupForUserNotFoundCode int = 404
 
-/*AddGroupForUserNotFound The specified resource was not found
+/*
+AddGroupForUserNotFound The specified resource was not found
 
 swagger:response addGroupForUserNotFound
 */
@@ -128,7 +131,8 @@ func (o *AddGroupForUserNotFound) WriteResponse(rw http.ResponseWriter, producer
 // AddGroupForUserInternalServerErrorCode is the HTTP code returned for type AddGroupForUserInternalServerError
 const AddGroupForUserInternalServerErrorCode int = 500
 
-/*AddGroupForUserInternalServerError Internal Error
+/*
+AddGroupForUserInternalServerError Internal Error
 
 swagger:response addGroupForUserInternalServerError
 */

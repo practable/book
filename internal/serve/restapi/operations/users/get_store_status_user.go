@@ -29,12 +29,12 @@ func NewGetStoreStatusUser(ctx *middleware.Context, handler GetStoreStatusUserHa
 	return &GetStoreStatusUser{Context: ctx, Handler: handler}
 }
 
-/* GetStoreStatusUser swagger:route GET /users/status users getStoreStatusUser
+/*
+	GetStoreStatusUser swagger:route GET /users/status users getStoreStatusUser
 
-Get current store status
+# Get current store status
 
 Gets the current store status from a user perspective (e.g. is it locked? what is the reason?)
-
 */
 type GetStoreStatusUser struct {
 	Context *middleware.Context

@@ -16,7 +16,8 @@ import (
 // GetGroupsForUserOKCode is the HTTP code returned for type GetGroupsForUserOK
 const GetGroupsForUserOKCode int = 200
 
-/*GetGroupsForUserOK OK
+/*
+GetGroupsForUserOK OK
 
 swagger:response getGroupsForUserOK
 */
@@ -63,7 +64,8 @@ func (o *GetGroupsForUserOK) WriteResponse(rw http.ResponseWriter, producer runt
 // GetGroupsForUserUnauthorizedCode is the HTTP code returned for type GetGroupsForUserUnauthorized
 const GetGroupsForUserUnauthorizedCode int = 401
 
-/*GetGroupsForUserUnauthorized Unauthorized
+/*
+GetGroupsForUserUnauthorized Unauthorized
 
 swagger:response getGroupsForUserUnauthorized
 */
@@ -107,7 +109,8 @@ func (o *GetGroupsForUserUnauthorized) WriteResponse(rw http.ResponseWriter, pro
 // GetGroupsForUserNotFoundCode is the HTTP code returned for type GetGroupsForUserNotFound
 const GetGroupsForUserNotFoundCode int = 404
 
-/*GetGroupsForUserNotFound The specified resource was not found
+/*
+GetGroupsForUserNotFound The specified resource was not found
 
 swagger:response getGroupsForUserNotFound
 */
@@ -151,7 +154,8 @@ func (o *GetGroupsForUserNotFound) WriteResponse(rw http.ResponseWriter, produce
 // GetGroupsForUserInternalServerErrorCode is the HTTP code returned for type GetGroupsForUserInternalServerError
 const GetGroupsForUserInternalServerErrorCode int = 500
 
-/*GetGroupsForUserInternalServerError Internal Error
+/*
+GetGroupsForUserInternalServerError Internal Error
 
 swagger:response getGroupsForUserInternalServerError
 */

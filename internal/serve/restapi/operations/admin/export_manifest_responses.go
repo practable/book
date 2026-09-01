@@ -16,7 +16,8 @@ import (
 // ExportManifestOKCode is the HTTP code returned for type ExportManifestOK
 const ExportManifestOKCode int = 200
 
-/*ExportManifestOK OK
+/*
+ExportManifestOK OK
 
 swagger:response exportManifestOK
 */
@@ -60,7 +61,8 @@ func (o *ExportManifestOK) WriteResponse(rw http.ResponseWriter, producer runtim
 // ExportManifestUnauthorizedCode is the HTTP code returned for type ExportManifestUnauthorized
 const ExportManifestUnauthorizedCode int = 401
 
-/*ExportManifestUnauthorized Unauthorized
+/*
+ExportManifestUnauthorized Unauthorized
 
 swagger:response exportManifestUnauthorized
 */
@@ -104,7 +106,8 @@ func (o *ExportManifestUnauthorized) WriteResponse(rw http.ResponseWriter, produ
 // ExportManifestNotFoundCode is the HTTP code returned for type ExportManifestNotFound
 const ExportManifestNotFoundCode int = 404
 
-/*ExportManifestNotFound The specified resource was not found
+/*
+ExportManifestNotFound The specified resource was not found
 
 swagger:response exportManifestNotFound
 */
@@ -148,7 +151,8 @@ func (o *ExportManifestNotFound) WriteResponse(rw http.ResponseWriter, producer 
 // ExportManifestInternalServerErrorCode is the HTTP code returned for type ExportManifestInternalServerError
 const ExportManifestInternalServerErrorCode int = 500
 
-/*ExportManifestInternalServerError Internal Error
+/*
+ExportManifestInternalServerError Internal Error
 
 swagger:response exportManifestInternalServerError
 */

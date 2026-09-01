@@ -211,6 +211,7 @@ func (m *PolicyDescribed) ContextValidate(ctx context.Context, formats strfmt.Re
 func (m *PolicyDescribed) contextValidateDescription(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Description != nil {
+
 		if err := m.Description.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("description")

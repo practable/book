@@ -56,6 +56,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminCheckManifestHandler: admin.CheckManifestHandlerFunc(func(params admin.CheckManifestParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.CheckManifest has not yet been implemented")
 		}),
+		AdminExportBookingForEditHandler: admin.ExportBookingForEditHandlerFunc(func(params admin.ExportBookingForEditParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ExportBookingForEdit has not yet been implemented")
+		}),
 		AdminExportBookingsHandler: admin.ExportBookingsHandlerFunc(func(params admin.ExportBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ExportBookings has not yet been implemented")
 		}),
@@ -109,6 +112,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		}),
 		UsersMakeBookingHandler: users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
+		}),
+		AdminReplaceBookingHandler: admin.ReplaceBookingHandlerFunc(func(params admin.ReplaceBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ReplaceBooking has not yet been implemented")
 		}),
 		AdminReplaceBookingsHandler: admin.ReplaceBookingsHandlerFunc(func(params admin.ReplaceBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceBookings has not yet been implemented")
@@ -199,6 +205,8 @@ type ServeAPI struct {
 	UsersCancelBookingHandler users.CancelBookingHandler
 	// AdminCheckManifestHandler sets the operation handler for the check manifest operation
 	AdminCheckManifestHandler admin.CheckManifestHandler
+	// AdminExportBookingForEditHandler sets the operation handler for the export booking for edit operation
+	AdminExportBookingForEditHandler admin.ExportBookingForEditHandler
 	// AdminExportBookingsHandler sets the operation handler for the export bookings operation
 	AdminExportBookingsHandler admin.ExportBookingsHandler
 	// AdminExportManifestHandler sets the operation handler for the export manifest operation
@@ -235,6 +243,8 @@ type ServeAPI struct {
 	AdminGetSlotIsAvailableHandler admin.GetSlotIsAvailableHandler
 	// UsersMakeBookingHandler sets the operation handler for the make booking operation
 	UsersMakeBookingHandler users.MakeBookingHandler
+	// AdminReplaceBookingHandler sets the operation handler for the replace booking operation
+	AdminReplaceBookingHandler admin.ReplaceBookingHandler
 	// AdminReplaceBookingsHandler sets the operation handler for the replace bookings operation
 	AdminReplaceBookingsHandler admin.ReplaceBookingsHandler
 	// AdminReplaceManifestHandler sets the operation handler for the replace manifest operation
@@ -349,6 +359,9 @@ func (o *ServeAPI) Validate() error {
 	if o.AdminCheckManifestHandler == nil {
 		unregistered = append(unregistered, "admin.CheckManifestHandler")
 	}
+	if o.AdminExportBookingForEditHandler == nil {
+		unregistered = append(unregistered, "admin.ExportBookingForEditHandler")
+	}
 	if o.AdminExportBookingsHandler == nil {
 		unregistered = append(unregistered, "admin.ExportBookingsHandler")
 	}
@@ -402,6 +415,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.UsersMakeBookingHandler == nil {
 		unregistered = append(unregistered, "users.MakeBookingHandler")
+	}
+	if o.AdminReplaceBookingHandler == nil {
+		unregistered = append(unregistered, "admin.ReplaceBookingHandler")
 	}
 	if o.AdminReplaceBookingsHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceBookingsHandler")
@@ -546,6 +562,10 @@ func (o *ServeAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/admin/bookings/{booking_name}"] = admin.NewExportBookingForEdit(o.context, o.AdminExportBookingForEditHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/admin/bookings"] = admin.NewExportBookings(o.context, o.AdminExportBookingsHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
@@ -615,6 +635,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/slots/{slot_name}"] = users.NewMakeBooking(o.context, o.UsersMakeBookingHandler)
+	if o.handlers["PUT"] == nil {
+		o.handlers["PUT"] = make(map[string]http.Handler)
+	}
+	o.handlers["PUT"]["/admin/bookings/{booking_name}"] = admin.NewReplaceBooking(o.context, o.AdminReplaceBookingHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
@@ -692,6 +716,6 @@ func (o *ServeAPI) AddMiddlewareFor(method, path string, builder middleware.Buil
 	}
 	o.Init()
 	if h, ok := o.handlers[um][path]; ok {
-		o.handlers[method][path] = builder(h)
+		o.handlers[um][path] = builder(h)
 	}
 }

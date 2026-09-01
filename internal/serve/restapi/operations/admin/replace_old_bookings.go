@@ -29,12 +29,12 @@ func NewReplaceOldBookings(ctx *middleware.Context, handler ReplaceOldBookingsHa
 	return &ReplaceOldBookings{Context: ctx, Handler: handler}
 }
 
-/* ReplaceOldBookings swagger:route PUT /admin/oldbookings admin replaceOldBookings
+/*
+	ReplaceOldBookings swagger:route PUT /admin/oldbookings admin replaceOldBookings
 
-Replace old bookings
+# Replace old bookings
 
 Deletes all old bookings, and all users, then replaces both according to the bookings in the request, i.e. users and their usage are created as required to match bookings.
-
 */
 type ReplaceOldBookings struct {
 	Context *middleware.Context

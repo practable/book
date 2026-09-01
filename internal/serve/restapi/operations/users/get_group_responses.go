@@ -16,7 +16,8 @@ import (
 // GetGroupOKCode is the HTTP code returned for type GetGroupOK
 const GetGroupOKCode int = 200
 
-/*GetGroupOK OK
+/*
+GetGroupOK OK
 
 swagger:response getGroupOK
 */
@@ -60,7 +61,8 @@ func (o *GetGroupOK) WriteResponse(rw http.ResponseWriter, producer runtime.Prod
 // GetGroupUnauthorizedCode is the HTTP code returned for type GetGroupUnauthorized
 const GetGroupUnauthorizedCode int = 401
 
-/*GetGroupUnauthorized Unauthorized
+/*
+GetGroupUnauthorized Unauthorized
 
 swagger:response getGroupUnauthorized
 */
@@ -104,7 +106,8 @@ func (o *GetGroupUnauthorized) WriteResponse(rw http.ResponseWriter, producer ru
 // GetGroupNotFoundCode is the HTTP code returned for type GetGroupNotFound
 const GetGroupNotFoundCode int = 404
 
-/*GetGroupNotFound The specified resource was not found
+/*
+GetGroupNotFound The specified resource was not found
 
 swagger:response getGroupNotFound
 */
@@ -148,7 +151,8 @@ func (o *GetGroupNotFound) WriteResponse(rw http.ResponseWriter, producer runtim
 // GetGroupInternalServerErrorCode is the HTTP code returned for type GetGroupInternalServerError
 const GetGroupInternalServerErrorCode int = 500
 
-/*GetGroupInternalServerError Internal Error
+/*
+GetGroupInternalServerError Internal Error
 
 swagger:response getGroupInternalServerError
 */

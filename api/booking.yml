@@ -82,6 +82,69 @@ paths:
         500:
           $ref: '#/responses/InternalError'
 
+  /admin/bookings/{booking_name}:
+    get:
+      summary: Export one current booking for editing
+      description: Returns the booking together with the opaque revision required to replace it. Preserve the envelope when editing and upload it with PUT.
+      tags:
+      - admin
+      operationId: ExportBookingForEdit
+      produces:
+      - application/json
+      parameters:
+      - name: booking_name
+        in: path
+        required: true
+        type: string
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/BookingEdit'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+    put:
+      summary: Atomically replace one unstarted booking
+      description: Supersedes the original booking and inserts the replacement in one transaction. The supplied original name and revision must match the exported edit envelope. Exact retries are idempotent; stale, started, or conflicting edits return 409.
+      tags:
+      - admin
+      operationId: ReplaceBooking
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      parameters:
+      - name: booking_name
+        in: path
+        required: true
+        type: string
+      - name: booking_edit
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/BookingEdit'
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/BookingEdit'
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        409:
+          $ref: '#/responses/Conflict'
+        500:
+          $ref: '#/responses/InternalError'
+
   /admin/manifest:
     get:
       summary: Export the manifest
@@ -1125,6 +1188,25 @@ definitions:
     items:
       $ref: '#/definitions/Booking'
 
+  BookingEdit:
+    title: booking edit
+    description: An editable booking and the opaque revision required to replace it.
+    type: object
+    properties:
+      original_name:
+        description: Name of the booking that was exported. Do not change this field.
+        type: string
+      revision:
+        description: Opaque optimistic-concurrency token returned by the server.
+        type: integer
+        format: int64
+      booking:
+        $ref: '#/definitions/Booking'
+    required:
+    - original_name
+    - revision
+    - booking
+
   Description:
     title: description
     description: Description of a resource e.g. policy, slot, user interface
@@ -1721,6 +1803,10 @@ definitions:
 
 # Descriptions of common responses
 responses:
+  Conflict:
+    description: The booking was changed, started, or conflicts with the proposed replacement
+    schema:
+      $ref: '#/definitions/Error'
   NotFound:
     description: The specified resource was not found
     schema:

@@ -16,7 +16,8 @@ import (
 // MakeBookingNoContentCode is the HTTP code returned for type MakeBookingNoContent
 const MakeBookingNoContentCode int = 204
 
-/*MakeBookingNoContent OK - No Content
+/*
+MakeBookingNoContent OK - No Content
 
 swagger:response makeBookingNoContent
 */
@@ -40,7 +41,8 @@ func (o *MakeBookingNoContent) WriteResponse(rw http.ResponseWriter, producer ru
 // MakeBookingUnauthorizedCode is the HTTP code returned for type MakeBookingUnauthorized
 const MakeBookingUnauthorizedCode int = 401
 
-/*MakeBookingUnauthorized Unauthorized
+/*
+MakeBookingUnauthorized Unauthorized
 
 swagger:response makeBookingUnauthorized
 */
@@ -84,7 +86,8 @@ func (o *MakeBookingUnauthorized) WriteResponse(rw http.ResponseWriter, producer
 // MakeBookingNotFoundCode is the HTTP code returned for type MakeBookingNotFound
 const MakeBookingNotFoundCode int = 404
 
-/*MakeBookingNotFound The specified resource was not found
+/*
+MakeBookingNotFound The specified resource was not found
 
 swagger:response makeBookingNotFound
 */
@@ -128,7 +131,8 @@ func (o *MakeBookingNotFound) WriteResponse(rw http.ResponseWriter, producer run
 // MakeBookingConflictCode is the HTTP code returned for type MakeBookingConflict
 const MakeBookingConflictCode int = 409
 
-/*MakeBookingConflict Conflict - unavailable for the requested interval
+/*
+MakeBookingConflict Conflict - unavailable for the requested interval
 
 swagger:response makeBookingConflict
 */
@@ -170,7 +174,8 @@ func (o *MakeBookingConflict) WriteResponse(rw http.ResponseWriter, producer run
 // MakeBookingInternalServerErrorCode is the HTTP code returned for type MakeBookingInternalServerError
 const MakeBookingInternalServerErrorCode int = 500
 
-/*MakeBookingInternalServerError Internal Error
+/*
+MakeBookingInternalServerError Internal Error
 
 swagger:response makeBookingInternalServerError
 */

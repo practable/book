@@ -29,12 +29,12 @@ func NewUniqueName(ctx *middleware.Context, handler UniqueNameHandler) *UniqueNa
 	return &UniqueName{Context: ctx, Handler: handler}
 }
 
-/* UniqueName swagger:route POST /users/unique users uniqueName
+/*
+	UniqueName swagger:route POST /users/unique users uniqueName
 
-Request a new, unique username
+# Request a new, unique username
 
 Generates a unique username that meets the minimum length requirements for the booking system. No security/token needed, because users needs a/this name to login
-
 */
 type UniqueName struct {
 	Context *middleware.Context

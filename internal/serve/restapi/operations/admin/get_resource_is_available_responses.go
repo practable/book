@@ -16,7 +16,8 @@ import (
 // GetResourceIsAvailableOKCode is the HTTP code returned for type GetResourceIsAvailableOK
 const GetResourceIsAvailableOKCode int = 200
 
-/*GetResourceIsAvailableOK OK
+/*
+GetResourceIsAvailableOK OK
 
 swagger:response getResourceIsAvailableOK
 */
@@ -60,7 +61,8 @@ func (o *GetResourceIsAvailableOK) WriteResponse(rw http.ResponseWriter, produce
 // GetResourceIsAvailableUnauthorizedCode is the HTTP code returned for type GetResourceIsAvailableUnauthorized
 const GetResourceIsAvailableUnauthorizedCode int = 401
 
-/*GetResourceIsAvailableUnauthorized Unauthorized
+/*
+GetResourceIsAvailableUnauthorized Unauthorized
 
 swagger:response getResourceIsAvailableUnauthorized
 */
@@ -104,7 +106,8 @@ func (o *GetResourceIsAvailableUnauthorized) WriteResponse(rw http.ResponseWrite
 // GetResourceIsAvailableNotFoundCode is the HTTP code returned for type GetResourceIsAvailableNotFound
 const GetResourceIsAvailableNotFoundCode int = 404
 
-/*GetResourceIsAvailableNotFound The specified resource was not found
+/*
+GetResourceIsAvailableNotFound The specified resource was not found
 
 swagger:response getResourceIsAvailableNotFound
 */
@@ -148,7 +151,8 @@ func (o *GetResourceIsAvailableNotFound) WriteResponse(rw http.ResponseWriter, p
 // GetResourceIsAvailableInternalServerErrorCode is the HTTP code returned for type GetResourceIsAvailableInternalServerError
 const GetResourceIsAvailableInternalServerErrorCode int = 500
 
-/*GetResourceIsAvailableInternalServerError Internal Error
+/*
+GetResourceIsAvailableInternalServerError Internal Error
 
 swagger:response getResourceIsAvailableInternalServerError
 */

@@ -69,6 +69,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation admin.CheckManifest has not yet been implemented")
 		})
 	}
+	if api.AdminExportBookingForEditHandler == nil {
+		api.AdminExportBookingForEditHandler = admin.ExportBookingForEditHandlerFunc(func(params admin.ExportBookingForEditParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ExportBookingForEdit has not yet been implemented")
+		})
+	}
 	if api.AdminExportBookingsHandler == nil {
 		api.AdminExportBookingsHandler = admin.ExportBookingsHandlerFunc(func(params admin.ExportBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ExportBookings has not yet been implemented")
@@ -157,6 +162,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	if api.UsersMakeBookingHandler == nil {
 		api.UsersMakeBookingHandler = users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
+		})
+	}
+	if api.AdminReplaceBookingHandler == nil {
+		api.AdminReplaceBookingHandler = admin.ReplaceBookingHandlerFunc(func(params admin.ReplaceBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ReplaceBooking has not yet been implemented")
 		})
 	}
 	if api.AdminReplaceBookingsHandler == nil {

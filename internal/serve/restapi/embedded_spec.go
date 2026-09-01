@@ -124,6 +124,104 @@ func init() {
         }
       }
     },
+    "/admin/bookings/{booking_name}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns the booking together with the opaque revision required to replace it. Preserve the envelope when editing and upload it with PUT.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Export one current booking for editing",
+        "operationId": "ExportBookingForEdit",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/BookingEdit"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Supersedes the original booking and inserts the replacement in one transaction. The supplied original name and revision must match the exported edit envelope. Exact retries are idempotent; stale, started, or conflicting edits return 409.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Atomically replace one unstarted booking",
+        "operationId": "ReplaceBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "booking_edit",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BookingEdit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/BookingEdit"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/manifest": {
       "get": {
         "security": [
@@ -1551,6 +1649,30 @@ func init() {
         }
       }
     },
+    "BookingEdit": {
+      "description": "An editable booking and the opaque revision required to replace it.",
+      "type": "object",
+      "title": "booking edit",
+      "required": [
+        "original_name",
+        "revision",
+        "booking"
+      ],
+      "properties": {
+        "booking": {
+          "$ref": "#/definitions/Booking"
+        },
+        "original_name": {
+          "description": "Name of the booking that was exported. Do not change this field.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Opaque optimistic-concurrency token returned by the server.",
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
     "Bookings": {
       "description": "list of bookings",
       "type": "array",
@@ -2371,6 +2493,12 @@ func init() {
     }
   },
   "responses": {
+    "Conflict": {
+      "description": "The booking was changed, started, or conflicts with the proposed replacement",
+      "schema": {
+        "$ref": "#/definitions/Error"
+      }
+    },
     "ErrorList": {
       "description": "List of errors (e.g. errors in client-provided data such as manifest)",
       "schema": {
@@ -2526,6 +2654,125 @@ func init() {
           },
           "404": {
             "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/bookings/{booking_name}": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns the booking together with the opaque revision required to replace it. Preserve the envelope when editing and upload it with PUT.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Export one current booking for editing",
+        "operationId": "ExportBookingForEdit",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/BookingEdit"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Supersedes the original booking and inserts the replacement in one transaction. The supplied original name and revision must match the exported edit envelope. Exact retries are idempotent; stale, started, or conflicting edits return 409.",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Atomically replace one unstarted booking",
+        "operationId": "ReplaceBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "booking_edit",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/BookingEdit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/BookingEdit"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
             "schema": {
               "$ref": "#/definitions/Error"
             }
@@ -4218,6 +4465,30 @@ func init() {
         }
       }
     },
+    "BookingEdit": {
+      "description": "An editable booking and the opaque revision required to replace it.",
+      "type": "object",
+      "title": "booking edit",
+      "required": [
+        "original_name",
+        "revision",
+        "booking"
+      ],
+      "properties": {
+        "booking": {
+          "$ref": "#/definitions/Booking"
+        },
+        "original_name": {
+          "description": "Name of the booking that was exported. Do not change this field.",
+          "type": "string"
+        },
+        "revision": {
+          "description": "Opaque optimistic-concurrency token returned by the server.",
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
     "Bookings": {
       "description": "list of bookings",
       "type": "array",
@@ -5038,6 +5309,12 @@ func init() {
     }
   },
   "responses": {
+    "Conflict": {
+      "description": "The booking was changed, started, or conflicts with the proposed replacement",
+      "schema": {
+        "$ref": "#/definitions/Error"
+      }
+    },
     "ErrorList": {
       "description": "List of errors (e.g. errors in client-provided data such as manifest)",
       "schema": {
