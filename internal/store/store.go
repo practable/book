@@ -314,6 +314,9 @@ type Store struct {
 	// Slots represent the combinations of virtual equipments and booking policies that apply to them
 	Slots map[string]Slot
 
+	// SlotAvailability holds explicit slot-scoped administrative overrides.
+	SlotAvailability map[string]AvailabilityStatus
+
 	Streams map[string]Stream
 
 	// UIs represents all the user interfaces that are available
@@ -458,6 +461,7 @@ func New() *Store {
 		time.Second,
 		make(map[string]Resource),
 		make(map[string]Slot),
+		make(map[string]AvailabilityStatus),
 		make(map[string]Stream),
 		make(map[string]UIDescribed),
 		make(map[string]UISet),
@@ -1972,12 +1976,27 @@ func (s *Store) getSlotIsAvailable(slot string) (bool, string, error) {
 	}
 
 	ok, reason := r.Diary.IsAvailable()
-
-	return ok, reason, nil
+	if !ok {
+		return false, reason, nil
+	}
+	if status, ok := s.SlotAvailability[slot]; ok && !status.Available {
+		return false, unavailableReason(status.Reason), nil
+	}
+	if status, ok := s.SlotAvailability[slot]; ok {
+		return true, status.Reason, nil
+	}
+	return true, reason, nil
 
 }
 
-// GetSlotIsAvailable checks the underlying resource's availability
+func unavailableReason(reason string) string {
+	if reason == "" {
+		return "unavailable"
+	}
+	return "unavailable because " + reason
+}
+
+// GetSlotIsAvailable checks resource and slot availability.
 // Use this version when calling externally
 func (s *Store) GetSlotIsAvailable(slot string) (bool, string, error) {
 	where := "store.GetSlotIsAvailable"
@@ -2379,6 +2398,13 @@ func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, n
 
 	// If this is a simulation with no hardware or other resource constraints, we don't make bookings in the diary, we just grant access
 	// seeing as other policy aspects have been satisfied
+	ok, reason, err := s.getSlotIsAvailable(slot)
+	if err != nil {
+		return Booking{}, err
+	}
+	if !ok {
+		return Booking{}, errors.New(reason)
+	}
 
 	if !p.EnforceUnlimitedUsers { //skip booking if we allow unlimited users
 
@@ -3021,6 +3047,14 @@ func (s *Store) SetResourceIsAvailable(resource string, available bool, reason s
 	if !ok {
 		return errors.New("resource " + resource + " not found")
 	}
+	if s.repository != nil {
+		if err := s.repository.SetResourceAvailability(context.Background(), resource, available, reason, s.manifestVersion); err != nil {
+			if errors.Is(err, ErrStaleManifest) {
+				_ = s.refreshFromRepositoryLocked(context.Background())
+			}
+			return err
+		}
+	}
 
 	if available {
 		r.Diary.SetAvailable(reason)
@@ -3032,7 +3066,7 @@ func (s *Store) SetResourceIsAvailable(resource string, available bool, reason s
 
 }
 
-// SetSlotIsAvailable sets the underlying resource's availability
+// SetSlotIsAvailable sets availability for only the named booking slot.
 func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) error {
 	s.Lock()
 	defer s.Unlock()
@@ -3042,17 +3076,16 @@ func (s *Store) SetSlotIsAvailable(slot string, available bool, reason string) e
 		return errors.New("slot " + slot + " not found")
 	}
 
-	r, ok := s.Resources[sl.Resource]
-
-	if !ok {
-		return errors.New("resource " + sl.Resource + " not found")
+	if s.repository != nil {
+		if err := s.repository.SetSlotAvailability(context.Background(), slot, available, reason, s.manifestVersion); err != nil {
+			if errors.Is(err, ErrStaleManifest) {
+				_ = s.refreshFromRepositoryLocked(context.Background())
+			}
+			return err
+		}
 	}
-
-	if available {
-		r.Diary.SetAvailable(reason)
-	} else {
-		r.Diary.SetUnavailable(reason)
-	}
+	_ = sl
+	s.SlotAvailability[slot] = AvailabilityStatus{Available: available, Reason: reason}
 
 	return nil
 

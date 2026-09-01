@@ -27,7 +27,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	t.Cleanup(repository.Close)
 	return repository
@@ -59,7 +59,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 4, versions)
+	require.Equal(t, 5, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -122,6 +122,20 @@ func TestTimestampsRoundTripAsUTCInstants(t *testing.T) {
 	require.Equal(t, time.UTC, when.End.Location())
 }
 
+func TestSuspensionPreventsTakeUpInsideDatabaseTransaction(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	created, _, err := repository.CreateBooking(ctx, request("suspended-start", "opaque-user", "slot-a", "resource-a", start, start.Add(time.Hour)))
+	require.NoError(t, err)
+	require.NoError(t, repository.SetResourceAvailability(ctx, "resource-a", false, "failed health check", 0))
+	_, err = repository.StartBooking(ctx, created.Booking.Name, start.Add(time.Minute), 0)
+	require.EqualError(t, err, "unavailable because failed health check")
+	persisted, err := repository.GetBooking(ctx, created.Booking.Name)
+	require.NoError(t, err)
+	require.False(t, persisted.Booking.Started)
+}
+
 func TestStoreProjectionSurvivesProcessRestart(t *testing.T) {
 	repository := integrationRepository(t)
 	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
@@ -147,6 +161,53 @@ func TestStoreProjectionSurvivesProcessRestart(t *testing.T) {
 	recovered, err := second.GetBooking("restart-booking")
 	require.NoError(t, err)
 	require.Equal(t, created, recovered)
+}
+
+func TestAvailabilitySuspensionsAreDurableSharedAndSlotScoped(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	manifest.Slots["sl-a-alias"] = manifest.Slots["sl-a"]
+	policy := manifest.Policies["p-a"]
+	policy.Slots = append(policy.Slots, "sl-a-alias")
+	manifest.Policies["p-a"] = policy
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	first := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(manifest))
+
+	secondRepository, err := Open(context.Background(), os.Getenv("BOOK_TEST_DATABASE_URL"), 4, 10*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(secondRepository.Close)
+	second := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, second.WithRepository(secondRepository))
+
+	require.NoError(t, first.SetSlotIsAvailable("sl-a", false, "UI maintenance"))
+	require.NoError(t, second.RefreshManifest(context.Background()))
+	ok, reason, err := second.GetSlotIsAvailable("sl-a")
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.Equal(t, "unavailable because UI maintenance", reason)
+	ok, _, err = second.GetSlotIsAvailable("sl-a-alias")
+	require.NoError(t, err)
+	require.True(t, ok)
+	_, err = second.MakeBookingWithName("sl-a", "availability-user", interval.Interval{Start: now.Add(time.Hour), End: now.Add(70 * time.Minute)}, "blocked-slot", false)
+	require.EqualError(t, err, "unavailable because UI maintenance")
+	_, err = second.MakeBookingWithName("sl-a-alias", "availability-user", interval.Interval{Start: now.Add(time.Hour), End: now.Add(70 * time.Minute)}, "allowed-alias", false)
+	require.NoError(t, err)
+
+	require.NoError(t, first.SetResourceIsAvailable("r-a", false, "failed health check"))
+	require.NoError(t, second.RefreshManifest(context.Background()))
+	ok, reason, err = second.GetSlotIsAvailable("sl-a-alias")
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.Equal(t, "unavailable because failed health check", reason)
+	state, err := secondRepository.Load(context.Background())
+	require.NoError(t, err)
+	require.False(t, state.ResourceAvailability["r-a"].Available)
+	require.False(t, state.SlotAvailability["sl-a"].Available)
 }
 
 func TestRestartDurablyExpiresOverdueGraceBooking(t *testing.T) {

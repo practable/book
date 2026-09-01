@@ -154,7 +154,11 @@ func loadState(ctx context.Context, queryer stateQueryer) (store.PersistentState
 		return store.PersistentState{}, err
 	}
 	defer rows.Close()
-	state := store.PersistentState{Groups: make(map[string][]string)}
+	state := store.PersistentState{
+		Groups:               make(map[string][]string),
+		ResourceAvailability: make(map[string]store.AvailabilityStatus),
+		SlotAvailability:     make(map[string]store.AvailabilityStatus),
+	}
 	for rows.Next() {
 		persisted, err := scanBooking(rows)
 		if err != nil {
@@ -180,6 +184,12 @@ func loadState(ctx context.Context, queryer stateQueryer) (store.PersistentState
 	if err := groupRows.Err(); err != nil {
 		return store.PersistentState{}, err
 	}
+	if err := loadAvailability(ctx, queryer, "public.resource_availability", "resource_name", state.ResourceAvailability); err != nil {
+		return store.PersistentState{}, err
+	}
+	if err := loadAvailability(ctx, queryer, "public.slot_availability", "slot_name", state.SlotAvailability); err != nil {
+		return store.PersistentState{}, err
+	}
 	var persisted store.PersistentManifest
 	var document string
 	err = queryer.QueryRow(ctx, `SELECT m.version,m.document,m.checksum,m.activated_at
@@ -200,6 +210,23 @@ func loadState(ctx context.Context, queryer stateQueryer) (store.PersistentState
 	}
 	state.Manifest = &persisted
 	return state, nil
+}
+
+func loadAvailability(ctx context.Context, queryer stateQueryer, table, nameColumn string, target map[string]store.AvailabilityStatus) error {
+	rows, err := queryer.Query(ctx, "SELECT "+nameColumn+",available,reason FROM "+table+" ORDER BY "+nameColumn)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name, reason string
+		var available bool
+		if err := rows.Scan(&name, &available, &reason); err != nil {
+			return err
+		}
+		target[name] = store.AvailabilityStatus{Available: available, Reason: reason}
+	}
+	return rows.Err()
 }
 
 type rowScanner interface{ Scan(...interface{}) error }
@@ -247,6 +274,9 @@ func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBook
 		return store.PersistentBooking{}, false, err
 	}
 	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if err := assertAvailable(ctx, tx, request.Resource, request.Booking.Slot); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
 
@@ -386,6 +416,9 @@ func (r *Repository) ReplaceBooking(ctx context.Context, originalName string, ex
 	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
+	if err := assertAvailable(ctx, tx, request.Resource, request.Booking.Slot); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
 	var oldUser, oldPolicy, oldResource string
 	err = tx.QueryRow(ctx, `SELECT user_name,policy_name,resource_name FROM public.bookings
 		WHERE row_id=$1 AND name=$2 AND collection='live' AND NOT superseded`, expectedRevision, originalName).
@@ -497,6 +530,32 @@ func assertManifestVersion(ctx context.Context, tx pgx.Tx, expected int64) error
 	return nil
 }
 
+func assertAvailable(ctx context.Context, tx pgx.Tx, resource, slot string) error {
+	for _, target := range []struct {
+		table, column, name string
+	}{
+		{"public.resource_availability", "resource_name", resource},
+		{"public.slot_availability", "slot_name", slot},
+	} {
+		var available bool
+		var reason string
+		err := tx.QueryRow(ctx, "SELECT available,reason FROM "+target.table+" WHERE "+target.column+"=$1", target.name).Scan(&available, &reason)
+		if errors.Is(err, pgx.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if !available {
+			if reason == "" {
+				return errors.New("unavailable")
+			}
+			return errors.New("unavailable because " + reason)
+		}
+	}
+	return nil
+}
+
 func insertBooking(ctx context.Context, tx pgx.Tx, request store.CreateBookingRequest, collection, event string) (int64, error) {
 	b := request.Booking
 	charge := b.When.End.Sub(b.When.Start)
@@ -602,13 +661,17 @@ func (r *Repository) StartBooking(ctx context.Context, name string, at time.Time
 		return store.PersistentBooking{}, err
 	}
 	var rowID int64
+	var resource, slot string
 	var existing *int64
 	var alreadyStarted bool
-	if err := tx.QueryRow(ctx, `SELECT row_id,started,started_at_ns FROM public.bookings
-		WHERE name=$1 AND collection='live' AND NOT superseded FOR UPDATE`, name).Scan(&rowID, &alreadyStarted, &existing); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT row_id,resource_name,slot_name,started,started_at_ns FROM public.bookings
+		WHERE name=$1 AND collection='live' AND NOT superseded FOR UPDATE`, name).Scan(&rowID, &resource, &slot, &alreadyStarted, &existing); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return store.PersistentBooking{}, store.ErrPersistentNotFound
 		}
+		return store.PersistentBooking{}, err
+	}
+	if err := assertAvailable(ctx, tx, resource, slot); err != nil {
 		return store.PersistentBooking{}, err
 	}
 	if !alreadyStarted {
@@ -853,6 +916,35 @@ func (r *Repository) ReplaceManifest(ctx context.Context, manifest store.Manifes
 		return store.PersistentManifest{}, err
 	}
 	return persisted, nil
+}
+
+func (r *Repository) SetResourceAvailability(ctx context.Context, resource string, available bool, reason string, manifestVersion int64) error {
+	return r.setAvailability(ctx, "public.resource_availability", "resource_name", resource, available, reason, manifestVersion)
+}
+
+func (r *Repository) SetSlotAvailability(ctx context.Context, slot string, available bool, reason string, manifestVersion int64) error {
+	return r.setAvailability(ctx, "public.slot_availability", "slot_name", slot, available, reason, manifestVersion)
+}
+
+func (r *Repository) setAvailability(ctx context.Context, table, nameColumn, name string, available bool, reason string, manifestVersion int64) error {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", maintenanceLock); err != nil {
+		return err
+	}
+	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, "INSERT INTO "+table+"("+nameColumn+",available,reason,updated_at_ns) VALUES($1,$2,$3,$4) ON CONFLICT ("+nameColumn+") DO UPDATE SET available=EXCLUDED.available,reason=EXCLUDED.reason,updated_at=clock_timestamp(),updated_at_ns=EXCLUDED.updated_at_ns", name, available, reason, time.Now().UTC().UnixNano())
+	if err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) GrantGroup(ctx context.Context, user, group string, manifestVersion int64) error {

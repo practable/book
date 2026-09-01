@@ -367,7 +367,7 @@ func (a *Client) ExportUsers(params *ExportUsersParams, authInfo runtime.ClientA
 /*
 GetResourceIsAvailable gets the availability of the resource
 
-Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
+Gets availability of the named resource, including its status message. Resource suspension applies to every slot using that resource.
 */
 func (a *Client) GetResourceIsAvailable(params *GetResourceIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourceIsAvailableOK, error) {
 	// TODO: Validate the params before sending
@@ -695,7 +695,7 @@ func (a *Client) SetResourceIsAvailable(params *SetResourceIsAvailableParams, au
 /*
 SetSlotIsAvailable sets the availability of the slot
 
-Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
+Sets availability for only the named slot, including a status message. Use the resource endpoint to suspend every slot sharing equipment after a failed health check.
 */
 func (a *Client) SetSlotIsAvailable(params *SetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetSlotIsAvailableNoContent, error) {
 	// TODO: Validate the params before sending

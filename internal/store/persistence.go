@@ -35,9 +35,18 @@ type PersistentBooking struct {
 }
 
 type PersistentState struct {
-	Bookings []PersistentBooking
-	Groups   map[string][]string
-	Manifest *PersistentManifest
+	Bookings             []PersistentBooking
+	Groups               map[string][]string
+	ResourceAvailability map[string]AvailabilityStatus
+	SlotAvailability     map[string]AvailabilityStatus
+	Manifest             *PersistentManifest
+}
+
+// AvailabilityStatus is an explicit administrative availability override.
+// Missing entries are available by default.
+type AvailabilityStatus struct {
+	Available bool
+	Reason    string
 }
 
 // PersistentManifest identifies the one immutable manifest version currently
@@ -81,6 +90,8 @@ type BookingRepository interface {
 	ReplaceBookings(context.Context, []CreateBookingRequest, int64) error
 	ReplaceOldBookings(context.Context, []PersistentBooking, int64) error
 	ReplaceManifest(context.Context, Manifest, ManifestValidator) (PersistentManifest, error)
+	SetResourceAvailability(context.Context, string, bool, string, int64) error
+	SetSlotAvailability(context.Context, string, bool, string, int64) error
 	GrantGroup(context.Context, string, string, int64) error
 	RevokeGroup(context.Context, string, string, int64) error
 	Close()
@@ -93,13 +104,6 @@ func (s *Store) RefreshManifest(ctx context.Context) error {
 	s.Lock()
 	defer s.Unlock()
 	if s.repository == nil {
-		return nil
-	}
-	version, err := s.repository.ActiveManifestVersion(ctx)
-	if err != nil {
-		return err
-	}
-	if version == s.manifestVersion {
 		return nil
 	}
 	return s.refreshFromRepositoryLocked(ctx)
@@ -139,19 +143,6 @@ func (s *Store) refreshFromRepositoryLocked(ctx context.Context) error {
 		}
 	}
 
-	availability := make(map[string]struct {
-		available bool
-		reason    string
-	})
-	for name, resource := range s.Resources {
-		if resource.Diary != nil {
-			available, reason := resource.Diary.IsAvailable()
-			availability[name] = struct {
-				available bool
-				reason    string
-			}{available, reason}
-		}
-	}
 	s.Checker.Clean()
 	s.Bookings = make(map[string]*Booking)
 	s.OldBookings = make(map[string]*Booking)
@@ -163,10 +154,11 @@ func (s *Store) refreshFromRepositoryLocked(ctx context.Context) error {
 	}
 	for name, resource := range s.Resources {
 		resource.Diary = diary.New(name)
-		if status, ok := availability[name]; ok && !status.available {
-			resource.Diary.SetUnavailable(status.reason)
-		}
 		s.Resources[name] = resource
+	}
+	s.SlotAvailability = state.SlotAvailability
+	if s.SlotAvailability == nil {
+		s.SlotAvailability = make(map[string]AvailabilityStatus)
 	}
 
 	for _, persisted := range state.Bookings {
@@ -205,6 +197,21 @@ func (s *Store) refreshFromRepositoryLocked(ctx context.Context) error {
 			s.OldBookings[booking.Name] = &booking
 			u.OldBookings[booking.Name] = &booking
 		}
+	}
+	// Restore claims before applying a suspension: a suspension blocks new
+	// requests and take-up, but it must not make durable pending bookings
+	// impossible to project after restart.
+	for name, status := range state.ResourceAvailability {
+		resource, ok := s.Resources[name]
+		if !ok || resource.Diary == nil {
+			continue
+		}
+		if status.Available {
+			resource.Diary.SetAvailable(status.Reason)
+		} else {
+			resource.Diary.SetUnavailable(status.Reason)
+		}
+		s.Resources[name] = resource
 	}
 	return nil
 }

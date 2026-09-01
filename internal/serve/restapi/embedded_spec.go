@@ -474,7 +474,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.",
+        "description": "Gets availability of the named resource, including its status message. Resource suspension applies to every slot using that resource.",
         "produces": [
           "application/json"
         ],
@@ -608,7 +608,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.",
+        "description": "Sets availability for only the named slot, including a status message. Use the resource endpoint to suspend every slot sharing equipment after a failed health check.",
         "produces": [
           "application/json"
         ],
@@ -3095,7 +3095,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.",
+        "description": "Gets availability of the named resource, including its status message. Resource suspension applies to every slot using that resource.",
         "produces": [
           "application/json"
         ],
@@ -3256,7 +3256,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.",
+        "description": "Sets availability for only the named slot, including a status message. Use the resource endpoint to suspend every slot sharing equipment after a failed health check.",
         "produces": [
           "application/json"
         ],

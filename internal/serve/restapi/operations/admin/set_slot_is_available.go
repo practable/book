@@ -34,7 +34,7 @@ func NewSetSlotIsAvailable(ctx *middleware.Context, handler SetSlotIsAvailableHa
 
 # Set the availability of the slot
 
-Sets the availability of the underlying resource for the slot, including a status message. Used to prevent users accessing equipment that should not be used, e.g. after failing an automated test, or make it available again after fixing it.
+Sets availability for only the named slot, including a status message. Use the resource endpoint to suspend every slot sharing equipment after a failed health check.
 */
 type SetSlotIsAvailable struct {
 	Context *middleware.Context

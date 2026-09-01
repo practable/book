@@ -92,6 +92,29 @@ transaction. Starting the service against an empty database creates the entire
 schema. A changed checksum is a startup error: add a new migration instead of
 editing one already applied.
 
+## Resource and slot suspension
+
+The existing admin endpoints use names from the active manifest.  Suspend a
+physical resource when it is unsafe or a health check fails:
+
+```text
+PUT /admin/resources/{resource_name}?available=false&reason=failed+health+check
+```
+
+That state is durable and applies to every slot using the resource.  The legacy
+slot endpoint remains available but is now deliberately narrower:
+
+```text
+PUT /admin/slots/{slot_name}?available=false&reason=UI+maintenance
+```
+
+It suspends only that named slot, which is appropriate for a broken UI,
+configuration, or teaching offering while the physical resource remains usable.
+Both changes are serialized against booking creation and take-up in PostgreSQL.
+They do not cancel pending bookings or revoke an activity that has already
+started.  Other book replicas reload the authoritative state before booking
+operations and through their five-second reconciliation loop.
+
 ## Backup, recovery, and rollback
 
 Use PostgreSQL backups and point-in-time recovery appropriate to the deployment.

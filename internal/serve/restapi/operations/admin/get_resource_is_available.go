@@ -34,7 +34,7 @@ func NewGetResourceIsAvailable(ctx *middleware.Context, handler GetResourceIsAva
 
 # Get the availability of the resource
 
-Gets the availability of the underlying resource for the slot, including a status message. Indicates when equipment is offline temprorarily, e.g. due to failing an automated test.
+Gets availability of the named resource, including its status message. Resource suspension applies to every slot using that resource.
 */
 type GetResourceIsAvailable struct {
 	Context *middleware.Context
