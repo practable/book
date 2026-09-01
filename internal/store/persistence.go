@@ -123,6 +123,7 @@ type BookingActivationRepository interface {
 
 type OperationalHealthCheckRepository interface {
 	CreateHealthCheck(context.Context, CreateBookingRequest, operations.CreateActivationRequest) (PersistentBooking, operations.ActivationRun, bool, error)
+	CreateReleaseHealthCheck(context.Context, string, []string, string, int64, time.Time, CreateBookingRequest, operations.CreateActivationRequest) (ResourceReleaseState, PersistentBooking, operations.ActivationRun, bool, error)
 }
 
 type OperationalScheduleResult struct {

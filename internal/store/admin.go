@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/practable/book/internal/interval"
 )
 
@@ -160,13 +161,14 @@ func (s *Store) ListResourceHolds(ctx context.Context) ([]ResourceHold, error) {
 
 func (s *Store) RequestResourceRelease(ctx context.Context, resource, actor, overrideReason string) (ResourceReleaseState, error) {
 	s.Lock()
-	defer s.Unlock()
 	repository, ok := s.repository.(ResourceReleaseRepository)
 	if !ok {
+		s.Unlock()
 		return ResourceReleaseState{}, errors.New("verified resource release requires durable persistence")
 	}
 	r, ok := s.Resources[resource]
 	if !ok {
+		s.Unlock()
 		return ResourceReleaseState{}, ErrPersistentNotFound
 	}
 	manifest := s.exportManifestLocked()
@@ -183,14 +185,19 @@ func (s *Store) RequestResourceRelease(ctx context.Context, resource, actor, ove
 	}
 	sort.Strings(required)
 	if len(required) == 0 {
+		s.Unlock()
 		return ResourceReleaseState{}, errors.New("resource has no manifest-designated health checks")
 	}
 	now := s.now().UTC()
 	if overrideReason == "" {
-		return repository.RequestVerifiedResourceRelease(ctx, resource, required, actor, s.manifestVersion, now)
+		s.Unlock()
+		key := uuid.NewSHA1(uuid.NameSpaceURL, []byte("resource-release\x00"+resource+"\x00"+actor+"\x00"+now.Format(time.RFC3339Nano))).String()
+		state, _, _, err := s.BeginResourceReleaseHealthCheck(ctx, resource, required, actor, key)
+		return state, err
 	}
 	health, err := s.repository.(OperationalAlertRepository).ListOperationalStreamHealth(ctx)
 	if err != nil {
+		s.Unlock()
 		return ResourceReleaseState{}, err
 	}
 	status := make(map[string]string)
@@ -209,6 +216,7 @@ func (s *Store) RequestResourceRelease(ctx context.Context, resource, actor, ove
 	if err == nil {
 		r.Diary.SetAvailable("degraded override: " + overrideReason)
 	}
+	s.Unlock()
 	return state, err
 }
 

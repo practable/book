@@ -504,6 +504,7 @@ paths:
   /admin/resource-holds/{resource_name}/release:
     post:
       summary: Request verified release or explicitly release as degraded
+      description: Atomically records a pending release and queues one durable maintenance activation covering every manifest-designated health-check stream. The resource remains held until each stream passes once. Providing override_reason performs an explicit degraded release instead.
       tags: [admin]
       operationId: RequestResourceRelease
       produces: [application/json]

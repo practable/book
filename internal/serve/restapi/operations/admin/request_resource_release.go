@@ -32,7 +32,9 @@ func NewRequestResourceRelease(ctx *middleware.Context, handler RequestResourceR
 /*
 	RequestResourceRelease swagger:route POST /admin/resource-holds/{resource_name}/release admin requestResourceRelease
 
-Request verified release or explicitly release as degraded
+# Request verified release or explicitly release as degraded
+
+Atomically records a pending release and queues one durable maintenance activation covering every manifest-designated health-check stream. The resource remains held until each stream passes once. Providing override_reason performs an explicit degraded release instead.
 */
 type RequestResourceRelease struct {
 	Context *middleware.Context

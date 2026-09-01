@@ -377,6 +377,64 @@ func TestManualHealthCheckIsAtomicIdempotentAndAutoCloses(t *testing.T) {
 	require.Equal(t, "verified", releases[0].State)
 }
 
+func TestReleaseRequestAtomicallyQueuesEveryStreamCheck(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+	require.NoError(t, repository.SetResourceAvailabilityBy(ctx, "resource-a", false, "maintenance complete", "technician", 0))
+	bookingRequest := request("release-health-booking", "technician", "slot-a", "resource-a", now, now.Add(time.Minute))
+	bookingRequest.Maintenance, bookingRequest.Booking.Maintenance = true, true
+	bookingRequest.Booking.Policy = "__operations__:health"
+	req := activationRequest(bookingRequest.Booking.Name, bookingRequest.Booking.User, "release-health", now)
+	req.Stream, req.Pipeline, req.AutoClose = "*", "release-verification", true
+	req.Stages = []operations.ActivationStageSpec{
+		{Stream: "data", Name: "check-data", Workflow: "stream-health", Kind: "health_check", DueAt: now, TimeoutAt: now.Add(time.Second), MaximumAttempts: 1},
+		{Stream: "video", Name: "check-video", Workflow: "stream-health", Kind: "health_check", DueAt: now.Add(time.Second), TimeoutAt: now.Add(2 * time.Second), MaximumAttempts: 1},
+	}
+	req.FirstJob.Workflow = "stream-health"
+	release, _, run, fresh, err := repository.CreateReleaseHealthCheck(ctx, "resource-a", []string{"data", "video"}, "technician", 0, now, bookingRequest, req)
+	require.NoError(t, err)
+	require.True(t, fresh)
+	require.Equal(t, "pending_checks", release.State)
+	require.Len(t, run.Stages, 2)
+	for index := range run.Stages {
+		run, err = repository.GetActivation(ctx, run.ID)
+		require.NoError(t, err)
+		jobID := run.Stages[index].JobID
+		_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: fmt.Sprintf("release-accepted-%d", index), JobID: jobID, State: "accepted", At: now.Add(time.Duration(index) * time.Second)}, fmt.Sprintf("release-accepted-hash-%d", index))
+		require.NoError(t, err)
+		_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: fmt.Sprintf("release-success-%d", index), JobID: jobID, State: "succeeded", At: now.Add(time.Duration(index+1) * time.Second)}, fmt.Sprintf("release-success-hash-%d", index))
+		require.NoError(t, err)
+	}
+	releases, err := repository.ListResourceReleaseStates(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "verified", releases[0].State)
+	state, err := repository.Load(ctx)
+	require.NoError(t, err)
+	require.True(t, state.ResourceAvailability["resource-a"].Available)
+}
+
+func TestReleaseRequestRollsBackIfCheckQueueingFails(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
+	require.NoError(t, repository.SetResourceAvailabilityBy(ctx, "resource-a", false, "maintenance complete", "technician", 0))
+	dummyJob, dummyDelivery := operationalJob(now)
+	_, _, err := repository.CreateJob(ctx, dummyJob, dummyDelivery)
+	require.NoError(t, err)
+	bookingRequest := request("release-rollback-booking", "technician", "slot-a", "resource-a", now, now.Add(time.Minute))
+	bookingRequest.Maintenance, bookingRequest.Booking.Maintenance = true, true
+	req := activationRequest(bookingRequest.Booking.Name, bookingRequest.Booking.User, "release-rollback", now)
+	req.FirstDelivery.ID = dummyDelivery.ID
+	_, _, _, _, err = repository.CreateReleaseHealthCheck(ctx, "resource-a", []string{"video"}, "technician", 0, now, bookingRequest, req)
+	require.Error(t, err)
+	var releases, bookings int
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT count(*) FROM public.resource_release_state WHERE resource_name='resource-a'`).Scan(&releases))
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT count(*) FROM public.bookings WHERE name='release-rollback-booking'`).Scan(&bookings))
+	require.Zero(t, releases)
+	require.Zero(t, bookings)
+}
+
 func TestManualHealthCheckRollsBackReservationWithActivation(t *testing.T) {
 	repository := integrationRepository(t)
 	ctx := context.Background()
@@ -530,6 +588,16 @@ func TestStoreBuildsExperimentActivationForArbitraryManifestStreams(t *testing.T
 	require.Equal(t, "experiment", run.Pipeline)
 	require.Len(t, run.Stages, 3)
 	require.Equal(t, []string{"st-a", "st-b", "st-c"}, []string{run.Stages[0].Stream, run.Stages[1].Stream, run.Stages[2].Stream})
+
+	now = now.Add(20 * time.Minute)
+	require.NoError(t, s.SetResourceIsAvailableBy("r-a", false, "technician maintenance", "technician"))
+	release, err := s.RequestResourceRelease(context.Background(), "r-a", "technician", "")
+	require.NoError(t, err)
+	require.Equal(t, "pending_checks", release.State)
+	require.Equal(t, []string{"st-a", "st-b", "st-c"}, release.RequiredStreams)
+	var releaseRuns int
+	require.NoError(t, repository.pool.QueryRow(context.Background(), `SELECT count(*) FROM public.booking_activation_runs WHERE resource_name='r-a' AND pipeline_name='release-verification'`).Scan(&releaseRuns))
+	require.Equal(t, 1, releaseRuns)
 }
 
 func TestActivationTimeoutSweepRetriesThenFailsDurably(t *testing.T) {

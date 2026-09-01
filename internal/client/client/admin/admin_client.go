@@ -1265,6 +1265,8 @@ func (a *Client) ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo r
 
 /*
 RequestResourceRelease requests verified release or explicitly release as degraded
+
+Atomically records a pending release and queues one durable maintenance activation covering every manifest-designated health-check stream. The resource remains held until each stream passes once. Providing override_reason performs an explicit degraded release instead.
 */
 func (a *Client) RequestResourceRelease(params *RequestResourceReleaseParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RequestResourceReleaseAccepted, error) {
 	// TODO: Validate the params before sending

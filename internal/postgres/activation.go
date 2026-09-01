@@ -197,6 +197,56 @@ func (r *Repository) CreateHealthCheck(ctx context.Context, bookingRequest store
 	return booking, run, true, nil
 }
 
+// CreateReleaseHealthCheck makes the release request, maintenance reservation,
+// activation plan, and first delivery visible in one transaction. A crash can
+// therefore never leave a release waiting for checks that were not queued.
+func (r *Repository) CreateReleaseHealthCheck(ctx context.Context, resource string, streams []string, actor string, manifestVersion int64, at time.Time, bookingRequest store.CreateBookingRequest, activationRequest operations.CreateActivationRequest) (store.ResourceReleaseState, store.PersistentBooking, operations.ActivationRun, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if existing, err := getActivationTx(ctx, tx, activationRequest.RunID); err == nil {
+		booking, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE name=$1 AND NOT superseded", existing.BookingName))
+		if err != nil {
+			return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+		}
+		release, err := getResourceReleaseTx(ctx, tx, resource)
+		if err != nil {
+			return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+		}
+		return release, booking, existing, false, nil
+	} else if !errors.Is(err, operations.ErrNotFound) {
+		return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	release, err := setResourceReleaseTx(ctx, tx, resource, streams, nil, actor, "", manifestVersion, at, false)
+	if err != nil {
+		return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	booking, created, err := createBookingTx(ctx, tx, bookingRequest)
+	if err != nil {
+		return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	if !created {
+		return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, store.ErrBookingIDConflict
+	}
+	activationRequest.BookingName = booking.Booking.Name
+	activationRequest.User = booking.Booking.User
+	run, _, err := createActivationTx(ctx, tx, activationRequest)
+	if err != nil {
+		return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.ResourceReleaseState{}, store.PersistentBooking{}, operations.ActivationRun{}, false, err
+	}
+	return release, booking, run, true, nil
+}
+
 func normalizedBackoff(value float64) float64 {
 	if value < 1 {
 		return 1

@@ -29,14 +29,26 @@ func (r *Repository) setResourceRelease(ctx context.Context, resource string, re
 		return store.ResourceReleaseState{}, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
-	if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", maintenanceLock); err != nil {
+	state, err := setResourceReleaseTx(ctx, tx, resource, required, failing, actor, reason, manifestVersion, at, override)
+	if err != nil {
 		return store.ResourceReleaseState{}, err
 	}
-	if err = assertManifestVersion(ctx, tx, manifestVersion); err != nil {
+	if err = tx.Commit(ctx); err != nil {
+		return store.ResourceReleaseState{}, err
+	}
+	return state, nil
+}
+
+func setResourceReleaseTx(ctx context.Context, tx pgx.Tx, resource string, required, failing []string, actor, reason string, manifestVersion int64, at time.Time, override bool) (store.ResourceReleaseState, error) {
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", maintenanceLock); err != nil {
+		return store.ResourceReleaseState{}, err
+	}
+	if err := assertManifestVersion(ctx, tx, manifestVersion); err != nil {
 		return store.ResourceReleaseState{}, err
 	}
 	var available bool
-	if err = tx.QueryRow(ctx, `SELECT available FROM public.resource_availability WHERE resource_name=$1 FOR UPDATE`, resource).Scan(&available); errors.Is(err, pgx.ErrNoRows) || available {
+	err := tx.QueryRow(ctx, `SELECT available FROM public.resource_availability WHERE resource_name=$1 FOR UPDATE`, resource).Scan(&available)
+	if errors.Is(err, pgx.ErrNoRows) || available {
 		return store.ResourceReleaseState{}, errors.New("resource is not technician-held")
 	} else if err != nil {
 		return store.ResourceReleaseState{}, err
@@ -63,9 +75,6 @@ func (r *Repository) setResourceRelease(ctx context.Context, resource string, re
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO public.resource_release_events(resource_name,event_type,occurred_at,actor,reason,required_streams,failing_streams,manifest_version) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`, resource, event, at.UTC(), actor, reason, string(requiredJSON), string(failingJSON), manifestVersion)
 	if err != nil {
-		return store.ResourceReleaseState{}, err
-	}
-	if err = tx.Commit(ctx); err != nil {
 		return store.ResourceReleaseState{}, err
 	}
 	return store.ResourceReleaseState{Resource: resource, State: state, RequiredStreams: required, FailingStreams: failing, RequestedAt: at.UTC(), RequestedBy: actor, ManifestVersion: manifestVersion, OverrideReason: reason}, nil
@@ -95,4 +104,22 @@ func (r *Repository) ListResourceReleaseStates(ctx context.Context) ([]store.Res
 		result = append(result, value)
 	}
 	return result, rows.Err()
+}
+
+func getResourceReleaseTx(ctx context.Context, tx pgx.Tx, resource string) (store.ResourceReleaseState, error) {
+	var value store.ResourceReleaseState
+	var required, failing []byte
+	err := tx.QueryRow(ctx, `SELECT resource_name,state,required_streams,failing_streams,requested_at,requested_by,manifest_version,override_reason,released_at
+		FROM public.resource_release_state WHERE resource_name=$1`, resource).
+		Scan(&value.Resource, &value.State, &required, &failing, &value.RequestedAt, &value.RequestedBy, &value.ManifestVersion, &value.OverrideReason, &value.ReleasedAt)
+	if err != nil {
+		return store.ResourceReleaseState{}, err
+	}
+	if err := json.Unmarshal(required, &value.RequiredStreams); err != nil {
+		return store.ResourceReleaseState{}, err
+	}
+	if err := json.Unmarshal(failing, &value.FailingStreams); err != nil {
+		return store.ResourceReleaseState{}, err
+	}
+	return value, nil
 }

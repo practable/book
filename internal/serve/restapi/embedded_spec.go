@@ -998,6 +998,7 @@ func init() {
             "Bearer": []
           }
         ],
+        "description": "Atomically records a pending release and queues one durable maintenance activation covering every manifest-designated health-check stream. The resource remains held until each stream passes once. Providing override_reason performs an explicit degraded release instead.",
         "produces": [
           "application/json"
         ],
@@ -6417,6 +6418,7 @@ func init() {
             "Bearer": []
           }
         ],
+        "description": "Atomically records a pending release and queues one durable maintenance activation covering every manifest-designated health-check stream. The resource remains held until each stream passes once. Providing override_reason performs an explicit degraded release instead.",
         "produces": [
           "application/json"
         ],

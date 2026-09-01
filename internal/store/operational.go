@@ -310,24 +310,42 @@ func (s *Store) beginBookingActivation(ctx context.Context, bookingName, request
 // BeginOperationalHealthCheck creates a resource-constrained maintenance
 // reservation and its immutable check plan in one repository transaction.
 func (s *Store) BeginOperationalHealthCheck(ctx context.Context, resourceName, streamName, operator, idempotencyKey string) (operations.ActivationRun, bool, error) {
+	_, run, fresh, err := s.beginOperationalHealthCheck(ctx, resourceName, []string{streamName}, operator, idempotencyKey, false)
+	return run, fresh, err
+}
+
+// BeginResourceReleaseHealthCheck atomically requests technician release and
+// queues one maintenance run that verifies every required stream.
+func (s *Store) BeginResourceReleaseHealthCheck(ctx context.Context, resourceName string, streams []string, operator, idempotencyKey string) (ResourceReleaseState, operations.ActivationRun, bool, error) {
+	return s.beginOperationalHealthCheck(ctx, resourceName, streams, operator, idempotencyKey, true)
+}
+
+func (s *Store) beginOperationalHealthCheck(ctx context.Context, resourceName string, streams []string, operator, idempotencyKey string, release bool) (ResourceReleaseState, operations.ActivationRun, bool, error) {
 	s.Lock()
 	defer s.Unlock()
 	if err := s.expireAndRefreshLocked(ctx); err != nil {
-		return operations.ActivationRun{}, false, err
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, err
 	}
 	repository, ok := s.repository.(OperationalHealthCheckRepository)
 	if !ok {
-		return operations.ActivationRun{}, false, errors.New("manual health checks require durable persistence")
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, errors.New("manual health checks require durable persistence")
 	}
 	if strings.TrimSpace(operator) == "" || strings.TrimSpace(idempotencyKey) == "" {
-		return operations.ActivationRun{}, false, errors.New("health check operator and idempotency key are required")
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, errors.New("health check operator and idempotency key are required")
 	}
 	resource, ok := s.Resources[resourceName]
 	if !ok {
-		return operations.ActivationRun{}, false, ErrPersistentNotFound
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, ErrPersistentNotFound
 	}
-	if _, ok := resource.StreamOperations[streamName]; !ok {
-		return operations.ActivationRun{}, false, ErrPersistentNotFound
+	streams = append([]string(nil), streams...)
+	sort.Strings(streams)
+	if len(streams) == 0 {
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, errors.New("health check requires at least one stream")
+	}
+	for _, stream := range streams {
+		if _, ok := resource.StreamOperations[stream]; !ok {
+			return ResourceReleaseState{}, operations.ActivationRun{}, false, ErrPersistentNotFound
+		}
 	}
 	slots := make([]string, 0)
 	for name, slot := range s.Slots {
@@ -337,26 +355,10 @@ func (s *Store) BeginOperationalHealthCheck(ctx context.Context, resourceName, s
 	}
 	sort.Strings(slots)
 	if len(slots) == 0 {
-		return operations.ActivationRun{}, false, errors.New("resource has no bookable slot")
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, errors.New("resource has no bookable slot")
 	}
 	manifest := s.exportManifestLocked()
-	stages, recovery, cleanup, err := ResolveOperationalPipeline(manifest, resourceName, streamName)
-	if err != nil {
-		return operations.ActivationRun{}, false, err
-	}
-	if len(stages) == 0 {
-		return operations.ActivationRun{}, false, errors.New("health check pipeline has no stages")
-	}
-	hasHealth := false
-	for _, stage := range stages {
-		hasHealth = hasHealth || stage.Kind == "health_check"
-	}
-	if !hasHealth {
-		return operations.ActivationRun{}, false, errors.New("pipeline has no health_check stage")
-	}
 	now := s.now().UTC()
-	binding := manifest.Resources[resourceName].StreamOperations[streamName]
-	pipeline := manifest.OperationalPipelineTemplates[binding.ActivationPipeline]
 	stageBudget := func(values []ResolvedOperationalStage) time.Duration {
 		var total time.Duration
 		for _, stage := range values {
@@ -372,57 +374,102 @@ func (s *Store) BeginOperationalHealthCheck(ctx context.Context, resourceName, s
 		}
 		return total
 	}
-	duration := stageBudget(stages) + time.Duration(pipeline.RecoveryAttempts)*(stageBudget(recovery)+stageBudget(stages))
-	if duration < time.Second {
-		duration = time.Second
+	type streamPlan struct {
+		Stream   string                     `json:"stream"`
+		Stages   []ResolvedOperationalStage `json:"stages"`
+		Recovery []ResolvedOperationalStage `json:"recovery,omitempty"`
+		Cleanup  []ResolvedOperationalStage `json:"cleanup,omitempty"`
 	}
-	bookingName := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-booking\x00"+resourceName+"\x00"+streamName+"\x00"+idempotencyKey)).String()
-	runID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-run\x00"+resourceName+"\x00"+streamName+"\x00"+idempotencyKey)).String()
-	makeSpecs := func(values []ResolvedOperationalStage) []operations.ActivationStageSpec {
-		result := make([]operations.ActivationStageSpec, 0, len(values))
-		due := now
+	var plans []streamPlan
+	var stageSpecs, recoverySpecs, cleanupSpecs []operations.ActivationStageSpec
+	stageDue, recoveryDue, cleanupDue := now, now, now
+	duration := time.Duration(0)
+	recoveryAttempts := 0
+	appendSpecs := func(result []operations.ActivationStageSpec, stream string, values []ResolvedOperationalStage, due time.Time) ([]operations.ActivationStageSpec, time.Time) {
 		for _, stage := range values {
 			attempts := stage.Retry.Attempts
 			if attempts < 1 {
 				attempts = 1
 			}
-			result = append(result, operations.ActivationStageSpec{Stream: streamName, Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow, Kind: stage.Kind,
+			result = append(result, operations.ActivationStageSpec{Stream: stream, Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow, Kind: stage.Kind,
 				DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters, ProgressMessage: stage.ProgressMessages.Initial,
 				RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter, InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff,
 				MaximumDelay: stage.Retry.MaximumDelay, TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes,
 				FailureGuidance: mustMarshalOperationalGuidance(stage.FailureGuidance)})
 			due = due.Add(stage.Timeout + stage.WaitAfter)
 		}
-		return result
+		return result, due
 	}
-	stageSpecs, recoverySpecs, cleanupSpecs := makeSpecs(stages), makeSpecs(recovery), makeSpecs(cleanup)
-	plan, err := json.Marshal(map[string]interface{}{"stages": stages, "recovery": recovery, "cleanup": cleanup})
+	for _, stream := range streams {
+		stages, recovery, cleanup, err := ResolveOperationalPipeline(manifest, resourceName, stream)
+		if err != nil {
+			return ResourceReleaseState{}, operations.ActivationRun{}, false, err
+		}
+		if len(stages) == 0 {
+			return ResourceReleaseState{}, operations.ActivationRun{}, false, errors.New("health check pipeline has no stages")
+		}
+		hasHealth := false
+		for _, stage := range stages {
+			hasHealth = hasHealth || stage.Kind == "health_check"
+		}
+		if !hasHealth {
+			return ResourceReleaseState{}, operations.ActivationRun{}, false, fmt.Errorf("stream %s pipeline has no health_check stage", stream)
+		}
+		pipeline := manifest.OperationalPipelineTemplates[resource.StreamOperations[stream].ActivationPipeline]
+		duration += stageBudget(stages) + time.Duration(pipeline.RecoveryAttempts)*(stageBudget(recovery)+stageBudget(stages))
+		if pipeline.RecoveryAttempts > 0 && (recoveryAttempts == 0 || pipeline.RecoveryAttempts < recoveryAttempts) {
+			recoveryAttempts = pipeline.RecoveryAttempts
+		}
+		plans = append(plans, streamPlan{Stream: stream, Stages: stages, Recovery: recovery, Cleanup: cleanup})
+		stageSpecs, stageDue = appendSpecs(stageSpecs, stream, stages, stageDue)
+		recoverySpecs, recoveryDue = appendSpecs(recoverySpecs, stream, recovery, recoveryDue)
+		cleanupSpecs, cleanupDue = appendSpecs(cleanupSpecs, stream, cleanup, cleanupDue)
+	}
+	if duration < time.Second {
+		duration = time.Second
+	}
+	streamKey := strings.Join(streams, "\x00")
+	bookingName := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-booking\x00"+resourceName+"\x00"+streamKey+"\x00"+idempotencyKey)).String()
+	runID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-run\x00"+resourceName+"\x00"+streamKey+"\x00"+idempotencyKey)).String()
+	plan, err := json.Marshal(map[string]interface{}{"streams": plans})
 	if err != nil {
-		return operations.ActivationRun{}, false, err
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, err
 	}
-	first := stages[0]
+	first := stageSpecs[0]
 	jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-job\x00"+runID+"\x000\x001")).String()
 	deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("manual-health-delivery\x00"+jobID)).String()
 	jobKey := "manual-health:" + runID + ":0:1"
 	command := operations.Command{Version: 1, JobID: jobID, Workflow: first.Workflow, Resource: resourceName, Kind: "health", StartsAt: now,
-		EndsAt: now.Add(first.Timeout), BookingName: bookingName, PlanRevision: 1, IdempotencyKey: jobKey, Parameters: first.Parameters}
+		EndsAt: first.TimeoutAt, BookingName: bookingName, PlanRevision: 1, IdempotencyKey: jobKey, Parameters: first.Parameters}
 	body, err := json.Marshal(command)
 	if err != nil {
-		return operations.ActivationRun{}, false, err
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, err
 	}
 	booking := Booking{Name: bookingName, User: operator, Policy: "__operations__:health", Slot: slots[0], Maintenance: true,
 		When: interval.Interval{Start: now, End: now.Add(duration)}}
 	bookingRequest := CreateBookingRequest{Booking: booking, Resource: resourceName, ResourceConstrained: true, Now: now,
 		ManifestVersion: s.manifestVersion, Maintenance: true, Actor: "manual-health:" + operator}
-	activationRequest := operations.CreateActivationRequest{RunID: runID, BookingName: bookingName, User: operator, Resource: resourceName, Stream: streamName,
-		Pipeline: binding.ActivationPipeline, ManifestVersion: s.manifestVersion, IdempotencyKey: idempotencyKey, RequestedAt: now, ResolvedPlan: plan,
-		Stages: stageSpecs, RecoveryStages: recoverySpecs, CleanupStages: cleanupSpecs, RecoveryAttempts: pipeline.RecoveryAttempts, AutoClose: true,
+	runStream, runPipeline := streams[0], resource.StreamOperations[streams[0]].ActivationPipeline
+	if len(streams) > 1 {
+		runStream, runPipeline = "*", "release-verification"
+	}
+	activationRequest := operations.CreateActivationRequest{RunID: runID, BookingName: bookingName, User: operator, Resource: resourceName, Stream: runStream,
+		Pipeline: runPipeline, ManifestVersion: s.manifestVersion, IdempotencyKey: idempotencyKey, RequestedAt: now, ResolvedPlan: plan,
+		Stages: stageSpecs, RecoveryStages: recoverySpecs, CleanupStages: cleanupSpecs, RecoveryAttempts: recoveryAttempts, AutoClose: true,
 		FirstJob: operations.Job{ID: jobID, Resource: resourceName, Workflow: first.Workflow, Kind: "health", State: "reserved", DueAt: now,
-			StartsAt: now, EndsAt: now.Add(first.Timeout), TriggeringBookingName: bookingName, ManifestVersion: s.manifestVersion, PlanRevision: 1,
+			StartsAt: now, EndsAt: first.TimeoutAt, TriggeringBookingName: bookingName, ManifestVersion: s.manifestVersion, PlanRevision: 1,
 			IdempotencyKey: jobKey, Payload: body}, FirstDelivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body}}
-	persisted, run, fresh, err := repository.CreateHealthCheck(ctx, bookingRequest, activationRequest)
+	var releaseState ResourceReleaseState
+	var persisted PersistentBooking
+	var run operations.ActivationRun
+	var fresh bool
+	if release {
+		releaseState, persisted, run, fresh, err = repository.CreateReleaseHealthCheck(ctx, resourceName, streams, operator, s.manifestVersion, now, bookingRequest, activationRequest)
+	} else {
+		persisted, run, fresh, err = repository.CreateHealthCheck(ctx, bookingRequest, activationRequest)
+	}
 	if err != nil {
-		return operations.ActivationRun{}, false, err
+		return ResourceReleaseState{}, operations.ActivationRun{}, false, err
 	}
 	if fresh {
 		stored := persisted.Booking
@@ -433,7 +480,7 @@ func (s *Store) BeginOperationalHealthCheck(ctx context.Context, resourceName, s
 		s.Users[stored.User].Bookings[stored.Name] = &stored
 		_ = resource.Diary.RequestRegardlessAvailability(stored.When, stored.Name)
 	}
-	return run, fresh, nil
+	return releaseState, run, fresh, nil
 }
 
 func mustMarshalOperationalGuidance(value OperationalFailureGuidance) json.RawMessage {
