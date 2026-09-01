@@ -700,6 +700,20 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 	if !ok {
 		return errors.New("not found")
 	}
+	// A different service instance may have taken up this booking since this
+	// process last refreshed its projection. Read the authoritative row before
+	// deciding whether cancellation must revoke relay access.
+	if s.repository != nil {
+		persisted, err := s.repository.GetBooking(context.Background(), booking.Name)
+		if err != nil {
+			if errors.Is(err, ErrPersistentNotFound) {
+				_ = s.refreshFromRepositoryLocked(context.Background())
+				return errors.New("not found")
+			}
+			return err
+		}
+		*b = persisted.Booking
+	}
 
 	// compare the externally relevant fields of the booking (ignore internal boolean fields
 	// to prevent status changes in the booking preventing cancellation
