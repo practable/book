@@ -123,6 +123,10 @@ func convertManifestToStore(m string) (store.Manifest, error) {
 }
 
 func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
+	jobTemplates, pipelineTemplates, err := modelOperationalTemplatesToStore(mm)
+	if err != nil {
+		return store.Manifest{}, err
+	}
 	workflows := make(map[string]store.OperationalWorkflow, len(mm.OperationalWorkflows))
 	for name, value := range mm.OperationalWorkflows {
 		expected, err := time.ParseDuration(*value.ExpectedDuration)
@@ -133,7 +137,7 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 		if err != nil {
 			return store.Manifest{}, errors.New("error parsing maximum_duration in operational workflow " + name + ": " + err.Error())
 		}
-		workflows[name] = store.OperationalWorkflow{Description: *value.Description, ExpectedDuration: expected, MaximumDuration: maximum}
+		workflows[name] = store.OperationalWorkflow{Description: *value.Description, Kind: value.Kind, ExpectedDuration: expected, MaximumDuration: maximum}
 	}
 	schedules := make(map[string]store.OperationalSchedule, len(mm.OperationalSchedules))
 	for name, value := range mm.OperationalSchedules {
@@ -307,14 +311,15 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 			return store.Manifest{}, errors.New("resource " + k + ": " + err.Error())
 		}
 		rm[k] = store.Resource{
-			ConfigURL:   m.ConfigURL,
-			Class:       m.Class,
-			Description: *(m.Description),
-			Properties:  m.Properties,
-			Operations:  operations,
-			Streams:     m.Streams,
-			Tests:       m.Tests,
-			TopicStub:   *(m.TopicStub),
+			ConfigURL:        m.ConfigURL,
+			Class:            m.Class,
+			Description:      *(m.Description),
+			Properties:       m.Properties,
+			Operations:       operations,
+			StreamOperations: modelStreamOperationsToStore(m.StreamOperations),
+			Streams:          m.Streams,
+			Tests:            m.Tests,
+			TopicStub:        *(m.TopicStub),
 		}
 	}
 
@@ -424,18 +429,20 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 	}
 
 	sm := store.Manifest{
-		Descriptions:         dm,
-		DisplayGuides:        dgm,
-		Groups:               gm,
-		Policies:             pm,
-		OperationalWorkflows: workflows,
-		OperationalSchedules: schedules,
-		Resources:            rm,
-		Slots:                slm,
-		Streams:              stm,
-		UIs:                  uim,
-		UISets:               usm,
-		Windows:              wm,
+		Descriptions:                 dm,
+		DisplayGuides:                dgm,
+		Groups:                       gm,
+		Policies:                     pm,
+		OperationalWorkflows:         workflows,
+		OperationalSchedules:         schedules,
+		OperationalJobTemplates:      jobTemplates,
+		OperationalPipelineTemplates: pipelineTemplates,
+		Resources:                    rm,
+		Slots:                        slm,
+		Streams:                      stm,
+		UIs:                          uim,
+		UISets:                       usm,
+		Windows:                      wm,
 	}
 
 	return sm, nil
@@ -742,22 +749,24 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 		for k, v := range sm.Resources {
 			s := v
 			rm[k] = models.Resource{
-				ConfigURL:   s.ConfigURL,
-				Class:       s.Class,
-				Description: gog.Ptr(s.Description),
-				Properties:  s.Properties,
-				Operations:  storeOperationalProfileToModel(s.Operations),
-				Streams:     s.Streams,
-				Tests:       s.Tests,
-				TopicStub:   gog.Ptr(s.TopicStub),
+				ConfigURL:        s.ConfigURL,
+				Class:            s.Class,
+				Description:      gog.Ptr(s.Description),
+				Properties:       s.Properties,
+				Operations:       storeOperationalProfileToModel(s.Operations),
+				StreamOperations: storeStreamOperationsToModel(s.StreamOperations),
+				Streams:          s.Streams,
+				Tests:            s.Tests,
+				TopicStub:        gog.Ptr(s.TopicStub),
 			}
 		}
 
 		workflows := make(map[string]models.OperationalWorkflow, len(sm.OperationalWorkflows))
 		for name, workflow := range sm.OperationalWorkflows {
 			description, expected, maximum := workflow.Description, workflow.ExpectedDuration.String(), workflow.MaximumDuration.String()
-			workflows[name] = models.OperationalWorkflow{Description: &description, ExpectedDuration: &expected, MaximumDuration: &maximum}
+			workflows[name] = models.OperationalWorkflow{Description: &description, Kind: workflow.Kind, ExpectedDuration: &expected, MaximumDuration: &maximum}
 		}
+		jobTemplates, pipelineTemplates := storeOperationalTemplatesToModel(sm)
 		schedules := make(map[string]models.OperationalSchedule, len(sm.OperationalSchedules))
 		for name, schedule := range sm.OperationalSchedules {
 			duration, conflict, slot, workflow := schedule.Duration.String(), schedule.Conflict, schedule.Slot, schedule.Workflow
@@ -864,18 +873,20 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 		}
 
 		mm := models.Manifest{
-			Descriptions:         dm,
-			DisplayGuides:        dgm,
-			Groups:               gm,
-			Policies:             pm,
-			OperationalWorkflows: workflows,
-			OperationalSchedules: schedules,
-			Resources:            rm,
-			Slots:                slm,
-			Streams:              stm,
-			Uis:                  uim,
-			UISets:               usm,
-			Windows:              wm,
+			Descriptions:                 dm,
+			DisplayGuides:                dgm,
+			Groups:                       gm,
+			Policies:                     pm,
+			OperationalWorkflows:         workflows,
+			OperationalSchedules:         schedules,
+			OperationalJobTemplates:      jobTemplates,
+			OperationalPipelineTemplates: pipelineTemplates,
+			Resources:                    rm,
+			Slots:                        slm,
+			Streams:                      stm,
+			Uis:                          uim,
+			UISets:                       usm,
+			Windows:                      wm,
 		}
 
 		return admin.NewExportManifestOK().WithPayload(&mm)

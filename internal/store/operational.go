@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -28,8 +30,126 @@ const (
 // identifiers and duration bounds, never executable commands or webhook URLs.
 type OperationalWorkflow struct {
 	Description      string        `json:"description" yaml:"description"`
+	Kind             string        `json:"kind,omitempty" yaml:"kind,omitempty"`
 	ExpectedDuration time.Duration `json:"expected_duration" yaml:"expected_duration"`
 	MaximumDuration  time.Duration `json:"maximum_duration" yaml:"maximum_duration"`
+}
+
+type OperationalRetryPolicy struct {
+	Attempts       int           `json:"attempts" yaml:"attempts"`
+	InitialDelay   time.Duration `json:"initial_delay" yaml:"initial_delay"`
+	Backoff        float64       `json:"backoff" yaml:"backoff"`
+	MaximumDelay   time.Duration `json:"maximum_delay" yaml:"maximum_delay"`
+	TotalTimeout   time.Duration `json:"total_timeout" yaml:"total_timeout"`
+	RetryableCodes []string      `json:"retryable_codes,omitempty" yaml:"retryable_codes,omitempty"`
+}
+
+type OperationalProgressMessages struct {
+	Initial string `json:"initial,omitempty" yaml:"initial,omitempty"`
+	Retry   string `json:"retry,omitempty" yaml:"retry,omitempty"`
+}
+
+type OperationalFailureAction struct {
+	Type  string `json:"type" yaml:"type"`
+	Label string `json:"label" yaml:"label"`
+	URL   string `json:"url,omitempty" yaml:"url,omitempty"`
+}
+
+type OperationalFailureGuidance struct {
+	Title   string                     `json:"title" yaml:"title"`
+	Message string                     `json:"message" yaml:"message"`
+	Actions []OperationalFailureAction `json:"actions,omitempty" yaml:"actions,omitempty"`
+}
+
+type OperationalJobTemplate struct {
+	Workflow         string                      `json:"workflow" yaml:"workflow"`
+	Timeout          time.Duration               `json:"timeout" yaml:"timeout"`
+	Parameters       map[string]string           `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	AllowedOverrides map[string]string           `json:"allowed_overrides,omitempty" yaml:"allowed_overrides,omitempty"`
+	Retry            OperationalRetryPolicy      `json:"retry,omitempty" yaml:"retry,omitempty"`
+	ProgressMessages OperationalProgressMessages `json:"progress_messages,omitempty" yaml:"progress_messages,omitempty"`
+	FailureGuidance  OperationalFailureGuidance  `json:"failure_guidance,omitempty" yaml:"failure_guidance,omitempty"`
+}
+
+type OperationalPipelineStage struct {
+	Name        string        `json:"name" yaml:"name"`
+	JobTemplate string        `json:"job_template" yaml:"job_template"`
+	WaitAfter   time.Duration `json:"wait_after,omitempty" yaml:"wait_after,omitempty"`
+}
+
+type OperationalPipelineTemplate struct {
+	Stages  []OperationalPipelineStage `json:"stages" yaml:"stages"`
+	Cleanup []OperationalPipelineStage `json:"cleanup,omitempty" yaml:"cleanup,omitempty"`
+}
+
+type OperationalParameterBinding struct {
+	Value string `json:"value,omitempty" yaml:"value,omitempty"`
+	From  string `json:"from,omitempty" yaml:"from,omitempty"`
+}
+
+type OperationalStreamBinding struct {
+	ActivationPipeline string                                 `json:"activation_pipeline" yaml:"activation_pipeline"`
+	Parameters         map[string]OperationalParameterBinding `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+}
+
+type ResolvedOperationalStage struct {
+	Name             string
+	Template         string
+	Workflow         string
+	Timeout          time.Duration
+	WaitAfter        time.Duration
+	Parameters       map[string]string
+	Retry            OperationalRetryPolicy
+	ProgressMessages OperationalProgressMessages
+	FailureGuidance  OperationalFailureGuidance
+}
+
+func ResolveOperationalPipeline(manifest Manifest, resourceName, streamName string) ([]ResolvedOperationalStage, []ResolvedOperationalStage, error) {
+	resource, ok := manifest.Resources[resourceName]
+	if !ok {
+		return nil, nil, fmt.Errorf("resource %s not found", resourceName)
+	}
+	binding, ok := resource.StreamOperations[streamName]
+	if !ok {
+		return nil, nil, fmt.Errorf("resource %s stream %s has no activation pipeline", resourceName, streamName)
+	}
+	pipeline, ok := manifest.OperationalPipelineTemplates[binding.ActivationPipeline]
+	if !ok {
+		return nil, nil, fmt.Errorf("operational pipeline %s not found", binding.ActivationPipeline)
+	}
+	resolve := func(stages []OperationalPipelineStage) ([]ResolvedOperationalStage, error) {
+		result := make([]ResolvedOperationalStage, 0, len(stages))
+		for _, stage := range stages {
+			template, ok := manifest.OperationalJobTemplates[stage.JobTemplate]
+			if !ok {
+				return nil, fmt.Errorf("operational job template %s not found", stage.JobTemplate)
+			}
+			parameters := make(map[string]string, len(template.Parameters)+len(binding.Parameters))
+			for name, value := range template.Parameters {
+				parameters[name] = value
+			}
+			for name, source := range binding.Parameters {
+				if _, allowed := template.AllowedOverrides[name]; !allowed {
+					continue
+				}
+				value := source.Value
+				if source.From != "" {
+					value = resource.Properties[strings.TrimPrefix(source.From, "resource.properties.")]
+				}
+				parameters[name] = value
+			}
+			result = append(result, ResolvedOperationalStage{Name: stage.Name, Template: stage.JobTemplate, Workflow: template.Workflow,
+				Timeout: template.Timeout, WaitAfter: stage.WaitAfter, Parameters: parameters, Retry: template.Retry,
+				ProgressMessages: template.ProgressMessages, FailureGuidance: template.FailureGuidance})
+		}
+		return result, nil
+	}
+	stages, err := resolve(pipeline.Stages)
+	if err != nil {
+		return nil, nil, err
+	}
+	cleanup, err := resolve(pipeline.Cleanup)
+	return stages, cleanup, err
 }
 
 type OperationalSchedule struct {
@@ -330,6 +450,65 @@ func validateOperationalManifest(m Manifest) []string {
 		if workflow.MaximumDuration < workflow.ExpectedDuration {
 			messages = append(messages, "operational workflow "+name+" maximum_duration must be at least expected_duration")
 		}
+		if workflow.Kind != "" && workflow.Kind != "action" && workflow.Kind != "health_check" {
+			messages = append(messages, "operational workflow "+name+" has invalid kind")
+		}
+	}
+	for name, template := range m.OperationalJobTemplates {
+		workflow, ok := m.OperationalWorkflows[template.Workflow]
+		if !ok {
+			messages = append(messages, "operational job template "+name+" references non-existent workflow: "+template.Workflow)
+		} else if template.Timeout <= 0 || template.Timeout > workflow.MaximumDuration {
+			messages = append(messages, "operational job template "+name+" timeout must be positive and within workflow maximum")
+		}
+		for parameter, kind := range template.AllowedOverrides {
+			if !validOperationalParameterType(kind) {
+				messages = append(messages, "operational job template "+name+" parameter "+parameter+" has invalid type")
+			}
+			if value, exists := template.Parameters[parameter]; exists && !validOperationalParameterValue(kind, value) {
+				messages = append(messages, "operational job template "+name+" parameter "+parameter+" default has invalid "+kind+" value")
+			}
+		}
+		if template.Retry.Attempts < 0 || template.Retry.Attempts > 20 {
+			messages = append(messages, "operational job template "+name+" retry attempts must be between 0 and 20")
+		}
+		if template.Retry.Attempts > 1 && (template.Retry.InitialDelay < 0 || template.Retry.MaximumDelay < template.Retry.InitialDelay || template.Retry.TotalTimeout <= 0 || template.Retry.Backoff < 1) {
+			messages = append(messages, "operational job template "+name+" has invalid retry timing")
+		}
+		for _, action := range template.FailureGuidance.Actions {
+			if action.Type != "retry" && action.Type != "choose_another" && action.Type != "contact_support" {
+				messages = append(messages, "operational job template "+name+" has invalid failure action: "+action.Type)
+			}
+			if action.Label == "" {
+				messages = append(messages, "operational job template "+name+" has a failure action with no label")
+			}
+			if action.URL != "" {
+				parsed, err := url.Parse(action.URL)
+				if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+					messages = append(messages, "operational job template "+name+" failure action URL must use https")
+				}
+			}
+		}
+	}
+	for name, pipeline := range m.OperationalPipelineTemplates {
+		seen := make(map[string]bool)
+		for _, stages := range [][]OperationalPipelineStage{pipeline.Stages, pipeline.Cleanup} {
+			for _, stage := range stages {
+				if stage.Name == "" || seen[stage.Name] {
+					messages = append(messages, "operational pipeline "+name+" has missing or duplicate stage name: "+stage.Name)
+				}
+				seen[stage.Name] = true
+				if _, ok := m.OperationalJobTemplates[stage.JobTemplate]; !ok {
+					messages = append(messages, "operational pipeline "+name+" references non-existent job template: "+stage.JobTemplate)
+				}
+				if stage.WaitAfter < 0 {
+					messages = append(messages, "operational pipeline "+name+" stage "+stage.Name+" has negative wait_after")
+				}
+			}
+		}
+		if len(pipeline.Stages) == 0 {
+			messages = append(messages, "operational pipeline "+name+" must contain at least one stage")
+		}
 	}
 	for resourceName, resource := range m.Resources {
 		profile := resource.Operations
@@ -356,6 +535,58 @@ func validateOperationalManifest(m Manifest) []string {
 				}
 			}
 		}
+		streamSet := make(map[string]bool)
+		for _, stream := range resource.Streams {
+			streamSet[stream] = true
+		}
+		for stream, binding := range resource.StreamOperations {
+			if !streamSet[stream] {
+				messages = append(messages, "resource "+resourceName+" configures operations for unlisted stream: "+stream)
+			}
+			pipeline, ok := m.OperationalPipelineTemplates[binding.ActivationPipeline]
+			if !ok {
+				messages = append(messages, "resource "+resourceName+" stream "+stream+" references non-existent activation pipeline: "+binding.ActivationPipeline)
+				continue
+			}
+			allowed := make(map[string]string)
+			for _, stage := range pipeline.Stages {
+				for parameter, kind := range m.OperationalJobTemplates[stage.JobTemplate].AllowedOverrides {
+					if previous, exists := allowed[parameter]; exists && previous != kind {
+						messages = append(messages, "resource "+resourceName+" stream "+stream+" parameter "+parameter+" has conflicting types in its activation pipeline")
+					}
+					allowed[parameter] = kind
+				}
+			}
+			for parameter, value := range binding.Parameters {
+				kind, ok := allowed[parameter]
+				if !ok {
+					messages = append(messages, "resource "+resourceName+" stream "+stream+" overrides unapproved parameter: "+parameter)
+					continue
+				}
+				if (value.Value == "") == (value.From == "") {
+					messages = append(messages, "resource "+resourceName+" stream "+stream+" parameter "+parameter+" must set exactly one of value or from")
+					continue
+				}
+				resolved := value.Value
+				if value.From != "" {
+					const prefix = "resource.properties."
+					if !strings.HasPrefix(value.From, prefix) {
+						messages = append(messages, "resource "+resourceName+" stream "+stream+" parameter "+parameter+" has invalid binding source")
+						continue
+					}
+					property := strings.TrimPrefix(value.From, prefix)
+					var exists bool
+					resolved, exists = resource.Properties[property]
+					if !exists {
+						messages = append(messages, "resource "+resourceName+" stream "+stream+" parameter "+parameter+" references missing property: "+property)
+						continue
+					}
+				}
+				if !validOperationalParameterValue(kind, resolved) {
+					messages = append(messages, "resource "+resourceName+" stream "+stream+" parameter "+parameter+" has invalid "+kind+" value")
+				}
+			}
+		}
 	}
 	for name, schedule := range m.OperationalSchedules {
 		workflow, workflowOK := m.OperationalWorkflows[schedule.Workflow]
@@ -378,4 +609,26 @@ func validateOperationalManifest(m Manifest) []string {
 		}
 	}
 	return messages
+}
+
+func validOperationalParameterType(kind string) bool {
+	return kind == "string" || kind == "number" || kind == "boolean" || kind == "duration"
+}
+
+func validOperationalParameterValue(kind, value string) bool {
+	switch kind {
+	case "string":
+		return value != ""
+	case "number":
+		_, err := strconv.ParseFloat(value, 64)
+		return err == nil
+	case "boolean":
+		_, err := strconv.ParseBool(value)
+		return err == nil
+	case "duration":
+		duration, err := time.ParseDuration(value)
+		return err == nil && duration >= 0
+	default:
+		return false
+	}
 }

@@ -2024,6 +2024,12 @@ definitions:
         type: object
         additionalProperties:
           $ref: '#/definitions/OperationalSchedule'
+      operational_job_templates:
+        type: object
+        additionalProperties: {$ref: '#/definitions/OperationalJobTemplate'}
+      operational_pipeline_templates:
+        type: object
+        additionalProperties: {$ref: '#/definitions/OperationalPipelineTemplate'}
       resources:
         type: object
         additionalProperties:
@@ -2238,6 +2244,9 @@ definitions:
           type: string
       operations:
         $ref: '#/definitions/OperationalProfile'
+      stream_operations:
+        type: object
+        additionalProperties: {$ref: '#/definitions/OperationalStreamBinding'}
       streams:
         type: array
         items:
@@ -2263,9 +2272,81 @@ definitions:
     type: object
     properties:
       description: {type: string}
+      kind: {type: string, enum: [action, health_check]}
       expected_duration: {type: string, example: 10m}
       maximum_duration: {type: string, example: 15m}
     required: [description, expected_duration, maximum_duration]
+
+  OperationalRetryPolicy:
+    type: object
+    properties:
+      attempts: {type: integer, minimum: 0, maximum: 20}
+      initial_delay: {type: string}
+      backoff: {type: number}
+      maximum_delay: {type: string}
+      total_timeout: {type: string}
+      retryable_codes: {type: array, items: {type: string}}
+
+  OperationalFailureAction:
+    type: object
+    properties:
+      type: {type: string, enum: [retry, choose_another, contact_support]}
+      label: {type: string}
+      url: {type: string}
+    required: [type, label]
+
+  OperationalFailureGuidance:
+    type: object
+    properties:
+      title: {type: string}
+      message: {type: string}
+      actions: {type: array, items: {$ref: '#/definitions/OperationalFailureAction'}}
+
+  OperationalProgressMessages:
+    type: object
+    properties:
+      initial: {type: string}
+      retry: {type: string}
+
+  OperationalJobTemplate:
+    type: object
+    properties:
+      workflow: {type: string}
+      timeout: {type: string}
+      parameters: {type: object, additionalProperties: {type: string}}
+      allowed_overrides: {type: object, additionalProperties: {type: string, enum: [string, number, boolean, duration]}}
+      retry: {$ref: '#/definitions/OperationalRetryPolicy'}
+      progress_messages: {$ref: '#/definitions/OperationalProgressMessages'}
+      failure_guidance: {$ref: '#/definitions/OperationalFailureGuidance'}
+    required: [workflow, timeout]
+
+  OperationalPipelineStage:
+    type: object
+    properties:
+      name: {type: string}
+      job_template: {type: string}
+      wait_after: {type: string}
+    required: [name, job_template]
+
+  OperationalPipelineTemplate:
+    type: object
+    properties:
+      stages: {type: array, items: {$ref: '#/definitions/OperationalPipelineStage'}}
+      cleanup: {type: array, items: {$ref: '#/definitions/OperationalPipelineStage'}}
+    required: [stages]
+
+  OperationalParameterBinding:
+    type: object
+    properties:
+      value: {type: string}
+      from: {type: string}
+
+  OperationalStreamBinding:
+    type: object
+    properties:
+      activation_pipeline: {type: string}
+      parameters: {type: object, additionalProperties: {$ref: '#/definitions/OperationalParameterBinding'}}
+    required: [activation_pipeline]
 
   OperationalSchedule:
     type: object

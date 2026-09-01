@@ -35,6 +35,9 @@ type Resource struct {
 	// optional structured, filterable equipment characteristics
 	Properties map[string]string `json:"properties,omitempty"`
 
+	// stream operations
+	StreamOperations map[string]OperationalStreamBinding `json:"stream_operations,omitempty"`
+
 	// streams
 	// Required: true
 	Streams []string `json:"streams"`
@@ -56,6 +59,10 @@ func (m *Resource) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateOperations(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateStreamOperations(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -101,6 +108,32 @@ func (m *Resource) validateOperations(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *Resource) validateStreamOperations(formats strfmt.Registry) error {
+	if swag.IsZero(m.StreamOperations) { // not required
+		return nil
+	}
+
+	for k := range m.StreamOperations {
+
+		if err := validate.Required("stream_operations"+"."+k, "body", m.StreamOperations[k]); err != nil {
+			return err
+		}
+		if val, ok := m.StreamOperations[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("stream_operations" + "." + k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("stream_operations" + "." + k)
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
 func (m *Resource) validateStreams(formats strfmt.Registry) error {
 
 	if err := validate.Required("streams", "body", m.Streams); err != nil {
@@ -127,6 +160,10 @@ func (m *Resource) ContextValidate(ctx context.Context, formats strfmt.Registry)
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateStreamOperations(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -149,6 +186,21 @@ func (m *Resource) contextValidateOperations(ctx context.Context, formats strfmt
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *Resource) contextValidateStreamOperations(ctx context.Context, formats strfmt.Registry) error {
+
+	for k := range m.StreamOperations {
+
+		if val, ok := m.StreamOperations[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
+			}
+		}
+
 	}
 
 	return nil

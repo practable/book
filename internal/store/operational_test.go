@@ -147,3 +147,51 @@ func TestOperationalSchedulesUseCivilTimeAndSemesterBounds(t *testing.T) {
 		t.Fatalf("duration = %s", occurrences[1].When.End.Sub(occurrences[1].When.Start))
 	}
 }
+
+func TestReusableStreamPipelineResolvesTypedResourceBinding(t *testing.T) {
+	m := operationalManifest()
+	m.OperationalWorkflows["enable-video"] = OperationalWorkflow{Description: "Enable video", Kind: "action", ExpectedDuration: time.Second, MaximumDuration: 4 * time.Second}
+	m.OperationalWorkflows["check-video"] = OperationalWorkflow{Description: "Check video", Kind: "health_check", ExpectedDuration: time.Second, MaximumDuration: 2 * time.Second}
+	m.OperationalJobTemplates = map[string]OperationalJobTemplate{
+		"enable": {Workflow: "enable-video", Timeout: 4 * time.Second},
+		"check": {Workflow: "check-video", Timeout: 2 * time.Second, Parameters: map[string]string{"minimum_fps": "20"},
+			AllowedOverrides: map[string]string{"minimum_fps": "number"},
+			Retry:            OperationalRetryPolicy{Attempts: 3, InitialDelay: 500 * time.Millisecond, Backoff: 1.5, MaximumDelay: time.Second, TotalTimeout: 6 * time.Second}},
+	}
+	m.OperationalPipelineTemplates = map[string]OperationalPipelineTemplate{"video": {Stages: []OperationalPipelineStage{
+		{Name: "enable", JobTemplate: "enable"}, {Name: "verify", JobTemplate: "check"},
+	}}}
+	resource := m.Resources["tank"]
+	resource.Streams = []string{"video"}
+	resource.Properties = map[string]string{"camera_minimum_fps": "18"}
+	resource.StreamOperations = map[string]OperationalStreamBinding{"video": {ActivationPipeline: "video", Parameters: map[string]OperationalParameterBinding{
+		"minimum_fps": {From: "resource.properties.camera_minimum_fps"},
+	}}}
+	m.Resources["tank"] = resource
+	if messages := validateOperationalManifest(m); len(messages) != 0 {
+		t.Fatalf("messages = %#v", messages)
+	}
+	stages, _, err := ResolveOperationalPipeline(m, "tank", "video")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(stages) != 2 || stages[1].Parameters["minimum_fps"] != "18" || stages[1].Retry.Attempts != 3 {
+		t.Fatalf("stages = %#v", stages)
+	}
+}
+
+func TestOperationalPipelineRejectsUnapprovedOrMistypedBinding(t *testing.T) {
+	m := operationalManifest()
+	m.OperationalWorkflows["check-video"] = OperationalWorkflow{Description: "Check video", Kind: "health_check", ExpectedDuration: time.Second, MaximumDuration: 2 * time.Second}
+	m.OperationalJobTemplates = map[string]OperationalJobTemplate{"check": {Workflow: "check-video", Timeout: time.Second, AllowedOverrides: map[string]string{"minimum_fps": "number"}}}
+	m.OperationalPipelineTemplates = map[string]OperationalPipelineTemplate{"video": {Stages: []OperationalPipelineStage{{Name: "verify", JobTemplate: "check"}}}}
+	resource := m.Resources["tank"]
+	resource.Streams = []string{"video"}
+	resource.StreamOperations = map[string]OperationalStreamBinding{"video": {ActivationPipeline: "video", Parameters: map[string]OperationalParameterBinding{
+		"minimum_fps": {Value: "fast"}, "command": {Value: "arbitrary"},
+	}}}
+	m.Resources["tank"] = resource
+	if messages := validateOperationalManifest(m); len(messages) != 2 {
+		t.Fatalf("messages = %#v", messages)
+	}
+}

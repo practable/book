@@ -31,6 +31,12 @@ type Manifest struct {
 	// groups
 	Groups map[string]Group `json:"groups,omitempty"`
 
+	// operational job templates
+	OperationalJobTemplates map[string]OperationalJobTemplate `json:"operational_job_templates,omitempty"`
+
+	// operational pipeline templates
+	OperationalPipelineTemplates map[string]OperationalPipelineTemplate `json:"operational_pipeline_templates,omitempty"`
+
 	// operational schedules
 	OperationalSchedules map[string]OperationalSchedule `json:"operational_schedules,omitempty"`
 
@@ -79,6 +85,14 @@ func (m *Manifest) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateGroups(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOperationalJobTemplates(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOperationalPipelineTemplates(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -193,6 +207,58 @@ func (m *Manifest) validateGroups(formats strfmt.Registry) error {
 					return ve.ValidateName("groups" + "." + k)
 				} else if ce, ok := err.(*errors.CompositeError); ok {
 					return ce.ValidateName("groups" + "." + k)
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Manifest) validateOperationalJobTemplates(formats strfmt.Registry) error {
+	if swag.IsZero(m.OperationalJobTemplates) { // not required
+		return nil
+	}
+
+	for k := range m.OperationalJobTemplates {
+
+		if err := validate.Required("operational_job_templates"+"."+k, "body", m.OperationalJobTemplates[k]); err != nil {
+			return err
+		}
+		if val, ok := m.OperationalJobTemplates[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("operational_job_templates" + "." + k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("operational_job_templates" + "." + k)
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Manifest) validateOperationalPipelineTemplates(formats strfmt.Registry) error {
+	if swag.IsZero(m.OperationalPipelineTemplates) { // not required
+		return nil
+	}
+
+	for k := range m.OperationalPipelineTemplates {
+
+		if err := validate.Required("operational_pipeline_templates"+"."+k, "body", m.OperationalPipelineTemplates[k]); err != nil {
+			return err
+		}
+		if val, ok := m.OperationalPipelineTemplates[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("operational_pipeline_templates" + "." + k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("operational_pipeline_templates" + "." + k)
 				}
 				return err
 			}
@@ -460,6 +526,14 @@ func (m *Manifest) ContextValidate(ctx context.Context, formats strfmt.Registry)
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateOperationalJobTemplates(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateOperationalPipelineTemplates(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateOperationalSchedules(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -541,6 +615,36 @@ func (m *Manifest) contextValidateGroups(ctx context.Context, formats strfmt.Reg
 	for k := range m.Groups {
 
 		if val, ok := m.Groups[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Manifest) contextValidateOperationalJobTemplates(ctx context.Context, formats strfmt.Registry) error {
+
+	for k := range m.OperationalJobTemplates {
+
+		if val, ok := m.OperationalJobTemplates[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Manifest) contextValidateOperationalPipelineTemplates(ctx context.Context, formats strfmt.Registry) error {
+
+	for k := range m.OperationalPipelineTemplates {
+
+		if val, ok := m.OperationalPipelineTemplates[k]; ok {
 			if err := val.ContextValidate(ctx, formats); err != nil {
 				return err
 			}

@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -28,6 +29,10 @@ type OperationalWorkflow struct {
 	// Required: true
 	ExpectedDuration *string `json:"expected_duration"`
 
+	// kind
+	// Enum: ["action","health_check"]
+	Kind string `json:"kind,omitempty"`
+
 	// maximum duration
 	// Example: 15m
 	// Required: true
@@ -43,6 +48,10 @@ func (m *OperationalWorkflow) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateExpectedDuration(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateKind(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -68,6 +77,48 @@ func (m *OperationalWorkflow) validateDescription(formats strfmt.Registry) error
 func (m *OperationalWorkflow) validateExpectedDuration(formats strfmt.Registry) error {
 
 	if err := validate.Required("expected_duration", "body", m.ExpectedDuration); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var operationalWorkflowTypeKindPropEnum []interface{}
+
+func init() {
+	var res []string
+	if err := json.Unmarshal([]byte(`["action","health_check"]`), &res); err != nil {
+		panic(err)
+	}
+	for _, v := range res {
+		operationalWorkflowTypeKindPropEnum = append(operationalWorkflowTypeKindPropEnum, v)
+	}
+}
+
+const (
+
+	// OperationalWorkflowKindAction captures enum value "action"
+	OperationalWorkflowKindAction string = "action"
+
+	// OperationalWorkflowKindHealthCheck captures enum value "health_check"
+	OperationalWorkflowKindHealthCheck string = "health_check"
+)
+
+// prop value enum
+func (m *OperationalWorkflow) validateKindEnum(path, location string, value string) error {
+	if err := validate.EnumCase(path, location, value, operationalWorkflowTypeKindPropEnum, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *OperationalWorkflow) validateKind(formats strfmt.Registry) error {
+	if swag.IsZero(m.Kind) { // not required
+		return nil
+	}
+
+	// value enum
+	if err := m.validateKindEnum("kind", "body", m.Kind); err != nil {
 		return err
 	}
 

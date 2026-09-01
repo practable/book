@@ -7,6 +7,9 @@ Production PostgreSQL setup, migrations, recovery, and integration-test commands
 are documented in [docs/postgresql.md](docs/postgresql.md). PostgreSQL is the
 authoritative booking store for `book serve`.
 
+Reusable preparation and health-check job templates are documented in
+[docs/activation-pipelines.md](docs/activation-pipelines.md).
+
 ## Features
 
 - Advance bookings 

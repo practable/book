@@ -3051,6 +3051,18 @@ func init() {
             "$ref": "#/definitions/Group"
           }
         },
+        "operational_job_templates": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalJobTemplate"
+          }
+        },
+        "operational_pipeline_templates": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalPipelineTemplate"
+          }
+        },
         "operational_schedules": {
           "type": "object",
           "additionalProperties": {
@@ -3140,6 +3152,46 @@ func init() {
           "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
           "type": "string",
           "example": "https://relay-access.practable.io/session/abc123"
+        }
+      }
+    },
+    "OperationalFailureAction": {
+      "type": "object",
+      "required": [
+        "type",
+        "label"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "retry",
+            "choose_another",
+            "contact_support"
+          ]
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalFailureGuidance": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalFailureAction"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
         }
       }
     },
@@ -3254,6 +3306,48 @@ func init() {
         }
       }
     },
+    "OperationalJobTemplate": {
+      "type": "object",
+      "required": [
+        "workflow",
+        "timeout"
+      ],
+      "properties": {
+        "allowed_overrides": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "duration"
+            ]
+          }
+        },
+        "failure_guidance": {
+          "$ref": "#/definitions/OperationalFailureGuidance"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "progress_messages": {
+          "$ref": "#/definitions/OperationalProgressMessages"
+        },
+        "retry": {
+          "$ref": "#/definitions/OperationalRetryPolicy"
+        },
+        "timeout": {
+          "type": "string"
+        },
+        "workflow": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalOccurrence": {
       "type": "object",
       "required": [
@@ -3306,6 +3400,55 @@ func init() {
         }
       }
     },
+    "OperationalParameterBinding": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalPipelineStage": {
+      "type": "object",
+      "required": [
+        "name",
+        "job_template"
+      ],
+      "properties": {
+        "job_template": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "wait_after": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalPipelineTemplate": {
+      "type": "object",
+      "required": [
+        "stages"
+      ],
+      "properties": {
+        "cleanup": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalPipelineStage"
+          }
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalPipelineStage"
+          }
+        }
+      }
+    },
     "OperationalProfile": {
       "type": "object",
       "properties": {
@@ -3322,6 +3465,17 @@ func init() {
           }
         },
         "operating_window": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalProgressMessages": {
+      "type": "object",
+      "properties": {
+        "initial": {
+          "type": "string"
+        },
+        "retry": {
           "type": "string"
         }
       }
@@ -3368,6 +3522,33 @@ func init() {
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "OperationalRetryPolicy": {
+      "type": "object",
+      "properties": {
+        "attempts": {
+          "type": "integer",
+          "maximum": 20
+        },
+        "backoff": {
+          "type": "number"
+        },
+        "initial_delay": {
+          "type": "string"
+        },
+        "maximum_delay": {
+          "type": "string"
+        },
+        "retryable_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "total_timeout": {
+          "type": "string"
         }
       }
     },
@@ -3428,6 +3609,23 @@ func init() {
         }
       }
     },
+    "OperationalStreamBinding": {
+      "type": "object",
+      "required": [
+        "activation_pipeline"
+      ],
+      "properties": {
+        "activation_pipeline": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalParameterBinding"
+          }
+        }
+      }
+    },
     "OperationalWorkflow": {
       "description": "Owner-approved bounded task contract; never an executable command or URL.",
       "type": "object",
@@ -3443,6 +3641,13 @@ func init() {
         "expected_duration": {
           "type": "string",
           "example": "10m"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "action",
+            "health_check"
+          ]
         },
         "maximum_duration": {
           "type": "string",
@@ -3671,6 +3876,12 @@ func init() {
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          }
+        },
+        "stream_operations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalStreamBinding"
           }
         },
         "streams": {
@@ -7618,6 +7829,18 @@ func init() {
             "$ref": "#/definitions/Group"
           }
         },
+        "operational_job_templates": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalJobTemplate"
+          }
+        },
+        "operational_pipeline_templates": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalPipelineTemplate"
+          }
+        },
         "operational_schedules": {
           "type": "object",
           "additionalProperties": {
@@ -7707,6 +7930,46 @@ func init() {
           "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
           "type": "string",
           "example": "https://relay-access.practable.io/session/abc123"
+        }
+      }
+    },
+    "OperationalFailureAction": {
+      "type": "object",
+      "required": [
+        "type",
+        "label"
+      ],
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "retry",
+            "choose_another",
+            "contact_support"
+          ]
+        },
+        "url": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalFailureGuidance": {
+      "type": "object",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalFailureAction"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
         }
       }
     },
@@ -7821,6 +8084,48 @@ func init() {
         }
       }
     },
+    "OperationalJobTemplate": {
+      "type": "object",
+      "required": [
+        "workflow",
+        "timeout"
+      ],
+      "properties": {
+        "allowed_overrides": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "duration"
+            ]
+          }
+        },
+        "failure_guidance": {
+          "$ref": "#/definitions/OperationalFailureGuidance"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "progress_messages": {
+          "$ref": "#/definitions/OperationalProgressMessages"
+        },
+        "retry": {
+          "$ref": "#/definitions/OperationalRetryPolicy"
+        },
+        "timeout": {
+          "type": "string"
+        },
+        "workflow": {
+          "type": "string"
+        }
+      }
+    },
     "OperationalOccurrence": {
       "type": "object",
       "required": [
@@ -7873,6 +8178,55 @@ func init() {
         }
       }
     },
+    "OperationalParameterBinding": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalPipelineStage": {
+      "type": "object",
+      "required": [
+        "name",
+        "job_template"
+      ],
+      "properties": {
+        "job_template": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "wait_after": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalPipelineTemplate": {
+      "type": "object",
+      "required": [
+        "stages"
+      ],
+      "properties": {
+        "cleanup": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalPipelineStage"
+          }
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalPipelineStage"
+          }
+        }
+      }
+    },
     "OperationalProfile": {
       "type": "object",
       "properties": {
@@ -7889,6 +8243,17 @@ func init() {
           }
         },
         "operating_window": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalProgressMessages": {
+      "type": "object",
+      "properties": {
+        "initial": {
+          "type": "string"
+        },
+        "retry": {
           "type": "string"
         }
       }
@@ -7935,6 +8300,34 @@ func init() {
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "OperationalRetryPolicy": {
+      "type": "object",
+      "properties": {
+        "attempts": {
+          "type": "integer",
+          "maximum": 20,
+          "minimum": 0
+        },
+        "backoff": {
+          "type": "number"
+        },
+        "initial_delay": {
+          "type": "string"
+        },
+        "maximum_delay": {
+          "type": "string"
+        },
+        "retryable_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "total_timeout": {
+          "type": "string"
         }
       }
     },
@@ -7995,6 +8388,23 @@ func init() {
         }
       }
     },
+    "OperationalStreamBinding": {
+      "type": "object",
+      "required": [
+        "activation_pipeline"
+      ],
+      "properties": {
+        "activation_pipeline": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalParameterBinding"
+          }
+        }
+      }
+    },
     "OperationalWorkflow": {
       "description": "Owner-approved bounded task contract; never an executable command or URL.",
       "type": "object",
@@ -8010,6 +8420,13 @@ func init() {
         "expected_duration": {
           "type": "string",
           "example": "10m"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "action",
+            "health_check"
+          ]
         },
         "maximum_duration": {
           "type": "string",
@@ -8238,6 +8655,12 @@ func init() {
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          }
+        },
+        "stream_operations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalStreamBinding"
           }
         },
         "streams": {
