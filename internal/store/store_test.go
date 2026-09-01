@@ -1150,6 +1150,22 @@ func TestOperationalStatusShowsResourceAndEffectiveSlotAvailability(t *testing.T
 	require.Equal(t, "unavailable because failed health check", summary.Slots["sl-b"].Reason)
 }
 
+func TestMaintenancePausesOnlyNewBookingCreation(t *testing.T) {
+	s := New()
+	s.SetNow(func() time.Time { return time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC) })
+	var m Manifest
+	require.NoError(t, yaml.Unmarshal(manifestYAML, &m))
+	require.NoError(t, s.ReplaceManifest(m))
+	message := "Technicians replacing camera"
+	require.NoError(t, s.SetMaintenance(true, &message))
+	_, err := s.MakeBooking("sl-a", "maintenance-user", interval.Interval{Start: s.Now().Add(time.Hour), End: s.Now().Add(70 * time.Minute)})
+	require.EqualError(t, err, "booking creation paused: "+message)
+	_, err = s.GetAvailability("sl-a")
+	require.NoError(t, err)
+	require.NoError(t, s.SetMaintenance(false, nil))
+	require.Equal(t, message, s.Message)
+}
+
 func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {
 
 	s := New()

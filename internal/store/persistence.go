@@ -40,6 +40,12 @@ type PersistentState struct {
 	ResourceAvailability map[string]AvailabilityStatus
 	SlotAvailability     map[string]AvailabilityStatus
 	Manifest             *PersistentManifest
+	Maintenance          PersistentMaintenance
+}
+
+type PersistentMaintenance struct {
+	Locked  bool
+	Message string
 }
 
 // AvailabilityStatus is an explicit administrative availability override.
@@ -92,6 +98,7 @@ type BookingRepository interface {
 	ReplaceManifest(context.Context, Manifest, ManifestValidator) (PersistentManifest, error)
 	SetResourceAvailability(context.Context, string, bool, string, int64) error
 	SetSlotAvailability(context.Context, string, bool, string, int64) error
+	SetMaintenance(context.Context, bool, *string) (PersistentMaintenance, error)
 	GrantGroup(context.Context, string, string, int64) error
 	RevokeGroup(context.Context, string, string, int64) error
 	Close()
@@ -131,6 +138,10 @@ func (s *Store) refreshFromRepositoryLocked(ctx context.Context) error {
 			return fmt.Errorf("apply persistent manifest version %d: %w", state.Manifest.Version, err)
 		}
 		s.manifestVersion = state.Manifest.Version
+	}
+	s.Locked = state.Maintenance.Locked
+	if state.Maintenance.Message != "" {
+		s.Message = state.Maintenance.Message
 	}
 
 	groups := make(map[string]map[string]bool)

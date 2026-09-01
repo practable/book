@@ -491,7 +491,7 @@ paths:
           $ref: '#/responses/InternalError'
 
     put:
-      description: Set whether the booking system is locked for users
+      description: Persistently pause or resume new booking creation. Reading, cancellation, and take-up remain available; resource or slot suspension controls unsafe take-up.
       summary: set/release booking lock
       tags:
       - admin
@@ -502,7 +502,7 @@ paths:
         in: query
         required: true
         type: boolean
-        description: set booking lock
+        description: pause new booking creation
       - name: msg
         in: query
         required: false

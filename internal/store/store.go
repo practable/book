@@ -2151,6 +2151,9 @@ func (s *Store) MakeBooking(slot, user string, when interval.Interval) (Booking,
 		s.Unlock()
 		log.Trace(where + " released lock")
 	}()
+	if s.Locked {
+		return Booking{}, errors.New("booking creation paused: " + s.Message)
+	}
 	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
 		return Booking{}, err
 	}
@@ -2168,6 +2171,26 @@ func (s *Store) MakeBooking(slot, user string, when interval.Interval) (Booking,
 
 	return b, err
 
+}
+
+// SetMaintenance durably pauses or resumes user booking creation. A nil message
+// preserves the current welcome message.
+func (s *Store) SetMaintenance(paused bool, message *string) error {
+	s.Lock()
+	defer s.Unlock()
+	if s.repository != nil {
+		state, err := s.repository.SetMaintenance(context.Background(), paused, message)
+		if err != nil {
+			return err
+		}
+		s.Locked, s.Message = state.Locked, state.Message
+		return nil
+	}
+	s.Locked = paused
+	if message != nil {
+		s.Message = *message
+	}
+	return nil
 }
 
 // MakeBookingWithID makes bookings for users, according to the policy

@@ -1125,10 +1125,9 @@ func setLockHandler(config config.ServerConfig) func(admin.SetLockParams, interf
 			return admin.NewSetLockUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		config.Store.Locked = params.Lock
-
-		if params.Msg != nil {
-			config.Store.Message = *(params.Msg)
+		if err := config.Store.SetMaintenance(params.Lock, params.Msg); err != nil {
+			c, m := "500", err.Error()
+			return admin.NewSetLockInternalServerError().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		s, err := convertStoreStatusAdminToModel(config.Store.GetStoreStatusAdmin())

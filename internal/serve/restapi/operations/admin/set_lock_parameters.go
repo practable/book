@@ -33,7 +33,7 @@ type SetLockParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*set booking lock
+	/*pause new booking creation
 	  Required: true
 	  In: query
 	*/

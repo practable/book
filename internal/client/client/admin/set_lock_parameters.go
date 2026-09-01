@@ -64,7 +64,7 @@ type SetLockParams struct {
 
 	/* Lock.
 
-	   set booking lock
+	   pause new booking creation
 	*/
 	Lock bool
 

@@ -169,6 +169,11 @@ func loadState(ctx context.Context, queryer stateQueryer) (store.PersistentState
 	if err := rows.Err(); err != nil {
 		return store.PersistentState{}, err
 	}
+	state.Maintenance.Message = "Welcome to the interval booking store"
+	err = queryer.QueryRow(ctx, "SELECT booking_creation_paused,welcome_message FROM public.service_state WHERE singleton").Scan(&state.Maintenance.Locked, &state.Maintenance.Message)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return store.PersistentState{}, err
+	}
 	groupRows, err := queryer.Query(ctx, "SELECT user_name, group_name FROM public.user_groups ORDER BY user_name, group_name")
 	if err != nil {
 		return store.PersistentState{}, err
@@ -920,6 +925,32 @@ func (r *Repository) ReplaceManifest(ctx context.Context, manifest store.Manifes
 
 func (r *Repository) SetResourceAvailability(ctx context.Context, resource string, available bool, reason string, manifestVersion int64) error {
 	return r.setAvailability(ctx, "public.resource_availability", "resource_name", resource, available, reason, manifestVersion)
+}
+
+func (r *Repository) SetMaintenance(ctx context.Context, paused bool, message *string) (store.PersistentMaintenance, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return store.PersistentMaintenance{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", maintenanceLock); err != nil {
+		return store.PersistentMaintenance{}, err
+	}
+	var result store.PersistentMaintenance
+	if message == nil {
+		err = tx.QueryRow(ctx, `UPDATE public.service_state SET booking_creation_paused=$1,updated_at=clock_timestamp(),updated_at_ns=$2 WHERE singleton RETURNING booking_creation_paused,welcome_message`, paused, time.Now().UTC().UnixNano()).Scan(&result.Locked, &result.Message)
+	} else {
+		err = tx.QueryRow(ctx, `UPDATE public.service_state SET booking_creation_paused=$1,welcome_message=$2,updated_at=clock_timestamp(),updated_at_ns=$3 WHERE singleton RETURNING booking_creation_paused,welcome_message`, paused, *message, time.Now().UTC().UnixNano()).Scan(&result.Locked, &result.Message)
+	}
+	if err != nil {
+		return store.PersistentMaintenance{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return store.PersistentMaintenance{}, err
+	}
+	return result, nil
 }
 
 func (r *Repository) SetSlotAvailability(ctx context.Context, slot string, available bool, reason string, manifestVersion int64) error {

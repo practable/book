@@ -103,17 +103,11 @@ func getAccessTokenHandler(config config.ServerConfig) func(users.GetAccessToken
 func getDescriptionHandler(config config.ServerConfig) func(users.GetDescriptionParams, interface{}) middleware.Responder {
 	return func(params users.GetDescriptionParams, principal interface{}) middleware.Responder {
 
-		isAdmin, _, err := isAdminOrUser(principal)
+		_, _, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
 			m := err.Error()
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
 			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -149,18 +143,12 @@ func getDescriptionHandler(config config.ServerConfig) func(users.GetDescription
 func getGroupHandler(config config.ServerConfig) func(users.GetGroupParams, interface{}) middleware.Responder {
 	return func(params users.GetGroupParams, principal interface{}) middleware.Responder {
 
-		isAdmin, _, err := isAdminOrUser(principal)
+		_, _, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
 			m := err.Error()
 			return users.NewGetGroupUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.GroupName == "" {
@@ -299,18 +287,12 @@ func getGroupHandler(config config.ServerConfig) func(users.GetGroupParams, inte
 func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, interface{}) middleware.Responder {
 	return func(params users.GetPolicyParams, principal interface{}) middleware.Responder {
 
-		isAdmin, _, err := isAdminOrUser(principal)
+		_, _, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
 			m := err.Error()
 			return users.NewGetPolicyUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.PolicyName == "" {
@@ -418,18 +400,12 @@ func getPolicyHandler(config config.ServerConfig) func(users.GetPolicyParams, in
 func getAvailabilityHandler(config config.ServerConfig) func(users.GetAvailabilityParams, interface{}) middleware.Responder {
 	return func(params users.GetAvailabilityParams, principal interface{}) middleware.Responder {
 
-		isAdmin, _, err := isAdminOrUser(principal)
+		_, _, err := isAdminOrUser(principal)
 
 		if err != nil {
 			c := "401"
 			m := err.Error()
 			return users.NewGetAvailabilityUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.SlotName == "" {
@@ -504,12 +480,6 @@ func makeBookingHandler(config config.ServerConfig) func(users.MakeBookingParams
 			m := err.Error()
 			log.WithFields(log.Fields{"token": principal, "error": err.Error()}).Debug("make booking unauthorized")
 			return users.NewMakeBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
 		if params.UserName == "" {
@@ -618,12 +588,6 @@ func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBooking
 			return users.NewGetBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in query"
@@ -679,12 +643,6 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 		if err != nil {
 			c := "401"
 			m := err.Error()
-			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
-
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
 			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
 
@@ -746,11 +704,7 @@ func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams
 			m := err.Error()
 			return users.NewGetActivityNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
+
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in path"
@@ -901,11 +855,7 @@ func getOldBookingsForUserHandler(config config.ServerConfig) func(users.GetOldB
 			m := err.Error()
 			return users.NewGetOldBookingsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
+
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in query"
@@ -962,11 +912,7 @@ func getGroupsForUserHandler(config config.ServerConfig) func(users.GetGroupsFor
 			m := err.Error()
 			return users.NewGetGroupsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetGroupsForUserUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
+
 		if params.UserName == "" {
 			c := "404"
 			m := "no user_name in path"
@@ -1025,11 +971,6 @@ func getPolicyStatusForUserHandler(config config.ServerConfig) func(users.GetPol
 	return func(params users.GetPolicyStatusForUserParams, principal interface{}) middleware.Responder {
 
 		isAdmin, claims, err := isAdminOrUser(principal)
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
 		if err != nil {
 			c := "401"
 			m := err.Error()
@@ -1078,11 +1019,6 @@ func addGroupForUserHandler(config config.ServerConfig) func(users.AddGroupForUs
 	return func(params users.AddGroupForUserParams, principal interface{}) middleware.Responder {
 
 		isAdmin, claims, err := isAdminOrUser(principal)
-		if config.Store.Locked && !isAdmin {
-			c := "401"
-			m := "store locked to users: " + config.Store.Message
-			return users.NewGetDescriptionUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
-		}
 		if err != nil {
 			c := "401"
 			m := err.Error()

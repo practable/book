@@ -27,7 +27,9 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+	require.NoError(t, err)
+	_, err = repository.pool.Exec(context.Background(), "INSERT INTO public.service_state(singleton,updated_at_ns) VALUES(true,0)")
 	require.NoError(t, err)
 	t.Cleanup(repository.Close)
 	return repository
@@ -59,7 +61,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 5, versions)
+	require.Equal(t, 6, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -101,6 +103,23 @@ func TestMigrationAndRestartRecovery(t *testing.T) {
 	require.True(t, state.Bookings[0].Booking.Started)
 	require.Equal(t, start.UnixNano(), state.Bookings[0].Booking.When.Start.UnixNano())
 	require.Equal(t, []string{"course-group"}, state.Groups["opaque-user"])
+}
+
+func TestMaintenanceStateSurvivesRestart(t *testing.T) {
+	repository := integrationRepository(t)
+	message := "Technicians replacing camera"
+	state, err := repository.SetMaintenance(context.Background(), true, &message)
+	require.NoError(t, err)
+	require.True(t, state.Locked)
+	require.Equal(t, message, state.Message)
+	repository.Close()
+	reopened, err := Open(context.Background(), os.Getenv("BOOK_TEST_DATABASE_URL"), 4, 10*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(reopened.Close)
+	loaded, err := reopened.Load(context.Background())
+	require.NoError(t, err)
+	require.True(t, loaded.Maintenance.Locked)
+	require.Equal(t, message, loaded.Maintenance.Message)
 }
 
 func TestTimestampsRoundTripAsUTCInstants(t *testing.T) {

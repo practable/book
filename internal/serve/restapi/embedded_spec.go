@@ -725,7 +725,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Set whether the booking system is locked for users",
+        "description": "Persistently pause or resume new booking creation. Reading, cancellation, and take-up remain available; resource or slot suspension controls unsafe take-up.",
         "produces": [
           "application/json"
         ],
@@ -737,7 +737,7 @@ func init() {
         "parameters": [
           {
             "type": "boolean",
-            "description": "set booking lock",
+            "description": "pause new booking creation",
             "name": "lock",
             "in": "query",
             "required": true
@@ -3461,7 +3461,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Set whether the booking system is locked for users",
+        "description": "Persistently pause or resume new booking creation. Reading, cancellation, and take-up remain available; resource or slot suspension controls unsafe take-up.",
         "produces": [
           "application/json"
         ],
@@ -3473,7 +3473,7 @@ func init() {
         "parameters": [
           {
             "type": "boolean",
-            "description": "set booking lock",
+            "description": "pause new booking creation",
             "name": "lock",
             "in": "query",
             "required": true

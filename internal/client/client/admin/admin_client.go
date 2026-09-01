@@ -820,7 +820,7 @@ func (a *Client) GetStoreStatusAdmin(params *GetStoreStatusAdminParams, authInfo
 /*
 SetLock sets release booking lock
 
-Set whether the booking system is locked for users
+Persistently pause or resume new booking creation. Reading, cancellation, and take-up remain available; resource or slot suspension controls unsafe take-up.
 */
 func (a *Client) SetLock(params *SetLockParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*SetLockOK, error) {
 	// TODO: Validate the params before sending
