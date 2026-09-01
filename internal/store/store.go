@@ -2604,12 +2604,35 @@ func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, n
 		return Booking{}, errors.New(reason)
 	}
 
+	reclaimed := make([]Booking, 0)
+	if !p.EnforceUnlimitedUsers {
+		for _, existing := range s.Bookings {
+			if existing.Cancelled || existing.Policy != "__operations_reclaimable__" {
+				continue
+			}
+			existingSlot, ok := s.Slots[existing.Slot]
+			if !ok || existingSlot.Resource != sl.Resource || interval.Comparator(existing.When, when) != 0 {
+				continue
+			}
+			if err := r.Diary.Delete(existing.Name); err != nil {
+				return Booking{}, err
+			}
+			reclaimed = append(reclaimed, *existing)
+		}
+	}
+	restoreReclaimed := func() {
+		for _, item := range reclaimed {
+			_ = r.Diary.RequestRegardlessAvailability(item.When, item.Name)
+		}
+	}
+
 	if !p.EnforceUnlimitedUsers { //skip booking if we allow unlimited users
 
 		// see if the booking can be made ....
 		err := r.Diary.Request(when, name)
 
 		if err != nil {
+			restoreReclaimed()
 			return Booking{}, err
 		}
 	}
@@ -2624,30 +2647,112 @@ func (s *Store) makeBookingWithName(slot, user string, when interval.Interval, n
 		User:        user,
 		When:        when,
 	}
+	planned, err := s.plannedOperationalReservationsLocked(slot, name, when)
+	if err != nil {
+		restoreReclaimed()
+		if !p.EnforceUnlimitedUsers {
+			_ = r.Diary.Delete(name)
+		}
+		return Booking{}, err
+	}
+	if len(planned) > 0 && s.repository == nil {
+		restoreReclaimed()
+		if !p.EnforceUnlimitedUsers {
+			_ = r.Diary.Delete(name)
+		}
+		return Booking{}, errors.New("operational guards require durable persistence")
+	}
+	reservedLocally := make([]string, 0, len(planned))
+	for _, item := range planned {
+		guard := item.Request.Booking
+		if err := r.Diary.RequestRegardlessAvailability(guard.When, guard.Name); err != nil {
+			for _, reserved := range reservedLocally {
+				_ = r.Diary.Delete(reserved)
+			}
+			if !p.EnforceUnlimitedUsers {
+				_ = r.Diary.Delete(name)
+			}
+			restoreReclaimed()
+			return Booking{}, errors.New("operational guard conflict: " + err.Error())
+		}
+		reservedLocally = append(reservedLocally, guard.Name)
+	}
 
 	if s.repository != nil {
-		persisted, created, err := s.repository.CreateBooking(context.Background(), CreateBookingRequest{
+		request := CreateBookingRequest{
 			Booking: booking, Resource: sl.Resource, ResourceConstrained: !p.EnforceUnlimitedUsers,
 			ManifestVersion: s.manifestVersion,
 			Now:             s.now(), EnforceMaxBookings: p.EnforceMaxBookings, MaxBookings: p.MaxBookings,
 			EnforceMaxUsage: p.EnforceMaxUsage, MaxUsage: p.MaxUsage,
-		})
+		}
+		var persisted PersistentBooking
+		var operationBookings []PersistentBooking
+		var created bool
+		var err error
+		if len(planned) > 0 || len(reclaimed) > 0 {
+			repository, ok := s.repository.(OperationalBookingRepository)
+			if !ok {
+				err = errors.New("repository does not support atomic operational guards")
+			} else {
+				reclaimNames := make([]string, 0, len(reclaimed))
+				for _, item := range reclaimed {
+					reclaimNames = append(reclaimNames, item.Name)
+				}
+				persisted, operationBookings, created, err = repository.CreateBookingWithOperations(context.Background(), request, planned, reclaimNames)
+			}
+		} else {
+			persisted, created, err = s.repository.CreateBooking(context.Background(), request)
+		}
 		if err != nil {
+			for _, reserved := range reservedLocally {
+				_ = r.Diary.Delete(reserved)
+			}
 			if !p.EnforceUnlimitedUsers {
 				_ = r.Diary.Delete(name)
 			}
+			restoreReclaimed()
 			if errors.Is(err, ErrStaleManifest) {
 				_ = s.refreshFromRepositoryLocked(context.Background())
 			}
 			return Booking{}, err
 		}
 		if !created {
+			for _, reserved := range reservedLocally {
+				_ = r.Diary.Delete(reserved)
+			}
 			if !p.EnforceUnlimitedUsers {
 				_ = r.Diary.Delete(name)
 			}
+			restoreReclaimed()
 			return persisted.Booking, nil
 		}
 		booking = persisted.Booking
+		if len(operationBookings) != len(planned) {
+			for _, reserved := range reservedLocally {
+				_ = r.Diary.Delete(reserved)
+			}
+			if !p.EnforceUnlimitedUsers {
+				_ = r.Diary.Delete(name)
+			}
+			restoreReclaimed()
+			return Booking{}, errors.New("repository returned incomplete operational plan")
+		}
+		for _, item := range reclaimed {
+			delete(s.Bookings, item.Name)
+			if system := s.Users["__operations__"]; system != nil {
+				delete(system.Bookings, item.Name)
+			}
+		}
+		if len(operationBookings) > 0 {
+			if s.Users["__operations__"] == nil {
+				s.Users["__operations__"] = NewUser()
+			}
+			for _, persistedGuard := range operationBookings {
+				guard := persistedGuard.Booking
+				s.Bookings[guard.Name] = &guard
+				s.Users["__operations__"].Bookings[guard.Name] = &guard
+			}
+		}
 	}
 
 	// successful (or skipped) booking, so update usage tracker with value we calculated earlier

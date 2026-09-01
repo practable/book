@@ -178,6 +178,56 @@ func TestOperationalJobOutboxIsTransactionalIdempotentAndClaimedOnce(t *testing.
 	require.Equal(t, 1, count)
 }
 
+func TestBookingAndOperationalGuardsCommitAtomically(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 8, 18, 0, 0, 0, time.UTC)
+	primary := request("guarded-user-booking", "user", "slot-a", "resource-a", start, start.Add(time.Hour))
+	planned := []store.OperationalReservation{
+		operationalReservation("setup-job", "setup-booking", "setup-delivery", "guarded-user-booking", "resource-a", start.Add(-10*time.Minute), start),
+		operationalReservation("teardown-job", "teardown-booking", "teardown-delivery", "guarded-user-booking", "resource-a", start.Add(time.Hour), start.Add(70*time.Minute)),
+	}
+	created, guards, fresh, err := repository.CreateBookingWithOperations(ctx, primary, planned, nil)
+	require.NoError(t, err)
+	require.True(t, fresh)
+	require.Equal(t, "guarded-user-booking", created.Booking.Name)
+	require.Len(t, guards, 2)
+	var bookingCount, jobCount, deliveryCount int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.bookings WHERE collection='live' AND NOT superseded").Scan(&bookingCount))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs").Scan(&jobCount))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.webhook_deliveries").Scan(&deliveryCount))
+	require.Equal(t, 3, bookingCount)
+	require.Equal(t, 2, jobCount)
+	require.Equal(t, 2, deliveryCount)
+}
+
+func TestOperationalGuardFailureRollsBackUserBooking(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 8, 18, 0, 0, 0, time.UTC)
+	primary := request("rollback-guarded-booking", "user", "slot-a", "resource-a", start, start.Add(time.Hour))
+	// This guard overlaps its triggering booking and must roll back everything.
+	planned := []store.OperationalReservation{operationalReservation("bad-job", "bad-booking", "bad-delivery", primary.Booking.Name, "resource-a", start.Add(-time.Minute), start.Add(time.Minute))}
+	_, _, _, err := repository.CreateBookingWithOperations(ctx, primary, planned, nil)
+	require.ErrorIs(t, err, store.ErrBookingConflict)
+	var bookingCount, jobCount int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.bookings").Scan(&bookingCount))
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.operational_jobs").Scan(&jobCount))
+	require.Zero(t, bookingCount)
+	require.Zero(t, jobCount)
+}
+
+func operationalReservation(jobID, bookingID, deliveryID, trigger, resource string, start, end time.Time) store.OperationalReservation {
+	body := []byte(`{"version":1}`)
+	booking := store.Booking{Name: bookingID, User: "__operations__", Policy: "__operations__", Slot: "slot-a", Maintenance: true, When: interval.Interval{Start: start, End: end}}
+	return store.OperationalReservation{
+		Request: store.CreateBookingRequest{Booking: booking, Resource: resource, ResourceConstrained: true, Now: start, Maintenance: true},
+		Job: operations.Job{ID: jobID, Resource: resource, Workflow: "workflow", Kind: "setup", State: "reserved", DueAt: start, StartsAt: start, EndsAt: end,
+			TriggeringBookingName: trigger, IdempotencyKey: "key-" + jobID, Payload: body},
+		Delivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body},
+	}
+}
+
 func TestOperationalDeliveryRetryAndCallbackIdempotency(t *testing.T) {
 	repository := integrationRepository(t)
 	ctx := context.Background()
@@ -286,6 +336,48 @@ func TestStoreProjectionSurvivesProcessRestart(t *testing.T) {
 	recovered, err := second.GetBooking("restart-booking")
 	require.NoError(t, err)
 	require.Equal(t, created, recovered)
+}
+
+func TestStoreBookingCreatesDurableOperationalPlanAndRecovers(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	manifest.OperationalWorkflows = map[string]store.OperationalWorkflow{
+		"prepare": {Description: "Prepare equipment", ExpectedDuration: 10 * time.Minute, MaximumDuration: 10 * time.Minute},
+		"settle":  {Description: "Settle equipment", ExpectedDuration: 10 * time.Minute, MaximumDuration: 10 * time.Minute},
+	}
+	resource := manifest.Resources["r-a"]
+	resource.Operations = store.OperationalProfile{
+		BeforeBooking: []store.OperationalGuard{{Workflow: "prepare", Duration: 10 * time.Minute, Applies: store.OperationalAlways, Reclaimable: true}},
+		AfterBooking:  []store.OperationalGuard{{Workflow: "settle", Duration: 10 * time.Minute, Applies: store.OperationalAlways, Reclaimable: true}},
+	}
+	manifest.Resources["r-a"] = resource
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	first := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(manifest))
+	when := interval.Interval{Start: now.Add(time.Hour), End: now.Add(70 * time.Minute)}
+	_, err = first.MakeBookingWithName("sl-a", "guard-user", when, "guard-trigger", false)
+	require.NoError(t, err)
+	var bookingCount, jobCount int
+	require.NoError(t, repository.pool.QueryRow(context.Background(), "SELECT count(*) FROM public.bookings WHERE collection='live' AND NOT superseded").Scan(&bookingCount))
+	require.NoError(t, repository.pool.QueryRow(context.Background(), "SELECT count(*) FROM public.operational_jobs WHERE triggering_booking_name='guard-trigger'").Scan(&jobCount))
+	require.Equal(t, 3, bookingCount)
+	require.Equal(t, 2, jobCount)
+	secondWhen := interval.Interval{Start: when.End.Add(5 * time.Minute), End: when.End.Add(15 * time.Minute)}
+	_, err = first.MakeBookingWithName("sl-a", "next-user", secondWhen, "next-trigger", false)
+	require.NoError(t, err)
+	require.NoError(t, repository.pool.QueryRow(context.Background(), "SELECT count(*) FROM public.bookings WHERE collection='live' AND NOT superseded").Scan(&bookingCount))
+	require.Equal(t, 4, bookingCount)
+	var cancelledJobs int
+	require.NoError(t, repository.pool.QueryRow(context.Background(), "SELECT count(*) FROM public.operational_jobs WHERE triggering_booking_name='guard-trigger' AND state='cancelled'").Scan(&cancelledJobs))
+	require.Equal(t, 1, cancelledJobs)
+
+	second := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, second.WithRepository(repository))
+	require.Len(t, second.ExportBookings(), 4)
 }
 
 func TestAvailabilitySuspensionsAreDurableSharedAndSlotScoped(t *testing.T) {

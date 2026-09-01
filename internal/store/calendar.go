@@ -111,7 +111,7 @@ func (s *Store) matchingCalendarResourcesLocked(selector CalendarSelector, when 
 	matchingSlots := make([]string, 0, len(slots))
 	for _, slotName := range slots {
 		available, err := s.getAvailability(slotName)
-		if err != nil || !intervalContained(available, when) {
+		if err != nil || (!intervalContained(available, when) && !s.bookableByReclaimingOperationsLocked(slotName, when)) {
 			continue
 		}
 		slot := s.Slots[slotName]
@@ -119,6 +119,34 @@ func (s *Store) matchingCalendarResourcesLocked(selector CalendarSelector, when 
 		matchingSlots = append(matchingSlots, slotName)
 	}
 	return resources, matchingSlots, nil
+}
+
+func (s *Store) bookableByReclaimingOperationsLocked(slotName string, when interval.Interval) bool {
+	slot, ok := s.Slots[slotName]
+	if !ok {
+		return false
+	}
+	window, ok := s.Filters[slot.Window]
+	if !ok || !window.Allowed(when) {
+		return false
+	}
+	available, _, err := s.getSlotIsAvailable(slotName)
+	if err != nil || !available {
+		return false
+	}
+	for _, existing := range s.Bookings {
+		if existing.Cancelled || interval.Comparator(existing.When, when) != 0 {
+			continue
+		}
+		existingSlot, ok := s.Slots[existing.Slot]
+		if !ok || existingSlot.Resource != slot.Resource {
+			continue
+		}
+		if existing.Policy != "__operations_reclaimable__" {
+			return false
+		}
+	}
+	return true
 }
 
 // GetCalendarCatalogue returns one entry per policy in a group. Policies are

@@ -1,6 +1,6 @@
 # ADR 0003: Recurring operations, automation bookings, and health jobs
 
-- Status: accepted; recurrence and durable authenticated job transport implemented; workflow planning deferred
+- Status: accepted; recurrence, durable authenticated job transport, and booking guard creation implemented
 - Date: 2026-08-31
 
 ## Context
@@ -185,8 +185,11 @@ at-least-once distributed workflow rather than simple cron callbacks.
 Finite weekly `recurring_allowed` and `recurring_denied` rules are supported on
 existing manifest windows. Operational job persistence, leased outbox delivery,
 direction-bound HMAC authentication, retries, and idempotent callbacks are also
-implemented. Operational-state schedules, workflow guards, health policy,
-charging, organisation accounts, and block booking remain deferred.
+implemented. Manifest-driven booking guards are created atomically with their
+triggering booking and undispatched reclaimable guards can be superseded by a
+following booking. Operational-state schedules, cancellation/edit replanning,
+runner booking capabilities, health policy, charging, organisation accounts,
+and block booking remain deferred.
 
 ## Related decisions
 

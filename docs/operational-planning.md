@@ -48,7 +48,14 @@ Manifest validation rejects missing workflows, unknown operating windows,
 non-positive durations, durations beyond the workflow maximum, and invalid
 conditions. Existing manifests need no new fields and remain compatible.
 
-The implementation validates and persists this vocabulary and computes
-deterministic plans. Reservations now consistently use half-open `[start,end)`
-semantics in the AVL diary, filters, and PostgreSQL, allowing an operational
-guard and user booking to share an exact boundary without overlapping.
+The implementation validates and persists this vocabulary, computes
+deterministic plans, and transactionally creates the user booking, operational
+guard reservations, jobs, audit events, and delivery outbox records. Any
+failure rolls back the entire plan. Reservations use half-open `[start,end)`
+semantics in the AVL diary, filters, and PostgreSQL.
+
+Reclaiming an undispatched guard is also transactional. A following booking may
+supersede a `reclaimable` reservation while its job remains `scheduled` or
+`reserved`; the associated pending delivery is cancelled and the new boundary
+is replanned. Once dispatch has begun, the physical action is treated as
+committed and the guard cannot be reclaimed merely to fit another booking.

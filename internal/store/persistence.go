@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/practable/book/internal/operations"
+
 	"github.com/practable/book/internal/diary"
 )
 
@@ -77,6 +79,18 @@ type CreateBookingRequest struct {
 	MaxUsage            time.Duration
 	Maintenance         bool
 	Actor               string
+}
+
+type OperationalReservation struct {
+	Request  CreateBookingRequest
+	Job      operations.Job
+	Delivery operations.Delivery
+}
+
+// OperationalBookingRepository is an optional atomic extension. A store must
+// not create planned guards piecemeal when its repository lacks this contract.
+type OperationalBookingRepository interface {
+	CreateBookingWithOperations(context.Context, CreateBookingRequest, []OperationalReservation, []string) (PersistentBooking, []PersistentBooking, bool, error)
 }
 
 // ManifestValidator runs while the repository holds the exclusive maintenance

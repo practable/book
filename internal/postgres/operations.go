@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v4"
 	"github.com/practable/book/internal/operations"
+	"github.com/practable/book/internal/store"
 )
 
 const jobSelect = `SELECT job_id,resource_name,workflow_name,job_kind,state,due_at,starts_at,ends_at,
@@ -58,6 +59,98 @@ func (r *Repository) CreateJob(ctx context.Context, job operations.Job, delivery
 		return operations.Job{}, false, err
 	}
 	return persisted, created, nil
+}
+
+func (r *Repository) CreateBookingWithOperations(ctx context.Context, request store.CreateBookingRequest, planned []store.OperationalReservation, reclaim []string) (store.PersistentBooking, []store.PersistentBooking, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := supersedeReclaimableOperationsTx(ctx, tx, reclaim, request.Now); err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	primary, created, err := createBookingTx(ctx, tx, request)
+	if err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
+	if !created {
+		if err := tx.Commit(ctx); err != nil {
+			return store.PersistentBooking{}, nil, false, err
+		}
+		return primary, nil, false, nil
+	}
+	reservations := make([]store.PersistentBooking, 0, len(planned))
+	for _, item := range planned {
+		reservation, fresh, err := createBookingTx(ctx, tx, item.Request)
+		if err != nil {
+			return store.PersistentBooking{}, nil, false, err
+		}
+		if !fresh {
+			return store.PersistentBooking{}, nil, false, store.ErrBookingConflict
+		}
+		job := item.Job
+		job.BookingRowID = &reservation.Revision
+		if err := insertOperationalJobTx(ctx, tx, job, item.Delivery); err != nil {
+			return store.PersistentBooking{}, nil, false, err
+		}
+		reservations = append(reservations, reservation)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, nil, false, mapWriteError(err)
+	}
+	return primary, reservations, true, nil
+}
+
+func supersedeReclaimableOperationsTx(ctx context.Context, tx pgx.Tx, names []string, now time.Time) error {
+	for _, name := range names {
+		var rowID int64
+		var jobID, state string
+		err := tx.QueryRow(ctx, `SELECT b.row_id,j.job_id,j.state FROM public.bookings b
+			JOIN public.operational_jobs j ON j.booking_row_id=b.row_id
+			WHERE b.name=$1 AND b.policy_name='__operations_reclaimable__' AND b.collection='live' AND NOT b.superseded FOR UPDATE OF b,j`, name).Scan(&rowID, &jobID, &state)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return store.ErrBookingConflict
+		}
+		if err != nil {
+			return err
+		}
+		if state != "scheduled" && state != "reserved" {
+			return store.ErrBookingConflict
+		}
+		if _, err := tx.Exec(ctx, "UPDATE public.bookings SET superseded=true,updated_at=clock_timestamp() WHERE row_id=$1", rowID); err != nil {
+			return err
+		}
+		if err := insertEvent(ctx, tx, rowID, name, "superseded", now, "operational-replan"); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, "UPDATE public.operational_jobs SET state='cancelled',updated_at=clock_timestamp() WHERE job_id=$1", jobID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, "UPDATE public.webhook_deliveries SET state='cancelled',updated_at=clock_timestamp() WHERE job_id=$1 AND state='pending'", jobID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func insertOperationalJobTx(ctx context.Context, tx pgx.Tx, job operations.Job, delivery operations.Delivery) error {
+	_, err := tx.Exec(ctx, `INSERT INTO public.operational_jobs
+		(job_id,resource_name,workflow_name,job_kind,state,due_at,due_at_ns,starts_at,starts_at_ns,ends_at,ends_at_ns,
+		 booking_row_id,triggering_booking_name,manifest_version,plan_revision,idempotency_key,payload)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+		job.ID, job.Resource, job.Workflow, job.Kind, job.State, job.DueAt.UTC(), job.DueAt.UnixNano(),
+		job.StartsAt.UTC(), job.StartsAt.UnixNano(), job.EndsAt.UTC(), job.EndsAt.UnixNano(), job.BookingRowID,
+		job.TriggeringBookingName, job.ManifestVersion, job.PlanRevision, job.IdempotencyKey, string(job.Payload))
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO public.webhook_deliveries
+		(delivery_id,job_id,direction,state,body,next_attempt_at,next_attempt_at_ns)
+		VALUES($1,$2,'book-to-runner','pending',$3,$4,$5)`, delivery.ID, job.ID, string(delivery.Body), job.DueAt.UTC(), job.DueAt.UnixNano())
+	return err
 }
 
 func (r *Repository) GetJob(ctx context.Context, id string) (operations.Job, error) {

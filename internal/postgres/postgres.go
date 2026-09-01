@@ -275,6 +275,17 @@ func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBook
 		return store.PersistentBooking{}, false, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+	persisted, created, err := createBookingTx(ctx, tx, request)
+	if err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, false, mapWriteError(err)
+	}
+	return persisted, created, nil
+}
+
+func createBookingTx(ctx context.Context, tx pgx.Tx, request store.CreateBookingRequest) (store.PersistentBooking, bool, error) {
 	if err := lockCreate(ctx, tx, request.Booking.User, request.Booking.Policy, request.Resource); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
@@ -292,16 +303,13 @@ func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBook
 		request.Booking.User, request.Booking.Policy, request.Booking.Slot,
 		request.Booking.When.Start.UnixNano(), request.Booking.When.End.UnixNano())
 	if existing, scanErr := scanBooking(row); scanErr == nil {
-		if err := tx.Commit(ctx); err != nil {
-			return store.PersistentBooking{}, false, err
-		}
 		return existing, false, nil
 	} else if !errors.Is(scanErr, pgx.ErrNoRows) {
 		return store.PersistentBooking{}, false, scanErr
 	}
 
 	var sameName int
-	err = tx.QueryRow(ctx, "SELECT 1 FROM public.bookings WHERE name=$1 AND collection='live' AND NOT superseded", request.Booking.Name).Scan(&sameName)
+	err := tx.QueryRow(ctx, "SELECT 1 FROM public.bookings WHERE name=$1 AND collection='live' AND NOT superseded", request.Booking.Name).Scan(&sameName)
 	if err == nil {
 		return store.PersistentBooking{}, false, store.ErrBookingIDConflict
 	}
@@ -337,9 +345,6 @@ func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBook
 	}
 	if err := insertEvent(ctx, tx, rowID, request.Booking.Name, "created", request.Now, request.Booking.User); err != nil {
 		return store.PersistentBooking{}, false, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return store.PersistentBooking{}, false, mapWriteError(err)
 	}
 	return store.PersistentBooking{Booking: request.Booking, Revision: rowID, Resource: request.Resource,
 		ResourceConstrained: request.ResourceConstrained, Current: true,

@@ -1,13 +1,17 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/practable/book/internal/filter"
 	"github.com/practable/book/internal/interval"
+	"github.com/practable/book/internal/operations"
 )
 
 const (
@@ -23,6 +27,70 @@ type OperationalWorkflow struct {
 	Description      string        `json:"description" yaml:"description"`
 	ExpectedDuration time.Duration `json:"expected_duration" yaml:"expected_duration"`
 	MaximumDuration  time.Duration `json:"maximum_duration" yaml:"maximum_duration"`
+}
+
+func (s *Store) plannedOperationalReservationsLocked(slotName, bookingName string, when interval.Interval) ([]OperationalReservation, error) {
+	slot := s.Slots[slotName]
+	resource := s.Resources[slot.Resource]
+	if len(resource.Operations.BeforeBooking) == 0 && len(resource.Operations.AfterBooking) == 0 {
+		return nil, nil
+	}
+	var previous, next *interval.Interval
+	for _, existing := range s.Bookings {
+		if existing.Cancelled || strings.HasPrefix(existing.Policy, "__operations") {
+			continue
+		}
+		existingSlot, ok := s.Slots[existing.Slot]
+		if !ok || existingSlot.Resource != slot.Resource {
+			continue
+		}
+		candidate := existing.When
+		if !candidate.End.After(when.Start) && (previous == nil || candidate.End.After(previous.End)) {
+			copy := candidate
+			previous = &copy
+		}
+		if !candidate.Start.Before(when.End) && (next == nil || candidate.Start.Before(next.Start)) {
+			copy := candidate
+			next = &copy
+		}
+	}
+	plans, err := PlanOperationalGuards(s.exportManifestLocked(), slot.Resource, when, previous, next)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]OperationalReservation, 0, len(plans))
+	for _, plan := range plans {
+		identity := bookingName + "\x00" + plan.Kind + "\x00" + plan.Workflow + "\x00" + plan.When.Start.UTC().Format(time.RFC3339Nano)
+		jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("job\x00"+identity)).String()
+		reservationName := uuid.NewSHA1(uuid.NameSpaceURL, []byte("reservation\x00"+identity)).String()
+		deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("delivery\x00"+identity)).String()
+		idempotencyKey := "booking-operation:" + jobID
+		jobKind := "setup"
+		if plan.Kind == OperationalAfterBooking {
+			jobKind = "teardown"
+		}
+		command := operations.Command{Version: 1, JobID: jobID, Workflow: plan.Workflow, Resource: slot.Resource,
+			Kind: jobKind, StartsAt: plan.When.Start.UTC(), EndsAt: plan.When.End.UTC(), BookingName: reservationName,
+			PlanRevision: 1, IdempotencyKey: idempotencyKey}
+		body, err := json.Marshal(command)
+		if err != nil {
+			return nil, err
+		}
+		policy := "__operations__"
+		if plan.Reclaimable {
+			policy = "__operations_reclaimable__"
+		}
+		reservation := Booking{Name: reservationName, User: "__operations__", Policy: policy, Slot: slotName, Maintenance: true, When: plan.When}
+		result = append(result, OperationalReservation{
+			Request: CreateBookingRequest{Booking: reservation, Resource: slot.Resource, ResourceConstrained: true,
+				Now: s.now(), ManifestVersion: s.manifestVersion, Maintenance: true, Actor: "operational-planner"},
+			Job: operations.Job{ID: jobID, Resource: slot.Resource, Workflow: plan.Workflow, Kind: jobKind, State: "reserved",
+				DueAt: plan.DueAt.UTC(), StartsAt: plan.When.Start.UTC(), EndsAt: plan.When.End.UTC(), TriggeringBookingName: bookingName,
+				ManifestVersion: s.manifestVersion, PlanRevision: 1, IdempotencyKey: idempotencyKey, Payload: body},
+			Delivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body},
+		})
+	}
+	return result, nil
 }
 
 type OperationalGuard struct {
