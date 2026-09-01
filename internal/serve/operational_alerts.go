@@ -161,3 +161,57 @@ func listResourceHoldsHandler(cfg config.ServerConfig) func(admin.ListResourceHo
 		return admin.NewListResourceHoldsOK().WithPayload(payload)
 	}
 }
+
+func resourceReleaseToModel(value store.ResourceReleaseState) *models.ResourceReleaseState {
+	requested := strfmt.DateTime(value.RequestedAt)
+	result := &models.ResourceReleaseState{Resource: &value.Resource, State: &value.State, RequiredStreams: value.RequiredStreams,
+		FailingStreams: value.FailingStreams, RequestedAt: &requested, RequestedBy: &value.RequestedBy,
+		ManifestVersion: &value.ManifestVersion, OverrideReason: &value.OverrideReason}
+	if value.ReleasedAt != nil {
+		result.ReleasedAt = strfmt.DateTime(*value.ReleasedAt)
+	}
+	return result
+}
+
+func requestResourceReleaseHandler(cfg config.ServerConfig) func(admin.RequestResourceReleaseParams, interface{}) middleware.Responder {
+	return func(params admin.RequestResourceReleaseParams, principal interface{}) middleware.Responder {
+		claims, err := isMaintenanceOrAdmin(principal)
+		if err != nil {
+			code, message := "401", "no scope booking:maintenance"
+			return admin.NewRequestResourceReleaseUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		reason := ""
+		if params.OverrideReason != nil {
+			reason = *params.OverrideReason
+		}
+		value, err := cfg.Store.RequestResourceRelease(params.HTTPRequest.Context(), params.ResourceName, claims.Subject, reason)
+		if err == nil {
+			return admin.NewRequestResourceReleaseAccepted().WithPayload(resourceReleaseToModel(value))
+		}
+		code, message := "409", err.Error()
+		if errors.Is(err, store.ErrPersistentNotFound) {
+			code = "404"
+			return admin.NewRequestResourceReleaseNotFound().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		return admin.NewRequestResourceReleaseConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+	}
+}
+
+func listResourceReleasesHandler(cfg config.ServerConfig) func(admin.ListResourceReleasesParams, interface{}) middleware.Responder {
+	return func(params admin.ListResourceReleasesParams, principal interface{}) middleware.Responder {
+		if _, err := isMaintenanceOrAdmin(principal); err != nil {
+			code, message := "401", "no scope booking:maintenance"
+			return admin.NewListResourceReleasesUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		values, err := cfg.Store.ListResourceReleaseStates(params.HTTPRequest.Context())
+		if err != nil {
+			code, message := "500", err.Error()
+			return admin.NewListResourceReleasesInternalServerError().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		payload := make([]*models.ResourceReleaseState, 0, len(values))
+		for _, value := range values {
+			payload = append(payload, resourceReleaseToModel(value))
+		}
+		return admin.NewListResourceReleasesOK().WithPayload(payload)
+	}
+}

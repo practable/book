@@ -136,6 +136,8 @@ type ClientService interface {
 
 	ListResourceHolds(params *ListResourceHoldsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListResourceHoldsOK, error)
 
+	ListResourceReleases(params *ListResourceReleasesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListResourceReleasesOK, error)
+
 	MakeMaintenanceBooking(params *MakeMaintenanceBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeMaintenanceBookingOK, error)
 
 	MakeResourceMaintenanceBooking(params *MakeResourceMaintenanceBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeResourceMaintenanceBookingOK, error)
@@ -151,6 +153,8 @@ type ClientService interface {
 	ReplaceManifest(params *ReplaceManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceManifestOK, error)
 
 	ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceOldBookingsOK, error)
+
+	RequestResourceRelease(params *RequestResourceReleaseParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RequestResourceReleaseAccepted, error)
 
 	ResolveOperationalAlert(params *ResolveOperationalAlertParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ResolveOperationalAlertOK, error)
 
@@ -893,6 +897,45 @@ func (a *Client) ListResourceHolds(params *ListResourceHoldsParams, authInfo run
 }
 
 /*
+ListResourceReleases lists pending verified and degraded resource releases
+*/
+func (a *Client) ListResourceReleases(params *ListResourceReleasesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListResourceReleasesOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewListResourceReleasesParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "ListResourceReleases",
+		Method:             "GET",
+		PathPattern:        "/admin/resource-releases",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &ListResourceReleasesReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ListResourceReleasesOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for ListResourceReleases: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
 MakeMaintenanceBooking creates a maintenance booking
 
 Creates a resource-constrained booking for a technician. It may use suspended equipment but never overlaps any existing booking. Requires booking:maintenance or booking:admin.
@@ -1217,6 +1260,45 @@ func (a *Client) ReplaceOldBookings(params *ReplaceOldBookingsParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for ReplaceOldBookings: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+RequestResourceRelease requests verified release or explicitly release as degraded
+*/
+func (a *Client) RequestResourceRelease(params *RequestResourceReleaseParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RequestResourceReleaseAccepted, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRequestResourceReleaseParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "RequestResourceRelease",
+		Method:             "POST",
+		PathPattern:        "/admin/resource-holds/{resource_name}/release",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &RequestResourceReleaseReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RequestResourceReleaseAccepted)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for RequestResourceRelease: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

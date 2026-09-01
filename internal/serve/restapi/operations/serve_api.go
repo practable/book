@@ -150,6 +150,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminListResourceHoldsHandler: admin.ListResourceHoldsHandlerFunc(func(params admin.ListResourceHoldsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ListResourceHolds has not yet been implemented")
 		}),
+		AdminListResourceReleasesHandler: admin.ListResourceReleasesHandlerFunc(func(params admin.ListResourceReleasesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.ListResourceReleases has not yet been implemented")
+		}),
 		UsersMakeBookingHandler: users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
 		}),
@@ -188,6 +191,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		}),
 		AdminReplaceOldBookingsHandler: admin.ReplaceOldBookingsHandlerFunc(func(params admin.ReplaceOldBookingsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceOldBookings has not yet been implemented")
+		}),
+		AdminRequestResourceReleaseHandler: admin.RequestResourceReleaseHandlerFunc(func(params admin.RequestResourceReleaseParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.RequestResourceRelease has not yet been implemented")
 		}),
 		UsersRescheduleCalendarBookingHandler: users.RescheduleCalendarBookingHandlerFunc(func(params users.RescheduleCalendarBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.RescheduleCalendarBooking has not yet been implemented")
@@ -337,6 +343,8 @@ type ServeAPI struct {
 	AdminListOperationalOccurrencesHandler admin.ListOperationalOccurrencesHandler
 	// AdminListResourceHoldsHandler sets the operation handler for the list resource holds operation
 	AdminListResourceHoldsHandler admin.ListResourceHoldsHandler
+	// AdminListResourceReleasesHandler sets the operation handler for the list resource releases operation
+	AdminListResourceReleasesHandler admin.ListResourceReleasesHandler
 	// UsersMakeBookingHandler sets the operation handler for the make booking operation
 	UsersMakeBookingHandler users.MakeBookingHandler
 	// UsersMakeCalendarBookingHandler sets the operation handler for the make calendar booking operation
@@ -363,6 +371,8 @@ type ServeAPI struct {
 	AdminReplaceManifestHandler admin.ReplaceManifestHandler
 	// AdminReplaceOldBookingsHandler sets the operation handler for the replace old bookings operation
 	AdminReplaceOldBookingsHandler admin.ReplaceOldBookingsHandler
+	// AdminRequestResourceReleaseHandler sets the operation handler for the request resource release operation
+	AdminRequestResourceReleaseHandler admin.RequestResourceReleaseHandler
 	// UsersRescheduleCalendarBookingHandler sets the operation handler for the reschedule calendar booking operation
 	UsersRescheduleCalendarBookingHandler users.RescheduleCalendarBookingHandler
 	// AdminResolveOperationalAlertHandler sets the operation handler for the resolve operational alert operation
@@ -568,6 +578,9 @@ func (o *ServeAPI) Validate() error {
 	if o.AdminListResourceHoldsHandler == nil {
 		unregistered = append(unregistered, "admin.ListResourceHoldsHandler")
 	}
+	if o.AdminListResourceReleasesHandler == nil {
+		unregistered = append(unregistered, "admin.ListResourceReleasesHandler")
+	}
 	if o.UsersMakeBookingHandler == nil {
 		unregistered = append(unregistered, "users.MakeBookingHandler")
 	}
@@ -606,6 +619,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.AdminReplaceOldBookingsHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceOldBookingsHandler")
+	}
+	if o.AdminRequestResourceReleaseHandler == nil {
+		unregistered = append(unregistered, "admin.RequestResourceReleaseHandler")
 	}
 	if o.UsersRescheduleCalendarBookingHandler == nil {
 		unregistered = append(unregistered, "users.RescheduleCalendarBookingHandler")
@@ -868,6 +884,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/admin/resource-holds"] = admin.NewListResourceHolds(o.context, o.AdminListResourceHoldsHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/admin/resource-releases"] = admin.NewListResourceReleases(o.context, o.AdminListResourceReleasesHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
@@ -920,6 +940,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/admin/oldbookings"] = admin.NewReplaceOldBookings(o.context, o.AdminReplaceOldBookingsHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/admin/resource-holds/{resource_name}/release"] = admin.NewRequestResourceRelease(o.context, o.AdminRequestResourceReleaseHandler)
 	if o.handlers["PATCH"] == nil {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}

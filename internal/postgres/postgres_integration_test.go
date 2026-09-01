@@ -332,6 +332,10 @@ func TestManualHealthCheckIsAtomicIdempotentAndAutoCloses(t *testing.T) {
 	bookingRequest.Maintenance = true
 	bookingRequest.Booking.Maintenance = true
 	bookingRequest.Booking.Policy = "__operations__:health"
+	require.NoError(t, repository.SetResourceAvailabilityBy(ctx, "resource-a", false, "camera repair", "technician", 0))
+	release, err := repository.RequestVerifiedResourceRelease(ctx, "resource-a", []string{"video"}, "technician", 0, now.Add(-time.Second))
+	require.NoError(t, err)
+	require.Equal(t, "pending_checks", release.State)
 	req := activationRequest(bookingRequest.Booking.Name, bookingRequest.Booking.User, "manual-health", now)
 	req.Stages = req.Stages[1:]
 	req.Stages[0].DueAt, req.Stages[0].TimeoutAt, req.Stages[0].MaximumAttempts = now, now.Add(4*time.Second), 1
@@ -359,6 +363,10 @@ func TestManualHealthCheckIsAtomicIdempotentAndAutoCloses(t *testing.T) {
 	require.Len(t, state.Bookings, 1)
 	require.False(t, state.Bookings[0].Current)
 	require.True(t, state.Bookings[0].Booking.Started)
+	require.True(t, state.ResourceAvailability["resource-a"].Available)
+	releases, err := repository.ListResourceReleaseStates(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "verified", releases[0].State)
 }
 
 func TestManualHealthCheckRollsBackReservationWithActivation(t *testing.T) {
@@ -681,6 +689,38 @@ func TestSuccessfulAutomatedCheckDoesNotOverrideTechnicianSuspension(t *testing.
 	var healthRows int
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT count(*) FROM public.operational_stream_health WHERE resource_name='resource-a'`).Scan(&healthRows))
 	require.Zero(t, healthRows)
+}
+
+func TestInteractiveMaintenanceActivationRunsWhileResourceHeld(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	bookingRequest := request("interactive-maintenance", "technician", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour))
+	bookingRequest.Maintenance = true
+	bookingRequest.Booking.Maintenance = true
+	bookingRequest.Booking.Policy = "__maintenance__"
+	_, _, err := repository.CreateBooking(ctx, bookingRequest)
+	require.NoError(t, err)
+	require.NoError(t, repository.SetResourceAvailabilityBy(ctx, "resource-a", false, "technician maintenance", "technician", 0))
+	req := activationRequest(bookingRequest.Booking.Name, bookingRequest.Booking.User, "interactive-maintenance", now)
+	req.Stages = req.Stages[:1]
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "interactive-maintenance-accepted", JobID: run.Stages[0].JobID,
+		State: "accepted", At: now}, "interactive-maintenance-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "interactive-maintenance-succeeded", JobID: run.Stages[0].JobID,
+		State: "succeeded", At: now.Add(time.Second)}, "interactive-maintenance-succeeded-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", run.State)
+	booking, err := repository.GetBooking(ctx, bookingRequest.Booking.Name)
+	require.NoError(t, err)
+	require.True(t, booking.Booking.Started)
+	state, err := repository.Load(ctx)
+	require.NoError(t, err)
+	require.False(t, state.ResourceAvailability["resource-a"].Available)
 }
 
 func TestCleanupRunAndAccountingSurviveRepositoryRestart(t *testing.T) {

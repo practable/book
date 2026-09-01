@@ -501,6 +501,35 @@ paths:
         401: {$ref: '#/responses/Unauthorized'}
         500: {$ref: '#/responses/InternalError'}
 
+  /admin/resource-holds/{resource_name}/release:
+    post:
+      summary: Request verified release or explicitly release as degraded
+      tags: [admin]
+      operationId: RequestResourceRelease
+      produces: [application/json]
+      security: [{Bearer: []}]
+      parameters:
+      - {name: resource_name, in: path, required: true, type: string}
+      - {name: override_reason, in: query, type: string}
+      responses:
+        202: {description: Verification requested or degraded release recorded, schema: {$ref: '#/definitions/ResourceReleaseState'}}
+        401: {$ref: '#/responses/Unauthorized'}
+        404: {$ref: '#/responses/NotFound'}
+        409: {$ref: '#/responses/Conflict'}
+        500: {$ref: '#/responses/InternalError'}
+
+  /admin/resource-releases:
+    get:
+      summary: List pending, verified, and degraded resource releases
+      tags: [admin]
+      operationId: ListResourceReleases
+      produces: [application/json]
+      security: [{Bearer: []}]
+      responses:
+        200: {description: OK, schema: {type: array, items: {$ref: '#/definitions/ResourceReleaseState'}}}
+        401: {$ref: '#/responses/Unauthorized'}
+        500: {$ref: '#/responses/InternalError'}
+
   /admin/usage:
     get:
       summary: Get actual equipment usage
@@ -2698,6 +2727,20 @@ definitions:
       reason: {type: string}
       held_since: {type: string, format: date-time}
       held_by: {type: string}
+
+  ResourceReleaseState:
+    type: object
+    required: [resource, state, required_streams, failing_streams, requested_at, requested_by, manifest_version, override_reason]
+    properties:
+      resource: {type: string}
+      state: {type: string, enum: [pending_checks, verified, degraded_override]}
+      required_streams: {type: array, items: {type: string}}
+      failing_streams: {type: array, items: {type: string}}
+      requested_at: {type: string, format: date-time}
+      requested_by: {type: string}
+      manifest_version: {type: integer, format: int64}
+      override_reason: {type: string}
+      released_at: {type: string, format: date-time}
 
   UsageSummary:
     description: aggregate actual equipment use derived from booking lifecycle timestamps

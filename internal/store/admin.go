@@ -158,6 +158,70 @@ func (s *Store) ListResourceHolds(ctx context.Context) ([]ResourceHold, error) {
 	return repository.ListResourceHolds(ctx)
 }
 
+func (s *Store) RequestResourceRelease(ctx context.Context, resource, actor, overrideReason string) (ResourceReleaseState, error) {
+	s.Lock()
+	defer s.Unlock()
+	repository, ok := s.repository.(ResourceReleaseRepository)
+	if !ok {
+		return ResourceReleaseState{}, errors.New("verified resource release requires durable persistence")
+	}
+	r, ok := s.Resources[resource]
+	if !ok {
+		return ResourceReleaseState{}, ErrPersistentNotFound
+	}
+	manifest := s.exportManifestLocked()
+	required := make([]string, 0)
+	for stream, binding := range r.StreamOperations {
+		pipeline := manifest.OperationalPipelineTemplates[binding.ActivationPipeline]
+		for _, stage := range pipeline.Stages {
+			template := manifest.OperationalJobTemplates[stage.JobTemplate]
+			if manifest.OperationalWorkflows[template.Workflow].Kind == "health_check" {
+				required = append(required, stream)
+				break
+			}
+		}
+	}
+	sort.Strings(required)
+	if len(required) == 0 {
+		return ResourceReleaseState{}, errors.New("resource has no manifest-designated health checks")
+	}
+	now := s.now().UTC()
+	if overrideReason == "" {
+		return repository.RequestVerifiedResourceRelease(ctx, resource, required, actor, s.manifestVersion, now)
+	}
+	health, err := s.repository.(OperationalAlertRepository).ListOperationalStreamHealth(ctx)
+	if err != nil {
+		return ResourceReleaseState{}, err
+	}
+	status := make(map[string]string)
+	for _, item := range health {
+		if item.Resource == resource {
+			status[item.Stream] = item.Status
+		}
+	}
+	failing := make([]string, 0)
+	for _, stream := range required {
+		if status[stream] != "healthy" {
+			failing = append(failing, stream)
+		}
+	}
+	state, err := repository.OverrideResourceRelease(ctx, resource, required, failing, actor, overrideReason, s.manifestVersion, now)
+	if err == nil {
+		r.Diary.SetAvailable("degraded override: " + overrideReason)
+	}
+	return state, err
+}
+
+func (s *Store) ListResourceReleaseStates(ctx context.Context) ([]ResourceReleaseState, error) {
+	s.RLock()
+	repository, ok := s.repository.(ResourceReleaseRepository)
+	s.RUnlock()
+	if !ok {
+		return nil, errors.New("resource release state requires durable persistence")
+	}
+	return repository.ListResourceReleaseStates(ctx)
+}
+
 func (s *Store) GetFilteredUsageSummary(query UsageQuery) UsageSummary {
 	result, _ := s.GetFilteredUsageSummaryPersistent(query)
 	return result

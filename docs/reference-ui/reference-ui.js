@@ -118,8 +118,8 @@ let operations;
 let resourceMetadata = {};
 
 async function loadOperations() {
-  const [status, metadata, holds, health, alerts] = await Promise.all([
-    adminApi.operationalStatus(), adminApi.resources(), adminApi.resourceHolds(), adminApi.operationalHealth(), adminApi.operationalAlerts(),
+  const [status, metadata, holds, health, alerts, releases] = await Promise.all([
+    adminApi.operationalStatus(), adminApi.resources(), adminApi.resourceHolds(), adminApi.operationalHealth(), adminApi.operationalAlerts(), adminApi.resourceReleases(),
   ]);
   operations = status;
   resourceMetadata = metadata;
@@ -129,18 +129,39 @@ async function loadOperations() {
   $("a-resources").textContent = `${statuses.filter(([,status]) => status.available).length}/${statuses.length}`;
   $("a-bookings").textContent = operations.status.bookings;
   renderResources(statuses);
-  renderHolds(holds);
+  renderHolds(holds, releases);
   renderHealth(health);
   renderAlerts(alerts);
   setStatus($("a-status"), `Manifest v${operations.manifest_version}; refreshed ${new Date().toLocaleTimeString()}.`);
 }
 
-function renderHolds(holds) {
-  $("a-hold-rows").innerHTML = holds.length ? holds.map(hold => `<tr><td>${escapeHTML(hold.resource)}</td><td>${escapeHTML(new Date(hold.held_since).toLocaleString())}</td><td>${escapeHTML(hold.held_by)}</td><td>${escapeHTML(hold.reason)}</td><td><button class="button" data-release-hold="${escapeHTML(hold.resource)}">Mark ready</button></td></tr>`).join("") : `<tr><td colspan="5" class="muted">No technician-held resources.</td></tr>`;
+async function runRequiredReleaseChecks(resource, release) {
+  const requestedAt = new Date(release.requested_at).getTime();
+  for (const stream of release.required_streams) {
+    setStatus($("a-status"), `Checking ${resource} / ${stream}…`);
+    await adminApi.beginOperationalHealthCheck(resource, stream);
+    let result;
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      result = (await adminApi.operationalHealth()).find(item => item.resource === resource && item.stream === stream && new Date(item.checked_at).getTime() >= requestedAt);
+      if (result?.status === "healthy" || result?.status === "unhealthy") break;
+    }
+    if (result?.status !== "healthy") throw new Error(`${stream} did not pass; the resource remains held.`);
+  }
+}
+
+function renderHolds(holds, releases) {
+  const releaseByResource = new Map(releases.map(item => [item.resource, item]));
+  $("a-hold-rows").innerHTML = holds.length ? holds.map(hold => { const release = releaseByResource.get(hold.resource); return `<tr><td>${escapeHTML(hold.resource)}</td><td>${escapeHTML(new Date(hold.held_since).toLocaleString())}</td><td>${escapeHTML(hold.held_by)}</td><td>${escapeHTML(release?.state === "pending_checks" ? `Waiting for: ${release.required_streams.join(", ")}` : hold.reason)}</td><td><button class="button" data-release-hold="${escapeHTML(hold.resource)}">Check & release</button> <button class="button danger" data-override-release="${escapeHTML(hold.resource)}">Release degraded</button></td></tr>`; }).join("") : `<tr><td colspan="5" class="muted">No technician-held resources.</td></tr>`;
   document.querySelectorAll("[data-release-hold]").forEach(button => button.addEventListener("click", async () => {
     const resource = button.dataset.releaseHold;
-    if (!confirm(`Mark ${resource} ready? Automated health remains visible separately.`)) return;
-    try { await adminApi.setResourceAvailable(resource, true, "Released by technician"); await loadOperations(); } catch (error) { setStatus($("a-status"), error.message, true); }
+    if (!confirm(`Run every required health check and release ${resource} only if all pass?`)) return;
+    try { const release = await adminApi.requestResourceRelease(resource); await runRequiredReleaseChecks(resource, release); await loadOperations(); } catch (error) { setStatus($("a-status"), error.message, true); }
+  }));
+  document.querySelectorAll("[data-override-release]").forEach(button => button.addEventListener("click", async () => {
+    const reason = prompt(`Reason for releasing ${button.dataset.overrideRelease} with failing checks:`, "Required service can continue without the failed capability");
+    if (!reason?.trim()) return;
+    try { await adminApi.requestResourceRelease(button.dataset.overrideRelease, reason.trim()); await loadOperations(); } catch (error) { setStatus($("a-status"), error.message, true); }
   }));
 }
 

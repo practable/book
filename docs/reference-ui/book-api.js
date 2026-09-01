@@ -67,6 +67,11 @@ export class BookApi {
     });
   }
   resourceHolds() { return this.request("/admin/resource-holds"); }
+  resourceReleases() { return this.request("/admin/resource-releases"); }
+  requestResourceRelease(resource, overrideReason = "") {
+    const query = overrideReason ? `?${new URLSearchParams({ override_reason: overrideReason })}` : "";
+    return this.request(`/admin/resource-holds/${encodeURIComponent(resource)}/release${query}`, { method: "POST" });
+  }
   operationalAlerts(status = "active") {
     return this.request(`/admin/operational-alerts?${new URLSearchParams({ status })}`);
   }

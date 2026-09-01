@@ -991,6 +991,90 @@ func init() {
         }
       }
     },
+    "/admin/resource-holds/{resource_name}/release": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Request verified release or explicitly release as degraded",
+        "operationId": "RequestResourceRelease",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "override_reason",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Verification requested or degraded release recorded",
+            "schema": {
+              "$ref": "#/definitions/ResourceReleaseState"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/resource-releases": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List pending, verified, and degraded resource releases",
+        "operationId": "ListResourceReleases",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ResourceReleaseState"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/resources": {
       "get": {
         "security": [
@@ -4619,6 +4703,62 @@ func init() {
         }
       }
     },
+    "ResourceReleaseState": {
+      "type": "object",
+      "required": [
+        "resource",
+        "state",
+        "required_streams",
+        "failing_streams",
+        "requested_at",
+        "requested_by",
+        "manifest_version",
+        "override_reason"
+      ],
+      "properties": {
+        "failing_streams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "override_reason": {
+          "type": "string"
+        },
+        "released_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requested_by": {
+          "type": "string"
+        },
+        "required_streams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resource": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "pending_checks",
+            "verified",
+            "degraded_override"
+          ]
+        }
+      }
+    },
     "ResourceStatus": {
       "type": "object",
       "required": [
@@ -6210,6 +6350,108 @@ func init() {
               "type": "array",
               "items": {
                 "$ref": "#/definitions/ResourceHold"
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/resource-holds/{resource_name}/release": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Request verified release or explicitly release as degraded",
+        "operationId": "RequestResourceRelease",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "resource_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "override_reason",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Verification requested or degraded release recorded",
+            "schema": {
+              "$ref": "#/definitions/ResourceReleaseState"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/resource-releases": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "List pending, verified, and degraded resource releases",
+        "operationId": "ListResourceReleases",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ResourceReleaseState"
               }
             }
           },
@@ -10208,6 +10450,62 @@ func init() {
         },
         "resource": {
           "type": "string"
+        }
+      }
+    },
+    "ResourceReleaseState": {
+      "type": "object",
+      "required": [
+        "resource",
+        "state",
+        "required_streams",
+        "failing_streams",
+        "requested_at",
+        "requested_by",
+        "manifest_version",
+        "override_reason"
+      ],
+      "properties": {
+        "failing_streams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "manifest_version": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "override_reason": {
+          "type": "string"
+        },
+        "released_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requested_by": {
+          "type": "string"
+        },
+        "required_streams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resource": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "pending_checks",
+            "verified",
+            "degraded_override"
+          ]
         }
       }
     },

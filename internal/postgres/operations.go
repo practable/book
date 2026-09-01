@@ -949,6 +949,50 @@ func recordActivationHealthSuccessTx(ctx context.Context, tx pgx.Tx, runID, jobI
 	}
 	_, err := tx.Exec(ctx, `UPDATE public.operational_alerts SET status='resolved',resolved_at=$3,resolved_by='successful_activation_check',
 		updated_at=clock_timestamp() WHERE resource_name=$1 AND stream_name=$2 AND status IN ('open','acknowledged')`, resource, stream, at)
+	if err != nil {
+		return err
+	}
+	return releaseResourceIfAllChecksPassedTx(ctx, tx, resource, at)
+}
+
+func releaseResourceIfAllChecksPassedTx(ctx context.Context, tx pgx.Tx, resource string, at time.Time) error {
+	var requiredJSON []byte
+	var requestedAt time.Time
+	var requestedBy string
+	var manifestVersion int64
+	err := tx.QueryRow(ctx, `SELECT required_streams,requested_at,requested_by,manifest_version FROM public.resource_release_state
+		WHERE resource_name=$1 AND state='pending_checks' FOR UPDATE`, resource).Scan(&requiredJSON, &requestedAt, &requestedBy, &manifestVersion)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var required []string
+	if err := json.Unmarshal(requiredJSON, &required); err != nil {
+		return err
+	}
+	if len(required) == 0 {
+		return errors.New("verified resource release requires at least one health-check stream")
+	}
+	var healthy int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM public.operational_stream_health
+		WHERE resource_name=$1 AND stream_name=ANY($2) AND status='healthy' AND checked_at >= $3`, resource, required, requestedAt.UTC()).Scan(&healthy); err != nil {
+		return err
+	}
+	if healthy != len(required) {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `UPDATE public.resource_availability SET available=true,reason='Verified healthy after technician release request',
+		updated_at=clock_timestamp(),updated_at_ns=$2,held_since=NULL,held_by='' WHERE resource_name=$1 AND NOT available`, resource, at.UnixNano()); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE public.resource_release_state SET state='verified',failing_streams='[]'::jsonb,released_at=$2,
+		updated_at=clock_timestamp() WHERE resource_name=$1`, resource, at.UTC()); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO public.resource_release_events(resource_name,event_type,occurred_at,actor,reason,required_streams,failing_streams,manifest_version)
+		VALUES($1,'verified_release',$2,$3,'All required health checks passed',$4,'[]'::jsonb,$5)`, resource, at.UTC(), requestedBy, string(requiredJSON), manifestVersion)
 	return err
 }
 
@@ -1069,17 +1113,21 @@ func updateOperationalUsageTx(ctx context.Context, tx pgx.Tx, callback operation
 func activatePreparedBookingTx(ctx context.Context, tx pgx.Tx, runID string, at time.Time, jobID string) error {
 	var rowID int64
 	var bookingName, resource, slot string
-	var started bool
+	var started, maintenance bool
 	var startsAt, endsAt time.Time
-	if err := tx.QueryRow(ctx, `SELECT b.row_id,b.name,b.started,b.starts_at,b.ends_at,b.resource_name,b.slot_name FROM public.booking_activation_runs r
-		JOIN public.bookings b ON b.row_id=r.booking_row_id WHERE r.run_id=$1 FOR UPDATE OF b,r`, runID).Scan(&rowID, &bookingName, &started, &startsAt, &endsAt, &resource, &slot); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT b.row_id,b.name,b.started,b.starts_at,b.ends_at,b.resource_name,b.slot_name,b.maintenance FROM public.booking_activation_runs r
+		JOIN public.bookings b ON b.row_id=r.booking_row_id WHERE r.run_id=$1 FOR UPDATE OF b,r`, runID).Scan(&rowID, &bookingName, &started, &startsAt, &endsAt, &resource, &slot, &maintenance); err != nil {
 		return err
 	}
 	if at.Before(startsAt) || !at.Before(endsAt) {
 		_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='expired',failure_code='booking_ended',failure_message='The booking is no longer active',completed_at=$2,updated_at=$2 WHERE run_id=$1`, runID, at)
 		return err
 	}
-	if err := assertAvailable(ctx, tx, resource, slot); err != nil {
+	var autoClose bool
+	if err := tx.QueryRow(ctx, `SELECT auto_close FROM public.booking_activation_runs WHERE run_id=$1`, runID).Scan(&autoClose); err != nil {
+		return err
+	}
+	if err := assertAvailable(ctx, tx, resource, slot); err != nil && !maintenance {
 		if _, updateErr := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='failed',failure_code='technician_suspended',
 			failure_message='This experiment is temporarily offline for maintenance. Please choose another experiment or contact the laboratory.',
 			completed_at=$2,updated_at=$2 WHERE run_id=$1`, runID, at); updateErr != nil {
@@ -1096,10 +1144,6 @@ func activatePreparedBookingTx(ctx context.Context, tx pgx.Tx, runID string, at 
 		}
 	}
 	if err := recordActivationHealthSuccessTx(ctx, tx, runID, jobID, at); err != nil {
-		return err
-	}
-	var autoClose bool
-	if err := tx.QueryRow(ctx, `SELECT auto_close FROM public.booking_activation_runs WHERE run_id=$1`, runID).Scan(&autoClose); err != nil {
 		return err
 	}
 	if autoClose {

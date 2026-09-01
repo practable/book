@@ -60,6 +60,8 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.AdminListOperationalHealthHandler = admin.ListOperationalHealthHandlerFunc(listOperationalHealthHandler(config))
 	api.AdminBeginOperationalHealthCheckHandler = admin.BeginOperationalHealthCheckHandlerFunc(beginOperationalHealthCheckHandler(config))
 	api.AdminListResourceHoldsHandler = admin.ListResourceHoldsHandlerFunc(listResourceHoldsHandler(config))
+	api.AdminRequestResourceReleaseHandler = admin.RequestResourceReleaseHandlerFunc(requestResourceReleaseHandler(config))
+	api.AdminListResourceReleasesHandler = admin.ListResourceReleasesHandlerFunc(listResourceReleasesHandler(config))
 	api.AdminQueryBookingRecordsHandler = admin.QueryBookingRecordsHandlerFunc(queryBookingRecordsHandler(config))
 	api.AdminGetBookingEventsHandler = admin.GetBookingEventsHandlerFunc(getBookingEventsHandler(config))
 	api.AdminGetUsageSummaryHandler = admin.GetUsageSummaryHandlerFunc(getUsageSummaryHandler(config))

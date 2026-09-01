@@ -52,3 +52,10 @@ test("manual health check carries an idempotency key", async () => {
   assert.equal(request[0], "/api/v1/admin/resources/spin%2066/streams/front%2Fvideo/health-checks");
   assert.equal(request[1].headers["Idempotency-Key"], "check-key");
 });
+
+test("degraded release requires an explicit encoded reason", async () => {
+  let called;
+  const api = new BookApi({ fetchImpl: async (url) => { called = url; return response(202, {}); }});
+  await api.requestResourceRelease("spin 66", "video failed; data usable");
+  assert.equal(called, "/api/v1/admin/resource-holds/spin%2066/release?override_reason=video+failed%3B+data+usable");
+});
