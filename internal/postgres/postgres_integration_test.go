@@ -341,6 +341,44 @@ func TestActivationTimeoutSweepRetriesThenFailsDurably(t *testing.T) {
 	require.False(t, booking.Booking.Started)
 }
 
+func TestCancellingBookingAtomicallyCancelsPreparation(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("cancel-activation", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	run, _, err := repository.CreateActivation(ctx, activationRequest("cancel-activation", "opaque-user", "cancel", now))
+	require.NoError(t, err)
+	_, err = repository.CancelBooking(ctx, "cancel-activation", now.Add(time.Second), "opaque-user", 0, 0)
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "cancelled", run.State)
+	require.Equal(t, "cancelled", run.Stages[0].State)
+	job, err := repository.GetJob(ctx, run.Stages[0].JobID)
+	require.NoError(t, err)
+	require.Equal(t, "cancelled", job.State)
+	var deliveryState string
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT state FROM public.webhook_deliveries WHERE job_id=$1`, job.ID).Scan(&deliveryState))
+	require.Equal(t, "cancelled", deliveryState)
+}
+
+func TestExpiringBookingAtomicallyExpiresPreparation(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("expire-activation", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Minute)))
+	require.NoError(t, err)
+	run, _, err := repository.CreateActivation(ctx, activationRequest("expire-activation", "opaque-user", "expire", now))
+	require.NoError(t, err)
+	require.NoError(t, repository.ExpireBookings(ctx, now.Add(2*time.Minute)))
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "expired", run.State)
+	require.Equal(t, "booking_ended", run.FailureCode)
+	require.Equal(t, "expired", run.Stages[0].State)
+}
+
 func TestOperationalJobOutboxIsTransactionalIdempotentAndClaimedOnce(t *testing.T) {
 	repository := integrationRepository(t)
 	ctx := context.Background()

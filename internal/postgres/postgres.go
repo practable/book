@@ -428,6 +428,9 @@ func (r *Repository) ReplaceBooking(ctx context.Context, originalName string, ex
 	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
+	if err := stopBookingActivationsTx(ctx, tx, originalName, request.Now, "cancelled", "booking_rescheduled", "The booking was rescheduled"); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
 	persisted, fresh, err := replaceBookingTx(ctx, tx, originalName, expectedRevision, request)
 	if err != nil {
 		return store.PersistentBooking{}, false, err
@@ -679,6 +682,9 @@ func cancelBookingTx(ctx context.Context, tx pgx.Tx, name string, at time.Time, 
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", userPolicyLock(user, policy)); err != nil {
 		return store.PersistentBooking{}, err
 	}
+	if err := stopBookingActivationsTx(ctx, tx, name, at, "cancelled", "booking_cancelled", "The booking was cancelled"); err != nil {
+		return store.PersistentBooking{}, err
+	}
 	var rowID int64
 	var started bool
 	var endsAt time.Time
@@ -714,6 +720,49 @@ func cancelBookingTx(ctx context.Context, tx pgx.Tx, name string, at time.Time, 
 		return store.PersistentBooking{}, err
 	}
 	return persisted, nil
+}
+
+func stopBookingActivationsTx(ctx context.Context, tx pgx.Tx, bookingName string, at time.Time, state, code, message string) error {
+	rows, err := tx.Query(ctx, `SELECT j.job_id FROM public.operational_jobs j
+		JOIN public.booking_activation_runs r ON r.run_id=j.activation_run_id
+		JOIN public.bookings b ON b.row_id=r.booking_row_id
+		WHERE b.name=$1 AND b.collection='live' AND NOT b.superseded AND r.state='preparing'
+		AND j.state NOT IN ('succeeded','failed','cancelled','expired') ORDER BY j.job_id FOR UPDATE OF j`, bookingName)
+	if err != nil {
+		return err
+	}
+	var jobs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return err
+		}
+		jobs = append(jobs, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, id := range jobs {
+		if _, err := tx.Exec(ctx, `UPDATE public.webhook_deliveries SET state='cancelled',last_error=$3,updated_at=$2
+			WHERE job_id=$1 AND state IN ('pending','leased')`, id, at.UTC(), message); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE public.operational_jobs SET state=$3,last_error=$4,updated_at=$2 WHERE job_id=$1`, id, at.UTC(), state, message); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_stages s SET state=$3,last_error_code=$4,
+		last_error=$5,completed_at=$2,updated_at=$2 FROM public.booking_activation_runs r,public.bookings b
+		WHERE s.run_id=r.run_id AND b.row_id=r.booking_row_id AND b.name=$1 AND b.collection='live' AND NOT b.superseded
+		AND r.state='preparing' AND s.state NOT IN ('succeeded','failed','cancelled','expired')`, bookingName, at.UTC(), state, code, message); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET state=$3,failure_code=$4,
+		failure_message=$5,completed_at=$2,updated_at=$2 FROM public.bookings b
+		WHERE b.row_id=r.booking_row_id AND b.name=$1 AND b.collection='live' AND NOT b.superseded AND r.state='preparing'`, bookingName, at.UTC(), state, code, message)
+	return err
 }
 
 func (r *Repository) StartBooking(ctx context.Context, name string, at time.Time, manifestVersion int64) (store.PersistentBooking, error) {
@@ -813,6 +862,9 @@ func (r *Repository) ExpireBookings(ctx context.Context, now time.Time) error {
 		}
 	}
 	for _, value := range values {
+		if err := stopBookingActivationsTx(ctx, tx, value.name, now, "expired", "booking_ended", "The booking ended before preparation completed"); err != nil {
+			return err
+		}
 		var exists int
 		if err := tx.QueryRow(ctx, `SELECT 1 FROM public.bookings
 			WHERE row_id=$1 AND collection='live' AND NOT superseded FOR UPDATE`, value.id).Scan(&exists); err != nil {

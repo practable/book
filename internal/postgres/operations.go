@@ -154,6 +154,9 @@ func (r *Repository) ReplaceBookingWithOperations(ctx context.Context, originalN
 	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
 		return store.PersistentBooking{}, nil, false, err
 	}
+	if err := stopBookingActivationsTx(ctx, tx, originalName, request.Now, "cancelled", "booking_rescheduled", "The booking was rescheduled"); err != nil {
+		return store.PersistentBooking{}, nil, false, err
+	}
 	retired, err := retireTriggeredOperationalReservationsTx(ctx, tx, originalName, request.Now, request.Actor)
 	if err != nil {
 		return store.PersistentBooking{}, nil, false, err
