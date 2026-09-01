@@ -220,7 +220,7 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 			if attempts < 1 {
 				attempts = 1
 			}
-			result = append(result, operations.ActivationStageSpec{Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow,
+			result = append(result, operations.ActivationStageSpec{Stream: streamName, Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow,
 				DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters,
 				ProgressMessage: stage.ProgressMessages.Initial, RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter,
 				InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff, MaximumDelay: stage.Retry.MaximumDelay,
@@ -340,7 +340,7 @@ func (s *Store) BeginOperationalHealthCheck(ctx context.Context, resourceName, s
 			if attempts < 1 {
 				attempts = 1
 			}
-			result = append(result, operations.ActivationStageSpec{Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow, Kind: stage.Kind,
+			result = append(result, operations.ActivationStageSpec{Stream: streamName, Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow, Kind: stage.Kind,
 				DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters, ProgressMessage: stage.ProgressMessages.Initial,
 				RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter, InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff,
 				MaximumDelay: stage.Retry.MaximumDelay, TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes,

@@ -114,9 +114,9 @@ func createActivationTx(ctx context.Context, tx pgx.Tx, request operations.Creat
 				guidance = string(stage.FailureGuidance)
 			}
 			_, err = tx.Exec(ctx, `INSERT INTO public.booking_activation_stages
-			(run_id,stage_index,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,parameters,
+			(run_id,stage_index,stream_name,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,parameters,
 			 progress_message,retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,failure_guidance,phase,health_check)
-			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`, request.RunID, stageIndex, stage.Name, stage.JobTemplate, stage.Workflow, state, attempt,
+			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`, request.RunID, stageIndex, stage.Stream, stage.Name, stage.JobTemplate, stage.Workflow, state, attempt,
 				stage.MaximumAttempts, stage.DueAt.UTC(), stage.TimeoutAt.UTC(), string(parameters), stage.ProgressMessage, stage.RetryMessage,
 				stage.WaitAfter.Nanoseconds(), stage.InitialDelay.Nanoseconds(), normalizedBackoff(stage.Backoff), stage.MaximumDelay.Nanoseconds(),
 				stage.TotalTimeout.Nanoseconds(), string(retryCodes), guidance, phase.name, stage.Kind == "health_check")
@@ -309,7 +309,7 @@ func getActivation(ctx context.Context, queryer activationQueryer, id string) (o
 		return run, err
 	}
 	run.FailureGuidance = guidance
-	rows, err := queryer.Query(ctx, `SELECT stage_index,phase,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,
+	rows, err := queryer.Query(ctx, `SELECT stage_index,phase,stream_name,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,
 		parameters,progress_message,last_error_code,last_error,COALESCE(job_id,''),retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,
 		retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,COALESCE(failure_guidance,'null'::jsonb)
 		FROM public.booking_activation_stages WHERE run_id=$1 ORDER BY stage_index`, id)
@@ -321,7 +321,7 @@ func getActivation(ctx context.Context, queryer activationQueryer, id string) (o
 		var stage operations.ActivationStage
 		var parameters, retryCodes, guidance []byte
 		var waitAfter, initialDelay, maximumDelay, totalTimeout int64
-		if err := rows.Scan(&stage.Index, &stage.Phase, &stage.Name, &stage.JobTemplate, &stage.Workflow, &stage.State, &stage.Attempt, &stage.MaximumAttempts,
+		if err := rows.Scan(&stage.Index, &stage.Phase, &stage.Stream, &stage.Name, &stage.JobTemplate, &stage.Workflow, &stage.State, &stage.Attempt, &stage.MaximumAttempts,
 			&stage.DueAt, &stage.TimeoutAt, &parameters, &stage.ProgressMessage, &stage.LastErrorCode, &stage.LastError, &stage.JobID,
 			&stage.RetryMessage, &waitAfter, &initialDelay, &stage.Backoff, &maximumDelay, &totalTimeout, &retryCodes, &guidance); err != nil {
 			return run, err

@@ -9,6 +9,7 @@ import (
 var ErrActivationConflict = errors.New("booking activation conflicts with an existing activation")
 
 type ActivationStageSpec struct {
+	Stream          string
 	Name            string
 	JobTemplate     string
 	Workflow        string
@@ -50,6 +51,7 @@ type CreateActivationRequest struct {
 
 type ActivationStage struct {
 	Index           int
+	Stream          string
 	Phase           string
 	Name            string
 	JobTemplate     string

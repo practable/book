@@ -912,8 +912,9 @@ func recordActivationHealthFailureTx(ctx context.Context, tx pgx.Tx, runID, jobI
 	}
 	var resource, stream string
 	var manifestVersion int64
-	if err := tx.QueryRow(ctx, `SELECT resource_name,stream_name,manifest_version FROM public.booking_activation_runs WHERE run_id=$1`, runID).
-		Scan(&resource, &stream, &manifestVersion); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT r.resource_name,COALESCE(NULLIF(s.stream_name,''),r.stream_name),r.manifest_version
+		FROM public.booking_activation_runs r JOIN public.booking_activation_stages s ON s.run_id=r.run_id
+		WHERE r.run_id=$1 AND s.job_id=$2`, runID, jobID).Scan(&resource, &stream, &manifestVersion); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO public.operational_stream_health
@@ -936,8 +937,9 @@ func recordActivationHealthFailureTx(ctx context.Context, tx pgx.Tx, runID, jobI
 func recordActivationHealthSuccessTx(ctx context.Context, tx pgx.Tx, runID, jobID string, at time.Time) error {
 	var resource, stream string
 	var manifestVersion int64
-	if err := tx.QueryRow(ctx, `SELECT resource_name,stream_name,manifest_version FROM public.booking_activation_runs WHERE run_id=$1`, runID).
-		Scan(&resource, &stream, &manifestVersion); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT r.resource_name,COALESCE(NULLIF(s.stream_name,''),r.stream_name),r.manifest_version
+		FROM public.booking_activation_runs r JOIN public.booking_activation_stages s ON s.run_id=r.run_id
+		WHERE r.run_id=$1 AND s.job_id=$2`, runID, jobID).Scan(&resource, &stream, &manifestVersion); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO public.operational_stream_health
