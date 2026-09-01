@@ -242,6 +242,11 @@ func TestActivationCallbacksAdvanceStagesRetryAndStartBooking(t *testing.T) {
 
 	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-accepted-1", JobID: run.Stages[0].JobID, State: "accepted", At: now}, "hash-accepted-1")
 	require.NoError(t, err)
+	_, _, err = repository.ActivateOperationalJob(ctx, run.Stages[0].JobID, "must-not-activate-preflight", "preflight-hash", now)
+	require.ErrorIs(t, err, operations.ErrNotFound)
+	notStarted, err := repository.GetBooking(ctx, req.BookingName)
+	require.NoError(t, err)
+	require.False(t, notStarted.Booking.Started)
 	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-succeeded-1", JobID: run.Stages[0].JobID, State: "succeeded", At: now.Add(time.Second)}, "hash-succeeded-1")
 	require.NoError(t, err)
 	run, err = repository.GetActivation(ctx, run.ID)
@@ -276,6 +281,64 @@ func TestActivationCallbacksAdvanceStagesRetryAndStartBooking(t *testing.T) {
 	booking, err := repository.GetBooking(ctx, req.BookingName)
 	require.NoError(t, err)
 	require.True(t, booking.Booking.Started)
+}
+
+func TestActivationTimeoutSweepRetriesThenFailsDurably(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("timeout-activation", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("timeout-activation", "opaque-user", "timeout", now)
+	req.Stages = req.Stages[:1]
+	req.Stages[0].MaximumAttempts = 2
+	req.Stages[0].InitialDelay = time.Second
+	req.Stages[0].Backoff = 1
+	req.Stages[0].MaximumDelay = time.Second
+	req.Stages[0].TotalTimeout = time.Minute
+	req.Stages[0].RetryableCodes = []string{"activation_timeout"}
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+
+	counts := make(chan int, 2)
+	errs := make(chan error, 2)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			count, err := repository.SweepActivationTimeouts(ctx, now.Add(5*time.Second), 10)
+			counts <- count
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(counts)
+	close(errs)
+	total := 0
+	for err := range errs {
+		require.NoError(t, err)
+	}
+	for count := range counts {
+		total += count
+	}
+	require.Equal(t, 1, total)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "preparing", run.State)
+	require.Equal(t, 2, run.Stages[0].Attempt)
+	require.Equal(t, "pending", run.Stages[0].State)
+
+	count, err := repository.SweepActivationTimeouts(ctx, now.Add(11*time.Second), 10)
+	require.NoError(t, err)
+	require.Equal(t, 1, count)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "failed", run.State)
+	require.Equal(t, "activation_timeout", run.FailureCode)
+	booking, err := repository.GetBooking(ctx, req.BookingName)
+	require.NoError(t, err)
+	require.False(t, booking.Booking.Started)
 }
 
 func TestOperationalJobOutboxIsTransactionalIdempotentAndClaimedOnce(t *testing.T) {

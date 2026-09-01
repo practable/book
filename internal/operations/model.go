@@ -71,3 +71,9 @@ type Repository interface {
 	ApplyCallback(context.Context, Callback, string) (Job, bool, error)
 	GetJob(context.Context, string) (Job, error)
 }
+
+// ActivationTimeoutRepository is implemented by durable repositories that can
+// recover activation stages whose runner callback deadline has elapsed.
+type ActivationTimeoutRepository interface {
+	SweepActivationTimeouts(context.Context, time.Time, int) (int, error)
+}

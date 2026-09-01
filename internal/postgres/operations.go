@@ -442,7 +442,7 @@ func (r *Repository) ActivateOperationalJob(ctx context.Context, jobID, delivery
 	var state string
 	err = tx.QueryRow(ctx, `SELECT j.booking_row_id,j.state FROM public.operational_jobs j
 		JOIN public.bookings b ON b.row_id=j.booking_row_id
-		WHERE j.job_id=$1 AND b.collection='live' AND NOT b.superseded FOR UPDATE OF j,b`, jobID).Scan(&rowID, &state)
+		WHERE j.job_id=$1 AND j.activation_run_id IS NULL AND b.collection='live' AND NOT b.superseded FOR UPDATE OF j,b`, jobID).Scan(&rowID, &state)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return store.PersistentBooking{}, operations.Job{}, operations.ErrNotFound
 	}

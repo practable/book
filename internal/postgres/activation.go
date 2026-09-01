@@ -157,6 +157,69 @@ func (r *Repository) GetLatestActivationForBooking(ctx context.Context, bookingN
 	return getActivation(ctx, r.pool, id)
 }
 
+// SweepActivationTimeouts claims expired stage jobs with SKIP LOCKED. All book
+// instances may run this concurrently; each timeout transition is processed by
+// at most one transaction and uses the same retry/failure path as a callback.
+func (r *Repository) SweepActivationTimeouts(ctx context.Context, now time.Time, limit int) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	rows, err := tx.Query(ctx, `SELECT j.job_id,j.activation_run_id,j.activation_stage_index FROM public.operational_jobs j
+		JOIN public.booking_activation_stages s ON s.run_id=j.activation_run_id AND s.stage_index=j.activation_stage_index
+		JOIN public.booking_activation_runs r ON r.run_id=s.run_id
+		WHERE r.state='preparing' AND s.state IN ('pending','dispatched','accepted','running') AND s.timeout_at <= $1
+		AND j.state IN ('scheduled','reserved','dispatched','accepted','running')
+		ORDER BY s.timeout_at,j.job_id FOR UPDATE OF j SKIP LOCKED LIMIT $2`, now.UTC(), limit)
+	if err != nil {
+		return 0, err
+	}
+	type expired struct {
+		jobID, runID string
+		stage        int
+	}
+	var items []expired
+	for rows.Next() {
+		var item expired
+		if err := rows.Scan(&item.jobID, &item.runID, &item.stage); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		items = append(items, item)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	for _, item := range items {
+		job, err := scanJob(tx.QueryRow(ctx, jobSelect+" WHERE job_id=$1", item.jobID))
+		if err != nil {
+			return 0, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE public.operational_jobs SET state='failed',last_error='runner callback deadline elapsed',updated_at=$2 WHERE job_id=$1`, item.jobID, now.UTC()); err != nil {
+			return 0, err
+		}
+		if _, err := tx.Exec(ctx, `UPDATE public.webhook_deliveries SET state='cancelled',last_error='activation stage timed out',updated_at=$2
+			WHERE job_id=$1 AND state IN ('pending','leased')`, item.jobID, now.UTC()); err != nil {
+			return 0, err
+		}
+		callback := operations.Callback{JobID: item.jobID, State: "failed", At: now.UTC(), Code: "activation_timeout", Error: "The preparation service did not report completion in time"}
+		if err := applyActivationCallbackTx(ctx, tx, job, callback, item.runID, item.stage); err != nil {
+			return 0, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
+	return len(items), nil
+}
+
 type activationQueryer interface {
 	QueryRow(context.Context, string, ...interface{}) pgx.Row
 	Query(context.Context, string, ...interface{}) (pgx.Rows, error)

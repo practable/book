@@ -99,6 +99,7 @@ func (s *Server) Run(ctx context.Context) {
 		}
 		go dispatcher.Run(ctxStore, s.Config.WebhookPollEvery)
 		go s.runOperationalScheduler(ctxStore)
+		go s.runActivationTimeoutSweeper(ctxStore)
 	}
 
 	go serve.API(ctx, s.Config, cancelStore)
@@ -107,6 +108,38 @@ func (s *Server) Run(ctx context.Context) {
 
 	<-ctxStore.Done() //cannot use ctx.Done() because will leave hanging process when used with book/cmd where there is no cancellation of ctx
 
+}
+
+func (s *Server) runActivationTimeoutSweeper(ctx context.Context) {
+	repository, ok := s.Config.OperationsRepository.(operations.ActivationTimeoutRepository)
+	if !ok {
+		return
+	}
+	every := s.Config.WebhookPollEvery
+	if every <= 0 {
+		every = time.Second
+	}
+	run := func() {
+		count, err := repository.SweepActivationTimeouts(ctx, s.Config.Now().UTC(), 50)
+		if err != nil {
+			log.WithError(err).Error("could not recover timed-out booking activations")
+			return
+		}
+		if count > 0 {
+			log.WithField("stages", count).Warning("recovered timed-out booking activation stages")
+		}
+	}
+	run()
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run()
+		}
+	}
 }
 
 func (s *Server) runOperationalScheduler(ctx context.Context) {

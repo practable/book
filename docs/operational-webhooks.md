@@ -53,6 +53,17 @@ Allowed reported states are `accepted`, `running`, `succeeded`, `failed`,
 body is idempotent. Reusing it with different content returns 409, as does an
 invalid lifecycle transition.
 
+Failed health checks should provide a stable `code` separately from their
+human-readable `error`, for example:
+
+```json
+{"version":1,"job_id":"job-id-from-command","state":"failed","at":"2026-09-01T12:00:03Z","code":"video_not_ready","error":"The camera has not produced a frame"}
+```
+
+Activation retry policies match `code`; changing explanatory prose therefore
+does not change retry behaviour. For compatibility, Book falls back to the
+`error` value when an older runner omits `code`.
+
 After reporting `accepted`, the runner activates the job's reserved maintenance
 booking with:
 
@@ -71,6 +82,14 @@ the same transaction that starts the reservation and moves the job to
 `running`. Activation is allowed only during the reservation's half-open time
 interval. An exact retry returns the same activity without changing its
 original start time. A booking identifier by itself grants no runner access.
+
+Preflight jobs are different: the runner reports their state but must not call
+the maintenance activation endpoint. Book advances the persisted preparation
+pipeline and starts the user's booking only after its final stage succeeds.
+Overdue preflight stages are claimed with database row locking by any available
+Book instance. They are retried when `activation_timeout` is configured as
+retryable, or are failed with persisted user guidance. This recovery also runs
+immediately after a Book restart.
 
 Terminal callbacks (`succeeded`, `failed`, `cancelled`, or `expired`) also close
 the bound reservation transactionally. Book records actual occupied time from
@@ -91,6 +110,7 @@ pending work.
 
 Migration 0009 creates `operational_jobs`, `webhook_deliveries`, and
 `webhook_callback_receipts`; migration 0011 adds the completed booking audit
-event. Apply migrations using the normal process in
+event; migrations 0015 and 0016 add durable booking activation runs, stages,
+deadlines, retry policy, and failure guidance. Apply migrations using the normal process in
 [PostgreSQL](postgresql.md). Rollback is safe only after dispatch is disabled
 and retained operational history has been exported or deliberately discarded.
