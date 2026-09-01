@@ -28,7 +28,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.operational_schedule_occurrences, public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(), "INSERT INTO public.service_state(singleton,updated_at_ns) VALUES(true,0)")
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 11, versions)
+	require.Equal(t, 13, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -368,6 +368,47 @@ func TestStoreReturnsActivityForAcceptedOperationalReservation(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, activity.BookingID)
 	require.Equal(t, now, activity.NotBefore)
+}
+
+func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	manifest.OperationalWorkflows = map[string]store.OperationalWorkflow{
+		"daily-check": {Description: "Daily check", ExpectedDuration: 10 * time.Minute, MaximumDuration: 10 * time.Minute},
+	}
+	recurrence := store.OperationalRecurrence{Timezone: "UTC", StartDate: "2022-11-05", EndDate: "2022-11-05", Weekdays: []string{"sat"}, Time: "10:00"}
+	manifest.OperationalSchedules = map[string]store.OperationalSchedule{
+		"a-required": {Slot: "sl-a", Workflow: "daily-check", Duration: 10 * time.Minute, Conflict: store.OperationalConflictRequire, Recurrence: recurrence},
+		"b-skipped":  {Slot: "sl-a", Workflow: "daily-check", Duration: 10 * time.Minute, Conflict: store.OperationalConflictSkip, Recurrence: recurrence},
+	}
+	missed := recurrence
+	missed.Time = "08:00"
+	manifest.OperationalSchedules["c-missed"] = store.OperationalSchedule{Slot: "sl-a", Workflow: "daily-check", Duration: 10 * time.Minute, Conflict: store.OperationalConflictRequire, Recurrence: missed}
+	now := time.Date(2022, 11, 5, 9, 0, 0, 0, time.UTC)
+	first := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(manifest))
+	summary, err := first.MaterializeOperationalSchedules(context.Background(), now.Add(-2*time.Hour), now.Add(2*time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, 1, summary.Planned)
+	require.Equal(t, 1, summary.Skipped)
+	require.Equal(t, 1, summary.Missed)
+
+	second := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, second.WithRepository(repository))
+	summary, err = second.MaterializeOperationalSchedules(context.Background(), now.Add(-2*time.Hour), now.Add(2*time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, 3, summary.Existing)
+	var occurrences, jobs, live int
+	require.NoError(t, repository.pool.QueryRow(context.Background(), "SELECT count(*) FROM public.operational_schedule_occurrences").Scan(&occurrences))
+	require.NoError(t, repository.pool.QueryRow(context.Background(), "SELECT count(*) FROM public.operational_jobs WHERE workflow_name='daily-check'").Scan(&jobs))
+	require.NoError(t, repository.pool.QueryRow(context.Background(), "SELECT count(*) FROM public.bookings WHERE collection='live' AND user_name='__operations__'").Scan(&live))
+	require.Equal(t, 3, occurrences)
+	require.Equal(t, 1, jobs)
+	require.Equal(t, 1, live)
 }
 
 func operationalReservation(jobID, bookingID, deliveryID, trigger, resource string, start, end time.Time) store.OperationalReservation {

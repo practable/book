@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,8 @@ const (
 	OperationalOutsideOperatingWindow = "outside_operating_window"
 	OperationalBeforeBooking          = "before_booking"
 	OperationalAfterBooking           = "after_booking"
+	OperationalConflictRequire        = "require"
+	OperationalConflictSkip           = "skip"
 )
 
 // OperationalWorkflow is an owner-approved task contract. Manifests contain
@@ -27,6 +30,135 @@ type OperationalWorkflow struct {
 	Description      string        `json:"description" yaml:"description"`
 	ExpectedDuration time.Duration `json:"expected_duration" yaml:"expected_duration"`
 	MaximumDuration  time.Duration `json:"maximum_duration" yaml:"maximum_duration"`
+}
+
+type OperationalSchedule struct {
+	Slot       string                `json:"slot" yaml:"slot"`
+	Workflow   string                `json:"workflow" yaml:"workflow"`
+	Duration   time.Duration         `json:"duration" yaml:"duration"`
+	Conflict   string                `json:"conflict" yaml:"conflict"`
+	Recurrence OperationalRecurrence `json:"recurrence" yaml:"recurrence"`
+}
+
+type OperationalRecurrence struct {
+	Timezone   string   `json:"timezone" yaml:"timezone"`
+	StartDate  string   `json:"start_date" yaml:"start_date"`
+	EndDate    string   `json:"end_date" yaml:"end_date"`
+	Weekdays   []string `json:"weekdays" yaml:"weekdays"`
+	Time       string   `json:"time" yaml:"time"`
+	Exceptions []string `json:"exceptions,omitempty" yaml:"exceptions,omitempty"`
+}
+
+type OperationalOccurrence struct {
+	Schedule string
+	Slot     string
+	Workflow string
+	Conflict string
+	When     interval.Interval
+}
+
+type OperationalScheduleSummary struct {
+	Planned   int
+	Skipped   int
+	Conflicts int
+	Missed    int
+	Existing  int
+}
+
+func (s *Store) MaterializeOperationalSchedules(ctx context.Context, from, until time.Time) (OperationalScheduleSummary, error) {
+	s.Lock()
+	defer s.Unlock()
+	repository, ok := s.repository.(OperationalScheduleRepository)
+	if !ok {
+		return OperationalScheduleSummary{}, errors.New("operational schedules require durable persistence")
+	}
+	manifest := s.exportManifestLocked()
+	occurrences, err := MaterializeOperationalSchedules(manifest, from.UTC(), until.UTC())
+	if err != nil {
+		return OperationalScheduleSummary{}, err
+	}
+	summary := OperationalScheduleSummary{}
+	for _, occurrence := range occurrences {
+		slot, ok := s.Slots[occurrence.Slot]
+		if !ok {
+			return summary, fmt.Errorf("operational schedule %s slot %s not found", occurrence.Schedule, occurrence.Slot)
+		}
+		identity := occurrence.Schedule + "\x00" + occurrence.When.Start.UTC().Format(time.RFC3339Nano) + "\x00" + fmt.Sprint(s.manifestVersion)
+		jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("scheduled-job\x00"+identity)).String()
+		bookingID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("scheduled-booking\x00"+identity)).String()
+		deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("scheduled-delivery\x00"+identity)).String()
+		idempotencyKey := "scheduled-operation:" + jobID
+		command := operations.Command{Version: 1, JobID: jobID, Workflow: occurrence.Workflow, Resource: slot.Resource,
+			Kind: "scheduled", StartsAt: occurrence.When.Start.UTC(), EndsAt: occurrence.When.End.UTC(), BookingName: bookingID,
+			PlanRevision: 1, IdempotencyKey: idempotencyKey}
+		body, err := json.Marshal(command)
+		if err != nil {
+			return summary, err
+		}
+		booking := Booking{Name: bookingID, User: "__operations__", Policy: "__operations__", Slot: occurrence.Slot,
+			Maintenance: true, When: occurrence.When}
+		item := OperationalReservation{
+			Request: CreateBookingRequest{Booking: booking, Resource: slot.Resource, ResourceConstrained: true,
+				Now: s.now(), ManifestVersion: s.manifestVersion, Maintenance: true, Actor: "operational-scheduler"},
+			Job: operations.Job{ID: jobID, Resource: slot.Resource, Workflow: occurrence.Workflow, Kind: "scheduled", State: "reserved",
+				DueAt: occurrence.When.Start.UTC(), StartsAt: occurrence.When.Start.UTC(), EndsAt: occurrence.When.End.UTC(),
+				TriggeringBookingName: "schedule:" + occurrence.Schedule, ManifestVersion: s.manifestVersion, PlanRevision: 1,
+				IdempotencyKey: idempotencyKey, Payload: body},
+			Delivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body},
+		}
+		result, err := repository.CreateScheduledOperation(ctx, occurrence.Schedule, occurrence.When.Start, occurrence.Conflict, item)
+		if err != nil {
+			return summary, err
+		}
+		if !result.Created {
+			summary.Existing++
+			continue
+		}
+		switch result.State {
+		case "planned":
+			summary.Planned++
+		case "skipped":
+			summary.Skipped++
+		case "conflict":
+			summary.Conflicts++
+		case "missed":
+			summary.Missed++
+		}
+	}
+	if summary.Planned > 0 {
+		if err := s.refreshFromRepositoryLocked(ctx); err != nil {
+			return summary, err
+		}
+	}
+	return summary, nil
+}
+
+func MaterializeOperationalSchedules(manifest Manifest, from, until time.Time) ([]OperationalOccurrence, error) {
+	result := make([]OperationalOccurrence, 0)
+	for name, schedule := range manifest.OperationalSchedules {
+		rule := WeeklyRecurrence{Timezone: schedule.Recurrence.Timezone, StartDate: schedule.Recurrence.StartDate,
+			EndDate: schedule.Recurrence.EndDate, Weekdays: schedule.Recurrence.Weekdays,
+			StartTime: schedule.Recurrence.Time, EndTime: schedule.Recurrence.Time, Exceptions: schedule.Recurrence.Exceptions}
+		starts, err := materializeWeekly(rule)
+		if err != nil {
+			return nil, fmt.Errorf("operational schedule %s: %w", name, err)
+		}
+		for _, occurrence := range starts {
+			start := occurrence.Start
+			if start.Before(from) || !start.Before(until) {
+				continue
+			}
+			result = append(result, OperationalOccurrence{Schedule: name, Slot: schedule.Slot, Workflow: schedule.Workflow,
+				Conflict: schedule.Conflict, When: interval.Interval{Start: start, End: start.Add(schedule.Duration)}})
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].When.Start.Equal(result[j].When.Start) {
+			return result[i].Schedule < result[j].Schedule
+		}
+		return result[i].When.Start.Before(result[j].When.Start)
+	})
+	return result, nil
 }
 
 func (s *Store) plannedOperationalReservationsLocked(slotName, bookingName, excludeBookingName string, when interval.Interval) ([]OperationalReservation, error) {
@@ -223,6 +355,26 @@ func validateOperationalManifest(m Manifest) []string {
 					messages = append(messages, "resource "+resourceName+" uses outside_operating_window without an operating_window")
 				}
 			}
+		}
+	}
+	for name, schedule := range m.OperationalSchedules {
+		workflow, workflowOK := m.OperationalWorkflows[schedule.Workflow]
+		if !workflowOK {
+			messages = append(messages, "operational schedule "+name+" references non-existent workflow: "+schedule.Workflow)
+		}
+		if _, ok := m.Slots[schedule.Slot]; !ok {
+			messages = append(messages, "operational schedule "+name+" references non-existent slot: "+schedule.Slot)
+		}
+		if schedule.Duration <= 0 || (workflowOK && schedule.Duration > workflow.MaximumDuration) {
+			messages = append(messages, "operational schedule "+name+" duration must be positive and within workflow maximum")
+		}
+		if schedule.Conflict != OperationalConflictRequire && schedule.Conflict != OperationalConflictSkip {
+			messages = append(messages, "operational schedule "+name+" has invalid conflict mode")
+		}
+		probe := m
+		probe.OperationalSchedules = map[string]OperationalSchedule{name: schedule}
+		if _, err := MaterializeOperationalSchedules(probe, time.Time{}, time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)); err != nil {
+			messages = append(messages, err.Error())
 		}
 	}
 	return messages

@@ -107,6 +107,15 @@ type OperationalActivationRepository interface {
 	ActivateOperationalJob(context.Context, string, string, string, time.Time) (PersistentBooking, operations.Job, error)
 }
 
+type OperationalScheduleResult struct {
+	State   string
+	Created bool
+}
+
+type OperationalScheduleRepository interface {
+	CreateScheduledOperation(context.Context, string, time.Time, string, OperationalReservation) (OperationalScheduleResult, error)
+}
+
 // ManifestValidator runs while the repository holds the exclusive maintenance
 // lock and before a candidate becomes active. It must not call the repository.
 type ManifestValidator func(PersistentState) error

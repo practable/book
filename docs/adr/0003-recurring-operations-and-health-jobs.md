@@ -193,8 +193,10 @@ The HMAC-authenticated runner activation action transactionally starts only the
 reservation bound to an accepted job and returns its activity configuration.
 Terminal callbacks atomically close that reservation, record actual occupied
 time, and durably revoke relay access for a started job.
-Operational-state schedules, health policy, charging, organisation accounts,
-and block booking remain deferred.
+Finite weekly operational schedules with explicit conflict recording are
+implemented using the same reservation, job, and outbox lifecycle.
+Operational-state schedules, flexible conflict windows, health policy,
+charging, organisation accounts, and block booking remain deferred.
 
 ## Related decisions
 

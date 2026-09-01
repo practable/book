@@ -1981,6 +1981,10 @@ definitions:
         type: object
         additionalProperties:
           $ref: '#/definitions/OperationalWorkflow'
+      operational_schedules:
+        type: object
+        additionalProperties:
+          $ref: '#/definitions/OperationalSchedule'
       resources:
         type: object
         additionalProperties:
@@ -2223,6 +2227,32 @@ definitions:
       expected_duration: {type: string, example: 10m}
       maximum_duration: {type: string, example: 15m}
     required: [description, expected_duration, maximum_duration]
+
+  OperationalSchedule:
+    type: object
+    properties:
+      slot: {type: string}
+      workflow: {type: string}
+      duration: {type: string, example: 10m}
+      conflict: {type: string, enum: [require, skip]}
+      recurrence: {$ref: '#/definitions/OperationalRecurrence'}
+    required: [slot, workflow, duration, conflict, recurrence]
+
+  OperationalRecurrence:
+    description: A finite weekly civil-time occurrence pattern; end_date is inclusive.
+    type: object
+    properties:
+      timezone: {type: string, example: Europe/London}
+      start_date: {type: string, format: date, example: '2026-09-14'}
+      end_date: {type: string, format: date, example: '2026-12-18'}
+      weekdays:
+        type: array
+        items: {type: string}
+      time: {type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$', example: '08:50'}
+      exceptions:
+        type: array
+        items: {type: string, format: date}
+    required: [timezone, start_date, end_date, weekdays, time]
 
   OperationalGuard:
     type: object

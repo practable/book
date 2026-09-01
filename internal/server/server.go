@@ -98,6 +98,7 @@ func (s *Server) Run(ctx context.Context) {
 			Now:        s.Config.Now,
 		}
 		go dispatcher.Run(ctxStore, s.Config.WebhookPollEvery)
+		go s.runOperationalScheduler(ctxStore)
 	}
 
 	go serve.API(ctx, s.Config, cancelStore)
@@ -106,6 +107,39 @@ func (s *Server) Run(ctx context.Context) {
 
 	<-ctxStore.Done() //cannot use ctx.Done() because will leave hanging process when used with book/cmd where there is no cancellation of ctx
 
+}
+
+func (s *Server) runOperationalScheduler(ctx context.Context) {
+	every := s.Config.OperationalScheduleEvery
+	if every <= 0 {
+		every = time.Minute
+	}
+	horizon := s.Config.OperationalScheduleHorizon
+	if horizon <= 0 {
+		horizon = 7 * 24 * time.Hour
+	}
+	run := func() {
+		now := s.Config.Now().UTC()
+		summary, err := s.Store.MaterializeOperationalSchedules(ctx, now.Add(-horizon), now.Add(horizon))
+		if err != nil {
+			log.WithError(err).Error("could not materialize operational schedules")
+			return
+		}
+		if summary.Planned+summary.Skipped+summary.Conflicts+summary.Missed > 0 {
+			log.WithFields(log.Fields{"planned": summary.Planned, "skipped": summary.Skipped, "conflicts": summary.Conflicts, "missed": summary.Missed}).Info("materialized operational schedules")
+		}
+	}
+	run()
+	ticker := time.NewTicker(every)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			run()
+		}
+	}
 }
 
 func hostname() string {

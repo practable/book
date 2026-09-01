@@ -2979,6 +2979,12 @@ func init() {
             "$ref": "#/definitions/Group"
           }
         },
+        "operational_schedules": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalSchedule"
+          }
+        },
         "operational_workflows": {
           "type": "object",
           "additionalProperties": {
@@ -3192,6 +3198,83 @@ func init() {
           }
         },
         "operating_window": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalRecurrence": {
+      "description": "A finite weekly civil-time occurrence pattern; end_date is inclusive.",
+      "type": "object",
+      "required": [
+        "timezone",
+        "start_date",
+        "end_date",
+        "weekdays",
+        "time"
+      ],
+      "properties": {
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-12-18"
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-09-14"
+        },
+        "time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "example": "08:50"
+        },
+        "timezone": {
+          "type": "string",
+          "example": "Europe/London"
+        },
+        "weekdays": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "OperationalSchedule": {
+      "type": "object",
+      "required": [
+        "slot",
+        "workflow",
+        "duration",
+        "conflict",
+        "recurrence"
+      ],
+      "properties": {
+        "conflict": {
+          "type": "string",
+          "enum": [
+            "require",
+            "skip"
+          ]
+        },
+        "duration": {
+          "type": "string",
+          "example": "10m"
+        },
+        "recurrence": {
+          "$ref": "#/definitions/OperationalRecurrence"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "workflow": {
           "type": "string"
         }
       }
@@ -7330,6 +7413,12 @@ func init() {
             "$ref": "#/definitions/Group"
           }
         },
+        "operational_schedules": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/OperationalSchedule"
+          }
+        },
         "operational_workflows": {
           "type": "object",
           "additionalProperties": {
@@ -7543,6 +7632,83 @@ func init() {
           }
         },
         "operating_window": {
+          "type": "string"
+        }
+      }
+    },
+    "OperationalRecurrence": {
+      "description": "A finite weekly civil-time occurrence pattern; end_date is inclusive.",
+      "type": "object",
+      "required": [
+        "timezone",
+        "start_date",
+        "end_date",
+        "weekdays",
+        "time"
+      ],
+      "properties": {
+        "end_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-12-18"
+        },
+        "exceptions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "date"
+          }
+        },
+        "start_date": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-09-14"
+        },
+        "time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "example": "08:50"
+        },
+        "timezone": {
+          "type": "string",
+          "example": "Europe/London"
+        },
+        "weekdays": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "OperationalSchedule": {
+      "type": "object",
+      "required": [
+        "slot",
+        "workflow",
+        "duration",
+        "conflict",
+        "recurrence"
+      ],
+      "properties": {
+        "conflict": {
+          "type": "string",
+          "enum": [
+            "require",
+            "skip"
+          ]
+        },
+        "duration": {
+          "type": "string",
+          "example": "10m"
+        },
+        "recurrence": {
+          "$ref": "#/definitions/OperationalRecurrence"
+        },
+        "slot": {
+          "type": "string"
+        },
+        "workflow": {
           "type": "string"
         }
       }

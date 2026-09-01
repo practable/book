@@ -121,3 +121,29 @@ func TestOperationalManifestRejectsUnknownAndOverlongWorkflow(t *testing.T) {
 		t.Fatalf("messages = %#v", messages)
 	}
 }
+
+func TestOperationalSchedulesUseCivilTimeAndSemesterBounds(t *testing.T) {
+	m := operationalManifest()
+	m.Slots = map[string]Slot{"tank-slot": {}}
+	m.OperationalSchedules = map[string]OperationalSchedule{
+		"weekday-fill": {Slot: "tank-slot", Workflow: "fill", Duration: 10 * time.Minute, Conflict: OperationalConflictRequire,
+			Recurrence: OperationalRecurrence{Timezone: "Europe/London", StartDate: "2026-03-27", EndDate: "2026-03-31",
+				Weekdays: []string{"fri", "mon", "tue"}, Time: "09:00", Exceptions: []string{"2026-03-31"}}},
+	}
+	occurrences, err := MaterializeOperationalSchedules(m, time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(occurrences) != 2 {
+		t.Fatalf("occurrences = %#v", occurrences)
+	}
+	if got := occurrences[0].When.Start.Hour(); got != 9 {
+		t.Fatalf("pre-DST UTC hour = %d", got)
+	}
+	if got := occurrences[1].When.Start.Hour(); got != 8 {
+		t.Fatalf("post-DST UTC hour = %d", got)
+	}
+	if occurrences[1].When.End.Sub(occurrences[1].When.Start) != 10*time.Minute {
+		t.Fatalf("duration = %s", occurrences[1].When.End.Sub(occurrences[1].When.Start))
+	}
+}

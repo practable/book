@@ -111,6 +111,8 @@ $ book serve
 		viper.SetDefault("tidy_every", "1h")
 		viper.SetDefault("webhook_tolerance", "5m")
 		viper.SetDefault("webhook_poll_every", "1s")
+		viper.SetDefault("operational_schedule_every", "1m")
+		viper.SetDefault("operational_schedule_horizon", "168h")
 
 		accessTokenTTL := viper.GetString("access_token_ttl")
 		adminSecret := viper.GetString("admin_secret")
@@ -132,6 +134,8 @@ $ book serve
 		webhookSecretValue := strings.TrimSpace(viper.GetString("webhook_secret"))
 		webhookTolerance := viper.GetString("webhook_tolerance")
 		webhookPollEvery := viper.GetString("webhook_poll_every")
+		operationalScheduleEvery := viper.GetString("operational_schedule_every")
+		operationalScheduleHorizon := viper.GetString("operational_schedule_horizon")
 
 		tidyEvery := viper.GetString("tidy_every")
 		minUsernameLength := viper.GetInt("min_username_length")
@@ -202,6 +206,16 @@ $ book serve
 		webhookPollEveryDuration, err := time.ParseDuration(webhookPollEvery)
 		if err != nil || webhookPollEveryDuration <= 0 {
 			fmt.Println("Specify BOOK_WEBHOOK_POLL_EVERY as a positive duration, e.g. 1s")
+			os.Exit(1)
+		}
+		operationalScheduleEveryDuration, err := time.ParseDuration(operationalScheduleEvery)
+		if err != nil || operationalScheduleEveryDuration <= 0 {
+			fmt.Println("Specify BOOK_OPERATIONAL_SCHEDULE_EVERY as a positive duration, e.g. 1m")
+			os.Exit(1)
+		}
+		operationalScheduleHorizonDuration, err := time.ParseDuration(operationalScheduleHorizon)
+		if err != nil || operationalScheduleHorizonDuration <= 0 {
+			fmt.Println("Specify BOOK_OPERATIONAL_SCHEDULE_HORIZON as a positive duration, e.g. 168h")
 			os.Exit(1)
 		}
 		var webhookSecret []byte
@@ -309,23 +323,25 @@ $ book serve
 		defer repository.Close()
 
 		cfg := config.ServerConfig{
-			AccessTokenLifetime:   accessTokenTTLDuration,
-			CheckEvery:            checkEveryDuration,
-			DisableCancelAfterUse: disableCancelAfterUse,
-			Host:                  audience,
-			MinUserNameLength:     minUsernameLength,
-			Now:                   func() time.Time { return time.Now() },
-			Port:                  port,
-			PruneEvery:            tidyEveryDuration,
-			StoreSecret:           []byte(adminSecret),
-			RelaySecret:           []byte(relaySecret),
-			RequestTimeout:        requestTimeoutDuration,
-			Repository:            repository,
-			OperationsRepository:  repository,
-			JobRunnerURL:          jobRunnerURL,
-			WebhookSecret:         webhookSecret,
-			WebhookTolerance:      webhookToleranceDuration,
-			WebhookPollEvery:      webhookPollEveryDuration,
+			AccessTokenLifetime:        accessTokenTTLDuration,
+			CheckEvery:                 checkEveryDuration,
+			DisableCancelAfterUse:      disableCancelAfterUse,
+			Host:                       audience,
+			MinUserNameLength:          minUsernameLength,
+			Now:                        func() time.Time { return time.Now() },
+			Port:                       port,
+			PruneEvery:                 tidyEveryDuration,
+			StoreSecret:                []byte(adminSecret),
+			RelaySecret:                []byte(relaySecret),
+			RequestTimeout:             requestTimeoutDuration,
+			Repository:                 repository,
+			OperationsRepository:       repository,
+			JobRunnerURL:               jobRunnerURL,
+			WebhookSecret:              webhookSecret,
+			WebhookTolerance:           webhookToleranceDuration,
+			WebhookPollEvery:           webhookPollEveryDuration,
+			OperationalScheduleEvery:   operationalScheduleEveryDuration,
+			OperationalScheduleHorizon: operationalScheduleHorizonDuration,
 		}
 
 		s, err := server.NewWithError(cfg)

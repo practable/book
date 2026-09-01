@@ -171,6 +171,7 @@ type Manifest struct {
 	Groups               map[string]Group               `json:"groups" yaml:"groups"`
 	Policies             map[string]Policy              `json:"policies" yaml:"policies"`
 	OperationalWorkflows map[string]OperationalWorkflow `json:"operational_workflows,omitempty" yaml:"operational_workflows,omitempty"`
+	OperationalSchedules map[string]OperationalSchedule `json:"operational_schedules,omitempty" yaml:"operational_schedules,omitempty"`
 	Resources            map[string]Resource            `json:"resources" yaml:"resources"`
 	Slots                map[string]Slot                `json:"slots" yaml:"slots"`
 	Streams              map[string]Stream              `json:"streams" yaml:"streams"`
@@ -351,6 +352,7 @@ type Store struct {
 	Resources map[string]Resource
 
 	OperationalWorkflows map[string]OperationalWorkflow
+	OperationalSchedules map[string]OperationalSchedule
 
 	// Slots represent the combinations of virtual equipments and booking policies that apply to them
 	Slots map[string]Slot
@@ -514,6 +516,7 @@ func New() *Store {
 		time.Second,
 		make(map[string]Resource),
 		make(map[string]OperationalWorkflow),
+		make(map[string]OperationalSchedule),
 		make(map[string]Slot),
 		make(map[string]AvailabilityStatus),
 		make(map[string]Stream),
@@ -1370,6 +1373,7 @@ func (s *Store) exportManifestLocked() Manifest {
 		Groups:               gm,
 		Policies:             pm,
 		OperationalWorkflows: s.OperationalWorkflows,
+		OperationalSchedules: s.OperationalSchedules,
 		Resources:            rm,
 		Slots:                s.Slots,
 		Streams:              s.Streams,
@@ -3224,6 +3228,7 @@ func (s *Store) applyManifestLocked(m Manifest) error {
 	s.Policies = policies
 	s.Resources = resources
 	s.OperationalWorkflows = m.OperationalWorkflows
+	s.OperationalSchedules = m.OperationalSchedules
 	s.Slots = m.Slots
 	s.Streams = m.Streams
 	s.UIs = uis

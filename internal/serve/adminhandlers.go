@@ -134,6 +134,20 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 		}
 		workflows[name] = store.OperationalWorkflow{Description: *value.Description, ExpectedDuration: expected, MaximumDuration: maximum}
 	}
+	schedules := make(map[string]store.OperationalSchedule, len(mm.OperationalSchedules))
+	for name, value := range mm.OperationalSchedules {
+		duration, err := time.ParseDuration(*value.Duration)
+		if err != nil {
+			return store.Manifest{}, errors.New("error parsing duration in operational schedule " + name + ": " + err.Error())
+		}
+		exceptions := make([]string, 0, len(value.Recurrence.Exceptions))
+		for _, exception := range value.Recurrence.Exceptions {
+			exceptions = append(exceptions, exception.String())
+		}
+		schedules[name] = store.OperationalSchedule{Slot: *value.Slot, Workflow: *value.Workflow, Duration: duration, Conflict: *value.Conflict,
+			Recurrence: store.OperationalRecurrence{Timezone: *value.Recurrence.Timezone, StartDate: value.Recurrence.StartDate.String(),
+				EndDate: value.Recurrence.EndDate.String(), Weekdays: value.Recurrence.Weekdays, Time: *value.Recurrence.Time, Exceptions: exceptions}}
+	}
 
 	dm := make(map[string]store.Description)
 
@@ -414,6 +428,7 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 		Groups:               gm,
 		Policies:             pm,
 		OperationalWorkflows: workflows,
+		OperationalSchedules: schedules,
 		Resources:            rm,
 		Slots:                slm,
 		Streams:              stm,
@@ -742,6 +757,22 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 			description, expected, maximum := workflow.Description, workflow.ExpectedDuration.String(), workflow.MaximumDuration.String()
 			workflows[name] = models.OperationalWorkflow{Description: &description, ExpectedDuration: &expected, MaximumDuration: &maximum}
 		}
+		schedules := make(map[string]models.OperationalSchedule, len(sm.OperationalSchedules))
+		for name, schedule := range sm.OperationalSchedules {
+			duration, conflict, slot, workflow := schedule.Duration.String(), schedule.Conflict, schedule.Slot, schedule.Workflow
+			timezone, at := schedule.Recurrence.Timezone, schedule.Recurrence.Time
+			startValue, _ := time.Parse("2006-01-02", schedule.Recurrence.StartDate)
+			endValue, _ := time.Parse("2006-01-02", schedule.Recurrence.EndDate)
+			startDate, endDate := strfmt.Date(startValue), strfmt.Date(endValue)
+			exceptions := make([]strfmt.Date, 0, len(schedule.Recurrence.Exceptions))
+			for _, item := range schedule.Recurrence.Exceptions {
+				parsed, _ := time.Parse("2006-01-02", item)
+				exceptions = append(exceptions, strfmt.Date(parsed))
+			}
+			schedules[name] = models.OperationalSchedule{Slot: &slot, Workflow: &workflow, Duration: &duration, Conflict: &conflict,
+				Recurrence: &models.OperationalRecurrence{Timezone: &timezone, StartDate: &startDate, EndDate: &endDate,
+					Weekdays: schedule.Recurrence.Weekdays, Time: &at, Exceptions: exceptions}}
+		}
 
 		slm := make(map[string]models.Slot)
 
@@ -837,6 +868,7 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 			Groups:               gm,
 			Policies:             pm,
 			OperationalWorkflows: workflows,
+			OperationalSchedules: schedules,
 			Resources:            rm,
 			Slots:                slm,
 			Streams:              stm,

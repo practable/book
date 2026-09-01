@@ -31,6 +31,9 @@ type Manifest struct {
 	// groups
 	Groups map[string]Group `json:"groups,omitempty"`
 
+	// operational schedules
+	OperationalSchedules map[string]OperationalSchedule `json:"operational_schedules,omitempty"`
+
 	// operational workflows
 	OperationalWorkflows map[string]OperationalWorkflow `json:"operational_workflows,omitempty"`
 
@@ -76,6 +79,10 @@ func (m *Manifest) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateGroups(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOperationalSchedules(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -186,6 +193,32 @@ func (m *Manifest) validateGroups(formats strfmt.Registry) error {
 					return ve.ValidateName("groups" + "." + k)
 				} else if ce, ok := err.(*errors.CompositeError); ok {
 					return ce.ValidateName("groups" + "." + k)
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Manifest) validateOperationalSchedules(formats strfmt.Registry) error {
+	if swag.IsZero(m.OperationalSchedules) { // not required
+		return nil
+	}
+
+	for k := range m.OperationalSchedules {
+
+		if err := validate.Required("operational_schedules"+"."+k, "body", m.OperationalSchedules[k]); err != nil {
+			return err
+		}
+		if val, ok := m.OperationalSchedules[k]; ok {
+			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("operational_schedules" + "." + k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("operational_schedules" + "." + k)
 				}
 				return err
 			}
@@ -427,6 +460,10 @@ func (m *Manifest) ContextValidate(ctx context.Context, formats strfmt.Registry)
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateOperationalSchedules(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateOperationalWorkflows(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -504,6 +541,21 @@ func (m *Manifest) contextValidateGroups(ctx context.Context, formats strfmt.Reg
 	for k := range m.Groups {
 
 		if val, ok := m.Groups[k]; ok {
+			if err := val.ContextValidate(ctx, formats); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *Manifest) contextValidateOperationalSchedules(ctx context.Context, formats strfmt.Registry) error {
+
+	for k := range m.OperationalSchedules {
+
+		if val, ok := m.OperationalSchedules[k]; ok {
 			if err := val.ContextValidate(ctx, formats); err != nil {
 				return err
 			}

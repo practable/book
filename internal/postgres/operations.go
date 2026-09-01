@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -187,6 +188,89 @@ func (r *Repository) ReplaceBookingWithOperations(ctx context.Context, originalN
 		return store.PersistentBooking{}, nil, false, mapWriteError(err)
 	}
 	return persisted, append(retired, created...), true, nil
+}
+
+func (r *Repository) CreateScheduledOperation(ctx context.Context, schedule string, occurrence time.Time, conflictMode string, item store.OperationalReservation) (store.OperationalScheduleResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	identity := schedule + ":" + occurrence.UTC().Format(time.RFC3339Nano) + ":" + fmt.Sprint(item.Request.ManifestVersion)
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", "operational-schedule:"+identity); err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	var existingState string
+	err = tx.QueryRow(ctx, `SELECT state FROM public.operational_schedule_occurrences
+		WHERE schedule_name=$1 AND occurrence_at_ns=$2 AND manifest_version=$3`, schedule, occurrence.UnixNano(), item.Request.ManifestVersion).Scan(&existingState)
+	if err == nil {
+		return store.OperationalScheduleResult{State: existingState, Created: false}, tx.Commit(ctx)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return store.OperationalScheduleResult{}, err
+	}
+	if err := lockCreate(ctx, tx, item.Request.Booking.User, item.Request.Booking.Policy, item.Request.Resource); err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	if err := assertManifestVersion(ctx, tx, item.Request.ManifestVersion); err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	if !item.Request.Booking.When.End.After(item.Request.Now) {
+		if _, err := tx.Exec(ctx, `INSERT INTO public.operational_schedule_occurrences
+			(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,detail)
+			VALUES($1,$2,$3,$4,'missed','occurrence ended before scheduler recovery')`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion); err != nil {
+			return store.OperationalScheduleResult{}, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return store.OperationalScheduleResult{}, err
+		}
+		return store.OperationalScheduleResult{State: "missed", Created: true}, nil
+	}
+	var overlap bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.bookings WHERE resource_name=$1
+		AND resource_constrained AND collection='live' AND NOT superseded
+		AND int8range(starts_ns,ends_ns,'[)') && int8range($2,$3,'[)'))`, item.Request.Resource,
+		item.Request.Booking.When.Start.UnixNano(), item.Request.Booking.When.End.UnixNano()).Scan(&overlap); err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	if overlap {
+		state := "conflict"
+		if conflictMode == store.OperationalConflictSkip {
+			state = "skipped"
+		}
+		if _, err := tx.Exec(ctx, `INSERT INTO public.operational_schedule_occurrences
+			(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,detail)
+			VALUES($1,$2,$3,$4,$5,'resource already reserved')`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion, state); err != nil {
+			return store.OperationalScheduleResult{}, err
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return store.OperationalScheduleResult{}, err
+		}
+		return store.OperationalScheduleResult{State: state, Created: true}, nil
+	}
+	reservation, fresh, err := createBookingTx(ctx, tx, item.Request)
+	if err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	if !fresh {
+		return store.OperationalScheduleResult{}, store.ErrBookingConflict
+	}
+	job := item.Job
+	job.BookingRowID = &reservation.Revision
+	if err := insertOperationalJobTx(ctx, tx, job, item.Delivery); err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO public.operational_schedule_occurrences
+		(schedule_name,occurrence_at,occurrence_at_ns,manifest_version,state,booking_row_id,job_id)
+		VALUES($1,$2,$3,$4,'planned',$5,$6)`, schedule, occurrence.UTC(), occurrence.UnixNano(), item.Request.ManifestVersion, reservation.Revision, job.ID); err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.OperationalScheduleResult{}, err
+	}
+	return store.OperationalScheduleResult{State: "planned", Created: true}, nil
 }
 
 func retireTriggeredOperationalReservationsTx(ctx context.Context, tx pgx.Tx, triggeringName string, at time.Time, actor string) ([]store.PersistentBooking, error) {
