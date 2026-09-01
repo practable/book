@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/practable/book/internal/deny"
+	"github.com/practable/book/internal/operations"
 	"github.com/practable/book/internal/store"
 )
 
@@ -21,6 +22,11 @@ type ServerConfig struct {
 	RelaySecret           []byte //TODO update to string to suit internal/login.Sign()
 	RequestTimeout        time.Duration
 	Repository            store.BookingRepository
+	OperationsRepository  operations.Repository
+	JobRunnerURL          string
+	WebhookSecret         []byte
+	WebhookTolerance      time.Duration
+	WebhookPollEvery      time.Duration
 	StoreSecret           []byte //TODO update to string to suit internal/login.Sign()?
 	Store                 *store.Store
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/practable/book/internal/interval"
+	"github.com/practable/book/internal/operations"
 	"github.com/practable/book/internal/store"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -27,7 +28,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(), "INSERT INTO public.service_state(singleton,updated_at_ns) VALUES(true,0)")
 	require.NoError(t, err)
@@ -61,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 8, versions)
+	require.Equal(t, 9, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -134,6 +135,80 @@ func TestBookingReplacementRecordsItsActualActor(t *testing.T) {
 	events, err := repository.ListBookingEvents(ctx, created.Booking.Name)
 	require.NoError(t, err)
 	require.Equal(t, "user:opaque-user", events[len(events)-1].Actor)
+}
+
+func operationalJob(now time.Time) (operations.Job, operations.Delivery) {
+	job := operations.Job{ID: "job-1", Resource: "ripp02", Workflow: "fill", Kind: "setup", State: "scheduled", DueAt: now,
+		StartsAt: now, EndsAt: now.Add(10 * time.Minute), ManifestVersion: 1, PlanRevision: 1, IdempotencyKey: "plan-1/setup", Payload: []byte(`{"reason":"out-of-hours"}`)}
+	delivery := operations.Delivery{ID: "delivery-1", JobID: job.ID, Body: []byte(`{"version":1,"job_id":"job-1"}`)}
+	return job, delivery
+}
+
+func TestOperationalJobOutboxIsTransactionalIdempotentAndClaimedOnce(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	job, delivery := operationalJob(now)
+	created, fresh, err := repository.CreateJob(ctx, job, delivery)
+	require.NoError(t, err)
+	require.True(t, fresh)
+	require.Equal(t, job.ID, created.ID)
+	retried, fresh, err := repository.CreateJob(ctx, job, operations.Delivery{ID: "different", JobID: job.ID, Body: delivery.Body})
+	require.NoError(t, err)
+	require.False(t, fresh)
+	require.Equal(t, job.ID, retried.ID)
+
+	var wg sync.WaitGroup
+	claimed := make(chan []operations.Delivery, 2)
+	for _, owner := range []string{"instance-a", "instance-b"} {
+		wg.Add(1)
+		go func(owner string) {
+			defer wg.Done()
+			values, claimErr := repository.ClaimDeliveries(ctx, owner, now, time.Minute, 10)
+			require.NoError(t, claimErr)
+			claimed <- values
+		}(owner)
+	}
+	wg.Wait()
+	close(claimed)
+	count := 0
+	for values := range claimed {
+		count += len(values)
+	}
+	require.Equal(t, 1, count)
+}
+
+func TestOperationalDeliveryRetryAndCallbackIdempotency(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	job, delivery := operationalJob(now)
+	_, _, err := repository.CreateJob(ctx, job, delivery)
+	require.NoError(t, err)
+	claimed, err := repository.ClaimDeliveries(ctx, "sender", now, time.Minute, 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	require.NoError(t, repository.CompleteDelivery(ctx, delivery.ID, "sender", false, 503, "runner unavailable", now, now.Add(time.Minute)))
+	claimed, err = repository.ClaimDeliveries(ctx, "sender", now.Add(30*time.Second), time.Minute, 1)
+	require.NoError(t, err)
+	require.Empty(t, claimed)
+	claimed, err = repository.ClaimDeliveries(ctx, "sender", now.Add(time.Minute), time.Minute, 1)
+	require.NoError(t, err)
+	require.Len(t, claimed, 1)
+	require.NoError(t, repository.CompleteDelivery(ctx, delivery.ID, "sender", true, 202, "", now.Add(time.Minute), now.Add(time.Minute)))
+
+	callback := operations.Callback{DeliveryID: "callback-1", JobID: job.ID, State: "accepted", At: now.Add(2 * time.Minute)}
+	updated, fresh, err := repository.ApplyCallback(ctx, callback, "body-hash")
+	require.NoError(t, err)
+	require.True(t, fresh)
+	require.Equal(t, "accepted", updated.State)
+	_, fresh, err = repository.ApplyCallback(ctx, callback, "body-hash")
+	require.NoError(t, err)
+	require.False(t, fresh)
+	_, _, err = repository.ApplyCallback(ctx, callback, "different-hash")
+	require.ErrorIs(t, err, operations.ErrCallbackConflict)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "callback-2", JobID: job.ID, State: "scheduled", At: now}, "hash-2")
+	require.ErrorIs(t, err, operations.ErrInvalidTransition)
 }
 
 func TestMaintenanceStateSurvivesRestart(t *testing.T) {

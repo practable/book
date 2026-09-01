@@ -3,9 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/practable/book/internal/config"
+	"github.com/practable/book/internal/operations"
 	"github.com/practable/book/internal/serve"
 	"github.com/practable/book/internal/store"
 	log "github.com/sirupsen/logrus"
@@ -87,6 +89,16 @@ func (s *Server) Run(ctx context.Context) {
 	ctxStore, cancelStore := context.WithCancel(context.Background())
 
 	go s.Store.Run(ctxStore, s.Config.PruneEvery, s.Config.CheckEvery)
+	if s.Config.OperationsRepository != nil && s.Config.JobRunnerURL != "" && len(s.Config.WebhookSecret) == 32 {
+		dispatcher := &operations.Dispatcher{
+			Repository: s.Config.OperationsRepository,
+			Endpoint:   s.Config.JobRunnerURL,
+			Secret:     s.Config.WebhookSecret,
+			Owner:      fmt.Sprintf("%s-%d", hostname(), os.Getpid()),
+			Now:        s.Config.Now,
+		}
+		go dispatcher.Run(ctxStore, s.Config.WebhookPollEvery)
+	}
 
 	go serve.API(ctx, s.Config, cancelStore)
 
@@ -94,4 +106,12 @@ func (s *Server) Run(ctx context.Context) {
 
 	<-ctxStore.Done() //cannot use ctx.Done() because will leave hanging process when used with book/cmd where there is no cancellation of ctx
 
+}
+
+func hostname() string {
+	name, err := os.Hostname()
+	if err != nil || name == "" {
+		return "book"
+	}
+	return name
 }

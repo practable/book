@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"net/http"
 	_ "net/http/pprof" //ok in production https://medium.com/google-cloud/continuous-profiling-of-go-programs-96d4416af77b
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -30,6 +31,7 @@ import (
 	"github.com/practable/book/internal/config"
 	"github.com/practable/book/internal/postgres"
 	"github.com/practable/book/internal/server"
+	"github.com/practable/book/internal/webhook"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -47,6 +49,11 @@ export BOOK_AUDIENCE=https://book.practable.io
 export BOOK_PORT=4000
 export BOOK_LOG_FILE=/some/logging/location/book.log
 export BOOK_DATABASE_URL=postgres://book:password@localhost/book?sslmode=require
+
+Operational job webhooks are optional. Enable both directions together with:
+
+export BOOK_JOB_RUNNER_URL=https://jobs.example/commands
+export BOOK_WEBHOOK_SECRET=<64 hex characters or 43 base64url characters>
 
 If the BOOK_LOG_FILE is not set, or the file cannot be opened, then logging goes to stderr. Setting it to stdout sends logging to stdout.
 
@@ -102,6 +109,8 @@ $ book serve
 		viper.SetDefault("profile_port", 6060)
 		viper.SetDefault("request_timeout", "1m")
 		viper.SetDefault("tidy_every", "1h")
+		viper.SetDefault("webhook_tolerance", "5m")
+		viper.SetDefault("webhook_poll_every", "1s")
 
 		accessTokenTTL := viper.GetString("access_token_ttl")
 		adminSecret := viper.GetString("admin_secret")
@@ -119,6 +128,10 @@ $ book serve
 		profilePort := viper.GetInt("profile_port")
 		relaySecret := viper.GetString("relay_secret")
 		requestTimeout := viper.GetString("request_timeout")
+		jobRunnerURL := strings.TrimSpace(viper.GetString("job_runner_url"))
+		webhookSecretValue := strings.TrimSpace(viper.GetString("webhook_secret"))
+		webhookTolerance := viper.GetString("webhook_tolerance")
+		webhookPollEvery := viper.GetString("webhook_poll_every")
 
 		tidyEvery := viper.GetString("tidy_every")
 		minUsernameLength := viper.GetInt("min_username_length")
@@ -137,6 +150,10 @@ $ book serve
 		}
 		if databaseURL == "" {
 			fmt.Println("You must set BOOK_DATABASE_URL for PostgreSQL persistence")
+			ok = false
+		}
+		if (jobRunnerURL == "") != (webhookSecretValue == "") {
+			fmt.Println("Set both BOOK_JOB_RUNNER_URL and BOOK_WEBHOOK_SECRET, or neither")
 			ok = false
 		}
 
@@ -176,6 +193,29 @@ $ book serve
 		if err != nil {
 			fmt.Println("Specify BOOK_TIDY_EVERY duration as string, e.g. 1h, 30m etc")
 			os.Exit(1)
+		}
+		webhookToleranceDuration, err := time.ParseDuration(webhookTolerance)
+		if err != nil || webhookToleranceDuration <= 0 {
+			fmt.Println("Specify BOOK_WEBHOOK_TOLERANCE as a positive duration, e.g. 5m")
+			os.Exit(1)
+		}
+		webhookPollEveryDuration, err := time.ParseDuration(webhookPollEvery)
+		if err != nil || webhookPollEveryDuration <= 0 {
+			fmt.Println("Specify BOOK_WEBHOOK_POLL_EVERY as a positive duration, e.g. 1s")
+			os.Exit(1)
+		}
+		var webhookSecret []byte
+		if webhookSecretValue != "" {
+			webhookSecret, err = webhook.ParseSecret(webhookSecretValue)
+			if err != nil {
+				fmt.Println("BOOK_WEBHOOK_SECRET must encode exactly 32 random bytes as 64 hex characters or unpadded base64url")
+				os.Exit(1)
+			}
+			parsedURL, parseErr := url.Parse(jobRunnerURL)
+			if parseErr != nil || parsedURL.Host == "" || (parsedURL.Scheme != "https" && !(parsedURL.Scheme == "http" && (parsedURL.Hostname() == "localhost" || parsedURL.Hostname() == "127.0.0.1" || parsedURL.Hostname() == "::1"))) {
+				fmt.Println("BOOK_JOB_RUNNER_URL must use HTTPS (HTTP is accepted only for loopback development)")
+				os.Exit(1)
+			}
 		}
 
 		// Set up logging
@@ -241,6 +281,7 @@ $ book serve
 		log.Infof("Profile port: [%d]", profilePort)
 		log.Infof("Request timeout: [%s]", requestTimeout)
 		log.Infof("Tidy every: [%s]", tidyEvery)
+		log.Infof("Operational webhooks enabled: [%t]", jobRunnerURL != "")
 
 		// Optionally start the profiling server
 		if profile {
@@ -280,6 +321,11 @@ $ book serve
 			RelaySecret:           []byte(relaySecret),
 			RequestTimeout:        requestTimeoutDuration,
 			Repository:            repository,
+			OperationsRepository:  repository,
+			JobRunnerURL:          jobRunnerURL,
+			WebhookSecret:         webhookSecret,
+			WebhookTolerance:      webhookToleranceDuration,
+			WebhookPollEvery:      webhookPollEveryDuration,
 		}
 
 		s, err := server.NewWithError(cfg)

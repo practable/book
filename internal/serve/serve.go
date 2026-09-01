@@ -4,6 +4,7 @@ package serve
 import (
 	"context"
 	"flag"
+	"net/http"
 
 	"github.com/go-openapi/loads"
 	"github.com/practable/book/internal/config"
@@ -37,6 +38,9 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	//create new service API
 	api := operations.NewServeAPI(swaggerSpec)
 	server := restapi.NewServer(api)
+	server.WrapHandler(func(next http.Handler) http.Handler {
+		return operationsCallbackMiddleware(config, next)
+	})
 
 	//parse flags
 	flag.Parse()
