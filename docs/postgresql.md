@@ -102,7 +102,7 @@ large local manifest in the destructive disposable-database integration suite:
 ```sh
 export BOOK_TEST_MANIFEST_PATH=/absolute/path/to/manifest.yaml
 GOCACHE=/tmp/book-go-cache go test -count=1 \
-  -run TestExternalManifestPersistenceRoundTrip ./internal/postgres
+  -run TestExternalLargeManifestSurvivesRepositoryRestart ./internal/postgres
 ```
 
 ## Migrations
