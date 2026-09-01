@@ -61,9 +61,10 @@ On 2026-09-01, against disposable PostgreSQL on `127.0.0.1:5432`:
   passed.
 - `TestMigrationsFromEmptyDatabase` passed through migration `0026` in a newly
   created temporary database.
-- `manifest-ed0/manifest.yaml` passed CLI validation, database activation, and
-  recovery through a newly opened repository with resource, slot, policy,
-  group, and stream inventories preserved.
+- An external production-sized manifest passed CLI validation, database
+  activation, and recovery through a newly opened repository with resource,
+  slot, policy, group, and stream inventories preserved. Its path and contents
+  are not stored in this repository.
 - Tests cover restart recovery, simultaneous overlap rejection, cancellation
   and rebooking, exact retry/idempotency behavior, historical usage and policy
   limits, transaction rollback, manifest fencing, half-open adjacency,
@@ -77,10 +78,10 @@ Commands and disposable-database warnings are in `docs/postgresql.md`.
 - This is a large branch (including generated API code) and should be reviewed
   and rolled out in stages, not merged and deployed as an unobserved one-step
   change.
-- The current `manifest-ed0` is compatible but contains no
-  `stream_operations`. Health checks, activation preparation, and verified
-  release remain dormant until experiment owners add reviewed workflow
-  bindings. Book deliberately refuses to invent executable health checks.
+- Existing manifests without `stream_operations` remain compatible. Health
+  checks, activation preparation, and verified release remain dormant until
+  experiment owners add reviewed workflow bindings. Book deliberately refuses
+  to invent executable health checks.
 - The external job runner and its approved task implementations are separate
   deployment work. Book persists, signs, retries, and audits jobs but does not
   execute hardware commands itself.
