@@ -189,9 +189,10 @@ implemented. Manifest-driven booking guards are created atomically with their
 triggering booking, undispatched reclaimable guards can be superseded by a
 following booking, cancellation retires undispatched guards atomically, and
 unstarted booking edits atomically replace undispatched guard plans.
-Operational-state schedules, runner booking capabilities,
-health policy, charging, organisation accounts, and block booking remain
-deferred.
+The HMAC-authenticated runner activation action transactionally starts only the
+reservation bound to an accepted job and returns its activity configuration.
+Operational-state schedules, health policy, charging, organisation accounts,
+and block booking remain deferred.
 
 ## Related decisions
 

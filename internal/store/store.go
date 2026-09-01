@@ -1571,6 +1571,64 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 	return a, nil
 }
 
+// ActivateOperationalJob atomically starts the reservation bound to an
+// accepted operational job, then returns only the activity for that booking.
+func (s *Store) ActivateOperationalJob(ctx context.Context, jobID, deliveryID, bodyHash string) (Activity, error) {
+	s.Lock()
+	defer s.Unlock()
+	repository, ok := s.repository.(OperationalActivationRepository)
+	if !ok {
+		return Activity{}, errors.New("operational activation requires durable persistence")
+	}
+	persisted, _, err := repository.ActivateOperationalJob(ctx, jobID, deliveryID, bodyHash, s.now())
+	if err != nil {
+		return Activity{}, err
+	}
+	b := persisted.Booking
+	s.Bookings[b.Name] = &b
+	return s.operationalActivityLocked(b)
+}
+
+func (s *Store) operationalActivityLocked(b Booking) (Activity, error) {
+	if !b.Maintenance || b.User != "__operations__" || !strings.HasPrefix(b.Policy, "__operations") {
+		return Activity{}, errors.New("booking is not an operational reservation")
+	}
+	sl, ok := s.Slots[b.Slot]
+	if !ok {
+		return Activity{}, errors.New("slot " + b.Slot + " not found")
+	}
+	d, ok := s.Descriptions[sl.Description]
+	if !ok {
+		return Activity{}, errors.New("description " + sl.Description + " not found")
+	}
+	r, ok := s.Resources[sl.Resource]
+	if !ok {
+		return Activity{}, errors.New("resource " + sl.Resource + " not found")
+	}
+	a := Activity{BookingID: b.Name, Description: d, ConfigURL: r.ConfigURL, NotBefore: b.When.Start,
+		ExpiresAt: b.When.End, Streams: make(map[string]Stream), UIs: []UIDescribed{}}
+	for _, key := range r.Streams {
+		stream, ok := s.Streams[key]
+		if !ok {
+			return Activity{}, errors.New("stream " + key + " not found")
+		}
+		stream.Topic = r.TopicStub + "-" + key
+		a.Streams[key] = stream
+	}
+	uiSet, ok := s.UISets[sl.UISet]
+	if !ok {
+		return Activity{}, errors.New("ui_set " + sl.UISet + " not found")
+	}
+	for _, key := range uiSet.UIs {
+		ui, ok := s.UIs[key]
+		if !ok {
+			return Activity{}, errors.New("ui " + key + " not found")
+		}
+		a.UIs = append(a.UIs, UIDescribed{Description: ui.Description, URL: ui.URL, StreamsRequired: ui.StreamsRequired})
+	}
+	return a, nil
+}
+
 // GetAvailability returns a list of intervals for which a given slot is available under a given policy, or an error if the slot or policy is not found. The policy contains aspects such as look-ahead which may limit the window of availability.
 func (s *Store) GetAvailability(slot string) ([]interval.Interval, error) {
 

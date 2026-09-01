@@ -55,6 +55,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	// Example:
 	// api.APIAuthorizer = security.Authorized()
 
+	if api.OperationsopsActivateOperationalJobHandler == nil {
+		api.OperationsopsActivateOperationalJobHandler = operationsops.ActivateOperationalJobHandlerFunc(func(params operationsops.ActivateOperationalJobParams) middleware.Responder {
+			return middleware.NotImplemented("operation operationsops.ActivateOperationalJob has not yet been implemented")
+		})
+	}
 	if api.UsersAddGroupForUserHandler == nil {
 		api.UsersAddGroupForUserHandler = users.AddGroupForUserHandlerFunc(func(params users.AddGroupForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.AddGroupForUser has not yet been implemented")

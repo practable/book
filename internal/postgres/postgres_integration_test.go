@@ -301,6 +301,59 @@ func TestReplacingBookingAtomicallyReplansOperationalWork(t *testing.T) {
 	require.Equal(t, 2, newJobs)
 }
 
+func TestAcceptedOperationalJobActivatesOnlyItsReservation(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	start := time.Date(2026, 9, 8, 18, 0, 0, 0, time.UTC)
+	primary := request("activation-trigger", "user", "slot-a", "resource-a", start.Add(time.Hour), start.Add(2*time.Hour))
+	guard := operationalReservation("activation-job", "activation-booking", "activation-delivery", primary.Booking.Name, "resource-a", start, start.Add(10*time.Minute))
+	_, _, _, err := repository.CreateBookingWithOperations(ctx, primary, []store.OperationalReservation{guard}, nil)
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "accept-activation", JobID: guard.Job.ID, State: "accepted", At: start}, "accept-hash")
+	require.NoError(t, err)
+
+	booking, job, err := repository.ActivateOperationalJob(ctx, guard.Job.ID, "activate-1", "body-hash", start.Add(time.Minute))
+	require.NoError(t, err)
+	require.True(t, booking.Booking.Started)
+	require.Equal(t, "running", job.State)
+	retried, retriedJob, err := repository.ActivateOperationalJob(ctx, guard.Job.ID, "activate-1", "body-hash", start.Add(2*time.Minute))
+	require.NoError(t, err)
+	require.Equal(t, booking.Booking.StartedAt, retried.Booking.StartedAt)
+	require.Equal(t, "running", retriedJob.State)
+	_, _, err = repository.ActivateOperationalJob(ctx, guard.Job.ID, "activate-1", "changed-hash", start.Add(2*time.Minute))
+	require.ErrorIs(t, err, operations.ErrCallbackConflict)
+	_, _, err = repository.ActivateOperationalJob(ctx, "missing-job", "activate-missing", "missing-hash", start)
+	require.ErrorIs(t, err, operations.ErrNotFound)
+}
+
+func TestStoreReturnsActivityForAcceptedOperationalReservation(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	manifest.OperationalWorkflows = map[string]store.OperationalWorkflow{
+		"prepare": {Description: "Prepare equipment", ExpectedDuration: 10 * time.Minute, MaximumDuration: 10 * time.Minute},
+	}
+	resource := manifest.Resources["r-a"]
+	resource.Operations = store.OperationalProfile{BeforeBooking: []store.OperationalGuard{{Workflow: "prepare", Duration: 10 * time.Minute, Applies: store.OperationalAlways}}}
+	manifest.Resources["r-a"] = resource
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	s := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, s.WithRepository(repository))
+	require.NoError(t, s.ReplaceManifest(manifest))
+	_, err = s.MakeBookingWithName("sl-a", "runner-user", interval.Interval{Start: now.Add(10 * time.Minute), End: now.Add(20 * time.Minute)}, "runner-trigger", false)
+	require.NoError(t, err)
+	var jobID string
+	require.NoError(t, repository.pool.QueryRow(context.Background(), "SELECT job_id FROM public.operational_jobs WHERE triggering_booking_name='runner-trigger'").Scan(&jobID))
+	_, _, err = repository.ApplyCallback(context.Background(), operations.Callback{DeliveryID: "accept-store-runner", JobID: jobID, State: "accepted", At: now}, "accept-store-hash")
+	require.NoError(t, err)
+	activity, err := s.ActivateOperationalJob(context.Background(), jobID, "activate-store-runner", "activate-store-hash")
+	require.NoError(t, err)
+	require.NotEmpty(t, activity.BookingID)
+	require.Equal(t, now, activity.NotBefore)
+}
+
 func operationalReservation(jobID, bookingID, deliveryID, trigger, resource string, start, end time.Time) store.OperationalReservation {
 	body := []byte(`{"version":1}`)
 	booking := store.Booking{Name: bookingID, User: "__operations__", Policy: "__operations__", Slot: "slot-a", Maintenance: true, When: interval.Interval{Start: start, End: end}}

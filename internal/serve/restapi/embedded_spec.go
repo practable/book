@@ -1530,6 +1530,82 @@ func init() {
         }
       }
     },
+    "/operations/jobs/{job_id}/activate": {
+      "post": {
+        "description": "Internal runner endpoint authenticated by a short-lived HMAC over the exact request. The job-to-booking binding is verified transactionally and exact retries are idempotent.",
+        "tags": [
+          "operations"
+        ],
+        "summary": "Activate an accepted operational job reservation",
+        "operationId": "ActivateOperationalJob",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "job_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Timestamp",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Delivery-ID",
+            "in": "header",
+            "required": true
+          },
+          {
+            "enum": [
+              "runner-to-book"
+            ],
+            "type": "string",
+            "name": "X-Book-Direction",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "name": "activation",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OperationalJobActivation"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reservation active; exact retries return the same activity",
+            "schema": {
+              "$ref": "#/definitions/Activity"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/operations/jobs/{job_id}/callbacks": {
       "post": {
         "description": "Internal service endpoint authenticated by an HMAC over the exact request body, direction, timestamp, and delivery ID. Replaying an identical delivery is idempotent.",
@@ -3015,6 +3091,31 @@ func init() {
           "type": "string"
         }
       }
+    },
+    "OperationalJobActivation": {
+      "type": "object",
+      "required": [
+        "version",
+        "job_id",
+        "at"
+      ],
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "enum": [
+            1
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "OperationalJobCallback": {
       "type": "object",
@@ -5645,6 +5746,97 @@ func init() {
         }
       }
     },
+    "/operations/jobs/{job_id}/activate": {
+      "post": {
+        "description": "Internal runner endpoint authenticated by a short-lived HMAC over the exact request. The job-to-booking binding is verified transactionally and exact retries are idempotent.",
+        "tags": [
+          "operations"
+        ],
+        "summary": "Activate an accepted operational job reservation",
+        "operationId": "ActivateOperationalJob",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "job_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Timestamp",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Delivery-ID",
+            "in": "header",
+            "required": true
+          },
+          {
+            "enum": [
+              "runner-to-book"
+            ],
+            "type": "string",
+            "name": "X-Book-Direction",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "name": "activation",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OperationalJobActivation"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reservation active; exact retries return the same activity",
+            "schema": {
+              "$ref": "#/definitions/Activity"
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/operations/jobs/{job_id}/callbacks": {
       "post": {
         "description": "Internal service endpoint authenticated by an HMAC over the exact request body, direction, timestamp, and delivery ID. Replaying an identical delivery is idempotent.",
@@ -7250,6 +7442,31 @@ func init() {
           "type": "string"
         }
       }
+    },
+    "OperationalJobActivation": {
+      "type": "object",
+      "required": [
+        "version",
+        "job_id",
+        "at"
+      ],
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "enum": [
+            1
+          ]
+        }
+      },
+      "additionalProperties": false
     },
     "OperationalJobCallback": {
       "type": "object",

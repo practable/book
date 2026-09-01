@@ -103,6 +103,10 @@ type OperationalReplacementRepository interface {
 	ReplaceBookingWithOperations(context.Context, string, int64, CreateBookingRequest, []OperationalReservation, []string) (PersistentBooking, []PersistentBooking, bool, error)
 }
 
+type OperationalActivationRepository interface {
+	ActivateOperationalJob(context.Context, string, string, string, time.Time) (PersistentBooking, operations.Job, error)
+}
+
 // ManifestValidator runs while the repository holds the exclusive maintenance
 // lock and before a candidate becomes active. It must not call the repository.
 type ManifestValidator func(PersistentState) error

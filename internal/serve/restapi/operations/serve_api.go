@@ -48,6 +48,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		JSONProducer: runtime.JSONProducer(),
 		TxtProducer:  runtime.TextProducer(),
 
+		OperationsopsActivateOperationalJobHandler: operationsops.ActivateOperationalJobHandlerFunc(func(params operationsops.ActivateOperationalJobParams) middleware.Responder {
+			return middleware.NotImplemented("operation operationsops.ActivateOperationalJob has not yet been implemented")
+		}),
 		UsersAddGroupForUserHandler: users.AddGroupForUserHandlerFunc(func(params users.AddGroupForUserParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.AddGroupForUser has not yet been implemented")
 		}),
@@ -239,6 +242,8 @@ type ServeAPI struct {
 	// APIAuthorizer provides access control (ACL/RBAC/ABAC) by providing access to the request and authenticated principal
 	APIAuthorizer runtime.Authorizer
 
+	// OperationsopsActivateOperationalJobHandler sets the operation handler for the activate operational job operation
+	OperationsopsActivateOperationalJobHandler operationsops.ActivateOperationalJobHandler
 	// UsersAddGroupForUserHandler sets the operation handler for the add group for user operation
 	UsersAddGroupForUserHandler users.AddGroupForUserHandler
 	// UsersCancelBookingHandler sets the operation handler for the cancel booking operation
@@ -416,6 +421,9 @@ func (o *ServeAPI) Validate() error {
 		unregistered = append(unregistered, "AuthorizationAuth")
 	}
 
+	if o.OperationsopsActivateOperationalJobHandler == nil {
+		unregistered = append(unregistered, "operationsops.ActivateOperationalJobHandler")
+	}
 	if o.UsersAddGroupForUserHandler == nil {
 		unregistered = append(unregistered, "users.AddGroupForUserHandler")
 	}
@@ -652,6 +660,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers = make(map[string]map[string]http.Handler)
 	}
 
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/operations/jobs/{job_id}/activate"] = operationsops.NewActivateOperationalJob(o.context, o.OperationsopsActivateOperationalJobHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

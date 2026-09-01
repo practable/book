@@ -99,7 +99,7 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	// in front of the generated public API.
 	server.SetAPI(api)
 	server.WrapHandler(func(next http.Handler) http.Handler {
-		return operationsCallbackMiddleware(config, next)
+		return operationsRunnerMiddleware(config, operationsCallbackMiddleware(config, next))
 	})
 
 	c := make(chan struct{})

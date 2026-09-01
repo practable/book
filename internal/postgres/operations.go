@@ -300,6 +300,84 @@ func (r *Repository) GetJob(ctx context.Context, id string) (operations.Job, err
 	return job, err
 }
 
+func (r *Repository) ActivateOperationalJob(ctx context.Context, jobID, deliveryID, bodyHash string, at time.Time) (store.PersistentBooking, operations.Job, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return store.PersistentBooking{}, operations.Job{}, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", "runner-delivery:"+deliveryID); err != nil {
+		return store.PersistentBooking{}, operations.Job{}, err
+	}
+	var existingHash, existingJob string
+	err = tx.QueryRow(ctx, "SELECT body_sha256,job_id FROM public.webhook_callback_receipts WHERE delivery_id=$1", deliveryID).Scan(&existingHash, &existingJob)
+	if err == nil && (existingHash != bodyHash || existingJob != jobID) {
+		return store.PersistentBooking{}, operations.Job{}, operations.ErrCallbackConflict
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return store.PersistentBooking{}, operations.Job{}, err
+	}
+	duplicate := err == nil
+	var rowID int64
+	var state string
+	err = tx.QueryRow(ctx, `SELECT j.booking_row_id,j.state FROM public.operational_jobs j
+		JOIN public.bookings b ON b.row_id=j.booking_row_id
+		WHERE j.job_id=$1 AND b.collection='live' AND NOT b.superseded FOR UPDATE OF j,b`, jobID).Scan(&rowID, &state)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return store.PersistentBooking{}, operations.Job{}, operations.ErrNotFound
+	}
+	if err != nil {
+		return store.PersistentBooking{}, operations.Job{}, err
+	}
+	if state != "accepted" && state != "running" {
+		return store.PersistentBooking{}, operations.Job{}, operations.ErrInvalidTransition
+	}
+	if !duplicate {
+		if _, err := tx.Exec(ctx, `INSERT INTO public.webhook_callback_receipts(delivery_id,job_id,body_sha256)
+			VALUES($1,$2,$3)`, deliveryID, jobID, bodyHash); err != nil {
+			return store.PersistentBooking{}, operations.Job{}, err
+		}
+	}
+	var started bool
+	var startsAt, endsAt time.Time
+	var bookingName string
+	if err := tx.QueryRow(ctx, `SELECT name,started,starts_at,ends_at FROM public.bookings WHERE row_id=$1 FOR UPDATE`, rowID).
+		Scan(&bookingName, &started, &startsAt, &endsAt); err != nil {
+		return store.PersistentBooking{}, operations.Job{}, err
+	}
+	if at.Before(startsAt) || !at.Before(endsAt) {
+		return store.PersistentBooking{}, operations.Job{}, store.ErrBookingConflict
+	}
+	if !started {
+		if _, err := tx.Exec(ctx, `UPDATE public.bookings SET started=true,started_at=$2,started_at_ns=$3,
+			started_at_text=$4,updated_at=clock_timestamp() WHERE row_id=$1`, rowID, at.UTC(), at.UnixNano(), at.UTC().Format(time.RFC3339Nano)); err != nil {
+			return store.PersistentBooking{}, operations.Job{}, err
+		}
+		if err := insertEvent(ctx, tx, rowID, bookingName, "started", at, "operational-runner:"+jobID); err != nil {
+			return store.PersistentBooking{}, operations.Job{}, err
+		}
+	}
+	if state == "accepted" {
+		if _, err := tx.Exec(ctx, "UPDATE public.operational_jobs SET state='running',updated_at=$2 WHERE job_id=$1", jobID, at.UTC()); err != nil {
+			return store.PersistentBooking{}, operations.Job{}, err
+		}
+	}
+	booking, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", rowID))
+	if err != nil {
+		return store.PersistentBooking{}, operations.Job{}, err
+	}
+	job, err := scanJob(tx.QueryRow(ctx, jobSelect+" WHERE job_id=$1", jobID))
+	if err != nil {
+		return store.PersistentBooking{}, operations.Job{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, operations.Job{}, err
+	}
+	return booking, job, nil
+}
+
 func (r *Repository) ClaimDeliveries(ctx context.Context, owner string, now time.Time, lease time.Duration, limit int) ([]operations.Delivery, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
 	defer cancel()

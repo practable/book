@@ -53,6 +53,25 @@ Allowed reported states are `accepted`, `running`, `succeeded`, `failed`,
 body is idempotent. Reusing it with different content returns 409, as does an
 invalid lifecycle transition.
 
+After reporting `accepted`, the runner activates the job's reserved maintenance
+booking with:
+
+```text
+POST /api/v1/operations/jobs/{job_id}/activate
+```
+
+using the same `runner-to-book` HMAC headers and a body such as:
+
+```json
+{"version":1,"job_id":"job-id-from-command","at":"2026-09-01T12:00:00Z"}
+```
+
+Book verifies the job-to-booking relationship and permitted lifecycle state in
+the same transaction that starts the reservation and moves the job to
+`running`. Activation is allowed only during the reservation's half-open time
+interval. An exact retry returns the same activity without changing its
+original start time. A booking identifier by itself grants no runner access.
+
 ## Failure and recovery
 
 Booking commits do not wait for the runner. Network and non-2xx failures are
