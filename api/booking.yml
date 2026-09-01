@@ -1616,20 +1616,26 @@ definitions:
 
   BookingActivation:
     type: object
-    required: [id, booking_name, stream, state, current_stage, progress_message, stages]
+    required: [id, booking_name, stream, state, cleanup_state, current_stage, progress_message, stages]
     properties:
       id: {type: string}
       booking_name: {type: string}
       stream: {type: string}
       state:
         type: string
-        enum: [preparing, active, failed, cancelled, expired]
+        enum: [preparing, active, failed, cancelled, expired, cleaning, closed, cleanup_failed]
+      cleanup_state:
+        type: string
+        enum: [not_required, pending, running, succeeded, failed]
       current_stage: {type: integer, format: int64, minimum: 0}
       progress_message: {type: string}
       failure_code: {type: string}
       failure_message: {type: string}
       failure_guidance: {$ref: '#/definitions/OperationalFailureGuidance'}
       stages:
+        type: array
+        items: {$ref: '#/definitions/BookingActivationStage'}
+      cleanup_stages:
         type: array
         items: {$ref: '#/definitions/BookingActivationStage'}
     
@@ -2555,6 +2561,13 @@ definitions:
     properties:
       actual_usage:
         type: string
+      preparation_usage:
+        type: string
+      cleanup_usage:
+        type: string
+      operational_jobs:
+        type: integer
+        format: int64
       started_bookings:
         type: integer
         format: int64
@@ -2563,6 +2576,9 @@ definitions:
         format: int64
     required:
     - actual_usage
+    - preparation_usage
+    - cleanup_usage
+    - operational_jobs
     - started_bookings
     - completed_bookings
 

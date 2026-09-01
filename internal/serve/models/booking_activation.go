@@ -25,6 +25,14 @@ type BookingActivation struct {
 	// Required: true
 	BookingName *string `json:"booking_name"`
 
+	// cleanup stages
+	CleanupStages []*BookingActivationStage `json:"cleanup_stages"`
+
+	// cleanup state
+	// Required: true
+	// Enum: ["not_required","pending","running","succeeded","failed"]
+	CleanupState *string `json:"cleanup_state"`
+
 	// current stage
 	// Required: true
 	// Minimum: 0
@@ -53,7 +61,7 @@ type BookingActivation struct {
 
 	// state
 	// Required: true
-	// Enum: ["preparing","active","failed","cancelled","expired"]
+	// Enum: ["preparing","active","failed","cancelled","expired","cleaning","closed","cleanup_failed"]
 	State *string `json:"state"`
 
 	// stream
@@ -66,6 +74,14 @@ func (m *BookingActivation) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateBookingName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateCleanupStages(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateCleanupState(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -106,6 +122,84 @@ func (m *BookingActivation) Validate(formats strfmt.Registry) error {
 func (m *BookingActivation) validateBookingName(formats strfmt.Registry) error {
 
 	if err := validate.Required("booking_name", "body", m.BookingName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *BookingActivation) validateCleanupStages(formats strfmt.Registry) error {
+	if swag.IsZero(m.CleanupStages) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.CleanupStages); i++ {
+		if swag.IsZero(m.CleanupStages[i]) { // not required
+			continue
+		}
+
+		if m.CleanupStages[i] != nil {
+			if err := m.CleanupStages[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("cleanup_stages" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("cleanup_stages" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+var bookingActivationTypeCleanupStatePropEnum []interface{}
+
+func init() {
+	var res []string
+	if err := json.Unmarshal([]byte(`["not_required","pending","running","succeeded","failed"]`), &res); err != nil {
+		panic(err)
+	}
+	for _, v := range res {
+		bookingActivationTypeCleanupStatePropEnum = append(bookingActivationTypeCleanupStatePropEnum, v)
+	}
+}
+
+const (
+
+	// BookingActivationCleanupStateNotRequired captures enum value "not_required"
+	BookingActivationCleanupStateNotRequired string = "not_required"
+
+	// BookingActivationCleanupStatePending captures enum value "pending"
+	BookingActivationCleanupStatePending string = "pending"
+
+	// BookingActivationCleanupStateRunning captures enum value "running"
+	BookingActivationCleanupStateRunning string = "running"
+
+	// BookingActivationCleanupStateSucceeded captures enum value "succeeded"
+	BookingActivationCleanupStateSucceeded string = "succeeded"
+
+	// BookingActivationCleanupStateFailed captures enum value "failed"
+	BookingActivationCleanupStateFailed string = "failed"
+)
+
+// prop value enum
+func (m *BookingActivation) validateCleanupStateEnum(path, location string, value string) error {
+	if err := validate.EnumCase(path, location, value, bookingActivationTypeCleanupStatePropEnum, true); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *BookingActivation) validateCleanupState(formats strfmt.Registry) error {
+
+	if err := validate.Required("cleanup_state", "body", m.CleanupState); err != nil {
+		return err
+	}
+
+	// value enum
+	if err := m.validateCleanupStateEnum("cleanup_state", "body", *m.CleanupState); err != nil {
 		return err
 	}
 
@@ -193,7 +287,7 @@ var bookingActivationTypeStatePropEnum []interface{}
 
 func init() {
 	var res []string
-	if err := json.Unmarshal([]byte(`["preparing","active","failed","cancelled","expired"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["preparing","active","failed","cancelled","expired","cleaning","closed","cleanup_failed"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {
@@ -217,6 +311,15 @@ const (
 
 	// BookingActivationStateExpired captures enum value "expired"
 	BookingActivationStateExpired string = "expired"
+
+	// BookingActivationStateCleaning captures enum value "cleaning"
+	BookingActivationStateCleaning string = "cleaning"
+
+	// BookingActivationStateClosed captures enum value "closed"
+	BookingActivationStateClosed string = "closed"
+
+	// BookingActivationStateCleanupFailed captures enum value "cleanup_failed"
+	BookingActivationStateCleanupFailed string = "cleanup_failed"
 )
 
 // prop value enum
@@ -254,6 +357,10 @@ func (m *BookingActivation) validateStream(formats strfmt.Registry) error {
 func (m *BookingActivation) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.contextValidateCleanupStages(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateFailureGuidance(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -265,6 +372,31 @@ func (m *BookingActivation) ContextValidate(ctx context.Context, formats strfmt.
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *BookingActivation) contextValidateCleanupStages(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.CleanupStages); i++ {
+
+		if m.CleanupStages[i] != nil {
+
+			if swag.IsZero(m.CleanupStages[i]) { // not required
+				return nil
+			}
+
+			if err := m.CleanupStages[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("cleanup_stages" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("cleanup_stages" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 

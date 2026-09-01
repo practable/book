@@ -111,6 +111,9 @@ func (b Booking) ActualUsage(asOf time.Time) time.Duration {
 // UsageSummary is an administrator-facing aggregate of actual equipment time.
 type UsageSummary struct {
 	ActualUsage       time.Duration `json:"actual_usage" yaml:"actual_usage"`
+	PreparationUsage  time.Duration `json:"preparation_usage" yaml:"preparation_usage"`
+	CleanupUsage      time.Duration `json:"cleanup_usage" yaml:"cleanup_usage"`
+	OperationalJobs   int64         `json:"operational_jobs" yaml:"operational_jobs"`
 	StartedBookings   int64         `json:"started_bookings" yaml:"started_bookings"`
 	CompletedBookings int64         `json:"completed_bookings" yaml:"completed_bookings"`
 }
@@ -1603,17 +1606,17 @@ func (s *Store) ActivateOperationalJob(ctx context.Context, jobID, deliveryID, b
 	if !ok {
 		return Activity{}, errors.New("operational activation requires durable persistence")
 	}
-	persisted, _, err := repository.ActivateOperationalJob(ctx, jobID, deliveryID, bodyHash, s.now())
+	persisted, job, err := repository.ActivateOperationalJob(ctx, jobID, deliveryID, bodyHash, s.now())
 	if err != nil {
 		return Activity{}, err
 	}
 	b := persisted.Booking
 	s.Bookings[b.Name] = &b
-	return s.operationalActivityLocked(b)
+	return s.operationalActivityLocked(b, job.Kind == "preflight")
 }
 
-func (s *Store) operationalActivityLocked(b Booking) (Activity, error) {
-	if !b.Maintenance || b.User != "__operations__" || !strings.HasPrefix(b.Policy, "__operations") {
+func (s *Store) operationalActivityLocked(b Booking, allowPreflight bool) (Activity, error) {
+	if !allowPreflight && (!b.Maintenance || b.User != "__operations__" || !strings.HasPrefix(b.Policy, "__operations")) {
 		return Activity{}, errors.New("booking is not an operational reservation")
 	}
 	sl, ok := s.Slots[b.Slot]

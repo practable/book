@@ -28,7 +28,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.booking_activation_stages, public.booking_activation_runs, public.operational_schedule_occurrences, public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.operational_usage_ledger, public.booking_activation_stages, public.booking_activation_runs, public.operational_schedule_occurrences, public.webhook_callback_receipts, public.webhook_deliveries, public.operational_jobs, public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(), "INSERT INTO public.service_state(singleton,updated_at_ns) VALUES(true,0)")
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 16, versions)
+	require.Equal(t, 19, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -242,8 +242,9 @@ func TestActivationCallbacksAdvanceStagesRetryAndStartBooking(t *testing.T) {
 
 	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-accepted-1", JobID: run.Stages[0].JobID, State: "accepted", At: now}, "hash-accepted-1")
 	require.NoError(t, err)
-	_, _, err = repository.ActivateOperationalJob(ctx, run.Stages[0].JobID, "must-not-activate-preflight", "preflight-hash", now)
-	require.ErrorIs(t, err, operations.ErrNotFound)
+	_, activatedJob, err := repository.ActivateOperationalJob(ctx, run.Stages[0].JobID, "activate-preflight", "preflight-hash", now)
+	require.NoError(t, err)
+	require.Equal(t, "running", activatedJob.State)
 	notStarted, err := repository.GetBooking(ctx, req.BookingName)
 	require.NoError(t, err)
 	require.False(t, notStarted.Booking.Started)
@@ -275,6 +276,7 @@ func TestActivationCallbacksAdvanceStagesRetryAndStartBooking(t *testing.T) {
 	run, err = repository.GetActivation(ctx, run.ID)
 	require.NoError(t, err)
 	require.Equal(t, "active", run.State)
+	require.Equal(t, "not_required", run.CleanupState)
 	latest, err := repository.GetLatestActivationForBooking(ctx, req.BookingName)
 	require.NoError(t, err)
 	require.Equal(t, run.ID, latest.ID)
@@ -377,6 +379,99 @@ func TestExpiringBookingAtomicallyExpiresPreparation(t *testing.T) {
 	require.Equal(t, "expired", run.State)
 	require.Equal(t, "booking_ended", run.FailureCode)
 	require.Equal(t, "expired", run.Stages[0].State)
+}
+
+func TestCancellationStartsDurableCleanupAfterActiveSession(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("cleanup-booking", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("cleanup-booking", "opaque-user", "cleanup", now)
+	req.CleanupStages = []operations.ActivationStageSpec{{Name: "switch-off", JobTemplate: "video-off", Workflow: "video-off",
+		DueAt: now, TimeoutAt: now.Add(4 * time.Second), MaximumAttempts: 2, Parameters: map[string]string{"stream": "camera-a"},
+		ProgressMessage: "Switching video off", RetryMessage: "Retrying video shutdown", InitialDelay: time.Second, Backoff: 1,
+		MaximumDelay: time.Second, TotalTimeout: time.Minute, RetryableCodes: []string{"activation_timeout"}}}
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+	for index := 0; index < 2; index++ {
+		run, err = repository.GetActivation(ctx, run.ID)
+		require.NoError(t, err)
+		jobID := run.Stages[index].JobID
+		_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: fmt.Sprintf("cleanup-accepted-%d", index), JobID: jobID, State: "accepted", At: now.Add(time.Duration(index*2) * time.Second)}, fmt.Sprintf("cleanup-accepted-hash-%d", index))
+		require.NoError(t, err)
+		_, _, err = repository.ActivateOperationalJob(ctx, jobID, fmt.Sprintf("cleanup-activate-%d", index), fmt.Sprintf("cleanup-activate-hash-%d", index), now.Add(time.Duration(index*2)*time.Second))
+		require.NoError(t, err)
+		_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: fmt.Sprintf("cleanup-succeeded-%d", index), JobID: jobID, State: "succeeded", At: now.Add(time.Duration(index*2+1) * time.Second)}, fmt.Sprintf("cleanup-succeeded-hash-%d", index))
+		require.NoError(t, err)
+	}
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", run.State)
+	require.Equal(t, "pending", run.CleanupState)
+	require.Len(t, run.CleanupStages, 1)
+	require.Equal(t, "waiting", run.CleanupStages[0].State)
+
+	_, err = repository.CancelBooking(ctx, req.BookingName, now.Add(5*time.Second), "opaque-user", 5*time.Second, 0)
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", run.State)
+	require.Equal(t, "running", run.CleanupState)
+	require.Equal(t, "pending", run.CleanupStages[0].State)
+	cleanupJob := run.CleanupStages[0].JobID
+	require.NotEmpty(t, cleanupJob)
+
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "cleanup-final-accepted", JobID: cleanupJob, State: "accepted", At: now.Add(6 * time.Second)}, "cleanup-final-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ActivateOperationalJob(ctx, cleanupJob, "cleanup-final-activate", "cleanup-final-activate-hash", now.Add(6*time.Second))
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "cleanup-final-succeeded", JobID: cleanupJob, State: "succeeded", At: now.Add(7 * time.Second)}, "cleanup-final-succeeded-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", run.State)
+	require.Equal(t, "succeeded", run.CleanupState)
+	require.Equal(t, "succeeded", run.CleanupStages[0].State)
+	var preparationActual, cleanupActual int64
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT COALESCE(sum(actual_duration_ns),0) FROM public.operational_usage_ledger WHERE triggering_booking_name=$1 AND phase='preparation'`, req.BookingName).Scan(&preparationActual))
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT COALESCE(sum(actual_duration_ns),0) FROM public.operational_usage_ledger WHERE triggering_booking_name=$1 AND phase='cleanup'`, req.BookingName).Scan(&cleanupActual))
+	require.Equal(t, int64(2*time.Second), preparationActual)
+	require.Equal(t, int64(time.Second), cleanupActual)
+	var payer, user string
+	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT payer_id,user_name FROM public.operational_usage_ledger WHERE job_id=$1`, cleanupJob).Scan(&payer, &user))
+	require.Equal(t, "opaque-user", payer)
+	require.Equal(t, "opaque-user", user)
+	preparationUsage, cleanupUsage, jobs, err := repository.GetOperationalUsageSummary(ctx, store.UsageQuery{User: "opaque-user"})
+	require.NoError(t, err)
+	require.Equal(t, 2*time.Second, preparationUsage)
+	require.Equal(t, time.Second, cleanupUsage)
+	require.Equal(t, int64(3), jobs)
+}
+
+func TestPreparationFailureStartsCleanupWithoutHidingFailure(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("failed-preparation-cleanup", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("failed-preparation-cleanup", "opaque-user", "failed-cleanup", now)
+	req.Stages = req.Stages[:1]
+	req.CleanupStages = []operations.ActivationStageSpec{{Name: "switch-off", JobTemplate: "video-off", Workflow: "video-off",
+		DueAt: now, TimeoutAt: now.Add(4 * time.Second), MaximumAttempts: 1, Parameters: map[string]string{"stream": "camera-a"}, ProgressMessage: "Restoring equipment"}}
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+	jobID := run.Stages[0].JobID
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "failed-cleanup-accepted", JobID: jobID, State: "accepted", At: now}, "failed-cleanup-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "failed-cleanup-result", JobID: jobID, State: "failed", At: now.Add(time.Second), Code: "video_not_ready", Error: "No camera frame"}, "failed-cleanup-result-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "failed", run.State)
+	require.Equal(t, "video_not_ready", run.FailureCode)
+	require.Equal(t, "running", run.CleanupState)
+	require.Equal(t, "pending", run.CleanupStages[0].State)
 }
 
 func TestOperationalJobOutboxIsTransactionalIdempotentAndClaimedOnce(t *testing.T) {

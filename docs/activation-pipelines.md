@@ -75,3 +75,17 @@ the workflow contract. Failure-action URLs, when present, must use HTTPS.
 These fields are optional, so existing manifests remain valid. They define the
 plan but do not execute it; booking activation state, attempts, deadlines, and
 progress are persisted separately by the activation engine.
+
+Pipelines may also contain a cleanup plan. Its resolved stages are persisted
+with the activation run before work starts, so a later manifest change cannot
+alter cleanup already committed for a booking. Cleanup begins after
+cancellation or expiry, and also after a partially completed preparation fails.
+Its state is reported independently as `not_required`, `pending`, `running`,
+`succeeded`, or `failed`; cleanup failure never disguises the original
+activation result.
+
+Cleanup after a completed or cancelled user session receives a short-lived,
+resource-constrained maintenance reservation. That prevents a new booking from
+overlapping work that is physically returning the equipment to its safe state.
+If preparation fails while the user's booking still owns the resource, cleanup
+uses that existing reservation. Retry attempts reuse the same reservation.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
+	"github.com/practable/book/internal/interval"
 	"github.com/practable/book/internal/operations"
 	"github.com/practable/book/internal/store"
 )
@@ -443,9 +444,11 @@ func (r *Repository) ActivateOperationalJob(ctx context.Context, jobID, delivery
 	duplicate := err == nil
 	var rowID int64
 	var state string
-	err = tx.QueryRow(ctx, `SELECT j.booking_row_id,j.state FROM public.operational_jobs j
+	var activationRunID *string
+	var maintenance bool
+	err = tx.QueryRow(ctx, `SELECT j.booking_row_id,j.state,j.activation_run_id,b.maintenance FROM public.operational_jobs j
 		JOIN public.bookings b ON b.row_id=j.booking_row_id
-		WHERE j.job_id=$1 AND j.activation_run_id IS NULL AND b.collection='live' AND NOT b.superseded FOR UPDATE OF j,b`, jobID).Scan(&rowID, &state)
+		WHERE j.job_id=$1 AND b.collection='live' AND NOT b.superseded FOR UPDATE OF j,b`, jobID).Scan(&rowID, &state, &activationRunID, &maintenance)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return store.PersistentBooking{}, operations.Job{}, operations.ErrNotFound
 	}
@@ -471,7 +474,8 @@ func (r *Repository) ActivateOperationalJob(ctx context.Context, jobID, delivery
 	if at.Before(startsAt) || !at.Before(endsAt) {
 		return store.PersistentBooking{}, operations.Job{}, store.ErrBookingConflict
 	}
-	if !started {
+	startBooking := activationRunID == nil || maintenance
+	if !started && startBooking {
 		if _, err := tx.Exec(ctx, `UPDATE public.bookings SET started=true,started_at=$2,started_at_ns=$3,
 			started_at_text=$4,updated_at=clock_timestamp() WHERE row_id=$1`, rowID, at.UTC(), at.UnixNano(), at.UTC().Format(time.RFC3339Nano)); err != nil {
 			return store.PersistentBooking{}, operations.Job{}, err
@@ -484,6 +488,9 @@ func (r *Repository) ActivateOperationalJob(ctx context.Context, jobID, delivery
 		if _, err := tx.Exec(ctx, "UPDATE public.operational_jobs SET state='running',updated_at=$2 WHERE job_id=$1", jobID, at.UTC()); err != nil {
 			return store.PersistentBooking{}, operations.Job{}, err
 		}
+	}
+	if _, err := tx.Exec(ctx, `UPDATE public.operational_usage_ledger SET state='running',started_at=COALESCE(started_at,$2),updated_at=$2 WHERE job_id=$1`, jobID, at.UTC()); err != nil {
+		return store.PersistentBooking{}, operations.Job{}, err
 	}
 	booking, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", rowID))
 	if err != nil {
@@ -571,6 +578,9 @@ func (r *Repository) CompleteDelivery(ctx context.Context, id, owner string, suc
 	}
 	if success {
 		_, err = tx.Exec(ctx, `UPDATE public.operational_jobs SET state='dispatched',attempts=attempts+1,updated_at=clock_timestamp() WHERE job_id=$1 AND state IN ('scheduled','reserved')`, jobID)
+		if err == nil {
+			_, err = tx.Exec(ctx, `UPDATE public.operational_usage_ledger SET state='dispatched',updated_at=$2 WHERE job_id=$1 AND state='reserved'`, jobID, now.UTC())
+		}
 	} else {
 		_, err = tx.Exec(ctx, `UPDATE public.operational_jobs SET attempts=attempts+1,last_error=$2,updated_at=clock_timestamp() WHERE job_id=$1`, jobID, failure)
 	}
@@ -638,6 +648,9 @@ func (r *Repository) ApplyCallback(ctx context.Context, callback operations.Call
 	if err != nil {
 		return operations.Job{}, false, err
 	}
+	if err := updateOperationalUsageTx(ctx, tx, callback); err != nil {
+		return operations.Job{}, false, err
+	}
 	var activationRunID *string
 	var activationStageIndex *int
 	if err := tx.QueryRow(ctx, `SELECT activation_run_id,activation_stage_index FROM public.operational_jobs WHERE job_id=$1`, callback.JobID).Scan(&activationRunID, &activationStageIndex); err != nil {
@@ -667,6 +680,10 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 	if code == "" {
 		code = callback.Error
 	}
+	var phase string
+	if err := tx.QueryRow(ctx, `SELECT phase FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex).Scan(&phase); err != nil {
+		return err
+	}
 	if callback.State == "accepted" || callback.State == "running" {
 		_, err := tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state=$3,updated_at=$4 WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex, callback.State, callback.At.UTC())
 		return err
@@ -680,7 +697,7 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 			return err
 		}
 		var nextExists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2)`, runID, stageIndex+1).Scan(&nextExists); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2 AND phase=$3)`, runID, stageIndex+1, phase).Scan(&nextExists); err != nil {
 			return err
 		}
 		if nextExists {
@@ -693,6 +710,13 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 				return err
 			}
 			_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET current_stage=$2,progress_message=$3,updated_at=$4 WHERE run_id=$1 AND state='preparing'`, runID, stageIndex+1, progress, callback.At.UTC())
+			return err
+		}
+		if phase == "cleanup" {
+			if err := finishOperationalReservationTx(ctx, tx, job, callback); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET cleanup_state='succeeded',updated_at=$2 WHERE run_id=$1`, runID, callback.At.UTC())
 			return err
 		}
 		return activatePreparedBookingTx(ctx, tx, runID, callback.At.UTC(), job.ID)
@@ -743,21 +767,32 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 	if err != nil {
 		return err
 	}
+	if phase == "cleanup" {
+		if err := finishOperationalReservationTx(ctx, tx, job, callback); err != nil {
+			return err
+		}
+		_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET cleanup_state='failed',updated_at=$2 FROM public.booking_activation_stages s
+			WHERE r.run_id=$1 AND s.run_id=r.run_id AND s.stage_index=$3`, runID, callback.At.UTC(), stageIndex)
+		return err
+	}
 	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET state=$2,failure_code=$3,failure_message=$4,
 		failure_guidance=s.failure_guidance,completed_at=$5,updated_at=$5 FROM public.booking_activation_stages s
 		WHERE r.run_id=$1 AND s.run_id=r.run_id AND s.stage_index=$6`, runID, terminal, code, callback.Error, callback.At.UTC(), stageIndex)
-	return err
+	if err != nil {
+		return err
+	}
+	return startActivationCleanupRunTx(ctx, tx, runID, callback.At.UTC())
 }
 
 func createActivationStageJobTx(ctx context.Context, tx pgx.Tx, runID string, stageIndex, attempt int, due time.Time) error {
-	var workflow, resource, bookingName string
+	var workflow, resource, bookingName, phase string
 	var manifestVersion int64
 	var parametersJSON []byte
 	var timeoutAt, oldDue time.Time
-	err := tx.QueryRow(ctx, `SELECT s.workflow_name,s.parameters,s.due_at,s.timeout_at,r.resource_name,r.booking_name,r.manifest_version
+	err := tx.QueryRow(ctx, `SELECT s.workflow_name,s.parameters,s.due_at,s.timeout_at,s.phase,r.resource_name,r.booking_name,r.manifest_version
 		FROM public.booking_activation_stages s JOIN public.booking_activation_runs r ON r.run_id=s.run_id
 		WHERE s.run_id=$1 AND s.stage_index=$2 FOR UPDATE OF s,r`, runID, stageIndex).
-		Scan(&workflow, &parametersJSON, &oldDue, &timeoutAt, &resource, &bookingName, &manifestVersion)
+		Scan(&workflow, &parametersJSON, &oldDue, &timeoutAt, &phase, &resource, &bookingName, &manifestVersion)
 	if err != nil {
 		return err
 	}
@@ -769,7 +804,11 @@ func createActivationStageJobTx(ctx context.Context, tx pgx.Tx, runID string, st
 	jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(fmt.Sprintf("booking-activation-job\x00%s\x00%d\x00%d", runID, stageIndex, attempt))).String()
 	deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation-delivery\x00"+jobID)).String()
 	key := fmt.Sprintf("booking-activation:%s:%d:%d", runID, stageIndex, attempt)
-	command := operations.Command{Version: 1, JobID: jobID, Workflow: workflow, Resource: resource, Kind: "preflight", StartsAt: due, EndsAt: due.Add(timeout), BookingName: bookingName, PlanRevision: int64(attempt), IdempotencyKey: key, Parameters: parameters}
+	jobKind := "preflight"
+	if phase == "cleanup" {
+		jobKind = "teardown"
+	}
+	command := operations.Command{Version: 1, JobID: jobID, Workflow: workflow, Resource: resource, Kind: jobKind, StartsAt: due, EndsAt: due.Add(timeout), BookingName: bookingName, PlanRevision: int64(attempt), IdempotencyKey: key, Parameters: parameters}
 	body, err := json.Marshal(command)
 	if err != nil {
 		return err
@@ -778,11 +817,53 @@ func createActivationStageJobTx(ctx context.Context, tx pgx.Tx, runID string, st
 	if err := tx.QueryRow(ctx, `SELECT booking_row_id FROM public.booking_activation_runs WHERE run_id=$1`, runID).Scan(&bookingRowID); err != nil {
 		return err
 	}
+	if phase == "cleanup" {
+		if attempt > 1 {
+			_ = tx.QueryRow(ctx, `SELECT booking_row_id FROM public.operational_jobs WHERE activation_run_id=$1 AND activation_stage_index=$2 AND booking_row_id IS NOT NULL ORDER BY created_at LIMIT 1`, runID, stageIndex).Scan(&bookingRowID)
+		} else {
+			var slot, collection, runState string
+			if err := tx.QueryRow(ctx, `SELECT b.slot_name,b.collection,r.state FROM public.booking_activation_runs r JOIN public.bookings b ON b.row_id=r.booking_row_id WHERE r.run_id=$1`, runID).Scan(&slot, &collection, &runState); err != nil {
+				return err
+			}
+			useTriggeringBooking := collection == "live" && runState == "failed"
+			if !useTriggeringBooking {
+				if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", "resource:"+resource); err != nil {
+					return err
+				}
+				var conflict bool
+				if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.bookings WHERE collection='live' AND NOT superseded AND resource_constrained
+				AND resource_name=$1 AND starts_ns < $3 AND ends_ns > $2)`, resource, due.UnixNano(), due.Add(timeout).UnixNano()).Scan(&conflict); err != nil {
+					return err
+				}
+				if conflict {
+					return operations.ErrActivationConflict
+				}
+				reservationName := uuid.NewSHA1(uuid.NameSpaceURL, []byte(fmt.Sprintf("booking-cleanup-reservation\x00%s\x00%d", runID, stageIndex))).String()
+				reservation, fresh, err := createBookingTx(ctx, tx, store.CreateBookingRequest{Booking: store.Booking{Name: reservationName, User: "__operations__", Policy: "__operations__:cleanup", Slot: slot,
+					Maintenance: true, When: interval.Interval{Start: due.UTC(), End: due.Add(timeout).UTC()}}, Resource: resource, ResourceConstrained: true,
+					Now: due.UTC(), ManifestVersion: manifestVersion, Maintenance: true, Actor: "activation-cleanup"})
+				if err != nil {
+					return err
+				}
+				if !fresh && !reservation.Booking.Maintenance {
+					return operations.ErrActivationConflict
+				}
+				bookingRowID = reservation.Revision
+			}
+		}
+	}
 	_, err = tx.Exec(ctx, `INSERT INTO public.operational_jobs
 		(job_id,resource_name,workflow_name,job_kind,state,due_at,due_at_ns,starts_at,starts_at_ns,ends_at,ends_at_ns,booking_row_id,
 		triggering_booking_name,manifest_version,plan_revision,idempotency_key,payload,activation_run_id,activation_stage_index)
-		VALUES($1,$2,$3,'preflight','reserved',$4,$5,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`, jobID, resource, workflow, due.UTC(), due.UnixNano(), due.Add(timeout).UTC(), due.Add(timeout).UnixNano(), bookingRowID, bookingName, manifestVersion, attempt, key, string(body), runID, stageIndex)
+		VALUES($1,$2,$3,$4,'reserved',$5,$6,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`, jobID, resource, workflow, jobKind, due.UTC(), due.UnixNano(), due.Add(timeout).UTC(), due.Add(timeout).UnixNano(), bookingRowID, bookingName, manifestVersion, attempt, key, string(body), runID, stageIndex)
 	if err != nil {
+		return err
+	}
+	ledgerPhase := "preparation"
+	if phase == "cleanup" {
+		ledgerPhase = "cleanup"
+	}
+	if err := insertOperationalUsageTx(ctx, tx, jobID, runID, ledgerPhase, timeout); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO public.webhook_deliveries(delivery_id,job_id,direction,state,body,next_attempt_at,next_attempt_at_ns)
@@ -791,6 +872,26 @@ func createActivationStageJobTx(ctx context.Context, tx pgx.Tx, runID string, st
 	}
 	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state='pending',attempt=$3,due_at=$4,timeout_at=$5,job_id=$6,
 		last_error_code='',last_error='',completed_at=NULL,updated_at=clock_timestamp() WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex, attempt, due.UTC(), due.Add(timeout).UTC(), jobID)
+	return err
+}
+
+func insertOperationalUsageTx(ctx context.Context, tx pgx.Tx, jobID, runID, phase string, planned time.Duration) error {
+	_, err := tx.Exec(ctx, `INSERT INTO public.operational_usage_ledger
+		(job_id,activation_run_id,triggering_booking_name,user_name,phase,payer_kind,payer_id,chargeable,state,planned_duration_ns)
+		SELECT $1,r.run_id,r.booking_name,r.user_name,$3,'user',r.user_name,true,'reserved',$4 FROM public.booking_activation_runs r WHERE r.run_id=$2
+		ON CONFLICT (job_id) DO NOTHING`, jobID, runID, phase, planned.Nanoseconds())
+	return err
+}
+
+func updateOperationalUsageTx(ctx context.Context, tx pgx.Tx, callback operations.Callback) error {
+	terminal := callback.State == "succeeded" || callback.State == "failed" || callback.State == "cancelled" || callback.State == "expired"
+	if terminal {
+		_, err := tx.Exec(ctx, `UPDATE public.operational_usage_ledger SET state=$2,completed_at=$3,
+			actual_duration_ns=CASE WHEN started_at IS NULL THEN 0 ELSE LEAST(planned_duration_ns,GREATEST(0,EXTRACT(EPOCH FROM ($3-started_at))*1000000000)::bigint) END,
+			updated_at=$3 WHERE job_id=$1`, callback.JobID, callback.State, callback.At.UTC())
+		return err
+	}
+	_, err := tx.Exec(ctx, `UPDATE public.operational_usage_ledger SET state=$2,updated_at=$3 WHERE job_id=$1`, callback.JobID, callback.State, callback.At.UTC())
 	return err
 }
 

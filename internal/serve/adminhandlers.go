@@ -1160,8 +1160,10 @@ func getUsageSummaryHandler(config config.ServerConfig) func(admin.GetUsageSumma
 		}
 		summary := config.Store.GetFilteredUsageSummary(query)
 		actual := summary.ActualUsage.String()
+		preparation, cleanup := summary.PreparationUsage.String(), summary.CleanupUsage.String()
 		return admin.NewGetUsageSummaryOK().WithPayload(&models.UsageSummary{
-			ActualUsage: &actual, StartedBookings: &summary.StartedBookings, CompletedBookings: &summary.CompletedBookings,
+			ActualUsage: &actual, PreparationUsage: &preparation, CleanupUsage: &cleanup, OperationalJobs: &summary.OperationalJobs,
+			StartedBookings: &summary.StartedBookings, CompletedBookings: &summary.CompletedBookings,
 		})
 	}
 }

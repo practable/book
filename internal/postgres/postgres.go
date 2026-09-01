@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/practable/book/internal/interval"
+	"github.com/practable/book/internal/operations"
 	"github.com/practable/book/internal/store"
 	"gopkg.in/yaml.v2"
 )
@@ -714,6 +715,9 @@ func cancelBookingTx(ctx context.Context, tx pgx.Tx, name string, at time.Time, 
 	if err := insertEvent(ctx, tx, rowID, name, "cancelled", at, actor); err != nil {
 		return store.PersistentBooking{}, err
 	}
+	if err := startBookingCleanupTx(ctx, tx, name, at); err != nil {
+		return store.PersistentBooking{}, err
+	}
 	row := tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", rowID)
 	persisted, err := scanBooking(row)
 	if err != nil {
@@ -762,6 +766,69 @@ func stopBookingActivationsTx(ctx context.Context, tx pgx.Tx, bookingName string
 	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET state=$3,failure_code=$4,
 		failure_message=$5,completed_at=$2,updated_at=$2 FROM public.bookings b
 		WHERE b.row_id=r.booking_row_id AND b.name=$1 AND b.collection='live' AND NOT b.superseded AND r.state='preparing'`, bookingName, at.UTC(), state, code, message)
+	return err
+}
+
+func startBookingCleanupTx(ctx context.Context, tx pgx.Tx, bookingName string, at time.Time) error {
+	rows, err := tx.Query(ctx, `SELECT r.run_id FROM public.booking_activation_runs r JOIN public.bookings b ON b.row_id=r.booking_row_id
+		WHERE b.name=$1 AND r.state='active' AND r.cleanup_state='pending' ORDER BY r.run_id FOR UPDATE OF r`, bookingName)
+	if err != nil {
+		return err
+	}
+	var runIDs []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return err
+		}
+		runIDs = append(runIDs, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	for _, runID := range runIDs {
+		if err := startActivationCleanupRunTx(ctx, tx, runID, at.UTC()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func startActivationCleanupRunTx(ctx context.Context, tx pgx.Tx, runID string, at time.Time) error {
+	var cleanupState string
+	if err := tx.QueryRow(ctx, `SELECT cleanup_state FROM public.booking_activation_runs WHERE run_id=$1 FOR UPDATE`, runID).Scan(&cleanupState); err != nil {
+		return err
+	}
+	if cleanupState != "pending" {
+		return nil
+	}
+	var stageIndex int
+	err := tx.QueryRow(ctx, `SELECT stage_index FROM public.booking_activation_stages WHERE run_id=$1 AND phase='cleanup' ORDER BY stage_index LIMIT 1`, runID).Scan(&stageIndex)
+	if errors.Is(err, pgx.ErrNoRows) {
+		_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs SET cleanup_state='not_required',updated_at=$2 WHERE run_id=$1`, runID, at.UTC())
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if err := createActivationStageJobTx(ctx, tx, runID, stageIndex, 1, at.UTC()); errors.Is(err, operations.ErrActivationConflict) {
+		_, updateErr := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET cleanup_state='failed',updated_at=$2 WHERE run_id=$1`, runID, at.UTC())
+		if updateErr != nil {
+			return updateErr
+		}
+		_, updateErr = tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state='failed',last_error_code='cleanup_conflict',
+			last_error='Cleanup could not reserve the resource',completed_at=$3,updated_at=$3 WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex, at.UTC())
+		return updateErr
+	} else if err != nil {
+		return err
+	}
+	var progress string
+	if err := tx.QueryRow(ctx, `SELECT progress_message FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex).Scan(&progress); err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs SET cleanup_state='running',current_stage=$2,progress_message=$3,updated_at=$4 WHERE run_id=$1`, runID, stageIndex, progress, at.UTC())
 	return err
 }
 
@@ -885,6 +952,9 @@ func (r *Repository) ExpireBookings(ctx context.Context, now time.Time) error {
 			continue
 		}
 		if err := insertEvent(ctx, tx, value.id, value.name, "expired", now, "system"); err != nil {
+			return err
+		}
+		if err := startBookingCleanupTx(ctx, tx, value.name, now); err != nil {
 			return err
 		}
 	}

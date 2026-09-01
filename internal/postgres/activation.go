@@ -65,39 +65,53 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 	}
 
 	progress := request.Stages[0].ProgressMessage
+	cleanupState := "pending"
+	if len(request.CleanupStages) == 0 {
+		cleanupState = "not_required"
+	}
 	_, err = tx.Exec(ctx, `INSERT INTO public.booking_activation_runs
-		(run_id,booking_row_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,current_stage,resolved_plan,progress_message)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'preparing',0,$10,$11)`, request.RunID, rowID, request.BookingName, request.User,
-		request.Resource, request.Stream, request.Pipeline, request.ManifestVersion, request.IdempotencyKey, string(request.ResolvedPlan), progress)
+		(run_id,booking_row_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,current_stage,resolved_plan,progress_message,cleanup_state)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'preparing',0,$10,$11,$12)`, request.RunID, rowID, request.BookingName, request.User,
+		request.Resource, request.Stream, request.Pipeline, request.ManifestVersion, request.IdempotencyKey, string(request.ResolvedPlan), progress, cleanupState)
 	if err != nil {
 		return operations.ActivationRun{}, false, err
 	}
-	for index, stage := range request.Stages {
-		state := "waiting"
-		if index == 0 {
-			state = "pending"
-		}
-		parameters, err := json.Marshal(stage.Parameters)
-		if err != nil {
-			return operations.ActivationRun{}, false, err
-		}
-		retryCodes, err := json.Marshal(stage.RetryableCodes)
-		if err != nil {
-			return operations.ActivationRun{}, false, err
-		}
-		guidance := interface{}(nil)
-		if len(stage.FailureGuidance) > 0 {
-			guidance = string(stage.FailureGuidance)
-		}
-		_, err = tx.Exec(ctx, `INSERT INTO public.booking_activation_stages
+	stageIndex := 0
+	for _, phase := range []struct {
+		name   string
+		stages []operations.ActivationStageSpec
+	}{{"activation", request.Stages}, {"cleanup", request.CleanupStages}} {
+		for phaseIndex, stage := range phase.stages {
+			state, attempt := "waiting", 1
+			if phase.name == "activation" && phaseIndex == 0 {
+				state = "pending"
+			}
+			if phase.name == "cleanup" {
+				attempt = 0
+			}
+			parameters, err := json.Marshal(stage.Parameters)
+			if err != nil {
+				return operations.ActivationRun{}, false, err
+			}
+			retryCodes, err := json.Marshal(stage.RetryableCodes)
+			if err != nil {
+				return operations.ActivationRun{}, false, err
+			}
+			guidance := interface{}(nil)
+			if len(stage.FailureGuidance) > 0 {
+				guidance = string(stage.FailureGuidance)
+			}
+			_, err = tx.Exec(ctx, `INSERT INTO public.booking_activation_stages
 			(run_id,stage_index,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,parameters,
-			 progress_message,retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,failure_guidance)
-			VALUES($1,$2,$3,$4,$5,$6,1,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`, request.RunID, index, stage.Name, stage.JobTemplate, stage.Workflow, state,
-			stage.MaximumAttempts, stage.DueAt.UTC(), stage.TimeoutAt.UTC(), string(parameters), stage.ProgressMessage, stage.RetryMessage,
-			stage.WaitAfter.Nanoseconds(), stage.InitialDelay.Nanoseconds(), normalizedBackoff(stage.Backoff), stage.MaximumDelay.Nanoseconds(),
-			stage.TotalTimeout.Nanoseconds(), string(retryCodes), guidance)
-		if err != nil {
-			return operations.ActivationRun{}, false, err
+			 progress_message,retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,failure_guidance,phase)
+			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`, request.RunID, stageIndex, stage.Name, stage.JobTemplate, stage.Workflow, state, attempt,
+				stage.MaximumAttempts, stage.DueAt.UTC(), stage.TimeoutAt.UTC(), string(parameters), stage.ProgressMessage, stage.RetryMessage,
+				stage.WaitAfter.Nanoseconds(), stage.InitialDelay.Nanoseconds(), normalizedBackoff(stage.Backoff), stage.MaximumDelay.Nanoseconds(),
+				stage.TotalTimeout.Nanoseconds(), string(retryCodes), guidance, phase.name)
+			if err != nil {
+				return operations.ActivationRun{}, false, err
+			}
+			stageIndex++
 		}
 	}
 	job := request.FirstJob
@@ -109,6 +123,9 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 		job.DueAt.UTC(), job.DueAt.UnixNano(), job.StartsAt.UTC(), job.StartsAt.UnixNano(), job.EndsAt.UTC(), job.EndsAt.UnixNano(), rowID,
 		job.TriggeringBookingName, job.ManifestVersion, job.PlanRevision, job.IdempotencyKey, string(job.Payload), request.RunID)
 	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	if err := insertOperationalUsageTx(ctx, tx, job.ID, request.RunID, "preparation", job.EndsAt.Sub(job.StartsAt)); err != nil {
 		return operations.ActivationRun{}, false, err
 	}
 	if _, err = tx.Exec(ctx, `UPDATE public.booking_activation_stages SET job_id=$3 WHERE run_id=$1 AND stage_index=$2`, request.RunID, 0, job.ID); err != nil {
@@ -174,7 +191,8 @@ func (r *Repository) SweepActivationTimeouts(ctx context.Context, now time.Time,
 	rows, err := tx.Query(ctx, `SELECT j.job_id,j.activation_run_id,j.activation_stage_index FROM public.operational_jobs j
 		JOIN public.booking_activation_stages s ON s.run_id=j.activation_run_id AND s.stage_index=j.activation_stage_index
 		JOIN public.booking_activation_runs r ON r.run_id=s.run_id
-		WHERE r.state='preparing' AND s.state IN ('pending','dispatched','accepted','running') AND s.timeout_at <= $1
+		WHERE ((s.phase='activation' AND r.state='preparing') OR (s.phase='cleanup' AND r.cleanup_state='running'))
+		AND s.state IN ('pending','dispatched','accepted','running') AND s.timeout_at <= $1
 		AND j.state IN ('scheduled','reserved','dispatched','accepted','running')
 		ORDER BY s.timeout_at,j.job_id FOR UPDATE OF j SKIP LOCKED LIMIT $2`, now.UTC(), limit)
 	if err != nil {
@@ -228,10 +246,10 @@ type activationQueryer interface {
 func getActivation(ctx context.Context, queryer activationQueryer, id string) (operations.ActivationRun, error) {
 	var run operations.ActivationRun
 	var guidance []byte
-	err := queryer.QueryRow(ctx, `SELECT run_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,
+	err := queryer.QueryRow(ctx, `SELECT run_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,cleanup_state,
 		current_stage,progress_message,failure_code,failure_message,COALESCE(failure_guidance,'null'::jsonb),started_at,updated_at,completed_at
 		FROM public.booking_activation_runs WHERE run_id=$1`, id).Scan(&run.ID, &run.BookingName, &run.User, &run.Resource, &run.Stream, &run.Pipeline,
-		&run.ManifestVersion, &run.IdempotencyKey, &run.State, &run.CurrentStage, &run.ProgressMessage, &run.FailureCode, &run.FailureMessage,
+		&run.ManifestVersion, &run.IdempotencyKey, &run.State, &run.CleanupState, &run.CurrentStage, &run.ProgressMessage, &run.FailureCode, &run.FailureMessage,
 		&guidance, &run.StartedAt, &run.UpdatedAt, &run.CompletedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return run, operations.ErrNotFound
@@ -240,7 +258,7 @@ func getActivation(ctx context.Context, queryer activationQueryer, id string) (o
 		return run, err
 	}
 	run.FailureGuidance = guidance
-	rows, err := queryer.Query(ctx, `SELECT stage_index,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,
+	rows, err := queryer.Query(ctx, `SELECT stage_index,phase,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,
 		parameters,progress_message,last_error_code,last_error,COALESCE(job_id,''),retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,
 		retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,COALESCE(failure_guidance,'null'::jsonb)
 		FROM public.booking_activation_stages WHERE run_id=$1 ORDER BY stage_index`, id)
@@ -252,7 +270,7 @@ func getActivation(ctx context.Context, queryer activationQueryer, id string) (o
 		var stage operations.ActivationStage
 		var parameters, retryCodes, guidance []byte
 		var waitAfter, initialDelay, maximumDelay, totalTimeout int64
-		if err := rows.Scan(&stage.Index, &stage.Name, &stage.JobTemplate, &stage.Workflow, &stage.State, &stage.Attempt, &stage.MaximumAttempts,
+		if err := rows.Scan(&stage.Index, &stage.Phase, &stage.Name, &stage.JobTemplate, &stage.Workflow, &stage.State, &stage.Attempt, &stage.MaximumAttempts,
 			&stage.DueAt, &stage.TimeoutAt, &parameters, &stage.ProgressMessage, &stage.LastErrorCode, &stage.LastError, &stage.JobID,
 			&stage.RetryMessage, &waitAfter, &initialDelay, &stage.Backoff, &maximumDelay, &totalTimeout, &retryCodes, &guidance); err != nil {
 			return run, err
@@ -266,7 +284,11 @@ func getActivation(ctx context.Context, queryer activationQueryer, id string) (o
 			return run, err
 		}
 		stage.FailureGuidance = guidance
-		run.Stages = append(run.Stages, stage)
+		if stage.Phase == "cleanup" {
+			run.CleanupStages = append(run.CleanupStages, stage)
+		} else {
+			run.Stages = append(run.Stages, stage)
+		}
 	}
 	return run, rows.Err()
 }

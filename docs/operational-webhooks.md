@@ -83,13 +83,19 @@ the same transaction that starts the reservation and moves the job to
 interval. An exact retry returns the same activity without changing its
 original start time. A booking identifier by itself grants no runner access.
 
-Preflight jobs are different: the runner reports their state but must not call
-the maintenance activation endpoint. Book advances the persisted preparation
+Preflight jobs are different: the runner calls the activation endpoint to gain
+scoped equipment access, but that call does not mark the user's booking started
+or begin user usage accounting. Book advances the persisted preparation
 pipeline and starts the user's booking only after its final stage succeeds.
 Overdue preflight stages are claimed with database row locking by any available
 Book instance. They are retried when `activation_timeout` is configured as
 retryable, or are failed with persisted user guidance. This recovery also runs
 immediately after a Book restart.
+
+Teardown jobs implement the persisted cleanup plan. They use the same signed
+runner protocol and close their maintenance reservation on a terminal callback.
+Cleanup is triggered durably by booking cancellation or expiry, and by a
+terminal preparation failure when cleanup work was resolved for that run.
 
 Terminal callbacks (`succeeded`, `failed`, `cancelled`, or `expired`) also close
 the bound reservation transactionally. Book records actual occupied time from
@@ -99,6 +105,21 @@ acknowledged, so access is withdrawn even when a different Book instance or
 relay observes the result. Successful work is recorded as completed history;
 other terminal outcomes retain their failure/cancellation state and audit
 actor.
+
+## Usage and cost accounting
+
+User equipment usage remains the interval from successful booking activation
+to cancellation or booking end. Preparation and cleanup never inflate that
+figure or the policy usage limits derived from it.
+
+Each activation or cleanup attempt also writes an immutable operational usage
+ledger entry. It records the triggering booking, opaque user identifier,
+preparation/cleanup phase, planned duration, actual runner-active duration,
+and outcome. Operational work is chargeable to that user by default, while
+remaining separately reportable as `preparation_usage`, `cleanup_usage`, and
+`operational_jobs` in the administrator usage summary. The payer fields are
+explicit so a future policy can charge an organisation or service without
+rewriting historical rows.
 
 ## Failure and recovery
 
@@ -111,6 +132,8 @@ pending work.
 Migration 0009 creates `operational_jobs`, `webhook_deliveries`, and
 `webhook_callback_receipts`; migration 0011 adds the completed booking audit
 event; migrations 0015 and 0016 add durable booking activation runs, stages,
-deadlines, retry policy, and failure guidance. Apply migrations using the normal process in
+deadlines, retry policy, and failure guidance. Migrations 0017 and 0018 add the
+independent cleanup plan and lifecycle; migration 0019 adds operational usage
+accounting. Apply migrations using the normal process in
 [PostgreSQL](postgresql.md). Rollback is safe only after dispatch is disabled
 and retained operational history has been exported or deliberately discarded.

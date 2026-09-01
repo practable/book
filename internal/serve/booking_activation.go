@@ -24,16 +24,22 @@ func authorizeBookingActivation(principal interface{}, userName string) error {
 }
 
 func activationToModel(run operations.ActivationRun) *models.BookingActivation {
-	id, booking, stream, state, progress := run.ID, run.BookingName, run.Stream, run.State, run.ProgressMessage
+	id, booking, stream, state, cleanupState, progress := run.ID, run.BookingName, run.Stream, run.State, run.CleanupState, run.ProgressMessage
 	current := int64(run.CurrentStage)
-	result := &models.BookingActivation{ID: &id, BookingName: &booking, Stream: &stream, State: &state, CurrentStage: &current,
+	result := &models.BookingActivation{ID: &id, BookingName: &booking, Stream: &stream, State: &state, CleanupState: &cleanupState, CurrentStage: &current,
 		ProgressMessage: &progress, FailureCode: run.FailureCode, FailureMessage: run.FailureMessage}
-	for _, item := range run.Stages {
-		index, attempt, maximum := int64(item.Index), int64(item.Attempt), int64(item.MaximumAttempts)
-		name, stageState := item.Name, item.State
-		result.Stages = append(result.Stages, &models.BookingActivationStage{Index: &index, Name: &name, State: &stageState, Attempt: &attempt,
-			MaximumAttempts: &maximum, ProgressMessage: item.ProgressMessage, LastErrorCode: item.LastErrorCode, LastError: item.LastError})
+	convertStages := func(values []operations.ActivationStage) []*models.BookingActivationStage {
+		converted := make([]*models.BookingActivationStage, 0, len(values))
+		for _, item := range values {
+			index, attempt, maximum := int64(item.Index), int64(item.Attempt), int64(item.MaximumAttempts)
+			name, stageState := item.Name, item.State
+			converted = append(converted, &models.BookingActivationStage{Index: &index, Name: &name, State: &stageState, Attempt: &attempt,
+				MaximumAttempts: &maximum, ProgressMessage: item.ProgressMessage, LastErrorCode: item.LastErrorCode, LastError: item.LastError})
+		}
+		return converted
 	}
+	result.Stages = convertStages(run.Stages)
+	result.CleanupStages = convertStages(run.CleanupStages)
 	if len(run.FailureGuidance) > 0 && string(run.FailureGuidance) != "null" {
 		var guidance store.OperationalFailureGuidance
 		if json.Unmarshal(run.FailureGuidance, &guidance) == nil {

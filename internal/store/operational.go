@@ -183,20 +183,25 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 	}
 	now := s.now().UTC()
 	runID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation\x00"+bookingName+"\x00"+idempotencyKey)).String()
-	stageSpecs := make([]operations.ActivationStageSpec, 0, len(stages))
-	due := now
-	for _, stage := range stages {
-		attempts := stage.Retry.Attempts
-		if attempts < 1 {
-			attempts = 1
+	makeStageSpecs := func(values []ResolvedOperationalStage, firstDue time.Time) []operations.ActivationStageSpec {
+		result := make([]operations.ActivationStageSpec, 0, len(values))
+		due := firstDue
+		for _, stage := range values {
+			attempts := stage.Retry.Attempts
+			if attempts < 1 {
+				attempts = 1
+			}
+			result = append(result, operations.ActivationStageSpec{Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow,
+				DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters,
+				ProgressMessage: stage.ProgressMessages.Initial, RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter,
+				InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff, MaximumDelay: stage.Retry.MaximumDelay,
+				TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes, FailureGuidance: mustMarshalOperationalGuidance(stage.FailureGuidance)})
+			due = due.Add(stage.Timeout + stage.WaitAfter)
 		}
-		stageSpecs = append(stageSpecs, operations.ActivationStageSpec{Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow,
-			DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters,
-			ProgressMessage: stage.ProgressMessages.Initial, RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter,
-			InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff, MaximumDelay: stage.Retry.MaximumDelay,
-			TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes, FailureGuidance: mustMarshalOperationalGuidance(stage.FailureGuidance)})
-		due = due.Add(stage.Timeout + stage.WaitAfter)
+		return result
 	}
+	stageSpecs := makeStageSpecs(stages, now)
+	cleanupSpecs := makeStageSpecs(cleanup, now)
 	resolvedPlan, err := json.Marshal(struct {
 		Stages  []ResolvedOperationalStage `json:"stages"`
 		Cleanup []ResolvedOperationalStage `json:"cleanup,omitempty"`
@@ -216,7 +221,7 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 	}
 	request := operations.CreateActivationRequest{RunID: runID, BookingName: bookingName, User: booking.User, Resource: slot.Resource,
 		Stream: streamName, Pipeline: s.Resources[slot.Resource].StreamOperations[streamName].ActivationPipeline, ManifestVersion: s.manifestVersion,
-		IdempotencyKey: idempotencyKey, RequestedAt: now, ResolvedPlan: resolvedPlan, Stages: stageSpecs,
+		IdempotencyKey: idempotencyKey, RequestedAt: now, ResolvedPlan: resolvedPlan, Stages: stageSpecs, CleanupStages: cleanupSpecs,
 		FirstJob: operations.Job{ID: jobID, Resource: slot.Resource, Workflow: first.Workflow, Kind: "preflight", State: "reserved", DueAt: now,
 			StartsAt: now, EndsAt: now.Add(first.Timeout), TriggeringBookingName: bookingName, ManifestVersion: s.manifestVersion,
 			PlanRevision: 1, IdempotencyKey: jobKey, Payload: body},

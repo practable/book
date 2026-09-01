@@ -39,12 +39,14 @@ type CreateActivationRequest struct {
 	RequestedAt     time.Time
 	ResolvedPlan    json.RawMessage
 	Stages          []ActivationStageSpec
+	CleanupStages   []ActivationStageSpec
 	FirstJob        Job
 	FirstDelivery   Delivery
 }
 
 type ActivationStage struct {
 	Index           int
+	Phase           string
 	Name            string
 	JobTemplate     string
 	Workflow        string
@@ -78,6 +80,7 @@ type ActivationRun struct {
 	ManifestVersion int64
 	IdempotencyKey  string
 	State           string
+	CleanupState    string
 	CurrentStage    int
 	ProgressMessage string
 	FailureCode     string
@@ -87,4 +90,5 @@ type ActivationRun struct {
 	UpdatedAt       time.Time
 	CompletedAt     *time.Time
 	Stages          []ActivationStage
+	CleanupStages   []ActivationStage
 }

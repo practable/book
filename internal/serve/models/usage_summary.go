@@ -23,9 +23,21 @@ type UsageSummary struct {
 	// Required: true
 	ActualUsage *string `json:"actual_usage"`
 
+	// cleanup usage
+	// Required: true
+	CleanupUsage *string `json:"cleanup_usage"`
+
 	// completed bookings
 	// Required: true
 	CompletedBookings *int64 `json:"completed_bookings"`
+
+	// operational jobs
+	// Required: true
+	OperationalJobs *int64 `json:"operational_jobs"`
+
+	// preparation usage
+	// Required: true
+	PreparationUsage *string `json:"preparation_usage"`
 
 	// started bookings
 	// Required: true
@@ -40,7 +52,19 @@ func (m *UsageSummary) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateCleanupUsage(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateCompletedBookings(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOperationalJobs(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePreparationUsage(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -63,9 +87,36 @@ func (m *UsageSummary) validateActualUsage(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *UsageSummary) validateCleanupUsage(formats strfmt.Registry) error {
+
+	if err := validate.Required("cleanup_usage", "body", m.CleanupUsage); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *UsageSummary) validateCompletedBookings(formats strfmt.Registry) error {
 
 	if err := validate.Required("completed_bookings", "body", m.CompletedBookings); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *UsageSummary) validateOperationalJobs(formats strfmt.Registry) error {
+
+	if err := validate.Required("operational_jobs", "body", m.OperationalJobs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *UsageSummary) validatePreparationUsage(formats strfmt.Registry) error {
+
+	if err := validate.Required("preparation_usage", "body", m.PreparationUsage); err != nil {
 		return err
 	}
 

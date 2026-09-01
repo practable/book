@@ -2671,6 +2671,7 @@ func init() {
         "booking_name",
         "stream",
         "state",
+        "cleanup_state",
         "current_stage",
         "progress_message",
         "stages"
@@ -2678,6 +2679,22 @@ func init() {
       "properties": {
         "booking_name": {
           "type": "string"
+        },
+        "cleanup_stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BookingActivationStage"
+          }
+        },
+        "cleanup_state": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "running",
+            "succeeded",
+            "failed"
+          ]
         },
         "current_stage": {
           "type": "integer",
@@ -2711,7 +2728,10 @@ func init() {
             "active",
             "failed",
             "cancelled",
-            "expired"
+            "expired",
+            "cleaning",
+            "closed",
+            "cleanup_failed"
           ]
         },
         "stream": {
@@ -4386,6 +4406,9 @@ func init() {
       "type": "object",
       "required": [
         "actual_usage",
+        "preparation_usage",
+        "cleanup_usage",
+        "operational_jobs",
         "started_bookings",
         "completed_bookings"
       ],
@@ -4393,9 +4416,19 @@ func init() {
         "actual_usage": {
           "type": "string"
         },
+        "cleanup_usage": {
+          "type": "string"
+        },
         "completed_bookings": {
           "type": "integer",
           "format": "int64"
+        },
+        "operational_jobs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "preparation_usage": {
+          "type": "string"
         },
         "started_bookings": {
           "type": "integer",
@@ -7718,6 +7751,7 @@ func init() {
         "booking_name",
         "stream",
         "state",
+        "cleanup_state",
         "current_stage",
         "progress_message",
         "stages"
@@ -7725,6 +7759,22 @@ func init() {
       "properties": {
         "booking_name": {
           "type": "string"
+        },
+        "cleanup_stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BookingActivationStage"
+          }
+        },
+        "cleanup_state": {
+          "type": "string",
+          "enum": [
+            "not_required",
+            "pending",
+            "running",
+            "succeeded",
+            "failed"
+          ]
         },
         "current_stage": {
           "type": "integer",
@@ -7759,7 +7809,10 @@ func init() {
             "active",
             "failed",
             "cancelled",
-            "expired"
+            "expired",
+            "cleaning",
+            "closed",
+            "cleanup_failed"
           ]
         },
         "stream": {
@@ -9437,6 +9490,9 @@ func init() {
       "type": "object",
       "required": [
         "actual_usage",
+        "preparation_usage",
+        "cleanup_usage",
+        "operational_jobs",
         "started_bookings",
         "completed_bookings"
       ],
@@ -9444,9 +9500,19 @@ func init() {
         "actual_usage": {
           "type": "string"
         },
+        "cleanup_usage": {
+          "type": "string"
+        },
         "completed_bookings": {
           "type": "integer",
           "format": "int64"
+        },
+        "operational_jobs": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "preparation_usage": {
+          "type": "string"
         },
         "started_bookings": {
           "type": "integer",
