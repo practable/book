@@ -62,7 +62,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 23, versions)
+	require.Equal(t, 24, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -152,12 +152,112 @@ func activationRequest(booking, user, key string, now time.Time) operations.Crea
 		Pipeline: "video-activation", IdempotencyKey: key, RequestedAt: now, ResolvedPlan: []byte(`{"pipeline":"video-activation"}`),
 		Stages: []operations.ActivationStageSpec{
 			{Name: "power-on", JobTemplate: "video-on", Workflow: "video-on", DueAt: now, TimeoutAt: now.Add(4 * time.Second), MaximumAttempts: 1, Parameters: map[string]string{"stream": "camera-a"}, ProgressMessage: "Starting video"},
-			{Name: "health", JobTemplate: "video-check", Workflow: "video-health", DueAt: now.Add(time.Second), TimeoutAt: now.Add(5 * time.Second), MaximumAttempts: 3, Parameters: map[string]string{"stream": "camera-a"}, ProgressMessage: "Checking video"},
+			{Name: "health", JobTemplate: "video-check", Workflow: "video-health", Kind: "health_check", DueAt: now.Add(time.Second), TimeoutAt: now.Add(5 * time.Second), MaximumAttempts: 3, Parameters: map[string]string{"stream": "camera-a"}, ProgressMessage: "Checking video"},
 		},
 		FirstJob: operations.Job{ID: jobID, Resource: "resource-a", Workflow: "video-on", Kind: "preflight", State: "reserved", DueAt: now,
 			StartsAt: now, EndsAt: now.Add(4 * time.Second), TriggeringBookingName: booking, PlanRevision: 1, IdempotencyKey: "activation-job:" + key, Payload: body},
 		FirstDelivery: operations.Delivery{ID: "activation-delivery-" + key, JobID: jobID, Body: body},
 	}
+}
+
+func TestFailedHealthCheckRunsDurableRecoveryThenRechecks(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("recovery-activation", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("recovery-activation", "opaque-user", "recovery", now)
+	req.Stages = req.Stages[1:]
+	req.Stages[0].DueAt = now
+	req.Stages[0].TimeoutAt = now.Add(4 * time.Second)
+	req.Stages[0].MaximumAttempts = 1
+	req.FirstJob.Workflow = "video-health"
+	req.RecoveryAttempts = 1
+	req.RecoveryStages = []operations.ActivationStageSpec{{Name: "reset-camera", JobTemplate: "camera-reset", Workflow: "camera-reset", Kind: "action",
+		DueAt: now, TimeoutAt: now.Add(3 * time.Second), MaximumAttempts: 1, Parameters: map[string]string{"stream": "camera-a"}, ProgressMessage: "Resetting video"}}
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, run.RecoveryStages, 1)
+
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "health-accepted", JobID: run.Stages[0].JobID, State: "accepted", At: now}, "health-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "health-failed", JobID: run.Stages[0].JobID, State: "failed", At: now.Add(time.Second), Code: "no_frames", Error: "camera has no frames"}, "health-failed-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "preparing", run.State)
+	require.Equal(t, 1, run.RecoveryAttempt)
+	require.Equal(t, 1, run.MaximumRecoveryAttempts)
+	require.Equal(t, "pending", run.RecoveryStages[0].State)
+	recoveryJob := run.RecoveryStages[0].JobID
+
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "recovery-accepted", JobID: recoveryJob, State: "accepted", At: now.Add(2 * time.Second)}, "recovery-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "recovery-succeeded", JobID: recoveryJob, State: "succeeded", At: now.Add(3 * time.Second)}, "recovery-succeeded-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "pending", run.Stages[0].State)
+	require.Equal(t, 1, run.Stages[0].Attempt)
+	require.NotEqual(t, req.FirstJob.ID, run.Stages[0].JobID)
+	recheckJob := run.Stages[0].JobID
+
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "recheck-accepted", JobID: recheckJob, State: "accepted", At: now.Add(4 * time.Second)}, "recheck-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "recheck-succeeded", JobID: recheckJob, State: "succeeded", At: now.Add(5 * time.Second)}, "recheck-succeeded-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", run.State)
+	health, err := repository.ListOperationalStreamHealth(ctx)
+	require.NoError(t, err)
+	require.Len(t, health, 1)
+	require.Equal(t, "healthy", health[0].Status)
+}
+
+func TestExhaustedRecoveryFailsActivationAndAlertsTechnicians(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 11, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("exhausted-recovery", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("exhausted-recovery", "opaque-user", "exhausted", now)
+	req.Stages = req.Stages[1:]
+	req.Stages[0].DueAt, req.Stages[0].TimeoutAt, req.Stages[0].MaximumAttempts = now, now.Add(4*time.Second), 1
+	req.FirstJob.Workflow = "video-health"
+	req.RecoveryAttempts = 1
+	req.RecoveryStages = []operations.ActivationStageSpec{{Name: "reset-camera", JobTemplate: "camera-reset", Workflow: "camera-reset", Kind: "action",
+		DueAt: now, TimeoutAt: now.Add(3 * time.Second), MaximumAttempts: 1, ProgressMessage: "Resetting video"}}
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+	fail := func(delivery, job string, at time.Time) {
+		_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: delivery + "-accepted", JobID: job, State: "accepted", At: at}, delivery+"-accepted-hash")
+		require.NoError(t, err)
+		_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: delivery + "-failed", JobID: job, State: "failed", At: at.Add(time.Second), Code: "no_frames", Error: "camera has no frames"}, delivery+"-failed-hash")
+		require.NoError(t, err)
+	}
+	fail("initial-check", run.Stages[0].JobID, now)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	recoveryJob := run.RecoveryStages[0].JobID
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "reset-accepted", JobID: recoveryJob, State: "accepted", At: now.Add(2 * time.Second)}, "reset-accepted-hash")
+	require.NoError(t, err)
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "reset-succeeded", JobID: recoveryJob, State: "succeeded", At: now.Add(3 * time.Second)}, "reset-succeeded-hash")
+	require.NoError(t, err)
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	fail("recheck", run.Stages[0].JobID, now.Add(4*time.Second))
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "failed", run.State)
+	require.Equal(t, 1, run.RecoveryAttempt)
+	health, err := repository.ListOperationalStreamHealth(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "unhealthy", health[0].Status)
+	alerts, err := repository.ListOperationalAlerts(ctx, "active", 10)
+	require.NoError(t, err)
+	require.Len(t, alerts, 1)
+	require.Equal(t, "no_frames", alerts[0].Code)
 }
 
 func TestActivationCreationIsAtomicAndIdempotent(t *testing.T) {

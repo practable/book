@@ -51,9 +51,21 @@ type BookingActivation struct {
 	// Required: true
 	ID *string `json:"id"`
 
+	// maximum recovery attempts
+	// Maximum: 5
+	// Minimum: 0
+	MaximumRecoveryAttempts *int64 `json:"maximum_recovery_attempts,omitempty"`
+
 	// progress message
 	// Required: true
 	ProgressMessage *string `json:"progress_message"`
+
+	// recovery attempt
+	// Minimum: 0
+	RecoveryAttempt *int64 `json:"recovery_attempt,omitempty"`
+
+	// recovery stages
+	RecoveryStages []*BookingActivationStage `json:"recovery_stages"`
 
 	// stages
 	// Required: true
@@ -97,7 +109,19 @@ func (m *BookingActivation) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateMaximumRecoveryAttempts(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateProgressMessage(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateRecoveryAttempt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateRecoveryStages(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -247,10 +271,64 @@ func (m *BookingActivation) validateID(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *BookingActivation) validateMaximumRecoveryAttempts(formats strfmt.Registry) error {
+	if swag.IsZero(m.MaximumRecoveryAttempts) { // not required
+		return nil
+	}
+
+	if err := validate.MinimumInt("maximum_recovery_attempts", "body", *m.MaximumRecoveryAttempts, 0, false); err != nil {
+		return err
+	}
+
+	if err := validate.MaximumInt("maximum_recovery_attempts", "body", *m.MaximumRecoveryAttempts, 5, false); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *BookingActivation) validateProgressMessage(formats strfmt.Registry) error {
 
 	if err := validate.Required("progress_message", "body", m.ProgressMessage); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (m *BookingActivation) validateRecoveryAttempt(formats strfmt.Registry) error {
+	if swag.IsZero(m.RecoveryAttempt) { // not required
+		return nil
+	}
+
+	if err := validate.MinimumInt("recovery_attempt", "body", *m.RecoveryAttempt, 0, false); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *BookingActivation) validateRecoveryStages(formats strfmt.Registry) error {
+	if swag.IsZero(m.RecoveryStages) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.RecoveryStages); i++ {
+		if swag.IsZero(m.RecoveryStages[i]) { // not required
+			continue
+		}
+
+		if m.RecoveryStages[i] != nil {
+			if err := m.RecoveryStages[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("recovery_stages" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("recovery_stages" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil
@@ -365,6 +443,10 @@ func (m *BookingActivation) ContextValidate(ctx context.Context, formats strfmt.
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateRecoveryStages(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateStages(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -416,6 +498,31 @@ func (m *BookingActivation) contextValidateFailureGuidance(ctx context.Context, 
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *BookingActivation) contextValidateRecoveryStages(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.RecoveryStages); i++ {
+
+		if m.RecoveryStages[i] != nil {
+
+			if swag.IsZero(m.RecoveryStages[i]) { // not required
+				return nil
+			}
+
+			if err := m.RecoveryStages[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("recovery_stages" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("recovery_stages" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil

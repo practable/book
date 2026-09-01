@@ -26,7 +26,9 @@ func authorizeBookingActivation(principal interface{}, userName string) error {
 func activationToModel(run operations.ActivationRun) *models.BookingActivation {
 	id, booking, stream, state, cleanupState, progress := run.ID, run.BookingName, run.Stream, run.State, run.CleanupState, run.ProgressMessage
 	current := int64(run.CurrentStage)
+	recoveryAttempt, maximumRecoveryAttempts := int64(run.RecoveryAttempt), int64(run.MaximumRecoveryAttempts)
 	result := &models.BookingActivation{ID: &id, BookingName: &booking, Stream: &stream, State: &state, CleanupState: &cleanupState, CurrentStage: &current,
+		RecoveryAttempt: &recoveryAttempt, MaximumRecoveryAttempts: &maximumRecoveryAttempts,
 		ProgressMessage: &progress, FailureCode: run.FailureCode, FailureMessage: run.FailureMessage}
 	convertStages := func(values []operations.ActivationStage) []*models.BookingActivationStage {
 		converted := make([]*models.BookingActivationStage, 0, len(values))
@@ -39,6 +41,7 @@ func activationToModel(run operations.ActivationRun) *models.BookingActivation {
 		return converted
 	}
 	result.Stages = convertStages(run.Stages)
+	result.RecoveryStages = convertStages(run.RecoveryStages)
 	result.CleanupStages = convertStages(run.CleanupStages)
 	if len(run.FailureGuidance) > 0 && string(run.FailureGuidance) != "null" {
 		var guidance store.OperationalFailureGuidance

@@ -2927,8 +2927,23 @@ func init() {
         "id": {
           "type": "string"
         },
+        "maximum_recovery_attempts": {
+          "type": "integer",
+          "format": "int64",
+          "maximum": 5
+        },
         "progress_message": {
           "type": "string"
+        },
+        "recovery_attempt": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "recovery_stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BookingActivationStage"
+          }
         },
         "stages": {
           "type": "array",
@@ -4000,6 +4015,16 @@ func init() {
           "items": {
             "$ref": "#/definitions/OperationalPipelineStage"
           }
+        },
+        "recovery": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalPipelineStage"
+          }
+        },
+        "recovery_attempts": {
+          "type": "integer",
+          "maximum": 5
         },
         "stages": {
           "type": "array",
@@ -8417,8 +8442,25 @@ func init() {
         "id": {
           "type": "string"
         },
+        "maximum_recovery_attempts": {
+          "type": "integer",
+          "format": "int64",
+          "maximum": 5,
+          "minimum": 0
+        },
         "progress_message": {
           "type": "string"
+        },
+        "recovery_attempt": {
+          "type": "integer",
+          "format": "int64",
+          "minimum": 0
+        },
+        "recovery_stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/BookingActivationStage"
+          }
         },
         "stages": {
           "type": "array",
@@ -9492,6 +9534,17 @@ func init() {
           "items": {
             "$ref": "#/definitions/OperationalPipelineStage"
           }
+        },
+        "recovery": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OperationalPipelineStage"
+          }
+        },
+        "recovery_attempts": {
+          "type": "integer",
+          "maximum": 5,
+          "minimum": 0
         },
         "stages": {
           "type": "array",

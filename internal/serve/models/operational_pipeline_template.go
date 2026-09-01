@@ -23,6 +23,14 @@ type OperationalPipelineTemplate struct {
 	// cleanup
 	Cleanup []*OperationalPipelineStage `json:"cleanup"`
 
+	// recovery
+	Recovery []*OperationalPipelineStage `json:"recovery"`
+
+	// recovery attempts
+	// Maximum: 5
+	// Minimum: 0
+	RecoveryAttempts *int64 `json:"recovery_attempts,omitempty"`
+
 	// stages
 	// Required: true
 	Stages []*OperationalPipelineStage `json:"stages"`
@@ -33,6 +41,14 @@ func (m *OperationalPipelineTemplate) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateCleanup(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateRecovery(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateRecoveryAttempts(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -67,6 +83,48 @@ func (m *OperationalPipelineTemplate) validateCleanup(formats strfmt.Registry) e
 			}
 		}
 
+	}
+
+	return nil
+}
+
+func (m *OperationalPipelineTemplate) validateRecovery(formats strfmt.Registry) error {
+	if swag.IsZero(m.Recovery) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Recovery); i++ {
+		if swag.IsZero(m.Recovery[i]) { // not required
+			continue
+		}
+
+		if m.Recovery[i] != nil {
+			if err := m.Recovery[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("recovery" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("recovery" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *OperationalPipelineTemplate) validateRecoveryAttempts(formats strfmt.Registry) error {
+	if swag.IsZero(m.RecoveryAttempts) { // not required
+		return nil
+	}
+
+	if err := validate.MinimumInt("recovery_attempts", "body", *m.RecoveryAttempts, 0, false); err != nil {
+		return err
+	}
+
+	if err := validate.MaximumInt("recovery_attempts", "body", *m.RecoveryAttempts, 5, false); err != nil {
+		return err
 	}
 
 	return nil
@@ -107,6 +165,10 @@ func (m *OperationalPipelineTemplate) ContextValidate(ctx context.Context, forma
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateRecovery(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateStages(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -132,6 +194,31 @@ func (m *OperationalPipelineTemplate) contextValidateCleanup(ctx context.Context
 					return ve.ValidateName("cleanup" + "." + strconv.Itoa(i))
 				} else if ce, ok := err.(*errors.CompositeError); ok {
 					return ce.ValidateName("cleanup" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (m *OperationalPipelineTemplate) contextValidateRecovery(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Recovery); i++ {
+
+		if m.Recovery[i] != nil {
+
+			if swag.IsZero(m.Recovery[i]) { // not required
+				return nil
+			}
+
+			if err := m.Recovery[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("recovery" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("recovery" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

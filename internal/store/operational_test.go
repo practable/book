@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/practable/book/internal/interval"
+	"github.com/stretchr/testify/require"
 )
 
 func operationalManifest() Manifest {
@@ -192,13 +193,47 @@ func TestReusableStreamPipelineResolvesTypedResourceBinding(t *testing.T) {
 	if messages := validateOperationalManifest(m); len(messages) != 0 {
 		t.Fatalf("messages = %#v", messages)
 	}
-	stages, _, err := ResolveOperationalPipeline(m, "tank", "video")
+	stages, _, _, err := ResolveOperationalPipeline(m, "tank", "video")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(stages) != 2 || stages[1].Parameters["minimum_fps"] != "18" || stages[1].Retry.Attempts != 3 {
 		t.Fatalf("stages = %#v", stages)
 	}
+}
+
+func TestOperationalPipelineResolvesApprovedRecovery(t *testing.T) {
+	m := operationalManifest()
+	m.OperationalWorkflows["check-video"] = OperationalWorkflow{Description: "Check video", Kind: "health_check", ExpectedDuration: time.Second, MaximumDuration: 2 * time.Second}
+	m.OperationalWorkflows["reset-video"] = OperationalWorkflow{Description: "Reset video", Kind: "action", ExpectedDuration: time.Second, MaximumDuration: 3 * time.Second}
+	m.OperationalJobTemplates = map[string]OperationalJobTemplate{
+		"check": {Workflow: "check-video", Timeout: 2 * time.Second, AllowedOverrides: map[string]string{"stream": "string"}},
+		"reset": {Workflow: "reset-video", Timeout: 3 * time.Second, AllowedOverrides: map[string]string{"stream": "string"}},
+	}
+	m.OperationalPipelineTemplates = map[string]OperationalPipelineTemplate{"video": {
+		Stages: []OperationalPipelineStage{{Name: "verify", JobTemplate: "check"}}, Recovery: []OperationalPipelineStage{{Name: "reset", JobTemplate: "reset", WaitAfter: time.Second}}, RecoveryAttempts: 2,
+	}}
+	resource := m.Resources["tank"]
+	resource.Streams = []string{"video"}
+	resource.StreamOperations = map[string]OperationalStreamBinding{"video": {ActivationPipeline: "video", Parameters: map[string]OperationalParameterBinding{"stream": {Value: "tank-video"}}}}
+	m.Resources["tank"] = resource
+	require.Empty(t, validateOperationalManifest(m))
+	_, recovery, _, err := ResolveOperationalPipeline(m, "tank", "video")
+	require.NoError(t, err)
+	require.Len(t, recovery, 1)
+	require.Equal(t, "reset-video", recovery[0].Workflow)
+	require.Equal(t, "tank-video", recovery[0].Parameters["stream"])
+}
+
+func TestOperationalPipelineRejectsUnsafeRecovery(t *testing.T) {
+	m := operationalManifest()
+	m.OperationalJobTemplates = map[string]OperationalJobTemplate{"fill": {Workflow: "fill", Timeout: time.Minute}}
+	m.OperationalPipelineTemplates = map[string]OperationalPipelineTemplate{"bad": {
+		Stages: []OperationalPipelineStage{{Name: "prepare", JobTemplate: "fill"}}, Recovery: []OperationalPipelineStage{{Name: "recover", JobTemplate: "fill"}}, RecoveryAttempts: 1,
+	}}
+	messages := validateOperationalManifest(m)
+	require.Contains(t, messages, "operational pipeline bad recovery requires an activation health_check stage")
+	require.Contains(t, messages, "operational pipeline bad recovery stage recover must use an action workflow")
 }
 
 func TestReusableStreamPipelineResolvesCleanupOnlyBinding(t *testing.T) {
@@ -222,7 +257,7 @@ func TestReusableStreamPipelineResolvesCleanupOnlyBinding(t *testing.T) {
 	if messages := validateOperationalManifest(m); len(messages) != 0 {
 		t.Fatalf("messages = %#v", messages)
 	}
-	_, cleanup, err := ResolveOperationalPipeline(m, "tank", "video")
+	_, _, cleanup, err := ResolveOperationalPipeline(m, "tank", "video")
 	if err != nil {
 		t.Fatal(err)
 	}

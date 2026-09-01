@@ -78,8 +78,10 @@ type OperationalPipelineStage struct {
 }
 
 type OperationalPipelineTemplate struct {
-	Stages  []OperationalPipelineStage `json:"stages" yaml:"stages"`
-	Cleanup []OperationalPipelineStage `json:"cleanup,omitempty" yaml:"cleanup,omitempty"`
+	Stages           []OperationalPipelineStage `json:"stages" yaml:"stages"`
+	Recovery         []OperationalPipelineStage `json:"recovery,omitempty" yaml:"recovery,omitempty"`
+	RecoveryAttempts int                        `json:"recovery_attempts,omitempty" yaml:"recovery_attempts,omitempty"`
+	Cleanup          []OperationalPipelineStage `json:"cleanup,omitempty" yaml:"cleanup,omitempty"`
 }
 
 type OperationalParameterBinding struct {
@@ -102,20 +104,21 @@ type ResolvedOperationalStage struct {
 	Retry            OperationalRetryPolicy
 	ProgressMessages OperationalProgressMessages
 	FailureGuidance  OperationalFailureGuidance
+	Kind             string
 }
 
-func ResolveOperationalPipeline(manifest Manifest, resourceName, streamName string) ([]ResolvedOperationalStage, []ResolvedOperationalStage, error) {
+func ResolveOperationalPipeline(manifest Manifest, resourceName, streamName string) ([]ResolvedOperationalStage, []ResolvedOperationalStage, []ResolvedOperationalStage, error) {
 	resource, ok := manifest.Resources[resourceName]
 	if !ok {
-		return nil, nil, fmt.Errorf("resource %s not found", resourceName)
+		return nil, nil, nil, fmt.Errorf("resource %s not found", resourceName)
 	}
 	binding, ok := resource.StreamOperations[streamName]
 	if !ok {
-		return nil, nil, fmt.Errorf("resource %s stream %s has no activation pipeline", resourceName, streamName)
+		return nil, nil, nil, fmt.Errorf("resource %s stream %s has no activation pipeline", resourceName, streamName)
 	}
 	pipeline, ok := manifest.OperationalPipelineTemplates[binding.ActivationPipeline]
 	if !ok {
-		return nil, nil, fmt.Errorf("operational pipeline %s not found", binding.ActivationPipeline)
+		return nil, nil, nil, fmt.Errorf("operational pipeline %s not found", binding.ActivationPipeline)
 	}
 	resolve := func(stages []OperationalPipelineStage) ([]ResolvedOperationalStage, error) {
 		result := make([]ResolvedOperationalStage, 0, len(stages))
@@ -140,16 +143,20 @@ func ResolveOperationalPipeline(manifest Manifest, resourceName, streamName stri
 			}
 			result = append(result, ResolvedOperationalStage{Name: stage.Name, Template: stage.JobTemplate, Workflow: template.Workflow,
 				Timeout: template.Timeout, WaitAfter: stage.WaitAfter, Parameters: parameters, Retry: template.Retry,
-				ProgressMessages: template.ProgressMessages, FailureGuidance: template.FailureGuidance})
+				ProgressMessages: template.ProgressMessages, FailureGuidance: template.FailureGuidance, Kind: manifest.OperationalWorkflows[template.Workflow].Kind})
 		}
 		return result, nil
 	}
 	stages, err := resolve(pipeline.Stages)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
+	}
+	recovery, err := resolve(pipeline.Recovery)
+	if err != nil {
+		return nil, nil, nil, err
 	}
 	cleanup, err := resolve(pipeline.Cleanup)
-	return stages, cleanup, err
+	return stages, recovery, cleanup, err
 }
 
 // BeginBookingActivation resolves the active manifest into an immutable plan
@@ -174,7 +181,8 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 		return operations.ActivationRun{}, false, fmt.Errorf("slot %s not found", booking.Slot)
 	}
 	manifest := s.exportManifestLocked()
-	stages, cleanup, err := ResolveOperationalPipeline(manifest, slot.Resource, streamName)
+	binding := manifest.Resources[slot.Resource].StreamOperations[streamName]
+	stages, recovery, cleanup, err := ResolveOperationalPipeline(manifest, slot.Resource, streamName)
 	if err != nil {
 		return operations.ActivationRun{}, false, err
 	}
@@ -195,17 +203,19 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 				DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters,
 				ProgressMessage: stage.ProgressMessages.Initial, RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter,
 				InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff, MaximumDelay: stage.Retry.MaximumDelay,
-				TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes, FailureGuidance: mustMarshalOperationalGuidance(stage.FailureGuidance)})
+				TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes, FailureGuidance: mustMarshalOperationalGuidance(stage.FailureGuidance), Kind: stage.Kind})
 			due = due.Add(stage.Timeout + stage.WaitAfter)
 		}
 		return result
 	}
 	stageSpecs := makeStageSpecs(stages, now)
+	recoverySpecs := makeStageSpecs(recovery, now)
 	cleanupSpecs := makeStageSpecs(cleanup, now)
 	resolvedPlan, err := json.Marshal(struct {
-		Stages  []ResolvedOperationalStage `json:"stages"`
-		Cleanup []ResolvedOperationalStage `json:"cleanup,omitempty"`
-	}{Stages: stages, Cleanup: cleanup})
+		Stages   []ResolvedOperationalStage `json:"stages"`
+		Recovery []ResolvedOperationalStage `json:"recovery,omitempty"`
+		Cleanup  []ResolvedOperationalStage `json:"cleanup,omitempty"`
+	}{Stages: stages, Recovery: recovery, Cleanup: cleanup})
 	if err != nil {
 		return operations.ActivationRun{}, false, err
 	}
@@ -220,8 +230,9 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 		return operations.ActivationRun{}, false, err
 	}
 	request := operations.CreateActivationRequest{RunID: runID, BookingName: bookingName, User: booking.User, Resource: slot.Resource,
-		Stream: streamName, Pipeline: s.Resources[slot.Resource].StreamOperations[streamName].ActivationPipeline, ManifestVersion: s.manifestVersion,
+		Stream: streamName, Pipeline: binding.ActivationPipeline, ManifestVersion: s.manifestVersion,
 		IdempotencyKey: idempotencyKey, RequestedAt: now, ResolvedPlan: resolvedPlan, Stages: stageSpecs, CleanupStages: cleanupSpecs,
+		RecoveryStages: recoverySpecs, RecoveryAttempts: manifest.OperationalPipelineTemplates[binding.ActivationPipeline].RecoveryAttempts,
 		FirstJob: operations.Job{ID: jobID, Resource: slot.Resource, Workflow: first.Workflow, Kind: "preflight", State: "reserved", DueAt: now,
 			StartsAt: now, EndsAt: now.Add(first.Timeout), TriggeringBookingName: bookingName, ManifestVersion: s.manifestVersion,
 			PlanRevision: 1, IdempotencyKey: jobKey, Payload: body},
@@ -597,7 +608,7 @@ func validateOperationalManifest(m Manifest) []string {
 	}
 	for name, pipeline := range m.OperationalPipelineTemplates {
 		seen := make(map[string]bool)
-		for _, stages := range [][]OperationalPipelineStage{pipeline.Stages, pipeline.Cleanup} {
+		for _, stages := range [][]OperationalPipelineStage{pipeline.Stages, pipeline.Recovery, pipeline.Cleanup} {
 			for _, stage := range stages {
 				if stage.Name == "" || seen[stage.Name] {
 					messages = append(messages, "operational pipeline "+name+" has missing or duplicate stage name: "+stage.Name)
@@ -613,6 +624,29 @@ func validateOperationalManifest(m Manifest) []string {
 		}
 		if len(pipeline.Stages) == 0 {
 			messages = append(messages, "operational pipeline "+name+" must contain at least one stage")
+		}
+		if len(pipeline.Recovery) > 0 {
+			if pipeline.RecoveryAttempts < 1 || pipeline.RecoveryAttempts > 5 {
+				messages = append(messages, "operational pipeline "+name+" recovery_attempts must be between 1 and 5")
+			}
+			hasHealthCheck := false
+			for _, stage := range pipeline.Stages {
+				template := m.OperationalJobTemplates[stage.JobTemplate]
+				if m.OperationalWorkflows[template.Workflow].Kind == "health_check" {
+					hasHealthCheck = true
+				}
+			}
+			if !hasHealthCheck {
+				messages = append(messages, "operational pipeline "+name+" recovery requires an activation health_check stage")
+			}
+			for _, stage := range pipeline.Recovery {
+				template := m.OperationalJobTemplates[stage.JobTemplate]
+				if workflow, ok := m.OperationalWorkflows[template.Workflow]; ok && workflow.Kind != "action" {
+					messages = append(messages, "operational pipeline "+name+" recovery stage "+stage.Name+" must use an action workflow")
+				}
+			}
+		} else if pipeline.RecoveryAttempts != 0 {
+			messages = append(messages, "operational pipeline "+name+" sets recovery_attempts without recovery stages")
 		}
 	}
 	for resourceName, resource := range m.Resources {
@@ -654,7 +688,7 @@ func validateOperationalManifest(m Manifest) []string {
 				continue
 			}
 			allowed := make(map[string]string)
-			for _, stages := range [][]OperationalPipelineStage{pipeline.Stages, pipeline.Cleanup} {
+			for _, stages := range [][]OperationalPipelineStage{pipeline.Stages, pipeline.Recovery, pipeline.Cleanup} {
 				for _, stage := range stages {
 					for parameter, kind := range m.OperationalJobTemplates[stage.JobTemplate].AllowedOverrides {
 						if previous, exists := allowed[parameter]; exists && previous != kind {

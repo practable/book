@@ -19,7 +19,7 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 		return operations.ActivationRun{}, false, err
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
-	if len(request.Stages) == 0 || request.RunID == "" || request.IdempotencyKey == "" || request.FirstJob.ID == "" || request.FirstDelivery.ID == "" || request.FirstDelivery.JobID != request.FirstJob.ID {
+	if len(request.Stages) == 0 || request.RunID == "" || request.IdempotencyKey == "" || request.FirstJob.ID == "" || request.FirstDelivery.ID == "" || request.FirstDelivery.JobID != request.FirstJob.ID || request.RecoveryAttempts < 0 || request.RecoveryAttempts > 5 || (len(request.RecoveryStages) == 0) != (request.RecoveryAttempts == 0) {
 		return operations.ActivationRun{}, false, errors.New("activation requires at least one stage")
 	}
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
@@ -70,9 +70,9 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 		cleanupState = "not_required"
 	}
 	_, err = tx.Exec(ctx, `INSERT INTO public.booking_activation_runs
-		(run_id,booking_row_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,current_stage,resolved_plan,progress_message,cleanup_state)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'preparing',0,$10,$11,$12)`, request.RunID, rowID, request.BookingName, request.User,
-		request.Resource, request.Stream, request.Pipeline, request.ManifestVersion, request.IdempotencyKey, string(request.ResolvedPlan), progress, cleanupState)
+		(run_id,booking_row_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,current_stage,resolved_plan,progress_message,cleanup_state,maximum_recovery_attempts)
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'preparing',0,$10,$11,$12,$13)`, request.RunID, rowID, request.BookingName, request.User,
+		request.Resource, request.Stream, request.Pipeline, request.ManifestVersion, request.IdempotencyKey, string(request.ResolvedPlan), progress, cleanupState, request.RecoveryAttempts)
 	if err != nil {
 		return operations.ActivationRun{}, false, err
 	}
@@ -80,13 +80,13 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 	for _, phase := range []struct {
 		name   string
 		stages []operations.ActivationStageSpec
-	}{{"activation", request.Stages}, {"cleanup", request.CleanupStages}} {
+	}{{"activation", request.Stages}, {"recovery", request.RecoveryStages}, {"cleanup", request.CleanupStages}} {
 		for phaseIndex, stage := range phase.stages {
 			state, attempt := "waiting", 1
 			if phase.name == "activation" && phaseIndex == 0 {
 				state = "pending"
 			}
-			if phase.name == "cleanup" {
+			if phase.name != "activation" {
 				attempt = 0
 			}
 			parameters, err := json.Marshal(stage.Parameters)
@@ -103,11 +103,11 @@ func (r *Repository) CreateActivation(ctx context.Context, request operations.Cr
 			}
 			_, err = tx.Exec(ctx, `INSERT INTO public.booking_activation_stages
 			(run_id,stage_index,stage_name,job_template_name,workflow_name,state,attempt,maximum_attempts,due_at,timeout_at,parameters,
-			 progress_message,retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,failure_guidance,phase)
-			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`, request.RunID, stageIndex, stage.Name, stage.JobTemplate, stage.Workflow, state, attempt,
+			 progress_message,retry_message,wait_after_ns,retry_initial_delay_ns,retry_backoff,retry_maximum_delay_ns,retry_total_timeout_ns,retryable_codes,failure_guidance,phase,health_check)
+			VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`, request.RunID, stageIndex, stage.Name, stage.JobTemplate, stage.Workflow, state, attempt,
 				stage.MaximumAttempts, stage.DueAt.UTC(), stage.TimeoutAt.UTC(), string(parameters), stage.ProgressMessage, stage.RetryMessage,
 				stage.WaitAfter.Nanoseconds(), stage.InitialDelay.Nanoseconds(), normalizedBackoff(stage.Backoff), stage.MaximumDelay.Nanoseconds(),
-				stage.TotalTimeout.Nanoseconds(), string(retryCodes), guidance, phase.name)
+				stage.TotalTimeout.Nanoseconds(), string(retryCodes), guidance, phase.name, stage.Kind == "health_check")
 			if err != nil {
 				return operations.ActivationRun{}, false, err
 			}
@@ -191,7 +191,7 @@ func (r *Repository) SweepActivationTimeouts(ctx context.Context, now time.Time,
 	rows, err := tx.Query(ctx, `SELECT j.job_id,j.activation_run_id,j.activation_stage_index FROM public.operational_jobs j
 		JOIN public.booking_activation_stages s ON s.run_id=j.activation_run_id AND s.stage_index=j.activation_stage_index
 		JOIN public.booking_activation_runs r ON r.run_id=s.run_id
-		WHERE ((s.phase='activation' AND r.state='preparing') OR (s.phase='cleanup' AND r.cleanup_state='running'))
+		WHERE ((s.phase IN ('activation','recovery') AND r.state='preparing') OR (s.phase='cleanup' AND r.cleanup_state='running'))
 		AND s.state IN ('pending','dispatched','accepted','running') AND s.timeout_at <= $1
 		AND j.state IN ('scheduled','reserved','dispatched','accepted','running')
 		ORDER BY s.timeout_at,j.job_id FOR UPDATE OF j SKIP LOCKED LIMIT $2`, now.UTC(), limit)
@@ -247,9 +247,9 @@ func getActivation(ctx context.Context, queryer activationQueryer, id string) (o
 	var run operations.ActivationRun
 	var guidance []byte
 	err := queryer.QueryRow(ctx, `SELECT run_id,booking_name,user_name,resource_name,stream_name,pipeline_name,manifest_version,idempotency_key,state,cleanup_state,
-		current_stage,progress_message,failure_code,failure_message,COALESCE(failure_guidance,'null'::jsonb),started_at,updated_at,completed_at
+		current_stage,recovery_attempt,maximum_recovery_attempts,progress_message,failure_code,failure_message,COALESCE(failure_guidance,'null'::jsonb),started_at,updated_at,completed_at
 		FROM public.booking_activation_runs WHERE run_id=$1`, id).Scan(&run.ID, &run.BookingName, &run.User, &run.Resource, &run.Stream, &run.Pipeline,
-		&run.ManifestVersion, &run.IdempotencyKey, &run.State, &run.CleanupState, &run.CurrentStage, &run.ProgressMessage, &run.FailureCode, &run.FailureMessage,
+		&run.ManifestVersion, &run.IdempotencyKey, &run.State, &run.CleanupState, &run.CurrentStage, &run.RecoveryAttempt, &run.MaximumRecoveryAttempts, &run.ProgressMessage, &run.FailureCode, &run.FailureMessage,
 		&guidance, &run.StartedAt, &run.UpdatedAt, &run.CompletedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return run, operations.ErrNotFound
@@ -286,6 +286,8 @@ func getActivation(ctx context.Context, queryer activationQueryer, id string) (o
 		stage.FailureGuidance = guidance
 		if stage.Phase == "cleanup" {
 			run.CleanupStages = append(run.CleanupStages, stage)
+		} else if stage.Phase == "recovery" {
+			run.RecoveryStages = append(run.RecoveryStages, stage)
 		} else {
 			run.Stages = append(run.Stages, stage)
 		}

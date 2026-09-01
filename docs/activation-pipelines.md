@@ -21,6 +21,11 @@ operational_workflows:
     kind: health_check
     expected_duration: 1s
     maximum_duration: 5s
+  video-reset:
+    description: Reset an experiment camera
+    kind: action
+    expected_duration: 1s
+    maximum_duration: 5s
 
 operational_job_templates:
   standard-video-on:
@@ -47,12 +52,19 @@ operational_job_templates:
       actions:
         - type: choose_another
           label: Choose another experiment
+  standard-video-reset:
+    workflow: video-reset
+    timeout: 4s
+    allowed_overrides: {stream: string}
 
 operational_pipeline_templates:
   standard-video-activation:
     stages:
       - {name: switch-on, job_template: standard-video-on, wait_after: 500ms}
       - {name: check-video, job_template: standard-video-check}
+    recovery:
+      - {name: reset-video, job_template: standard-video-reset, wait_after: 500ms}
+    recovery_attempts: 1
 
 resources:
   spinner-66:
@@ -91,11 +103,20 @@ If preparation fails while the user's booking still owns the resource, cleanup
 uses that existing reservation. Retry attempts reuse the same reservation.
 
 When an activation check exhausts its retries, Book records a durable
-`unhealthy` decision for that resource and stream and opens (or increments) a
-deduplicated technician alert. The activation response retains its stable
-failure code, user-safe guidance, and actions such as choosing another
-experiment. A later successful automated check may restore automated health and
-resolve its active alert.
+retry policy, a pipeline with `recovery` stages first runs those owner-approved
+action workflows, waits as configured, and repeats the failed health-check
+stage. Recovery stages and the target check are persisted before execution;
+callbacks, retries, process restarts, and multiple Book instances therefore
+cannot accidentally run an unapproved command or skip the recheck. The bounded
+`recovery_attempts` value is between one and five.
+
+Only after recovery is absent, fails, or exhausts its attempts does Book record
+an `unhealthy` decision for that resource and stream and open (or increment) a
+deduplicated technician alert. The activation response exposes
+`recovery_stages` so the booking page can keep the user informed, and retains
+its stable failure code, user-safe guidance, and actions such as choosing
+another experiment. A successful recheck restores automated health and resolves
+the active alert.
 
 Automated health is independent of technician availability controls. A resource
 held offline by a technician remains unavailable even when checks pass. The

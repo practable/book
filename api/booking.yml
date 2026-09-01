@@ -1704,11 +1704,16 @@ definitions:
         type: string
         enum: [not_required, pending, running, succeeded, failed]
       current_stage: {type: integer, format: int64, minimum: 0}
+      recovery_attempt: {type: integer, format: int64, minimum: 0}
+      maximum_recovery_attempts: {type: integer, format: int64, minimum: 0, maximum: 5}
       progress_message: {type: string}
       failure_code: {type: string}
       failure_message: {type: string}
       failure_guidance: {$ref: '#/definitions/OperationalFailureGuidance'}
       stages:
+        type: array
+        items: {$ref: '#/definitions/BookingActivationStage'}
+      recovery_stages:
         type: array
         items: {$ref: '#/definitions/BookingActivationStage'}
       cleanup_stages:
@@ -2502,6 +2507,8 @@ definitions:
     type: object
     properties:
       stages: {type: array, items: {$ref: '#/definitions/OperationalPipelineStage'}}
+      recovery: {type: array, items: {$ref: '#/definitions/OperationalPipelineStage'}}
+      recovery_attempts: {type: integer, minimum: 0, maximum: 5}
       cleanup: {type: array, items: {$ref: '#/definitions/OperationalPipelineStage'}}
     required: [stages]
 

@@ -25,23 +25,26 @@ type ActivationStageSpec struct {
 	TotalTimeout    time.Duration
 	RetryableCodes  []string
 	FailureGuidance json.RawMessage
+	Kind            string
 }
 
 type CreateActivationRequest struct {
-	RunID           string
-	BookingName     string
-	User            string
-	Resource        string
-	Stream          string
-	Pipeline        string
-	ManifestVersion int64
-	IdempotencyKey  string
-	RequestedAt     time.Time
-	ResolvedPlan    json.RawMessage
-	Stages          []ActivationStageSpec
-	CleanupStages   []ActivationStageSpec
-	FirstJob        Job
-	FirstDelivery   Delivery
+	RunID            string
+	BookingName      string
+	User             string
+	Resource         string
+	Stream           string
+	Pipeline         string
+	ManifestVersion  int64
+	IdempotencyKey   string
+	RequestedAt      time.Time
+	ResolvedPlan     json.RawMessage
+	Stages           []ActivationStageSpec
+	CleanupStages    []ActivationStageSpec
+	RecoveryStages   []ActivationStageSpec
+	RecoveryAttempts int
+	FirstJob         Job
+	FirstDelivery    Delivery
 }
 
 type ActivationStage struct {
@@ -71,24 +74,27 @@ type ActivationStage struct {
 }
 
 type ActivationRun struct {
-	ID              string
-	BookingName     string
-	User            string
-	Resource        string
-	Stream          string
-	Pipeline        string
-	ManifestVersion int64
-	IdempotencyKey  string
-	State           string
-	CleanupState    string
-	CurrentStage    int
-	ProgressMessage string
-	FailureCode     string
-	FailureMessage  string
-	FailureGuidance json.RawMessage
-	StartedAt       time.Time
-	UpdatedAt       time.Time
-	CompletedAt     *time.Time
-	Stages          []ActivationStage
-	CleanupStages   []ActivationStage
+	ID                      string
+	BookingName             string
+	User                    string
+	Resource                string
+	Stream                  string
+	Pipeline                string
+	ManifestVersion         int64
+	IdempotencyKey          string
+	State                   string
+	CleanupState            string
+	CurrentStage            int
+	RecoveryAttempt         int
+	MaximumRecoveryAttempts int
+	ProgressMessage         string
+	FailureCode             string
+	FailureMessage          string
+	FailureGuidance         json.RawMessage
+	StartedAt               time.Time
+	UpdatedAt               time.Time
+	CompletedAt             *time.Time
+	Stages                  []ActivationStage
+	RecoveryStages          []ActivationStage
+	CleanupStages           []ActivationStage
 }

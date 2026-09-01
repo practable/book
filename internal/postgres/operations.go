@@ -761,6 +761,9 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 			_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET cleanup_state='succeeded',updated_at=$2 WHERE run_id=$1`, runID, callback.At.UTC())
 			return err
 		}
+		if phase == "recovery" {
+			return resumeActivationAfterRecoveryTx(ctx, tx, runID, callback.At.UTC())
+		}
 		return activatePreparedBookingTx(ctx, tx, runID, callback.At.UTC(), job.ID)
 	}
 	if callback.State != "failed" && callback.State != "cancelled" && callback.State != "expired" {
@@ -817,6 +820,29 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 			WHERE r.run_id=$1 AND s.run_id=r.run_id AND s.stage_index=$3`, runID, callback.At.UTC(), stageIndex)
 		return err
 	}
+	if phase == "recovery" {
+		if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET state='failed',failure_code=$2,failure_message=$3,
+			completed_at=$4,updated_at=$4 WHERE run_id=$1`, runID, code, callback.Error, callback.At.UTC()); err != nil {
+			return err
+		}
+		if err := recordActivationHealthFailureTx(ctx, tx, runID, job.ID, code, callback.Error, callback.At.UTC()); err != nil {
+			return err
+		}
+		return startActivationCleanupRunTx(ctx, tx, runID, callback.At.UTC())
+	}
+	var healthCheck bool
+	if err := tx.QueryRow(ctx, `SELECT health_check FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex).Scan(&healthCheck); err != nil {
+		return err
+	}
+	if callback.State == "failed" && healthCheck {
+		started, err := startActivationRecoveryTx(ctx, tx, runID, stageIndex, callback.At.UTC())
+		if err != nil {
+			return err
+		}
+		if started {
+			return nil
+		}
+	}
 	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET state=$2,failure_code=$3,failure_message=$4,
 		failure_guidance=s.failure_guidance,completed_at=$5,updated_at=$5 FROM public.booking_activation_stages s
 		WHERE r.run_id=$1 AND s.run_id=r.run_id AND s.stage_index=$6`, runID, terminal, code, callback.Error, callback.At.UTC(), stageIndex)
@@ -829,6 +855,53 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 		}
 	}
 	return startActivationCleanupRunTx(ctx, tx, runID, callback.At.UTC())
+}
+
+func startActivationRecoveryTx(ctx context.Context, tx pgx.Tx, runID string, targetStage int, at time.Time) (bool, error) {
+	var attempt, maximum int
+	if err := tx.QueryRow(ctx, `SELECT recovery_attempt,maximum_recovery_attempts FROM public.booking_activation_runs WHERE run_id=$1 FOR UPDATE`, runID).Scan(&attempt, &maximum); err != nil {
+		return false, err
+	}
+	var first *int
+	err := tx.QueryRow(ctx, `SELECT MIN(stage_index) FROM public.booking_activation_stages WHERE run_id=$1 AND phase='recovery'`, runID).Scan(&first)
+	if errors.Is(err, pgx.ErrNoRows) || first == nil || maximum == 0 || attempt >= maximum {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state='waiting',attempt=0,job_id=NULL,
+		generation=generation+1,last_error_code='',last_error='',completed_at=NULL,updated_at=$2 WHERE run_id=$1 AND phase='recovery'`, runID, at); err != nil {
+		return false, err
+	}
+	if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET recovery_attempt=recovery_attempt+1,recovery_target_stage=$2,
+		current_stage=$3,progress_message='Attempting automatic recovery',updated_at=$4 WHERE run_id=$1`, runID, targetStage, *first, at); err != nil {
+		return false, err
+	}
+	if err := createActivationStageJobTx(ctx, tx, runID, *first, 1, at); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func resumeActivationAfterRecoveryTx(ctx context.Context, tx pgx.Tx, runID string, at time.Time) error {
+	var target *int
+	if err := tx.QueryRow(ctx, `SELECT recovery_target_stage FROM public.booking_activation_runs WHERE run_id=$1 FOR UPDATE`, runID).Scan(&target); err != nil {
+		return err
+	}
+	if target == nil {
+		return errors.New("activation recovery has no target health-check stage")
+	}
+	var progress string
+	if err := tx.QueryRow(ctx, `UPDATE public.booking_activation_stages SET state='waiting',attempt=0,job_id=NULL,generation=generation+1,
+		last_error_code='',last_error='',completed_at=NULL,updated_at=$3 WHERE run_id=$1 AND stage_index=$2 RETURNING progress_message`, runID, *target, at).Scan(&progress); err != nil {
+		return err
+	}
+	if err := createActivationStageJobTx(ctx, tx, runID, *target, 1, at); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET current_stage=$2,progress_message=$3,recovery_target_stage=NULL,updated_at=$4 WHERE run_id=$1`, runID, *target, progress, at)
+	return err
 }
 
 func recordActivationHealthFailureTx(ctx context.Context, tx pgx.Tx, runID, jobID, code, message string, at time.Time) error {
@@ -880,12 +953,13 @@ func recordActivationHealthSuccessTx(ctx context.Context, tx pgx.Tx, runID, jobI
 func createActivationStageJobTx(ctx context.Context, tx pgx.Tx, runID string, stageIndex, attempt int, due time.Time) error {
 	var workflow, resource, bookingName, phase string
 	var manifestVersion int64
+	var generation int
 	var parametersJSON []byte
 	var timeoutAt, oldDue time.Time
-	err := tx.QueryRow(ctx, `SELECT s.workflow_name,s.parameters,s.due_at,s.timeout_at,s.phase,r.resource_name,r.booking_name,r.manifest_version
+	err := tx.QueryRow(ctx, `SELECT s.workflow_name,s.parameters,s.due_at,s.timeout_at,s.phase,r.resource_name,r.booking_name,r.manifest_version,s.generation
 		FROM public.booking_activation_stages s JOIN public.booking_activation_runs r ON r.run_id=s.run_id
 		WHERE s.run_id=$1 AND s.stage_index=$2 FOR UPDATE OF s,r`, runID, stageIndex).
-		Scan(&workflow, &parametersJSON, &oldDue, &timeoutAt, &phase, &resource, &bookingName, &manifestVersion)
+		Scan(&workflow, &parametersJSON, &oldDue, &timeoutAt, &phase, &resource, &bookingName, &manifestVersion, &generation)
 	if err != nil {
 		return err
 	}
@@ -894,12 +968,14 @@ func createActivationStageJobTx(ctx context.Context, tx pgx.Tx, runID string, st
 		return err
 	}
 	timeout := timeoutAt.Sub(oldDue)
-	jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(fmt.Sprintf("booking-activation-job\x00%s\x00%d\x00%d", runID, stageIndex, attempt))).String()
+	jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte(fmt.Sprintf("booking-activation-job\x00%s\x00%d\x00%d\x00%d", runID, stageIndex, generation, attempt))).String()
 	deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation-delivery\x00"+jobID)).String()
-	key := fmt.Sprintf("booking-activation:%s:%d:%d", runID, stageIndex, attempt)
+	key := fmt.Sprintf("booking-activation:%s:%d:%d:%d", runID, stageIndex, generation, attempt)
 	jobKind := "preflight"
 	if phase == "cleanup" {
 		jobKind = "teardown"
+	} else if phase == "recovery" {
+		jobKind = "recovery"
 	}
 	command := operations.Command{Version: 1, JobID: jobID, Workflow: workflow, Resource: resource, Kind: jobKind, StartsAt: due, EndsAt: due.Add(timeout), BookingName: bookingName, PlanRevision: int64(attempt), IdempotencyKey: key, Parameters: parameters}
 	body, err := json.Marshal(command)
