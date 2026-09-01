@@ -27,7 +27,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.booking_events, public.bookings, public.user_groups, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	t.Cleanup(repository.Close)
 	return repository
@@ -59,7 +59,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 3, versions)
+	require.Equal(t, 4, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -293,6 +293,171 @@ func TestExternalManifestPersistenceRoundTrip(t *testing.T) {
 	actualDocument, err := yaml.Marshal(second.ExportManifest())
 	require.NoError(t, err)
 	require.YAMLEq(t, string(expectedDocument), string(actualDocument))
+}
+
+func TestIndividualBookingReplacementIsAuditableAndIdempotent(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	s := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, s.WithRepository(repository))
+	require.NoError(t, s.ReplaceManifest(manifest))
+	_, err = s.MakeBookingWithName("sl-a", "edit-user", interval.Interval{
+		Start: now.Add(time.Hour), End: now.Add(70 * time.Minute),
+	}, "edit-me", false)
+	require.NoError(t, err)
+
+	edit, err := s.GetBookingForEdit("edit-me")
+	require.NoError(t, err)
+	oldRevision := edit.Revision
+	edit.Booking.When = interval.Interval{Start: now.Add(80 * time.Minute), End: now.Add(90 * time.Minute)}
+	replaced, err := s.ReplaceBooking(edit)
+	require.NoError(t, err)
+	require.NotEqual(t, oldRevision, replaced.Revision)
+	require.Equal(t, edit.Booking.When, replaced.Booking.When)
+
+	// Re-sending the exported edit is a retry, not another correction.
+	retried, err := s.ReplaceBooking(edit)
+	require.NoError(t, err)
+	require.Equal(t, replaced, retried)
+
+	var superseded bool
+	require.NoError(t, repository.pool.QueryRow(context.Background(),
+		"SELECT superseded FROM public.bookings WHERE row_id=$1", oldRevision).Scan(&superseded))
+	require.True(t, superseded)
+	var replacementRow int64
+	require.NoError(t, repository.pool.QueryRow(context.Background(),
+		"SELECT new_booking_row_id FROM public.booking_replacements WHERE old_booking_row_id=$1", oldRevision).Scan(&replacementRow))
+	require.Equal(t, replaced.Revision, replacementRow)
+	var events int
+	require.NoError(t, repository.pool.QueryRow(context.Background(),
+		"SELECT count(*) FROM public.booking_events WHERE booking_row_id=$1 AND event_type='superseded'", oldRevision).Scan(&events))
+	require.Equal(t, 1, events)
+}
+
+func TestIndividualBookingReplacementRejectsStartedStaleAndConflictingEdits(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	s := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, s.WithRepository(repository))
+	require.NoError(t, s.ReplaceManifest(manifest))
+	first, err := s.MakeBookingWithName("sl-a", "edit-user-a", interval.Interval{
+		Start: now.Add(time.Hour), End: now.Add(70 * time.Minute),
+	}, "edit-first", false)
+	require.NoError(t, err)
+	_, err = s.MakeBookingWithName("sl-a", "edit-user-b", interval.Interval{
+		Start: now.Add(80 * time.Minute), End: now.Add(90 * time.Minute),
+	}, "edit-second", false)
+	require.NoError(t, err)
+	edit, err := s.GetBookingForEdit(first.Name)
+	require.NoError(t, err)
+
+	conflicting := edit
+	conflicting.Booking.When = interval.Interval{Start: now.Add(80 * time.Minute), End: now.Add(90 * time.Minute)}
+	_, err = s.ReplaceBooking(conflicting)
+	require.Error(t, err)
+	stillCurrent, err := s.GetBookingForEdit(first.Name)
+	require.NoError(t, err)
+	require.Equal(t, edit.Revision, stillCurrent.Revision)
+
+	now = first.When.Start
+	_, err = s.GetActivity(first)
+	require.NoError(t, err)
+	_, err = s.ReplaceBooking(edit)
+	require.ErrorIs(t, err, store.ErrBookingStarted)
+
+	stale := edit
+	stale.Revision++
+	_, err = s.ReplaceBooking(stale)
+	require.ErrorIs(t, err, store.ErrBookingRevision)
+}
+
+func TestConcurrentIndividualBookingEditsAllowOnlyOneWinner(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	first := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(manifest))
+	_, err = first.MakeBookingWithName("sl-a", "concurrent-edit-user", interval.Interval{
+		Start: now.Add(time.Hour), End: now.Add(70 * time.Minute),
+	}, "concurrent-edit", false)
+	require.NoError(t, err)
+
+	databaseURL := os.Getenv("BOOK_TEST_DATABASE_URL")
+	secondRepository, err := Open(context.Background(), databaseURL, 4, 10*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(secondRepository.Close)
+	second := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, second.WithRepository(secondRepository))
+	edit, err := first.GetBookingForEdit("concurrent-edit")
+	require.NoError(t, err)
+	left, right := edit, edit
+	left.Booking.When = interval.Interval{Start: now.Add(80 * time.Minute), End: now.Add(90 * time.Minute)}
+	right.Booking.When = interval.Interval{Start: now.Add(100 * time.Minute), End: now.Add(110 * time.Minute)}
+
+	results := make([]error, 2)
+	var wg sync.WaitGroup
+	for i, candidate := range []store.EditableBooking{left, right} {
+		wg.Add(1)
+		go func(i int, candidate store.EditableBooking) {
+			defer wg.Done()
+			_, results[i] = mapStoreReplace(first, second, i, candidate)
+		}(i, candidate)
+	}
+	wg.Wait()
+	successes, stale := 0, 0
+	for _, result := range results {
+		if result == nil {
+			successes++
+		}
+		if errors.Is(result, store.ErrBookingRevision) {
+			stale++
+		}
+	}
+	require.Equal(t, 1, successes)
+	require.Equal(t, 1, stale)
+}
+
+func mapStoreReplace(first, second *store.Store, index int, edit store.EditableBooking) (store.EditableBooking, error) {
+	if index == 0 {
+		return first.ReplaceBooking(edit)
+	}
+	return second.ReplaceBooking(edit)
+}
+
+func TestIndividualReplacementDatabaseFailureRollsBackOriginal(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	first := request("replace-rollback-a", "user-a", "slot-a", "resource-a", time.Date(2026, 9, 3, 10, 0, 0, 0, time.UTC), time.Date(2026, 9, 3, 11, 0, 0, 0, time.UTC))
+	second := request("replace-rollback-b", "user-b", "slot-b", "resource-a", first.Booking.When.End.Add(time.Minute), first.Booking.When.End.Add(61*time.Minute))
+	_, _, err := repository.CreateBooking(ctx, first)
+	require.NoError(t, err)
+	_, _, err = repository.CreateBooking(ctx, second)
+	require.NoError(t, err)
+	persisted, err := repository.GetBooking(ctx, first.Booking.Name)
+	require.NoError(t, err)
+	conflicting := first
+	conflicting.Booking.When = second.Booking.When
+	conflicting.ManifestVersion = 0
+	_, _, err = repository.ReplaceBooking(ctx, first.Booking.Name, persisted.Revision, conflicting)
+	require.ErrorIs(t, err, store.ErrBookingConflict)
+	stillCurrent, err := repository.GetBooking(ctx, first.Booking.Name)
+	require.NoError(t, err)
+	require.Equal(t, persisted.Revision, stillCurrent.Revision)
+	var replacements int
+	require.NoError(t, repository.pool.QueryRow(ctx, "SELECT count(*) FROM public.booking_replacements").Scan(&replacements))
+	require.Zero(t, replacements)
 }
 
 func TestConcurrentOverlapAndExactRetry(t *testing.T) {

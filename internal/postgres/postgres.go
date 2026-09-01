@@ -149,11 +149,7 @@ type stateQueryer interface {
 }
 
 func loadState(ctx context.Context, queryer stateQueryer) (store.PersistentState, error) {
-	rows, err := queryer.Query(ctx, `SELECT name, collection, user_name, policy_name, slot_name,
-		resource_name, resource_constrained, starts_ns, ends_ns, started_at_ns,
-		cancelled_at_ns, cancelled_by, unfulfilled, usage_charge_ns,
-		started, started_at_text, cancelled, cancelled_by_text
-		FROM public.bookings WHERE NOT superseded ORDER BY row_id`)
+	rows, err := queryer.Query(ctx, bookingSelect+" WHERE NOT superseded ORDER BY row_id")
 	if err != nil {
 		return store.PersistentState{}, err
 	}
@@ -209,11 +205,12 @@ func loadState(ctx context.Context, queryer stateQueryer) (store.PersistentState
 type rowScanner interface{ Scan(...interface{}) error }
 
 func scanBooking(row rowScanner) (store.PersistentBooking, error) {
+	var revision int64
 	var name, collection, user, policy, slot, resource, cancelledBy, cancelledByText, startedAtText string
 	var constrained, unfulfilled, started, cancelled bool
 	var startsNS, endsNS, chargeNS int64
 	var startedNS, cancelledNS *int64
-	if err := row.Scan(&name, &collection, &user, &policy, &slot, &resource, &constrained,
+	if err := row.Scan(&revision, &name, &collection, &user, &policy, &slot, &resource, &constrained,
 		&startsNS, &endsNS, &startedNS, &cancelledNS, &cancelledBy, &unfulfilled, &chargeNS,
 		&started, &startedAtText, &cancelled, &cancelledByText); err != nil {
 		return store.PersistentBooking{}, err
@@ -234,7 +231,7 @@ func scanBooking(row rowScanner) (store.PersistentBooking, error) {
 		booking.CancelledBy = cancelledBy
 		booking.UsageCharged = time.Duration(chargeNS)
 	}
-	return store.PersistentBooking{Booking: booking, Resource: resource,
+	return store.PersistentBooking{Booking: booking, Revision: revision, Resource: resource,
 		ResourceConstrained: constrained, Current: collection == "live", UsageCharge: time.Duration(chargeNS)}, nil
 }
 
@@ -307,15 +304,170 @@ func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBook
 	if err := tx.Commit(ctx); err != nil {
 		return store.PersistentBooking{}, false, mapWriteError(err)
 	}
-	return store.PersistentBooking{Booking: request.Booking, Resource: request.Resource,
+	return store.PersistentBooking{Booking: request.Booking, Revision: rowID, Resource: request.Resource,
 		ResourceConstrained: request.ResourceConstrained, Current: true,
 		UsageCharge: request.Booking.When.End.Sub(request.Booking.When.Start)}, true, nil
 }
 
-const bookingSelect = `SELECT name, collection, user_name, policy_name, slot_name,
+const bookingSelect = `SELECT row_id, name, collection, user_name, policy_name, slot_name,
 	resource_name, resource_constrained, starts_ns, ends_ns, started_at_ns,
 	cancelled_at_ns, cancelled_by, unfulfilled, usage_charge_ns,
 	started, started_at_text, cancelled, cancelled_by_text FROM public.bookings`
+
+func (r *Repository) GetBooking(ctx context.Context, name string) (store.PersistentBooking, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	persisted, err := scanBooking(r.pool.QueryRow(ctx, bookingSelect+` WHERE name=$1
+		AND collection='live' AND NOT superseded`, name))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return store.PersistentBooking{}, store.ErrPersistentNotFound
+	}
+	return persisted, err
+}
+
+func bookingMatchesRequest(persisted store.PersistentBooking, request store.CreateBookingRequest) bool {
+	b := persisted.Booking
+	r := request.Booking
+	return b.Name == r.Name && b.User == r.User && b.Policy == r.Policy && b.Slot == r.Slot &&
+		b.When.Start.Equal(r.When.Start) && b.When.End.Equal(r.When.End) &&
+		!b.Started && !b.Cancelled && !b.Unfulfilled &&
+		persisted.Resource == request.Resource && persisted.ResourceConstrained == request.ResourceConstrained
+}
+
+func lockDomainKeys(ctx context.Context, tx pgx.Tx, keys ...string) error {
+	sort.Strings(keys)
+	for i, key := range keys {
+		if i > 0 && key == keys[i-1] {
+			continue
+		}
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,0))", key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func replacementRetry(ctx context.Context, tx pgx.Tx, originalName string, expectedRevision int64, request store.CreateBookingRequest) (store.PersistentBooking, bool, error) {
+	var newRevision int64
+	err := tx.QueryRow(ctx, `SELECT r.new_booking_row_id FROM public.booking_replacements r
+		JOIN public.bookings old ON old.row_id=r.old_booking_row_id
+		WHERE r.old_booking_row_id=$1 AND old.name=$2`, expectedRevision, originalName).Scan(&newRevision)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return store.PersistentBooking{}, false, store.ErrBookingRevision
+	}
+	if err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	persisted, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", newRevision))
+	if err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if !bookingMatchesRequest(persisted, request) {
+		return store.PersistentBooking{}, false, store.ErrBookingRevision
+	}
+	return persisted, false, nil
+}
+
+func (r *Repository) ReplaceBooking(ctx context.Context, originalName string, expectedRevision int64, request store.CreateBookingRequest) (store.PersistentBooking, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
+	defer cancel()
+	if request.Booking.Started || request.Booking.Cancelled || request.Booking.Unfulfilled ||
+		request.Booking.StartedAt != "" || !request.Booking.CancelledAt.IsZero() || request.Booking.CancelledBy != "" {
+		return store.PersistentBooking{}, false, errors.New("replacement must be an unstarted, uncancelled booking")
+	}
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	var oldUser, oldPolicy, oldResource string
+	err = tx.QueryRow(ctx, `SELECT user_name,policy_name,resource_name FROM public.bookings
+		WHERE row_id=$1 AND name=$2 AND collection='live' AND NOT superseded`, expectedRevision, originalName).
+		Scan(&oldUser, &oldPolicy, &oldResource)
+	if errors.Is(err, pgx.ErrNoRows) {
+		persisted, fresh, retryErr := replacementRetry(ctx, tx, originalName, expectedRevision, request)
+		if retryErr != nil {
+			return store.PersistentBooking{}, false, retryErr
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return store.PersistentBooking{}, false, err
+		}
+		return persisted, fresh, nil
+	}
+	if err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if err := lockDomainKeys(ctx, tx,
+		"resource:"+oldResource, "resource:"+request.Resource,
+		userPolicyLock(oldUser, oldPolicy), userPolicyLock(request.Booking.User, request.Booking.Policy)); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	old, err := scanBooking(tx.QueryRow(ctx, bookingSelect+` WHERE row_id=$1 AND name=$2
+		AND collection='live' AND NOT superseded FOR UPDATE`, expectedRevision, originalName))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return store.PersistentBooking{}, false, store.ErrBookingRevision
+	}
+	if err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if old.Booking.Started {
+		return store.PersistentBooking{}, false, store.ErrBookingStarted
+	}
+	if _, err := tx.Exec(ctx, "UPDATE public.bookings SET superseded=true,updated_at=clock_timestamp() WHERE row_id=$1", expectedRevision); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if request.EnforceMaxBookings {
+		var count int64
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM public.bookings WHERE NOT superseded
+			AND collection='live' AND user_name=$1 AND policy_name=$2 AND ends_ns >= $3`,
+			request.Booking.User, request.Booking.Policy, request.Now.UnixNano()).Scan(&count); err != nil {
+			return store.PersistentBooking{}, false, err
+		}
+		if count >= request.MaxBookings {
+			return store.PersistentBooking{}, false, store.ErrMaxBookings
+		}
+	}
+	if request.EnforceMaxUsage {
+		var usage int64
+		if err := tx.QueryRow(ctx, `SELECT coalesce(sum(usage_charge_ns),0) FROM public.bookings
+			WHERE NOT superseded AND user_name=$1 AND policy_name=$2`, request.Booking.User, request.Booking.Policy).Scan(&usage); err != nil {
+			return store.PersistentBooking{}, false, err
+		}
+		if time.Duration(usage)+request.Booking.When.End.Sub(request.Booking.When.Start) > request.MaxUsage {
+			return store.PersistentBooking{}, false, store.ErrMaxUsage
+		}
+	}
+	newRevision, err := insertBooking(ctx, tx, request, "live", "created")
+	if err != nil {
+		return store.PersistentBooking{}, false, mapWriteError(err)
+	}
+	when := request.Now.UTC()
+	if err := insertEvent(ctx, tx, expectedRevision, originalName, "superseded", when, "admin-edit"); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if err := insertEvent(ctx, tx, newRevision, request.Booking.Name, "created", when, "admin-edit"); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO public.booking_replacements
+		(old_booking_row_id,new_booking_row_id,replaced_at,replaced_at_ns,actor)
+		VALUES($1,$2,$3,$4,'admin-edit')`, expectedRevision, newRevision, when, when.UnixNano()); err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	persisted, err := scanBooking(tx.QueryRow(ctx, bookingSelect+" WHERE row_id=$1", newRevision))
+	if err != nil {
+		return store.PersistentBooking{}, false, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return store.PersistentBooking{}, false, mapWriteError(err)
+	}
+	return persisted, true, nil
+}
 
 func lockCreate(ctx context.Context, tx pgx.Tx, user, policy, resource string) error {
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock_shared($1)", maintenanceLock); err != nil {

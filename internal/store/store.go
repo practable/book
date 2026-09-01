@@ -18,6 +18,8 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -79,6 +81,14 @@ type Booking struct {
 	UsageCharged time.Duration `json:"usage_charged" yaml:"usage_charged"`
 
 	When interval.Interval `json:"when" yaml:"when"`
+}
+
+// EditableBooking is the administrative envelope used for optimistic,
+// individual booking corrections. Revision is opaque to callers.
+type EditableBooking struct {
+	OriginalName string  `json:"original_name" yaml:"original_name"`
+	Revision     int64   `json:"revision" yaml:"revision"`
+	Booking      Booking `json:"booking" yaml:"booking"`
 }
 
 // Description represents information to display to a user about an entity
@@ -972,6 +982,178 @@ func (s *Store) ExportBookings() map[string]Booking {
 	return bm
 }
 
+func localBookingRevision(booking Booking) int64 {
+	document, _ := json.Marshal(booking)
+	digest := sha256.Sum256(document)
+	return int64(binary.BigEndian.Uint64(digest[:8]) & uint64(^uint64(0)>>1))
+}
+
+func bookingsEquivalent(left, right Booking) bool {
+	return left.Name == right.Name && left.User == right.User && left.Policy == right.Policy &&
+		left.Slot == right.Slot && left.When.Start.Equal(right.When.Start) && left.When.End.Equal(right.When.End) &&
+		left.Started == right.Started && left.Cancelled == right.Cancelled && left.Unfulfilled == right.Unfulfilled &&
+		left.StartedAt == right.StartedAt && left.CancelledAt.Equal(right.CancelledAt) &&
+		left.CancelledBy == right.CancelledBy && left.Group == right.Group
+}
+
+// GetBookingForEdit returns one current booking with the opaque revision an
+// administrator must present when replacing it.
+func (s *Store) GetBookingForEdit(name string) (EditableBooking, error) {
+	s.Lock()
+	defer s.Unlock()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return EditableBooking{}, err
+	}
+	if s.repository != nil {
+		persisted, err := s.repository.GetBooking(context.Background(), name)
+		if err != nil {
+			return EditableBooking{}, err
+		}
+		return EditableBooking{OriginalName: name, Revision: persisted.Revision, Booking: persisted.Booking}, nil
+	}
+	booking, ok := s.Bookings[name]
+	if !ok {
+		return EditableBooking{}, ErrPersistentNotFound
+	}
+	return EditableBooking{OriginalName: name, Revision: localBookingRevision(*booking), Booking: *booking}, nil
+}
+
+func replacementIsPlain(booking Booking) bool {
+	return !booking.Started && !booking.Cancelled && !booking.Unfulfilled && booking.StartedAt == "" &&
+		booking.CancelledAt.IsZero() && booking.CancelledBy == "" && booking.UsageCharged == 0
+}
+
+func (s *Store) persistentStateLocked() PersistentState {
+	state := PersistentState{Groups: make(map[string][]string)}
+	manifest := s.exportManifestLocked()
+	state.Manifest = &PersistentManifest{Manifest: manifest, Version: s.manifestVersion}
+	for userName, user := range s.Users {
+		for group := range user.Groups {
+			state.Groups[userName] = append(state.Groups[userName], group)
+		}
+	}
+	for _, booking := range s.Bookings {
+		slot := s.Slots[booking.Slot]
+		policy := s.Policies[booking.Policy]
+		state.Bookings = append(state.Bookings, PersistentBooking{
+			Booking: *booking, Revision: localBookingRevision(*booking), Resource: slot.Resource,
+			ResourceConstrained: !policy.EnforceUnlimitedUsers, Current: true,
+			UsageCharge: booking.When.End.Sub(booking.When.Start),
+		})
+	}
+	for _, booking := range s.OldBookings {
+		slot := s.Slots[booking.Slot]
+		policy := s.Policies[booking.Policy]
+		state.Bookings = append(state.Bookings, PersistentBooking{
+			Booking: *booking, Revision: localBookingRevision(*booking), Resource: slot.Resource,
+			ResourceConstrained: !policy.EnforceUnlimitedUsers, Current: false, UsageCharge: booking.UsageCharged,
+		})
+	}
+	return state
+}
+
+// ReplaceBooking atomically supersedes one unstarted booking and installs its
+// validated replacement. Exact retries are idempotent; stale revisions fail.
+func (s *Store) ReplaceBooking(edit EditableBooking) (EditableBooking, error) {
+	s.Lock()
+	defer s.Unlock()
+	if !replacementIsPlain(edit.Booking) {
+		return EditableBooking{}, fmt.Errorf("%w: replacement must be an unstarted, uncancelled booking with no usage charge", ErrInvalidReplacement)
+	}
+	if err, messages := s.checkBooking(edit.Booking); err != nil {
+		return EditableBooking{}, fmt.Errorf("%w: malformed replacement booking: %s", ErrInvalidReplacement, strings.Join(messages, ", "))
+	}
+	slot := s.Slots[edit.Booking.Slot]
+	policy := s.Policies[edit.Booking.Policy]
+	request := CreateBookingRequest{
+		Booking: edit.Booking, Resource: slot.Resource, ResourceConstrained: !policy.EnforceUnlimitedUsers,
+		ManifestVersion: s.manifestVersion, Now: s.now(),
+		EnforceMaxBookings: policy.EnforceMaxBookings, MaxBookings: policy.MaxBookings,
+		EnforceMaxUsage: policy.EnforceMaxUsage, MaxUsage: policy.MaxUsage,
+	}
+
+	if s.repository != nil {
+		state, err := s.repository.Load(context.Background())
+		if err != nil {
+			return EditableBooking{}, err
+		}
+		found := false
+		for i, persisted := range state.Bookings {
+			if !persisted.Current || persisted.Revision != edit.Revision || persisted.Booking.Name != edit.OriginalName {
+				continue
+			}
+			if persisted.Booking.Started {
+				return EditableBooking{}, ErrBookingStarted
+			}
+			state.Bookings[i] = PersistentBooking{Booking: edit.Booking, Resource: slot.Resource,
+				ResourceConstrained: !policy.EnforceUnlimitedUsers, Current: true,
+				UsageCharge: edit.Booking.When.End.Sub(edit.Booking.When.Start)}
+			found = true
+			break
+		}
+		if found {
+			manifest := s.exportManifestLocked()
+			if err := validateManifestState(manifest, state, s.now); err != nil {
+				return EditableBooking{}, fmt.Errorf("%w: %v", ErrInvalidReplacement, err)
+			}
+		}
+		persisted, _, err := s.repository.ReplaceBooking(context.Background(), edit.OriginalName, edit.Revision, request)
+		if err != nil {
+			if errors.Is(err, ErrStaleManifest) || errors.Is(err, ErrBookingRevision) {
+				_ = s.refreshFromRepositoryLocked(context.Background())
+			}
+			return EditableBooking{}, err
+		}
+		if err := s.refreshFromRepositoryLocked(context.Background()); err != nil {
+			return EditableBooking{}, err
+		}
+		return EditableBooking{OriginalName: persisted.Booking.Name, Revision: persisted.Revision, Booking: persisted.Booking}, nil
+	}
+
+	old, ok := s.Bookings[edit.OriginalName]
+	if !ok || localBookingRevision(*old) != edit.Revision {
+		if current, exists := s.Bookings[edit.Booking.Name]; exists && bookingsEquivalent(*current, edit.Booking) {
+			return EditableBooking{OriginalName: current.Name, Revision: localBookingRevision(*current), Booking: *current}, nil
+		}
+		return EditableBooking{}, ErrBookingRevision
+	}
+	if old.Started {
+		return EditableBooking{}, ErrBookingStarted
+	}
+	state := s.persistentStateLocked()
+	for i, persisted := range state.Bookings {
+		if persisted.Current && persisted.Booking.Name == edit.OriginalName {
+			state.Bookings[i] = PersistentBooking{Booking: edit.Booking, Resource: slot.Resource,
+				ResourceConstrained: !policy.EnforceUnlimitedUsers, Current: true,
+				UsageCharge: edit.Booking.When.End.Sub(edit.Booking.When.Start)}
+			break
+		}
+	}
+	if err := validateManifestState(s.exportManifestLocked(), state, s.now); err != nil {
+		return EditableBooking{}, fmt.Errorf("%w: %v", ErrInvalidReplacement, err)
+	}
+	oldSlot := s.Slots[old.Slot]
+	oldPolicy := s.Policies[old.Policy]
+	if !oldPolicy.EnforceUnlimitedUsers {
+		resource := s.Resources[oldSlot.Resource]
+		if err := resource.Diary.Delete(old.Name); err != nil {
+			return EditableBooking{}, err
+		}
+	}
+	if user := s.Users[old.User]; user != nil {
+		delete(user.Bookings, old.Name)
+		if usage := user.Usage[old.Policy]; usage != nil {
+			*usage -= old.When.End.Sub(old.When.Start)
+		}
+	}
+	delete(s.Bookings, old.Name)
+	created, err := s.makeBookingWithName(edit.Booking.Slot, edit.Booking.User, edit.Booking.When, edit.Booking.Name, false)
+	if err != nil {
+		return EditableBooking{}, err
+	}
+	return EditableBooking{OriginalName: created.Name, Revision: localBookingRevision(created), Booking: created}, nil
+}
+
 // ExportManifest returns the manifest from the store
 func (s *Store) ExportManifest() Manifest {
 
@@ -986,6 +1168,10 @@ func (s *Store) ExportManifest() Manifest {
 	if err := s.recoverFromRepositoryLocked(context.Background()); err != nil {
 		log.WithError(err).Error("could not refresh persistent manifest")
 	}
+	return s.exportManifestLocked()
+}
+
+func (s *Store) exportManifestLocked() Manifest {
 
 	// We store the full description in the store for convenience
 	// but the manifest only has the name of the description in the Group

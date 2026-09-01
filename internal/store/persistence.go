@@ -16,6 +16,9 @@ var (
 	ErrMaxBookings        = errors.New("maximum current bookings reached")
 	ErrMaxUsage           = errors.New("maximum usage reached")
 	ErrStaleManifest      = errors.New("manifest changed while handling the request")
+	ErrBookingRevision    = errors.New("booking was changed by another request")
+	ErrBookingStarted     = errors.New("started bookings cannot be replaced")
+	ErrInvalidReplacement = errors.New("replacement booking is invalid")
 	ErrPersistentNotFound = errors.New("booking not found")
 )
 
@@ -24,6 +27,7 @@ var (
 // a later manifest change cannot silently weaken resource exclusivity.
 type PersistentBooking struct {
 	Booking             Booking
+	Revision            int64
 	Resource            string
 	ResourceConstrained bool
 	Current             bool
@@ -68,7 +72,9 @@ type ManifestValidator func(PersistentState) error
 type BookingRepository interface {
 	Load(context.Context) (PersistentState, error)
 	ActiveManifestVersion(context.Context) (int64, error)
+	GetBooking(context.Context, string) (PersistentBooking, error)
 	CreateBooking(context.Context, CreateBookingRequest) (PersistentBooking, bool, error)
+	ReplaceBooking(context.Context, string, int64, CreateBookingRequest) (PersistentBooking, bool, error)
 	CancelBooking(context.Context, string, time.Time, string, time.Duration, int64) (PersistentBooking, error)
 	StartBooking(context.Context, string, time.Time, int64) (PersistentBooking, error)
 	ExpireBookings(context.Context, time.Time) error
