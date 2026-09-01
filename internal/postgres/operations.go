@@ -734,24 +734,41 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 		if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state='succeeded',completed_at=$3,updated_at=$3,last_error_code='',last_error='' WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex, callback.At.UTC()); err != nil {
 			return err
 		}
+		// A successful recheck completes the recovery cycle for this stream. Reset
+		// the counter here (not when recovery schedules the recheck), so repeated
+		// failures remain bounded while a later stream receives its own allowance.
+		if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET recovery_attempt=0,recovery_target_stage=NULL,updated_at=$3
+			WHERE run_id=$1 AND recovery_target_stage=$2`, runID, stageIndex, callback.At.UTC()); err != nil {
+			return err
+		}
 		var waitAfter int64
-		if err := tx.QueryRow(ctx, `SELECT wait_after_ns FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex).Scan(&waitAfter); err != nil {
+		var healthCheck bool
+		if err := tx.QueryRow(ctx, `SELECT wait_after_ns,health_check FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex).Scan(&waitAfter, &healthCheck); err != nil {
 			return err
 		}
-		var nextExists bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2 AND phase=$3)`, runID, stageIndex+1, phase).Scan(&nextExists); err != nil {
+		if healthCheck {
+			if err := recordActivationHealthSuccessTx(ctx, tx, runID, job.ID, callback.At.UTC()); err != nil {
+				return err
+			}
+		}
+		var nextStage *int
+		nextQuery := `SELECT MIN(stage_index) FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index>$2 AND phase=$3`
+		if phase == "recovery" {
+			nextQuery += ` AND stream_name=(SELECT stream_name FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2)`
+		}
+		if err := tx.QueryRow(ctx, nextQuery, runID, stageIndex, phase).Scan(&nextStage); err != nil {
 			return err
 		}
-		if nextExists {
+		if nextStage != nil {
 			due := callback.At.UTC().Add(time.Duration(waitAfter))
-			if err := createActivationStageJobTx(ctx, tx, runID, stageIndex+1, 1, due); err != nil {
+			if err := createActivationStageJobTx(ctx, tx, runID, *nextStage, 1, due); err != nil {
 				return err
 			}
 			var progress string
-			if err := tx.QueryRow(ctx, `SELECT progress_message FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex+1).Scan(&progress); err != nil {
+			if err := tx.QueryRow(ctx, `SELECT progress_message FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2`, runID, *nextStage).Scan(&progress); err != nil {
 				return err
 			}
-			_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET current_stage=$2,progress_message=$3,updated_at=$4 WHERE run_id=$1 AND state='preparing'`, runID, stageIndex+1, progress, callback.At.UTC())
+			_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET current_stage=$2,progress_message=$3,updated_at=$4 WHERE run_id=$1 AND state='preparing'`, runID, *nextStage, progress, callback.At.UTC())
 			return err
 		}
 		if phase == "cleanup" {
@@ -865,7 +882,8 @@ func startActivationRecoveryTx(ctx context.Context, tx pgx.Tx, runID string, tar
 		return false, err
 	}
 	var first *int
-	err := tx.QueryRow(ctx, `SELECT MIN(stage_index) FROM public.booking_activation_stages WHERE run_id=$1 AND phase='recovery'`, runID).Scan(&first)
+	err := tx.QueryRow(ctx, `SELECT MIN(stage_index) FROM public.booking_activation_stages WHERE run_id=$1 AND phase='recovery'
+		AND stream_name=(SELECT stream_name FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2)`, runID, targetStage).Scan(&first)
 	if errors.Is(err, pgx.ErrNoRows) || first == nil || maximum == 0 || attempt >= maximum {
 		return false, nil
 	}
@@ -873,7 +891,8 @@ func startActivationRecoveryTx(ctx context.Context, tx pgx.Tx, runID string, tar
 		return false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state='waiting',attempt=0,job_id=NULL,
-		generation=generation+1,last_error_code='',last_error='',completed_at=NULL,updated_at=$2 WHERE run_id=$1 AND phase='recovery'`, runID, at); err != nil {
+		generation=generation+1,last_error_code='',last_error='',completed_at=NULL,updated_at=$3 WHERE run_id=$1 AND phase='recovery'
+		AND stream_name=(SELECT stream_name FROM public.booking_activation_stages WHERE run_id=$1 AND stage_index=$2)`, runID, targetStage, at); err != nil {
 		return false, err
 	}
 	if _, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET recovery_attempt=recovery_attempt+1,recovery_target_stage=$2,
@@ -902,7 +921,7 @@ func resumeActivationAfterRecoveryTx(ctx context.Context, tx pgx.Tx, runID strin
 	if err := createActivationStageJobTx(ctx, tx, runID, *target, 1, at); err != nil {
 		return err
 	}
-	_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET current_stage=$2,progress_message=$3,recovery_target_stage=NULL,updated_at=$4 WHERE run_id=$1`, runID, *target, progress, at)
+	_, err := tx.Exec(ctx, `UPDATE public.booking_activation_runs SET current_stage=$2,progress_message=$3,updated_at=$4 WHERE run_id=$1`, runID, *target, progress, at)
 	return err
 }
 
@@ -1144,9 +1163,6 @@ func activatePreparedBookingTx(ctx context.Context, tx pgx.Tx, runID string, at 
 		if err := insertEvent(ctx, tx, rowID, bookingName, "started", at, "activation-runner:"+jobID); err != nil {
 			return err
 		}
-	}
-	if err := recordActivationHealthSuccessTx(ctx, tx, runID, jobID, at); err != nil {
-		return err
 	}
 	if autoClose {
 		job, err := scanJob(tx.QueryRow(ctx, jobSelect+" WHERE job_id=$1", jobID))

@@ -20,10 +20,9 @@ import (
 type BookingActivationRequest struct {
 
 	// stream
-	// Required: true
 	// Max Length: 200
 	// Min Length: 1
-	Stream *string `json:"stream"`
+	Stream string `json:"stream,omitempty"`
 }
 
 // Validate validates this booking activation request
@@ -41,16 +40,15 @@ func (m *BookingActivationRequest) Validate(formats strfmt.Registry) error {
 }
 
 func (m *BookingActivationRequest) validateStream(formats strfmt.Registry) error {
+	if swag.IsZero(m.Stream) { // not required
+		return nil
+	}
 
-	if err := validate.Required("stream", "body", m.Stream); err != nil {
+	if err := validate.MinLength("stream", "body", m.Stream, 1); err != nil {
 		return err
 	}
 
-	if err := validate.MinLength("stream", "body", *m.Stream, 1); err != nil {
-		return err
-	}
-
-	if err := validate.MaxLength("stream", "body", *m.Stream, 200); err != nil {
+	if err := validate.MaxLength("stream", "body", m.Stream, 200); err != nil {
 		return err
 	}
 

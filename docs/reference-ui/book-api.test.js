@@ -71,3 +71,15 @@ test("booking activation uses the booking identity and idempotency key", async (
   assert.equal(calls[0].options.headers["Idempotency-Key"], "activation-key");
   assert.deepEqual(JSON.parse(calls[0].options.body), { stream: "st-video" });
 });
+
+test("experiment activation prepares every configured stream", async () => {
+  const calls = [];
+  const api = new BookApi({ fetchImpl: async (url, options) => {
+    calls.push({ url, options });
+    return response(202, { id: "activation-1", state: "preparing" });
+  }});
+  await api.beginExperimentActivation("student/1", "booking 1", "activation-key");
+  assert.equal(calls[0].url, "/api/v1/users/student%2F1/bookings/booking%201/activations");
+  assert.equal(calls[0].options.headers["Idempotency-Key"], "activation-key");
+  assert.deepEqual(JSON.parse(calls[0].options.body), {});
+});

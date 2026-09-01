@@ -2481,7 +2481,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Resolves and starts the selected stream activation pipeline. Repeating the same Idempotency-Key returns the original activation.",
+        "description": "Resolves and starts every configured stream activation pipeline. Maintenance and compatibility clients may select one stream explicitly. Repeating the same Idempotency-Key returns the original activation.",
         "consumes": [
           "application/json"
         ],
@@ -3126,9 +3126,6 @@ func init() {
     },
     "BookingActivationRequest": {
       "type": "object",
-      "required": [
-        "stream"
-      ],
       "properties": {
         "stream": {
           "type": "string",
@@ -3185,6 +3182,9 @@ func init() {
             "cancelled",
             "expired"
           ]
+        },
+        "stream": {
+          "type": "string"
         }
       }
     },
@@ -8209,7 +8209,7 @@ func init() {
             "Bearer": []
           }
         ],
-        "description": "Resolves and starts the selected stream activation pipeline. Repeating the same Idempotency-Key returns the original activation.",
+        "description": "Resolves and starts every configured stream activation pipeline. Maintenance and compatibility clients may select one stream explicitly. Repeating the same Idempotency-Key returns the original activation.",
         "consumes": [
           "application/json"
         ],
@@ -8914,9 +8914,6 @@ func init() {
     },
     "BookingActivationRequest": {
       "type": "object",
-      "required": [
-        "stream"
-      ],
       "properties": {
         "stream": {
           "type": "string",
@@ -8975,6 +8972,9 @@ func init() {
             "cancelled",
             "expired"
           ]
+        },
+        "stream": {
+          "type": "string"
         }
       }
     },

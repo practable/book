@@ -34,9 +34,9 @@ func activationToModel(run operations.ActivationRun) *models.BookingActivation {
 		converted := make([]*models.BookingActivationStage, 0, len(values))
 		for _, item := range values {
 			index, attempt, maximum := int64(item.Index), int64(item.Attempt), int64(item.MaximumAttempts)
-			name, stageState := item.Name, item.State
+			name, stageState, stream := item.Name, item.State, item.Stream
 			converted = append(converted, &models.BookingActivationStage{Index: &index, Name: &name, State: &stageState, Attempt: &attempt,
-				MaximumAttempts: &maximum, ProgressMessage: item.ProgressMessage, LastErrorCode: item.LastErrorCode, LastError: item.LastError})
+				MaximumAttempts: &maximum, Stream: stream, ProgressMessage: item.ProgressMessage, LastErrorCode: item.LastErrorCode, LastError: item.LastError})
 		}
 		return converted
 	}
@@ -77,7 +77,17 @@ func beginBookingActivationHandler(config config.ServerConfig) func(users.BeginB
 			code, message := "401", err.Error()
 			return users.NewBeginBookingActivationUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
 		}
-		run, _, err := config.Store.BeginBookingActivation(params.HTTPRequest.Context(), params.BookingName, *params.Request.Stream, params.IdempotencyKey)
+		stream := ""
+		if params.Request != nil {
+			stream = params.Request.Stream
+		}
+		var run operations.ActivationRun
+		var err error
+		if stream == "" {
+			run, _, err = config.Store.BeginExperimentActivation(params.HTTPRequest.Context(), params.BookingName, params.IdempotencyKey)
+		} else {
+			run, _, err = config.Store.BeginBookingActivation(params.HTTPRequest.Context(), params.BookingName, stream, params.IdempotencyKey)
+		}
 		if err == nil {
 			payload, disclosureErr := activationToModelWithDegradation(config.Store, run)
 			if disclosureErr == nil {

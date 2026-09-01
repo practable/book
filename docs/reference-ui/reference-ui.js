@@ -116,9 +116,8 @@ $("book").addEventListener("click", async () => {
     const candidates = (selectedItem.resources || []).filter(resource => !selectedResource || resource.name === selectedResource);
     const streams = [...new Set(candidates.flatMap(resource => resource.activation_streams || []))].sort();
     $("activation-booking").textContent = `Booking ${booking.name}. Preparation is idempotent and may be retried safely.`;
-    $("activation-stream").innerHTML = streams.map(stream => `<option value="${escapeHTML(stream)}">${escapeHTML(stream)}</option>`).join("");
     $("activation-start").disabled = streams.length === 0;
-    setStatus($("activation-status"), streams.length ? "Choose the connection you need, then start preparation." : "This experiment has no managed preparation pipeline; use the normal booking link when its time starts.");
+    setStatus($("activation-status"), streams.length ? `Start preparation for all ${streams.length} configured connection${streams.length === 1 ? "" : "s"}.` : "This experiment has no managed preparation pipeline; use the normal booking link when its time starts.");
     $("activation").classList.remove("hidden");
     await refreshAvailability();
   } catch (error) { setStatus($("s-status"), error.message, true); }
@@ -149,10 +148,10 @@ $("activation-start").addEventListener("click", async () => {
   $("activation-start").disabled = true;
   setStatus($("activation-status"), "Starting preparation…");
   try {
-    const run = await studentApi.beginBookingActivation($("s-user").value.trim(), currentBooking.name, $("activation-stream").value);
+    const run = await studentApi.beginExperimentActivation($("s-user").value.trim(), currentBooking.name);
     pollActivation(run);
   } catch (error) {
-    const message = error.status === 409 ? `This connection cannot be started: ${error.message}` : error.message;
+    const message = error.status === 409 ? `This experiment cannot be started: ${error.message}` : error.message;
     setStatus($("activation-status"), message, true);
     $("activation-start").disabled = false;
   }

@@ -191,7 +191,7 @@ func (a *Client) AddGroupForUser(params *AddGroupForUserParams, authInfo runtime
 /*
 BeginBookingActivation begins durable preparation for a booking
 
-Resolves and starts the selected stream activation pipeline. Repeating the same Idempotency-Key returns the original activation.
+Resolves and starts every configured stream activation pipeline. Maintenance and compatibility clients may select one stream explicitly. Repeating the same Idempotency-Key returns the original activation.
 */
 func (a *Client) BeginBookingActivation(params *BeginBookingActivationParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*BeginBookingActivationAccepted, error) {
 	// TODO: Validate the params before sending

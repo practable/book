@@ -456,6 +456,82 @@ func TestActivationCallbacksAdvanceStagesRetryAndStartBooking(t *testing.T) {
 	require.True(t, booking.Booking.Started)
 }
 
+func TestExperimentActivationRequiresOneSuccessFromEveryConfiguredStream(t *testing.T) {
+	repository := integrationRepository(t)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	_, _, err := repository.CreateBooking(ctx, request("multi-stream-activation", "opaque-user", "slot-a", "resource-a", now.Add(-time.Minute), now.Add(time.Hour)))
+	require.NoError(t, err)
+	req := activationRequest("multi-stream-activation", "opaque-user", "all-streams", now)
+	req.Stream = "*"
+	req.Pipeline = "experiment"
+	req.Stages = []operations.ActivationStageSpec{
+		{Stream: "data", Name: "check-data", Workflow: "stream-health", Kind: "health_check", DueAt: now, TimeoutAt: now.Add(time.Second), MaximumAttempts: 1},
+		{Stream: "video-main", Name: "check-main", Workflow: "stream-health", Kind: "health_check", DueAt: now.Add(time.Second), TimeoutAt: now.Add(2 * time.Second), MaximumAttempts: 1},
+		{Stream: "video-detail", Name: "check-detail", Workflow: "stream-health", Kind: "health_check", DueAt: now.Add(2 * time.Second), TimeoutAt: now.Add(3 * time.Second), MaximumAttempts: 1},
+	}
+	req.FirstJob.Workflow = "stream-health"
+	run, _, err := repository.CreateActivation(ctx, req)
+	require.NoError(t, err)
+	require.Len(t, run.Stages, 3)
+
+	for index, stream := range []string{"data", "video-main", "video-detail"} {
+		run, err = repository.GetActivation(ctx, run.ID)
+		require.NoError(t, err)
+		require.Equal(t, "preparing", run.State)
+		require.Equal(t, stream, run.Stages[index].Stream)
+		jobID := run.Stages[index].JobID
+		_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: fmt.Sprintf("multi-accepted-%d", index), JobID: jobID, State: "accepted", At: now.Add(time.Duration(index) * time.Second)}, fmt.Sprintf("multi-accepted-hash-%d", index))
+		require.NoError(t, err)
+		_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: fmt.Sprintf("multi-success-%d", index), JobID: jobID, State: "succeeded", At: now.Add(time.Duration(index+1) * time.Second)}, fmt.Sprintf("multi-success-hash-%d", index))
+		require.NoError(t, err)
+	}
+	run, err = repository.GetActivation(ctx, run.ID)
+	require.NoError(t, err)
+	require.Equal(t, "active", run.State)
+	health, err := repository.ListOperationalStreamHealth(ctx)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"data", "video-main", "video-detail"}, []string{health[0].Stream, health[1].Stream, health[2].Stream})
+}
+
+func TestStoreBuildsExperimentActivationForArbitraryManifestStreams(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	manifest.OperationalWorkflows = map[string]store.OperationalWorkflow{
+		"check-stream": {Description: "Check one experiment stream", Kind: "health_check", ExpectedDuration: time.Second, MaximumDuration: 2 * time.Second},
+	}
+	manifest.OperationalJobTemplates = map[string]store.OperationalJobTemplate{
+		"check-stream": {Workflow: "check-stream", Timeout: 2 * time.Second, AllowedOverrides: map[string]string{"stream": "string"}},
+	}
+	manifest.OperationalPipelineTemplates = map[string]store.OperationalPipelineTemplate{
+		"standard-stream": {Stages: []store.OperationalPipelineStage{{Name: "check", JobTemplate: "check-stream"}}},
+	}
+	resource := manifest.Resources["r-a"]
+	manifest.Streams["st-c"] = manifest.Streams["st-b"]
+	resource.Streams = []string{"st-a", "st-b", "st-c"}
+	resource.StreamOperations = map[string]store.OperationalStreamBinding{}
+	for _, stream := range resource.Streams {
+		resource.StreamOperations[stream] = store.OperationalStreamBinding{ActivationPipeline: "standard-stream", Parameters: map[string]store.OperationalParameterBinding{"stream": {Value: stream}}}
+	}
+	manifest.Resources["r-a"] = resource
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	s := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, s.WithRepository(repository))
+	require.NoError(t, s.ReplaceManifest(manifest))
+	_, err = s.MakeBookingWithName("sl-a", "experiment-user", interval.Interval{Start: now, End: now.Add(10 * time.Minute)}, "experiment-booking", false)
+	require.NoError(t, err)
+	run, fresh, err := s.BeginExperimentActivation(context.Background(), "experiment-booking", "experiment-start")
+	require.NoError(t, err)
+	require.True(t, fresh)
+	require.Equal(t, "*", run.Stream)
+	require.Equal(t, "experiment", run.Pipeline)
+	require.Len(t, run.Stages, 3)
+	require.Equal(t, []string{"st-a", "st-b", "st-c"}, []string{run.Stages[0].Stream, run.Stages[1].Stream, run.Stages[2].Stream})
+}
+
 func TestActivationTimeoutSweepRetriesThenFailsDurably(t *testing.T) {
 	repository := integrationRepository(t)
 	ctx := context.Background()

@@ -34,7 +34,7 @@ func NewBeginBookingActivation(ctx *middleware.Context, handler BeginBookingActi
 
 # Begin durable preparation for a booking
 
-Resolves and starts the selected stream activation pipeline. Repeating the same Idempotency-Key returns the original activation.
+Resolves and starts every configured stream activation pipeline. Maintenance and compatibility clients may select one stream explicitly. Repeating the same Idempotency-Key returns the original activation.
 */
 type BeginBookingActivation struct {
 	Context *middleware.Context

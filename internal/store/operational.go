@@ -163,6 +163,16 @@ func ResolveOperationalPipeline(manifest Manifest, resourceName, streamName stri
 // and atomically persists that plan with its first runner delivery. Repeated
 // requests with the same key return the original activation run.
 func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamName, idempotencyKey string) (operations.ActivationRun, bool, error) {
+	return s.beginBookingActivation(ctx, bookingName, streamName, idempotencyKey)
+}
+
+// BeginExperimentActivation prepares every manifest-bound stream for the
+// assigned resource in one durable activation run.
+func (s *Store) BeginExperimentActivation(ctx context.Context, bookingName, idempotencyKey string) (operations.ActivationRun, bool, error) {
+	return s.beginBookingActivation(ctx, bookingName, "", idempotencyKey)
+}
+
+func (s *Store) beginBookingActivation(ctx context.Context, bookingName, requestedStream, idempotencyKey string) (operations.ActivationRun, bool, error) {
 	s.Lock()
 	defer s.Unlock()
 	if err := s.expireAndRefreshLocked(ctx); err != nil {
@@ -180,10 +190,20 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 	if !ok {
 		return operations.ActivationRun{}, false, fmt.Errorf("slot %s not found", booking.Slot)
 	}
+	resource := s.Resources[slot.Resource]
+	streams := []string{requestedStream}
+	runStream, runPipeline := requestedStream, resource.StreamOperations[requestedStream].ActivationPipeline
+	if requestedStream == "" {
+		streams = operationalStreamNames(resource)
+		runStream, runPipeline = "*", "experiment"
+		if len(streams) == 0 {
+			return operations.ActivationRun{}, false, errors.New("experiment has no manifest-bound activation streams")
+		}
+	}
 	runID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation\x00"+bookingName+"\x00"+idempotencyKey)).String()
 	existing, existingErr := repository.GetActivation(ctx, runID)
 	if existingErr == nil {
-		if existing.BookingName != bookingName || existing.Stream != streamName {
+		if existing.BookingName != bookingName || existing.Stream != runStream {
 			return operations.ActivationRun{}, false, operations.ErrActivationConflict
 		}
 		return existing, false, nil
@@ -196,66 +216,92 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 		return operations.ActivationRun{}, false, err
 	}
 	if release, ok := degraded[slot.Resource]; ok {
+		unavailableSet := make(map[string]bool, len(release.FailingStreams))
 		for _, unavailable := range release.FailingStreams {
-			if unavailable == streamName {
-				return operations.ActivationRun{}, false, fmt.Errorf("%w: stream %s is unavailable on degraded resource %s: %s", ErrBookingConflict, streamName, slot.Resource, release.OverrideReason)
+			unavailableSet[unavailable] = true
+			if requestedStream != "" && unavailable == requestedStream {
+				return operations.ActivationRun{}, false, fmt.Errorf("%w: stream %s is unavailable on degraded resource %s: %s", ErrBookingConflict, requestedStream, slot.Resource, release.OverrideReason)
+			}
+		}
+		if requestedStream == "" {
+			usable := streams[:0]
+			for _, stream := range streams {
+				if !unavailableSet[stream] {
+					usable = append(usable, stream)
+				}
+			}
+			streams = usable
+			if len(streams) == 0 {
+				return operations.ActivationRun{}, false, fmt.Errorf("%w: degraded resource %s has no usable activation streams: %s", ErrBookingConflict, slot.Resource, release.OverrideReason)
 			}
 		}
 	}
 	manifest := s.exportManifestLocked()
-	binding := manifest.Resources[slot.Resource].StreamOperations[streamName]
-	stages, recovery, cleanup, err := ResolveOperationalPipeline(manifest, slot.Resource, streamName)
-	if err != nil {
-		return operations.ActivationRun{}, false, err
-	}
-	if len(stages) == 0 {
-		return operations.ActivationRun{}, false, errors.New("activation pipeline has no stages")
-	}
 	now := s.now().UTC()
-	makeStageSpecs := func(values []ResolvedOperationalStage, firstDue time.Time) []operations.ActivationStageSpec {
-		result := make([]operations.ActivationStageSpec, 0, len(values))
-		due := firstDue
+	appendStageSpecs := func(result []operations.ActivationStageSpec, stream string, values []ResolvedOperationalStage, due time.Time) ([]operations.ActivationStageSpec, time.Time) {
 		for _, stage := range values {
 			attempts := stage.Retry.Attempts
 			if attempts < 1 {
 				attempts = 1
 			}
-			result = append(result, operations.ActivationStageSpec{Stream: streamName, Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow,
+			result = append(result, operations.ActivationStageSpec{Stream: stream, Name: stage.Name, JobTemplate: stage.Template, Workflow: stage.Workflow,
 				DueAt: due, TimeoutAt: due.Add(stage.Timeout), MaximumAttempts: attempts, Parameters: stage.Parameters,
 				ProgressMessage: stage.ProgressMessages.Initial, RetryMessage: stage.ProgressMessages.Retry, WaitAfter: stage.WaitAfter,
 				InitialDelay: stage.Retry.InitialDelay, Backoff: stage.Retry.Backoff, MaximumDelay: stage.Retry.MaximumDelay,
 				TotalTimeout: stage.Retry.TotalTimeout, RetryableCodes: stage.Retry.RetryableCodes, FailureGuidance: mustMarshalOperationalGuidance(stage.FailureGuidance), Kind: stage.Kind})
 			due = due.Add(stage.Timeout + stage.WaitAfter)
 		}
-		return result
+		return result, due
 	}
-	stageSpecs := makeStageSpecs(stages, now)
-	recoverySpecs := makeStageSpecs(recovery, now)
-	cleanupSpecs := makeStageSpecs(cleanup, now)
-	resolvedPlan, err := json.Marshal(struct {
+	type resolvedStreamPlan struct {
+		Stream   string                     `json:"stream"`
 		Stages   []ResolvedOperationalStage `json:"stages"`
 		Recovery []ResolvedOperationalStage `json:"recovery,omitempty"`
 		Cleanup  []ResolvedOperationalStage `json:"cleanup,omitempty"`
-	}{Stages: stages, Recovery: recovery, Cleanup: cleanup})
+	}
+	var plans []resolvedStreamPlan
+	var stageSpecs, recoverySpecs, cleanupSpecs []operations.ActivationStageSpec
+	stageDue, recoveryDue, cleanupDue := now, now, now
+	recoveryAttempts := 0
+	for _, stream := range streams {
+		stages, recovery, cleanup, err := ResolveOperationalPipeline(manifest, slot.Resource, stream)
+		if err != nil {
+			return operations.ActivationRun{}, false, err
+		}
+		if len(stages) == 0 {
+			return operations.ActivationRun{}, false, fmt.Errorf("activation pipeline for stream %s has no stages", stream)
+		}
+		plans = append(plans, resolvedStreamPlan{Stream: stream, Stages: stages, Recovery: recovery, Cleanup: cleanup})
+		stageSpecs, stageDue = appendStageSpecs(stageSpecs, stream, stages, stageDue)
+		recoverySpecs, recoveryDue = appendStageSpecs(recoverySpecs, stream, recovery, recoveryDue)
+		cleanupSpecs, cleanupDue = appendStageSpecs(cleanupSpecs, stream, cleanup, cleanupDue)
+		attempts := manifest.OperationalPipelineTemplates[resource.StreamOperations[stream].ActivationPipeline].RecoveryAttempts
+		if attempts > 0 && (recoveryAttempts == 0 || attempts < recoveryAttempts) {
+			recoveryAttempts = attempts
+		}
+	}
+	resolvedPlan, err := json.Marshal(struct {
+		Streams []resolvedStreamPlan `json:"streams"`
+	}{Streams: plans})
 	if err != nil {
 		return operations.ActivationRun{}, false, err
 	}
-	first := stages[0]
+	first := stageSpecs[0]
 	jobID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation-job\x00"+runID+"\x000\x001")).String()
 	deliveryID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation-delivery\x00"+jobID)).String()
 	jobKey := "booking-activation:" + runID + ":0:1"
 	command := operations.Command{Version: 1, JobID: jobID, Workflow: first.Workflow, Resource: slot.Resource, Kind: "preflight",
-		StartsAt: now, EndsAt: now.Add(first.Timeout), BookingName: bookingName, PlanRevision: 1, IdempotencyKey: jobKey, Parameters: first.Parameters}
+		StartsAt: now, EndsAt: first.TimeoutAt, BookingName: bookingName, PlanRevision: 1, IdempotencyKey: jobKey, Parameters: first.Parameters}
 	body, err := json.Marshal(command)
 	if err != nil {
 		return operations.ActivationRun{}, false, err
 	}
 	request := operations.CreateActivationRequest{RunID: runID, BookingName: bookingName, User: booking.User, Resource: slot.Resource,
-		Stream: streamName, Pipeline: binding.ActivationPipeline, ManifestVersion: s.manifestVersion,
+		Stream: runStream, Pipeline: runPipeline, ManifestVersion: s.manifestVersion,
 		IdempotencyKey: idempotencyKey, RequestedAt: now, ResolvedPlan: resolvedPlan, Stages: stageSpecs, CleanupStages: cleanupSpecs,
-		RecoveryStages: recoverySpecs, RecoveryAttempts: manifest.OperationalPipelineTemplates[binding.ActivationPipeline].RecoveryAttempts,
+		RecoveryStages: recoverySpecs, RecoveryAttempts: recoveryAttempts,
 		FirstJob: operations.Job{ID: jobID, Resource: slot.Resource, Workflow: first.Workflow, Kind: "preflight", State: "reserved", DueAt: now,
-			StartsAt: now, EndsAt: now.Add(first.Timeout), TriggeringBookingName: bookingName, ManifestVersion: s.manifestVersion,
+			StartsAt: now, EndsAt: first.TimeoutAt, TriggeringBookingName: bookingName, ManifestVersion: s.manifestVersion,
 			PlanRevision: 1, IdempotencyKey: jobKey, Payload: body},
 		FirstDelivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body}}
 	return repository.CreateActivation(ctx, request)

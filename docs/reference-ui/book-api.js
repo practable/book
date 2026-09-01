@@ -60,6 +60,12 @@ export class BookApi {
     });
   }
 
+  beginExperimentActivation(user, booking, idempotencyKey = crypto.randomUUID()) {
+    return this.request(`/users/${encodeURIComponent(user)}/bookings/${encodeURIComponent(booking)}/activations`, {
+      method: "POST", body: {}, headers: { "Idempotency-Key": idempotencyKey },
+    });
+  }
+
   bookingActivation(user, booking, activation) {
     return this.request(`/users/${encodeURIComponent(user)}/bookings/${encodeURIComponent(booking)}/activations/${encodeURIComponent(activation)}`);
   }

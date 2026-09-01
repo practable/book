@@ -52,6 +52,9 @@ type BookingActivationStage struct {
 	// Required: true
 	// Enum: ["waiting","pending","dispatched","accepted","running","succeeded","failed","cancelled","expired"]
 	State *string `json:"state"`
+
+	// stream
+	Stream string `json:"stream,omitempty"`
 }
 
 // Validate validates this booking activation stage

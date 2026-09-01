@@ -1361,14 +1361,15 @@ func (s *Store) exportManifestLocked() Manifest {
 	rm := make(map[string]Resource)
 	for k, v := range s.Resources {
 		rm[k] = Resource{
-			ConfigURL:   v.ConfigURL,
-			Description: v.Description,
-			Class:       v.Class,
-			Properties:  v.Properties,
-			Operations:  v.Operations,
-			Streams:     v.Streams,
-			Tests:       v.Tests,
-			TopicStub:   v.TopicStub,
+			ConfigURL:        v.ConfigURL,
+			Description:      v.Description,
+			Class:            v.Class,
+			Properties:       v.Properties,
+			Operations:       v.Operations,
+			Streams:          v.Streams,
+			StreamOperations: v.StreamOperations,
+			Tests:            v.Tests,
+			TopicStub:        v.TopicStub,
 		}
 	}
 	pm := make(map[string]Policy, len(s.Policies))
