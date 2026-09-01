@@ -1060,6 +1060,15 @@ func TestCalendarDisclosesDegradedResources(t *testing.T) {
 	require.True(t, preview.Bookable)
 	require.Len(t, preview.DegradedResources, 1)
 	require.Equal(t, "video unavailable; data remains usable", preview.DegradedResources[0].DegradedReason)
+	booking, err := s.MakeCalendarBooking("calendar-user", selector, when, "degraded-calendar-booking")
+	require.NoError(t, err)
+	disclosure, degraded, err := s.GetBookingDegradation(booking.Name)
+	require.NoError(t, err)
+	require.True(t, degraded)
+	require.Equal(t, []string{"st-a"}, disclosure.UnavailableStreams)
+	_, _, err = s.BeginBookingActivation(context.Background(), booking.Name, "st-a", "unavailable-stream")
+	require.ErrorIs(t, err, store.ErrBookingConflict)
+	require.ErrorContains(t, err, "video unavailable; data remains usable")
 }
 
 func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing.T) {

@@ -3058,6 +3058,12 @@ func init() {
           "type": "integer",
           "format": "int64"
         },
+        "degraded": {
+          "type": "boolean"
+        },
+        "degraded_reason": {
+          "type": "string"
+        },
         "failure_code": {
           "type": "string"
         },
@@ -3109,6 +3115,12 @@ func init() {
         },
         "stream": {
           "type": "string"
+        },
+        "unavailable_streams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -8826,6 +8838,12 @@ func init() {
           "format": "int64",
           "minimum": 0
         },
+        "degraded": {
+          "type": "boolean"
+        },
+        "degraded_reason": {
+          "type": "string"
+        },
         "failure_code": {
           "type": "string"
         },
@@ -8879,6 +8897,12 @@ func init() {
         },
         "stream": {
           "type": "string"
+        },
+        "unavailable_streams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },

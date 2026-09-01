@@ -78,6 +78,36 @@ func (s *Store) degradedCalendarResourcesLocked() (map[string]ResourceReleaseSta
 	return result, nil
 }
 
+// GetBookingDegradation returns the current technician-approved degraded
+// offering for a booking. It is intentionally evaluated at response time so a
+// warning appears even when equipment degraded after the booking was made.
+func (s *Store) GetBookingDegradation(bookingName string) (CalendarResource, bool, error) {
+	s.Lock()
+	defer s.Unlock()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return CalendarResource{}, false, err
+	}
+	booking, ok := s.Bookings[bookingName]
+	if !ok {
+		return CalendarResource{}, false, ErrPersistentNotFound
+	}
+	slot, ok := s.Slots[booking.Slot]
+	if !ok {
+		return CalendarResource{}, false, fmt.Errorf("slot %s not found", booking.Slot)
+	}
+	degraded, err := s.degradedCalendarResourcesLocked()
+	if err != nil {
+		return CalendarResource{}, false, err
+	}
+	release, ok := degraded[slot.Resource]
+	if !ok {
+		return CalendarResource{}, false, nil
+	}
+	resource := s.Resources[slot.Resource]
+	return CalendarResource{Name: slot.Resource, Class: resource.Class, Properties: resource.Properties, Degraded: true,
+		DegradedReason: release.OverrideReason, UnavailableStreams: append([]string(nil), release.FailingStreams...)}, true, nil
+}
+
 func resourceMatches(resourceName string, resource Resource, selector CalendarSelector) bool {
 	if selector.Resource != "" && selector.Resource != resourceName {
 		return false

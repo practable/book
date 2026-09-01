@@ -57,6 +57,20 @@ func activationToModel(run operations.ActivationRun) *models.BookingActivation {
 	return result
 }
 
+func activationToModelWithDegradation(bookStore *store.Store, run operations.ActivationRun) (*models.BookingActivation, error) {
+	result := activationToModel(run)
+	resource, degraded, err := bookStore.GetBookingDegradation(run.BookingName)
+	if err != nil {
+		return nil, err
+	}
+	result.Degraded = degraded
+	if degraded {
+		result.DegradedReason = resource.DegradedReason
+		result.UnavailableStreams = resource.UnavailableStreams
+	}
+	return result, nil
+}
+
 func beginBookingActivationHandler(config config.ServerConfig) func(users.BeginBookingActivationParams, interface{}) middleware.Responder {
 	return func(params users.BeginBookingActivationParams, principal interface{}) middleware.Responder {
 		if err := authorizeBookingActivation(principal, params.UserName); err != nil {
@@ -65,7 +79,11 @@ func beginBookingActivationHandler(config config.ServerConfig) func(users.BeginB
 		}
 		run, _, err := config.Store.BeginBookingActivation(params.HTTPRequest.Context(), params.BookingName, *params.Request.Stream, params.IdempotencyKey)
 		if err == nil {
-			return users.NewBeginBookingActivationAccepted().WithPayload(activationToModel(run))
+			payload, disclosureErr := activationToModelWithDegradation(config.Store, run)
+			if disclosureErr == nil {
+				return users.NewBeginBookingActivationAccepted().WithPayload(payload)
+			}
+			err = disclosureErr
 		}
 		code, message := "500", err.Error()
 		if errors.Is(err, operations.ErrActivationConflict) || errors.Is(err, store.ErrBookingConflict) {
@@ -95,6 +113,11 @@ func getBookingActivationHandler(config config.ServerConfig) func(users.GetBooki
 			code, message := "500", err.Error()
 			return users.NewGetBookingActivationInternalServerError().WithPayload(&models.Error{Code: &code, Message: &message})
 		}
-		return users.NewGetBookingActivationOK().WithPayload(activationToModel(run))
+		payload, err := activationToModelWithDegradation(config.Store, run)
+		if err != nil {
+			code, message := "500", err.Error()
+			return users.NewGetBookingActivationInternalServerError().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		return users.NewGetBookingActivationOK().WithPayload(payload)
 	}
 }

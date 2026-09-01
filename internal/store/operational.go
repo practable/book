@@ -180,6 +180,28 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 	if !ok {
 		return operations.ActivationRun{}, false, fmt.Errorf("slot %s not found", booking.Slot)
 	}
+	runID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation\x00"+bookingName+"\x00"+idempotencyKey)).String()
+	existing, existingErr := repository.GetActivation(ctx, runID)
+	if existingErr == nil {
+		if existing.BookingName != bookingName || existing.Stream != streamName {
+			return operations.ActivationRun{}, false, operations.ErrActivationConflict
+		}
+		return existing, false, nil
+	}
+	if !errors.Is(existingErr, operations.ErrNotFound) {
+		return operations.ActivationRun{}, false, existingErr
+	}
+	degraded, err := s.degradedCalendarResourcesLocked()
+	if err != nil {
+		return operations.ActivationRun{}, false, err
+	}
+	if release, ok := degraded[slot.Resource]; ok {
+		for _, unavailable := range release.FailingStreams {
+			if unavailable == streamName {
+				return operations.ActivationRun{}, false, fmt.Errorf("%w: stream %s is unavailable on degraded resource %s: %s", ErrBookingConflict, streamName, slot.Resource, release.OverrideReason)
+			}
+		}
+	}
 	manifest := s.exportManifestLocked()
 	binding := manifest.Resources[slot.Resource].StreamOperations[streamName]
 	stages, recovery, cleanup, err := ResolveOperationalPipeline(manifest, slot.Resource, streamName)
@@ -190,7 +212,6 @@ func (s *Store) BeginBookingActivation(ctx context.Context, bookingName, streamN
 		return operations.ActivationRun{}, false, errors.New("activation pipeline has no stages")
 	}
 	now := s.now().UTC()
-	runID := uuid.NewSHA1(uuid.NameSpaceURL, []byte("booking-activation\x00"+bookingName+"\x00"+idempotencyKey)).String()
 	makeStageSpecs := func(values []ResolvedOperationalStage, firstDue time.Time) []operations.ActivationStageSpec {
 		result := make([]operations.ActivationStageSpec, 0, len(values))
 		due := firstDue

@@ -1757,6 +1757,9 @@ definitions:
       failure_code: {type: string}
       failure_message: {type: string}
       failure_guidance: {$ref: '#/definitions/OperationalFailureGuidance'}
+      degraded: {type: boolean}
+      degraded_reason: {type: string}
+      unavailable_streams: {type: array, items: {type: string}}
       stages:
         type: array
         items: {$ref: '#/definitions/BookingActivationStage'}

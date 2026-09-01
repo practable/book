@@ -38,6 +38,12 @@ type BookingActivation struct {
 	// Minimum: 0
 	CurrentStage *int64 `json:"current_stage"`
 
+	// degraded
+	Degraded bool `json:"degraded,omitempty"`
+
+	// degraded reason
+	DegradedReason string `json:"degraded_reason,omitempty"`
+
 	// failure code
 	FailureCode string `json:"failure_code,omitempty"`
 
@@ -79,6 +85,9 @@ type BookingActivation struct {
 	// stream
 	// Required: true
 	Stream *string `json:"stream"`
+
+	// unavailable streams
+	UnavailableStreams []string `json:"unavailable_streams"`
 }
 
 // Validate validates this booking activation
