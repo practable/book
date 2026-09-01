@@ -1,6 +1,6 @@
 # ADR 0003: Recurring operations, automation bookings, and health jobs
 
-- Status: accepted; finite weekly availability recurrence implemented, operational workflows deferred
+- Status: accepted; recurrence and durable authenticated job transport implemented; workflow planning deferred
 - Date: 2026-08-31
 
 ## Context
@@ -182,10 +182,11 @@ is prepared before use, and preserve exclusive access while execution remains in
 a dedicated job runner. The cost is an explicit resource state machine and
 at-least-once distributed workflow rather than simple cron callbacks.
 
-Finite weekly `recurring_allowed` and `recurring_denied` rules are now supported
-on existing manifest windows. Operational-state schedules, workflow guards,
-webhook delivery, health policy, charging, organisation accounts, and block
-booking remain deferred to the later phases above.
+Finite weekly `recurring_allowed` and `recurring_denied` rules are supported on
+existing manifest windows. Operational job persistence, leased outbox delivery,
+direction-bound HMAC authentication, retries, and idempotent callbacks are also
+implemented. Operational-state schedules, workflow guards, health policy,
+charging, organisation accounts, and block booking remain deferred.
 
 ## Related decisions
 

@@ -11,6 +11,7 @@ import (
 	"github.com/go-openapi/strfmt"
 
 	"github.com/practable/book/internal/client/client/admin"
+	"github.com/practable/book/internal/client/client/operationsops"
 	"github.com/practable/book/internal/client/client/users"
 )
 
@@ -57,6 +58,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *Client {
 	cli := new(Client)
 	cli.Transport = transport
 	cli.Admin = admin.New(transport, formats)
+	cli.Operationsops = operationsops.New(transport, formats)
 	cli.Users = users.New(transport, formats)
 	return cli
 }
@@ -104,6 +106,8 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 type Client struct {
 	Admin admin.ClientService
 
+	Operationsops operationsops.ClientService
+
 	Users users.ClientService
 
 	Transport runtime.ClientTransport
@@ -113,5 +117,6 @@ type Client struct {
 func (c *Client) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
 	c.Admin.SetTransport(transport)
+	c.Operationsops.SetTransport(transport)
 	c.Users.SetTransport(transport)
 }

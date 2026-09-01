@@ -1530,6 +1530,82 @@ func init() {
         }
       }
     },
+    "/operations/jobs/{job_id}/callbacks": {
+      "post": {
+        "description": "Internal service endpoint authenticated by an HMAC over the exact request body, direction, timestamp, and delivery ID. Replaying an identical delivery is idempotent.",
+        "tags": [
+          "operations"
+        ],
+        "summary": "Record a job-runner lifecycle callback",
+        "operationId": "RecordOperationalJobCallback",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "job_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Timestamp",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Delivery-ID",
+            "in": "header",
+            "required": true
+          },
+          {
+            "enum": [
+              "runner-to-book"
+            ],
+            "type": "string",
+            "name": "X-Book-Direction",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "name": "callback",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OperationalJobCallback"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Callback recorded or exact replay acknowledged",
+            "schema": {
+              "$ref": "#/definitions/OperationalJobCallbackResult"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/policies/{policy_name}": {
       "get": {
         "security": [
@@ -2904,6 +2980,65 @@ func init() {
           "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
           "type": "string",
           "example": "https://relay-access.practable.io/session/abc123"
+        }
+      }
+    },
+    "OperationalJobCallback": {
+      "type": "object",
+      "required": [
+        "version",
+        "job_id",
+        "state",
+        "at"
+      ],
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "enum": [
+            1
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "OperationalJobCallbackResult": {
+      "type": "object",
+      "required": [
+        "job_id",
+        "state",
+        "duplicate"
+      ],
+      "properties": {
+        "duplicate": {
+          "type": "boolean"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
         }
       }
     },
@@ -5432,6 +5567,97 @@ func init() {
         }
       }
     },
+    "/operations/jobs/{job_id}/callbacks": {
+      "post": {
+        "description": "Internal service endpoint authenticated by an HMAC over the exact request body, direction, timestamp, and delivery ID. Replaying an identical delivery is idempotent.",
+        "tags": [
+          "operations"
+        ],
+        "summary": "Record a job-runner lifecycle callback",
+        "operationId": "RecordOperationalJobCallback",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "job_id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Timestamp",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Delivery-ID",
+            "in": "header",
+            "required": true
+          },
+          {
+            "enum": [
+              "runner-to-book"
+            ],
+            "type": "string",
+            "name": "X-Book-Direction",
+            "in": "header",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "X-Book-Signature",
+            "in": "header",
+            "required": true
+          },
+          {
+            "name": "callback",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/OperationalJobCallback"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Callback recorded or exact replay acknowledged",
+            "schema": {
+              "$ref": "#/definitions/OperationalJobCallbackResult"
+            }
+          },
+          "400": {
+            "description": "The request is malformed or exceeds calendar query limits",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/policies/{policy_name}": {
       "get": {
         "security": [
@@ -6911,6 +7137,65 @@ func init() {
           "description": "URL at which to obtain access to the stream (getting a redirect URL containing a one time code)",
           "type": "string",
           "example": "https://relay-access.practable.io/session/abc123"
+        }
+      }
+    },
+    "OperationalJobCallback": {
+      "type": "object",
+      "required": [
+        "version",
+        "job_id",
+        "state",
+        "at"
+      ],
+      "properties": {
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error": {
+          "type": "string"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "format": "int64",
+          "enum": [
+            1
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "OperationalJobCallbackResult": {
+      "type": "object",
+      "required": [
+        "job_id",
+        "state",
+        "duplicate"
+      ],
+      "properties": {
+        "duplicate": {
+          "type": "boolean"
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
         }
       }
     },

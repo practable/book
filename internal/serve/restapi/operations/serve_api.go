@@ -20,6 +20,7 @@ import (
 	"github.com/go-openapi/swag"
 
 	"github.com/practable/book/internal/serve/restapi/operations/admin"
+	"github.com/practable/book/internal/serve/restapi/operations/operationsops"
 	"github.com/practable/book/internal/serve/restapi/operations/users"
 )
 
@@ -145,6 +146,9 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		}),
 		UsersQueryCalendarAvailabilityHandler: users.QueryCalendarAvailabilityHandlerFunc(func(params users.QueryCalendarAvailabilityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.QueryCalendarAvailability has not yet been implemented")
+		}),
+		OperationsopsRecordOperationalJobCallbackHandler: operationsops.RecordOperationalJobCallbackHandlerFunc(func(params operationsops.RecordOperationalJobCallbackParams) middleware.Responder {
+			return middleware.NotImplemented("operation operationsops.RecordOperationalJobCallback has not yet been implemented")
 		}),
 		AdminReplaceBookingHandler: admin.ReplaceBookingHandlerFunc(func(params admin.ReplaceBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceBooking has not yet been implemented")
@@ -301,6 +305,8 @@ type ServeAPI struct {
 	AdminQueryBookingRecordsHandler admin.QueryBookingRecordsHandler
 	// UsersQueryCalendarAvailabilityHandler sets the operation handler for the query calendar availability operation
 	UsersQueryCalendarAvailabilityHandler users.QueryCalendarAvailabilityHandler
+	// OperationsopsRecordOperationalJobCallbackHandler sets the operation handler for the record operational job callback operation
+	OperationsopsRecordOperationalJobCallbackHandler operationsops.RecordOperationalJobCallbackHandler
 	// AdminReplaceBookingHandler sets the operation handler for the replace booking operation
 	AdminReplaceBookingHandler admin.ReplaceBookingHandler
 	// AdminReplaceBookingsHandler sets the operation handler for the replace bookings operation
@@ -508,6 +514,9 @@ func (o *ServeAPI) Validate() error {
 	}
 	if o.UsersQueryCalendarAvailabilityHandler == nil {
 		unregistered = append(unregistered, "users.QueryCalendarAvailabilityHandler")
+	}
+	if o.OperationsopsRecordOperationalJobCallbackHandler == nil {
+		unregistered = append(unregistered, "operationsops.RecordOperationalJobCallbackHandler")
 	}
 	if o.AdminReplaceBookingHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceBookingHandler")
@@ -775,6 +784,10 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/calendar/availability"] = users.NewQueryCalendarAvailability(o.context, o.UsersQueryCalendarAvailabilityHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/operations/jobs/{job_id}/callbacks"] = operationsops.NewRecordOperationalJobCallback(o.context, o.OperationsopsRecordOperationalJobCallbackHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

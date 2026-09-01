@@ -12,6 +12,7 @@ import (
 
 	"github.com/practable/book/internal/serve/restapi/operations"
 	"github.com/practable/book/internal/serve/restapi/operations/admin"
+	"github.com/practable/book/internal/serve/restapi/operations/operationsops"
 	"github.com/practable/book/internal/serve/restapi/operations/users"
 )
 
@@ -217,6 +218,11 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 	if api.UsersQueryCalendarAvailabilityHandler == nil {
 		api.UsersQueryCalendarAvailabilityHandler = users.QueryCalendarAvailabilityHandlerFunc(func(params users.QueryCalendarAvailabilityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.QueryCalendarAvailability has not yet been implemented")
+		})
+	}
+	if api.OperationsopsRecordOperationalJobCallbackHandler == nil {
+		api.OperationsopsRecordOperationalJobCallbackHandler = operationsops.RecordOperationalJobCallbackHandlerFunc(func(params operationsops.RecordOperationalJobCallbackParams) middleware.Responder {
+			return middleware.NotImplemented("operation operationsops.RecordOperationalJobCallback has not yet been implemented")
 		})
 	}
 	if api.AdminReplaceBookingHandler == nil {

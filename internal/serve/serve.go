@@ -3,7 +3,6 @@ package serve
 
 import (
 	"context"
-	"flag"
 	"net/http"
 
 	"github.com/go-openapi/loads"
@@ -38,12 +37,6 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	//create new service API
 	api := operations.NewServeAPI(swaggerSpec)
 	server := restapi.NewServer(api)
-	server.WrapHandler(func(next http.Handler) http.Handler {
-		return operationsCallbackMiddleware(config, next)
-	})
-
-	//parse flags
-	flag.Parse()
 
 	// set the port this service will run on
 	server.Port = config.Port
@@ -100,6 +93,14 @@ func API(ctx context.Context, config config.ServerConfig, cancelOthers func()) {
 	api.UsersQueryCalendarAvailabilityHandler = users.QueryCalendarAvailabilityHandlerFunc(queryCalendarAvailabilityHandler(config))
 	api.UsersRescheduleCalendarBookingHandler = users.RescheduleCalendarBookingHandlerFunc(rescheduleCalendarBookingHandler(config))
 	api.UsersUniqueNameHandler = users.UniqueNameHandlerFunc(uniqueNameHandler(config))
+
+	// NewServer defers generated handler construction. Build it only after all
+	// operation handlers are installed, then place the HMAC-only callback route
+	// in front of the generated public API.
+	server.SetAPI(api)
+	server.WrapHandler(func(next http.Handler) http.Handler {
+		return operationsCallbackMiddleware(config, next)
+	})
 
 	c := make(chan struct{})
 

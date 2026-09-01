@@ -22,6 +22,10 @@ the runtime role afterward.
 
 ## Local setup and tests
 
+Operational job and webhook tables are installed by migration 0009. Their
+service configuration and recovery semantics are documented in
+[Operational job webhooks](operational-webhooks.md).
+
 A disposable local instance can be started with Docker (choose your own local
 password):
 
