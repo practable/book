@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Practable booking API reference UI</title>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;color:#25374a;background:#f4f7f9}*{box-sizing:border-box}body{margin:0}header{height:64px;padding:0 24px;background:#fff;border-bottom:1px solid #dce3e9;display:flex;align-items:center;justify-content:space-between}.brand{font-size:20px;color:#40566d}.tabs{display:flex;gap:8px}.tabs button,.button{border:1px solid #b6c5d0;background:#fff;border-radius:7px;padding:8px 12px;color:inherit;cursor:pointer}.tabs button.active,.button.primary{background:#2d719f;color:#fff;border-color:#2d719f}.button.danger{color:#a33b34;border-color:#d49b96}main{max-width:1180px;margin:auto;padding:24px}.panel{display:none}.panel.active{display:block}.card{background:#fff;border:1px solid #dce3e9;border-radius:10px;padding:16px;margin-bottom:16px}.settings{display:grid;grid-template-columns:2fr 2fr 1fr 1fr auto;gap:10px;align-items:end}label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#687b8c}input,select{width:100%;padding:8px;border:1px solid #cbd5dd;border-radius:7px;background:#fff;color:#25374a}.status{padding:10px 12px;border-radius:7px;background:#e8eef2;margin:12px 0}.status.error{background:#f8deda;color:#9d302b}.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.tile{padding:0;overflow:hidden;text-align:left;cursor:pointer}.tile img{width:100%;height:125px;object-fit:cover;background:#e8eef2}.tile-body{padding:14px}.muted{color:#687b8c;font-size:13px}.calendar{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:6px}.band{border:0;border-radius:6px;padding:12px 6px;cursor:pointer}.band.good{background:#d8f1e2;color:#17643c}.band.limited{background:#ffedd2;color:#8f5100}.band.none{background:#f8deda;color:#9d302b}.row{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.row label{min-width:150px}.preview{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.metric strong{display:block;font-size:24px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px;border-bottom:1px solid #e4e9ed;font-size:13px}.badge{padding:3px 7px;border-radius:999px;background:#e8eef2}.badge.good{background:#d8f1e2;color:#17643c}.badge.bad{background:#f8deda;color:#9d302b}.hidden{display:none!important}@media(max-width:760px){.settings{grid-template-columns:1fr}.summary{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header><div class="brand">practable.io · book reference UI</div><div class="tabs"><button class="active" data-view="student">Student</button><button data-view="admin">Administrator</button></div></header>
+<main>
+  <section class="panel active" id="student">
+    <h1>Book an experiment</h1><p class="muted">A live reference client for the calendar API. Tokens remain in this browser only.</p>
+    <div class="card settings">
+      <label>Book service URL<input id="s-base"></label><label>Bearer token<input id="s-token" type="password"></label><label>Opaque user<input id="s-user"></label><label>Group<input id="s-group"></label><button class="button primary" id="s-connect">Load catalogue</button>
+    </div>
+    <div class="status" id="s-status">Enter a service URL, token, user and group.</div>
+    <div class="tiles" id="catalogue"></div>
+    <section class="card hidden" id="planner"><div class="row"><label>Experiment<select id="policy"></select></label><label>Resource choice<select id="resource"></select></label><label>Date<input id="date" type="date"></label><label>Duration<select id="duration"><option value="10m">10 minutes</option><option value="20m">20 minutes</option><option value="30m">30 minutes</option><option value="1h">1 hour</option></select></label><button class="button" id="availability">Refresh</button></div><h2>Choose a start time</h2><div class="calendar" id="bands"></div></section>
+    <section class="card preview hidden" id="preview"><div><h2 id="preview-title"></h2><div class="muted" id="preview-detail"></div></div><button class="button primary" id="book">Confirm booking</button></section>
+  </section>
+
+  <section class="panel" id="admin">
+    <h1>Operations dashboard</h1><p class="muted">Booking controls only; relay restart and health-check execution remain external.</p>
+    <div class="card settings"><label>Book service URL<input id="a-base"></label><label>Administrator bearer token<input id="a-token" type="password"></label><span></span><span></span><button class="button primary" id="a-connect">Load operations</button></div>
+    <div class="status" id="a-status">Enter the administrator connection details.</div>
+    <div class="summary"><div class="card metric"><span>Booking creation</span><strong id="a-lock">—</strong><button class="button" id="a-toggle">Pause</button></div><div class="card metric"><span>Resources available</span><strong id="a-resources">—</strong></div><div class="card metric"><span>Current bookings</span><strong id="a-bookings">—</strong></div></div>
+    <div class="card"><div class="row"><label>Search resources<input id="a-search"></label><label>Status<select id="a-filter"><option value="">All</option><option value="available">Available</option><option value="unavailable">Unavailable</option></select></label></div><div class="table-wrap"><table><thead><tr><th>Resource</th><th>Class/properties</th><th>Status</th><th>Reason</th><th>Action</th></tr></thead><tbody id="a-resource-rows"></tbody></table></div></div>
+    <div class="card"><div class="row"><label>Booking resource<input id="a-booking-resource"></label><label>State<select id="a-booking-state"><option>current</option><option>started</option><option>history</option><option>cancelled</option></select></label><button class="button" id="a-find">Find bookings</button></div><div class="table-wrap"><table><thead><tr><th>Reference</th><th>Resource</th><th>Time</th><th>Usage</th><th>Action</th></tr></thead><tbody id="a-booking-rows"></tbody></table></div></div>
+  </section>
+</main>
+<script type="module" src="./reference-ui.js"></script>
+</body>
+</html>

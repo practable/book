@@ -1,0 +1,175 @@
+import { BookApi, loadConnection, saveConnection } from "./book-api.js";
+
+const $ = id => document.getElementById(id);
+const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, character => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[character]);
+const durationMs = value => ({"10m":600000,"20m":1200000,"30m":1800000,"1h":3600000})[value] || 600000;
+const setStatus = (element, message, error = false) => { element.textContent = message; element.classList.toggle("error", error); };
+const localDate = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+const formatTime = value => new Intl.DateTimeFormat(undefined,{weekday:"short",hour:"2-digit",minute:"2-digit"}).format(new Date(value));
+
+document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => {
+  document.querySelectorAll("[data-view]").forEach(candidate => candidate.classList.toggle("active", candidate === button));
+  document.querySelectorAll(".panel").forEach(panel => panel.classList.toggle("active", panel.id === button.dataset.view));
+}));
+
+const studentConnection = loadConnection("book.student");
+$("s-base").value = studentConnection.baseUrl;
+$("s-token").value = studentConnection.token;
+$("s-user").value = localStorage.getItem("book.student.user") || "";
+$("s-group").value = localStorage.getItem("book.student.group") || "";
+$("date").value = localDate(new Date());
+
+let studentApi;
+let catalogue = [];
+let selectedItem;
+let proposedRequest;
+
+function studentSelector() {
+  const resource = $("resource").value;
+  return { policy: $("policy").value, ...(resource ? { resource } : {}) };
+}
+
+function configurePlanner(item) {
+  selectedItem = item;
+  $("policy").innerHTML = catalogue.map(entry => `<option value="${escapeHTML(entry.policy)}">${escapeHTML(entry.description?.short || entry.policy)}</option>`).join("");
+  $("policy").value = item.policy;
+  renderResourceChoices(item);
+  if (item.recommended_duration) {
+    const matching = [...$("duration").options].find(option => option.value === item.recommended_duration);
+    if (matching) $("duration").value = matching.value;
+  }
+  $("planner").classList.remove("hidden");
+  $("preview").classList.add("hidden");
+  refreshAvailability();
+}
+
+function renderResourceChoices(item) {
+  $("resource").innerHTML = `<option value="">Any ${escapeHTML(item.description?.short || item.policy)}</option>` +
+    (item.resources || []).map(resource => `<option value="${escapeHTML(resource.name)}">Specific: ${escapeHTML(resource.name)}</option>`).join("");
+}
+
+$("policy").addEventListener("change", () => {
+  selectedItem = catalogue.find(item => item.policy === $("policy").value);
+  renderResourceChoices(selectedItem);
+  refreshAvailability();
+});
+
+$("s-connect").addEventListener("click", async () => {
+  const connection = { baseUrl: $("s-base").value.trim(), token: $("s-token").value.trim() };
+  saveConnection("book.student", connection);
+  localStorage.setItem("book.student.user", $("s-user").value.trim());
+  localStorage.setItem("book.student.group", $("s-group").value.trim());
+  studentApi = new BookApi(connection);
+  setStatus($("s-status"), "Loading catalogue…");
+  try {
+    catalogue = await studentApi.calendarCatalogue($("s-group").value.trim());
+    $("catalogue").innerHTML = catalogue.map((item,index) => `<button class="card tile" data-item="${index}">${item.description?.image || item.description?.thumb ? `<img src="${escapeHTML(item.description.image || item.description.thumb)}" alt="">` : ""}<div class="tile-body"><h2>${escapeHTML(item.description?.short || item.policy)}</h2><p class="muted">${escapeHTML(item.description?.long || item.description?.further || "Choose an available resource and time.")}</p><p>${item.resources?.length || 0} matching resources · suggested ${escapeHTML(item.recommended_duration || "policy duration")}</p></div></button>`).join("");
+    document.querySelectorAll("[data-item]").forEach(tile => tile.addEventListener("click", () => configurePlanner(catalogue[Number(tile.dataset.item)])));
+    setStatus($("s-status"), `${catalogue.length} experiment classes loaded.`);
+  } catch (error) { setStatus($("s-status"), error.message, true); }
+});
+
+async function refreshAvailability() {
+  if (!studentApi || !selectedItem) return;
+  const day = new Date(`${$("date").value}T00:00:00`);
+  const from = new Date(day); from.setHours(8);
+  const to = new Date(day); to.setHours(22);
+  const request = { user_name: $("s-user").value.trim(), selector: studentSelector(), from: from.toISOString(), to: to.toISOString(), duration: $("duration").value, resolution: "10m" };
+  setStatus($("s-status"), "Checking availability…");
+  try {
+    const bands = await studentApi.calendarAvailability(request);
+    $("bands").innerHTML = bands.map((band,index) => `<button class="band ${band.matching_resources > 2 ? "good" : band.matching_resources > 0 ? "limited" : "none"}" data-band="${index}" ${band.bookable ? "" : "disabled"}>${formatTime(band.start)}<br>${band.matching_resources} available</button>`).join("");
+    document.querySelectorAll("[data-band]").forEach(button => button.addEventListener("click", () => previewBand(bands[Number(button.dataset.band)])));
+    setStatus($("s-status"), "Availability is current; final creation is rechecked transactionally.");
+  } catch (error) { setStatus($("s-status"), error.message, true); }
+}
+
+async function previewBand(band) {
+  const start = new Date(band.start);
+  const end = new Date(start.getTime() + durationMs($("duration").value));
+  proposedRequest = { user_name: $("s-user").value.trim(), selector: studentSelector(), when: { start: start.toISOString(), end: end.toISOString() } };
+  try {
+    const preview = await studentApi.previewBooking(proposedRequest);
+    $("preview-title").textContent = `${formatTime(start)}–${new Intl.DateTimeFormat(undefined,{hour:"2-digit",minute:"2-digit"}).format(end)}`;
+    $("preview-detail").textContent = preview.bookable ? `${preview.matching_resources.length} possible resources · usage after booking ${preview.usage_after}` : `Cannot book: ${(preview.reasons || []).join(", ")}`;
+    $("book").disabled = !preview.bookable;
+    $("preview").classList.remove("hidden");
+  } catch (error) { setStatus($("s-status"), error.message, true); }
+}
+
+$("availability").addEventListener("click", refreshAvailability);
+$("resource").addEventListener("change", refreshAvailability);
+$("date").addEventListener("change", refreshAvailability);
+$("duration").addEventListener("change", refreshAvailability);
+$("book").addEventListener("click", async () => {
+  try {
+    const booking = await studentApi.createBooking(proposedRequest);
+    setStatus($("s-status"), `Booked ${booking.name} on ${booking.slot}. Save this reference.`);
+    $("preview").classList.add("hidden");
+    await refreshAvailability();
+  } catch (error) { setStatus($("s-status"), error.message, true); }
+});
+
+const adminConnection = loadConnection("book.admin");
+$("a-base").value = adminConnection.baseUrl;
+$("a-token").value = adminConnection.token;
+let adminApi;
+let operations;
+let resourceMetadata = {};
+
+async function loadOperations() {
+  operations = await adminApi.operationalStatus();
+  resourceMetadata = await adminApi.resources();
+  const statuses = Object.entries(operations.resources || {});
+  $("a-lock").textContent = operations.status.locked ? "Paused" : "Open";
+  $("a-toggle").textContent = operations.status.locked ? "Resume" : "Pause";
+  $("a-resources").textContent = `${statuses.filter(([,status]) => status.available).length}/${statuses.length}`;
+  $("a-bookings").textContent = operations.status.bookings;
+  renderResources(statuses);
+  setStatus($("a-status"), `Manifest v${operations.manifest_version}; refreshed ${new Date().toLocaleTimeString()}.`);
+}
+
+function renderResources(entries = Object.entries(operations?.resources || {})) {
+  const search = $("a-search").value.toLowerCase();
+  const filter = $("a-filter").value;
+  $("a-resource-rows").innerHTML = entries.filter(([name,status]) => (!search || name.toLowerCase().includes(search)) && (!filter || (filter === "available") === status.available)).map(([name,status]) => {
+    const metadata = resourceMetadata[name] || {};
+    const details = [metadata.class, ...Object.entries(metadata.properties || {}).map(([key,value]) => `${key}=${value}`)].filter(Boolean).join(" · ");
+    return `<tr><td>${escapeHTML(name)}</td><td class="muted">${escapeHTML(details)}</td><td><span class="badge ${status.available ? "good" : "bad"}">${status.available ? "Available" : "Unavailable"}</span></td><td>${escapeHTML(status.reason)}</td><td><button class="button" data-resource-toggle="${escapeHTML(name)}">${status.available ? "Suspend" : "Restore"}</button></td></tr>`;
+  }).join("");
+  document.querySelectorAll("[data-resource-toggle]").forEach(button => button.addEventListener("click", async () => {
+    const name = button.dataset.resourceToggle;
+    const current = operations.resources[name];
+    const reason = current.available ? prompt(`Reason for suspending ${name}:`, "Maintenance") : "Restored after maintenance";
+    if (reason === null) return;
+    try { await adminApi.setResourceAvailable(name, !current.available, reason); await loadOperations(); } catch (error) { setStatus($("a-status"), error.message, true); }
+  }));
+}
+
+$("a-connect").addEventListener("click", async () => {
+  const connection = { baseUrl: $("a-base").value.trim(), token: $("a-token").value.trim() };
+  saveConnection("book.admin", connection); adminApi = new BookApi(connection);
+  try { await loadOperations(); await findBookings(); } catch (error) { setStatus($("a-status"), error.message, true); }
+});
+$("a-search").addEventListener("input", () => renderResources());
+$("a-filter").addEventListener("change", () => renderResources());
+$("a-toggle").addEventListener("click", async () => {
+  const paused = !operations.status.locked;
+  const message = prompt(paused ? "Message shown while booking creation is paused:" : "Welcome message after resuming:", operations.status.message || "");
+  if (message === null) return;
+  try { await adminApi.setMaintenance(paused, message); await loadOperations(); } catch (error) { setStatus($("a-status"), error.message, true); }
+});
+
+async function findBookings() {
+  const records = await adminApi.bookingRecords({ resource: $("a-booking-resource").value.trim(), state: $("a-booking-state").value, limit: 200 });
+  $("a-booking-rows").innerHTML = records.map(record => `<tr><td>${escapeHTML(record.booking.name)}</td><td>${escapeHTML(record.resource)}</td><td>${formatTime(record.booking.when.start)}–${new Intl.DateTimeFormat(undefined,{hour:"2-digit",minute:"2-digit"}).format(new Date(record.booking.when.end))}</td><td>${escapeHTML(record.actual_usage)}</td><td><button class="button" data-audit="${escapeHTML(record.booking.name)}">Audit</button> <button class="button danger" data-cancel="${escapeHTML(record.booking.name)}">Cancel</button></td></tr>`).join("");
+  document.querySelectorAll("[data-audit]").forEach(button => button.addEventListener("click", async () => {
+    try { const events = await adminApi.bookingEvents(button.dataset.audit); alert(events.map(event => `${event.occurred_at}  ${event.type}  ${event.actor}`).join("\n")); } catch (error) { setStatus($("a-status"), error.message, true); }
+  }));
+  document.querySelectorAll("[data-cancel]").forEach(button => button.addEventListener("click", async () => {
+    const reason = prompt(`Operational reason for cancelling ${button.dataset.cancel}:`, "Urgent equipment maintenance");
+    if (!reason) return;
+    try { await adminApi.cancelWithOverride(button.dataset.cancel, reason); await findBookings(); await loadOperations(); } catch (error) { setStatus($("a-status"), error.message, true); }
+  }));
+}
+$("a-find").addEventListener("click", () => findBookings().catch(error => setStatus($("a-status"), error.message, true)));
