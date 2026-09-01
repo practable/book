@@ -626,12 +626,22 @@ func (r *Repository) CancelBooking(ctx context.Context, name string, at time.Tim
 		return store.PersistentBooking{}, err
 	}
 	var rowID int64
-	if err := tx.QueryRow(ctx, `SELECT row_id FROM public.bookings
-		WHERE name=$1 AND collection='live' AND NOT superseded FOR UPDATE`, name).Scan(&rowID); err != nil {
+	var started bool
+	var endsAt time.Time
+	if err := tx.QueryRow(ctx, `SELECT row_id,started,ends_at FROM public.bookings
+		WHERE name=$1 AND collection='live' AND NOT superseded FOR UPDATE`, name).Scan(&rowID, &started, &endsAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return store.PersistentBooking{}, store.ErrPersistentNotFound
 		}
 		return store.PersistentBooking{}, err
+	}
+	if started {
+		if _, err := tx.Exec(ctx, `INSERT INTO public.relay_revocations
+			(booking_row_id, booking_name, expires_at, expires_at_ns, revoked_by)
+			VALUES($1,$2,$3,$4,$5) ON CONFLICT (booking_row_id) DO NOTHING`,
+			rowID, name, endsAt.UTC(), endsAt.UnixNano(), actor); err != nil {
+			return store.PersistentBooking{}, err
+		}
 	}
 	if err := supersedeHistoryName(ctx, tx, name, at, actor); err != nil {
 		return store.PersistentBooking{}, err

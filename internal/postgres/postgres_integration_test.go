@@ -27,7 +27,7 @@ func integrationRepository(t *testing.T) *Repository {
 	repository, err := Open(context.Background(), url, 8, 10*time.Second)
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(),
-		"TRUNCATE public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
+		"TRUNCATE public.relay_revocations, public.booking_events, public.booking_replacements, public.bookings, public.user_groups, public.resource_availability, public.slot_availability, public.service_state, public.active_manifest, public.manifest_versions RESTART IDENTITY")
 	require.NoError(t, err)
 	_, err = repository.pool.Exec(context.Background(), "INSERT INTO public.service_state(singleton,updated_at_ns) VALUES(true,0)")
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 7, versions)
+	require.Equal(t, 8, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
