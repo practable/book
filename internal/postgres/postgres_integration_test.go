@@ -252,7 +252,7 @@ func TestActivationCallbacksAdvanceStagesRetryAndStartBooking(t *testing.T) {
 
 	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-accepted-2", JobID: secondJob, State: "accepted", At: now.Add(2 * time.Second)}, "hash-accepted-2")
 	require.NoError(t, err)
-	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-failed-2", JobID: secondJob, State: "failed", At: now.Add(3 * time.Second), Error: "not_ready"}, "hash-failed-2")
+	_, _, err = repository.ApplyCallback(ctx, operations.Callback{DeliveryID: "advance-failed-2", JobID: secondJob, State: "failed", At: now.Add(3 * time.Second), Code: "not_ready", Error: "camera stream has not produced a frame"}, "hash-failed-2")
 	require.NoError(t, err)
 	run, err = repository.GetActivation(ctx, run.ID)
 	require.NoError(t, err)

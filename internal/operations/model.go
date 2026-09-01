@@ -43,6 +43,7 @@ type Callback struct {
 	JobID      string
 	State      string
 	At         time.Time
+	Code       string
 	Error      string
 }
 

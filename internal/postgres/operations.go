@@ -660,6 +660,10 @@ func (r *Repository) ApplyCallback(ctx context.Context, callback operations.Call
 }
 
 func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Job, callback operations.Callback, runID string, stageIndex int) error {
+	code := callback.Code
+	if code == "" {
+		code = callback.Error
+	}
 	if callback.State == "accepted" || callback.State == "running" {
 		_, err := tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state=$3,updated_at=$4 WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex, callback.State, callback.At.UTC())
 		return err
@@ -710,8 +714,8 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 		return err
 	}
 	retryable := callback.State == "failed" && len(retryCodes) == 0
-	for _, code := range retryCodes {
-		if code == callback.Error {
+	for _, retryCode := range retryCodes {
+		if retryCode == code {
 			retryable = true
 		}
 	}
@@ -732,13 +736,13 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 	if terminal == "failed" {
 		terminal = "failed"
 	}
-	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state=$3,last_error_code=$4,last_error=$4,completed_at=$5,updated_at=$5 WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex, callback.State, callback.Error, callback.At.UTC())
+	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_stages SET state=$3,last_error_code=$4,last_error=$5,completed_at=$6,updated_at=$6 WHERE run_id=$1 AND stage_index=$2`, runID, stageIndex, callback.State, code, callback.Error, callback.At.UTC())
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET state=$2,failure_code=$3,failure_message=$3,
-		failure_guidance=s.failure_guidance,completed_at=$4,updated_at=$4 FROM public.booking_activation_stages s
-		WHERE r.run_id=$1 AND s.run_id=r.run_id AND s.stage_index=$5`, runID, terminal, callback.Error, callback.At.UTC(), stageIndex)
+	_, err = tx.Exec(ctx, `UPDATE public.booking_activation_runs r SET state=$2,failure_code=$3,failure_message=$4,
+		failure_guidance=s.failure_guidance,completed_at=$5,updated_at=$5 FROM public.booking_activation_stages s
+		WHERE r.run_id=$1 AND s.run_id=r.run_id AND s.stage_index=$6`, runID, terminal, code, callback.Error, callback.At.UTC(), stageIndex)
 	return err
 }
 

@@ -3504,6 +3504,10 @@ func init() {
           "type": "string",
           "format": "date-time"
         },
+        "code": {
+          "description": "Stable machine-readable result or failure code",
+          "type": "string"
+        },
         "error": {
           "type": "string"
         },
@@ -8549,6 +8553,10 @@ func init() {
         "at": {
           "type": "string",
           "format": "date-time"
+        },
+        "code": {
+          "description": "Stable machine-readable result or failure code",
+          "type": "string"
         },
         "error": {
           "type": "string"

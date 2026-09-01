@@ -25,6 +25,9 @@ type OperationalJobCallback struct {
 	// Format: date-time
 	At *strfmt.DateTime `json:"at"`
 
+	// Stable machine-readable result or failure code
+	Code string `json:"code,omitempty"`
+
 	// error
 	Error string `json:"error,omitempty"`
 

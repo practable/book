@@ -1505,6 +1505,7 @@ definitions:
       job_id: {type: string}
       state: {type: string, enum: [accepted, running, succeeded, failed, cancelled, expired]}
       at: {type: string, format: date-time}
+      code: {type: string, description: Stable machine-readable result or failure code}
       error: {type: string}
     required: [version, job_id, state, at]
 

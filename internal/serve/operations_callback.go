@@ -72,7 +72,7 @@ func operationsCallbackMiddleware(config serverconfig.ServerConfig, next http.Ha
 		hash := sha256.Sum256(body)
 		job, duplicate, err := config.OperationsRepository.ApplyCallback(r.Context(), operational.Callback{
 			DeliveryID: r.Header.Get(webhook.HeaderDeliveryID), JobID: jobID,
-			State: payload.State, At: payload.At.UTC(), Error: payload.Error,
+			State: payload.State, At: payload.At.UTC(), Code: payload.Code, Error: payload.Error,
 		}, hex.EncodeToString(hash[:]))
 		switch {
 		case errors.Is(err, operational.ErrNotFound):

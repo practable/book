@@ -23,5 +23,6 @@ type CallbackPayload struct {
 	JobID   string    `json:"job_id"`
 	State   string    `json:"state"`
 	At      time.Time `json:"at"`
+	Code    string    `json:"code,omitempty"`
 	Error   string    `json:"error,omitempty"`
 }
