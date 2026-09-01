@@ -88,6 +88,24 @@ type ResourceHold struct {
 	HeldBy    string
 }
 
+type ResourceReleaseState struct {
+	Resource        string
+	State           string
+	RequiredStreams []string
+	FailingStreams  []string
+	RequestedAt     time.Time
+	RequestedBy     string
+	ManifestVersion int64
+	OverrideReason  string
+	ReleasedAt      *time.Time
+}
+
+type ResourceReleaseRepository interface {
+	RequestVerifiedResourceRelease(context.Context, string, []string, string, int64, time.Time) (ResourceReleaseState, error)
+	OverrideResourceRelease(context.Context, string, []string, []string, string, string, int64, time.Time) (ResourceReleaseState, error)
+	ListResourceReleaseStates(context.Context) ([]ResourceReleaseState, error)
+}
+
 type ResourceHoldRepository interface {
 	ListResourceHolds(context.Context) ([]ResourceHold, error)
 	SetResourceAvailabilityBy(context.Context, string, bool, string, string, int64) error
