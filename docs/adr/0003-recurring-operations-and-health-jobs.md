@@ -113,6 +113,40 @@ and retry behavior must be explicit before this path is implemented.
 The current manifest's resource `tests` list is treated as a reference to
 approved test definitions, not executable code or arbitrary URLs.
 
+### Deferred video safety-audit access
+
+Safety monitoring is a separate capability from booking, maintenance, and
+health-check access. An appropriately scoped audit client may request a
+short-lived, read-only grant for any configured video stream even when it does
+not own the current booking and regardless of resource or slot availability.
+It gains no data, command, cancellation, manifest-edit, or technician-release
+authority. Audit viewing does not consume booking capacity or user usage.
+
+A student-session-start event may trigger an idempotent request for monitoring,
+but a webhook is only a trigger: the central authority authenticates the
+caller, checks its dedicated scope and policy, resolves the stream from the
+active manifest, and issues the relay grant. Grants have a narrow audience,
+explicit resource and stream, reason or trigger reference, issued and expiry
+times, and a maximum lifetime. They end automatically with the monitored
+session or earlier revocation and are not recoverable merely from possession of
+a booking token.
+
+The database retains an append-only audit of requests, grants, denials,
+connections, revocations, actor/client identity, purpose, and correlation with
+the student session. It should record viewing metadata rather than video
+content unless a separately approved retention policy explicitly requires
+recording. Relay enforcement must remain effective across booking-service and
+relay restarts. Rate limits, tightly controlled service credentials, key
+rotation, and prominent operational indication of active monitoring are part
+of the design; user notice, staff authorization procedure, retention,
+subject-access handling, and emergency access require an approved privacy and
+online-safety policy before implementation.
+
+This ADR records a possible technical control, not a conclusion that universal
+live monitoring is required by the Online Safety Act or that the service is in
+scope. That determination and the proportionality of monitoring must follow the
+service's documented risk assessment and current regulatory/privacy advice.
+
 ### Desired and observed resource state
 
 The authority records desired operational state separately from observed state.
@@ -197,6 +231,7 @@ Finite weekly operational schedules with explicit conflict recording are
 implemented using the same reservation, job, and outbox lifecycle.
 Operational-state schedules, flexible conflict windows, health policy,
 charging, organisation accounts, and block booking remain deferred.
+Video safety-audit grants and relay enforcement are also deferred.
 
 ## Related decisions
 
