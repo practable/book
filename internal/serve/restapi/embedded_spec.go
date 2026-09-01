@@ -43,6 +43,52 @@ func init() {
   "host": "book.practable.io",
   "basePath": "/api/v1",
   "paths": {
+    "/admin/booking-overrides/{booking_name}/cancel": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Cancels an eligible booking with a mandatory operational reason. Requires booking:booking-override or booking:admin.",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Cancel a booking for urgent maintenance",
+        "operationId": "OverrideCancelBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "reason",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/bookings": {
       "get": {
         "security": [
@@ -205,6 +251,66 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/BookingEdit"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/maintenance/bookings": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Creates a resource-constrained booking for a technician. It may use suspended equipment but never overlaps any existing booking. Requires booking:maintenance or booking:admin.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create a maintenance booking",
+        "operationId": "MakeMaintenanceBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "slot_name",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "to",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Booking"
             }
           },
           "401": {
@@ -761,6 +867,38 @@ func init() {
           },
           "404": {
             "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/admin/usage": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns restart-safe actual use derived from booking activation, cancellation and end timestamps. Live bookings accrue to the report time.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get actual equipment usage",
+        "operationId": "GetUsageSummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UsageSummary"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
           },
           "500": {
             "$ref": "#/responses/InternalError"
@@ -1643,6 +1781,10 @@ func init() {
           "type": "string",
           "example": "auto-grace-expired"
         },
+        "maintenance": {
+          "description": "operator-only booking allowed to take up a suspended resource",
+          "type": "boolean"
+        },
         "name": {
           "description": "unique name of the booking",
           "type": "string"
@@ -2491,6 +2633,28 @@ func init() {
         }
       }
     },
+    "UsageSummary": {
+      "description": "aggregate actual equipment use derived from booking lifecycle timestamps",
+      "type": "object",
+      "required": [
+        "actual_usage",
+        "started_bookings",
+        "completed_bookings"
+      ],
+      "properties": {
+        "actual_usage": {
+          "type": "string"
+        },
+        "completed_bookings": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "started_bookings": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
     "User": {
       "type": "object",
       "properties": {
@@ -2632,6 +2796,64 @@ func init() {
   "host": "book.practable.io",
   "basePath": "/api/v1",
   "paths": {
+    "/admin/booking-overrides/{booking_name}/cancel": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Cancels an eligible booking with a mandatory operational reason. Requires booking:booking-override or booking:admin.",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Cancel a booking for urgent maintenance",
+        "operationId": "OverrideCancelBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "booking_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "reason",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/admin/bookings": {
       "get": {
         "security": [
@@ -2821,6 +3043,78 @@ func init() {
             "description": "OK",
             "schema": {
               "$ref": "#/definitions/BookingEdit"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "404": {
+            "description": "The specified resource was not found",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "409": {
+            "description": "The booking was changed, started, or conflicts with the proposed replacement",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/admin/maintenance/bookings": {
+      "post": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Creates a resource-constrained booking for a technician. It may use suspended equipment but never overlaps any existing booking. Requires booking:maintenance or booking:admin.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create a maintenance booking",
+        "operationId": "MakeMaintenanceBooking",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "slot_name",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "from",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "format": "date-time",
+            "name": "to",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/Booking"
             }
           },
           "401": {
@@ -3513,6 +3807,44 @@ func init() {
         }
       }
     },
+    "/admin/usage": {
+      "get": {
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Returns restart-safe actual use derived from booking activation, cancellation and end timestamps. Live bookings accrue to the report time.",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get actual equipment usage",
+        "operationId": "GetUsageSummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/UsageSummary"
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          },
+          "500": {
+            "description": "Internal Error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
     "/admin/users": {
       "get": {
         "security": [
@@ -4529,6 +4861,10 @@ func init() {
           "type": "string",
           "example": "auto-grace-expired"
         },
+        "maintenance": {
+          "description": "operator-only booking allowed to take up a suspended resource",
+          "type": "boolean"
+        },
         "name": {
           "description": "unique name of the booking",
           "type": "string"
@@ -5374,6 +5710,28 @@ func init() {
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "UsageSummary": {
+      "description": "aggregate actual equipment use derived from booking lifecycle timestamps",
+      "type": "object",
+      "required": [
+        "actual_usage",
+        "started_bookings",
+        "completed_bookings"
+      ],
+      "properties": {
+        "actual_usage": {
+          "type": "string"
+        },
+        "completed_bookings": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "started_bookings": {
+          "type": "integer",
+          "format": "int64"
         }
       }
     },

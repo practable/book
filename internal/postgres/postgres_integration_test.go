@@ -61,7 +61,7 @@ func TestMigrationsFromEmptyDatabase(t *testing.T) {
 	var versions int
 	require.NoError(t, repository.pool.QueryRow(ctx,
 		"SELECT count(*) FROM public.schema_migrations").Scan(&versions))
-	require.Equal(t, 6, versions)
+	require.Equal(t, 7, versions)
 	var constraintExists bool
 	require.NoError(t, repository.pool.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM pg_constraint WHERE conname='bookings_no_resource_overlap')`).Scan(&constraintExists))
@@ -227,6 +227,33 @@ func TestAvailabilitySuspensionsAreDurableSharedAndSlotScoped(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, state.ResourceAvailability["r-a"].Available)
 	require.False(t, state.SlotAvailability["sl-a"].Available)
+}
+
+func TestMaintenanceBookingSurvivesSuspensionAndRestart(t *testing.T) {
+	repository := integrationRepository(t)
+	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(manifestBytes, &manifest))
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	first := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(manifest))
+	require.NoError(t, first.SetResourceIsAvailable("r-a", false, "repair"))
+	when := interval.Interval{Start: now.Add(time.Hour), End: now.Add(2 * time.Hour)}
+	booking, err := first.MakeMaintenanceBooking("sl-a", "tech-a", when)
+	require.NoError(t, err)
+	require.True(t, booking.Maintenance)
+	_, err = first.MakeMaintenanceBooking("sl-a", "tech-b", when)
+	require.Error(t, err)
+
+	second := store.New().WithNow(func() time.Time { return when.Start })
+	require.NoError(t, second.WithRepository(repository))
+	recovered, err := second.GetBooking(booking.Name)
+	require.NoError(t, err)
+	require.True(t, recovered.Maintenance)
+	_, err = second.GetActivity(recovered)
+	require.NoError(t, err)
 }
 
 func TestRestartDurablyExpiresOverdueGraceBooking(t *testing.T) {

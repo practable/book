@@ -335,6 +335,97 @@ paths:
           $ref: '#/responses/Unauthorized'
         500:
           $ref: '#/responses/InternalError'
+
+  /admin/usage:
+    get:
+      summary: Get actual equipment usage
+      description: Returns restart-safe actual use derived from booking activation, cancellation and end timestamps. Live bookings accrue to the report time.
+      tags:
+      - admin
+      operationId: GetUsageSummary
+      produces:
+      - application/json
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/UsageSummary'
+        401:
+          $ref: '#/responses/Unauthorized'
+        500:
+          $ref: '#/responses/InternalError'
+
+  /admin/maintenance/bookings:
+    post:
+      summary: Create a maintenance booking
+      description: Creates a resource-constrained booking for a technician. It may use suspended equipment but never overlaps any existing booking. Requires booking:maintenance or booking:admin.
+      tags:
+      - admin
+      operationId: MakeMaintenanceBooking
+      produces:
+      - application/json
+      parameters:
+      - name: slot_name
+        in: query
+        required: true
+        type: string
+      - name: from
+        in: query
+        required: true
+        type: string
+        format: date-time
+      - name: to
+        in: query
+        required: true
+        type: string
+        format: date-time
+      security:
+        - Bearer: []
+      responses:
+        200:
+          description: OK
+          schema:
+            $ref: '#/definitions/Booking'
+        401:
+          $ref: '#/responses/Unauthorized'
+        409:
+          $ref: '#/responses/Conflict'
+        404:
+          $ref: '#/responses/NotFound'
+        500:
+          $ref: '#/responses/InternalError'
+
+  /admin/booking-overrides/{booking_name}/cancel:
+    post:
+      summary: Cancel a booking for urgent maintenance
+      description: Cancels an eligible booking with a mandatory operational reason. Requires booking:booking-override or booking:admin.
+      tags:
+      - admin
+      operationId: OverrideCancelBooking
+      parameters:
+      - name: booking_name
+        in: path
+        required: true
+        type: string
+      - name: reason
+        in: query
+        required: true
+        type: string
+      security:
+        - Bearer: []
+      responses:
+        204:
+          description: OK
+        401:
+          $ref: '#/responses/Unauthorized'
+        404:
+          $ref: '#/responses/NotFound'
+        409:
+          $ref: '#/responses/Conflict'
+        500:
+          $ref: '#/responses/InternalError'
     
       
   /admin/resources/{resource_name}:
@@ -1172,6 +1263,9 @@ definitions:
       name:
         description: unique name of the booking
         type: string
+      maintenance:
+        description: operator-only booking allowed to take up a suspended resource
+        type: boolean
       policy:
         description: policy under which the booking was made
         type: string
@@ -1681,6 +1775,23 @@ definitions:
     - status
     - resources
     - slots
+
+  UsageSummary:
+    description: aggregate actual equipment use derived from booking lifecycle timestamps
+    type: object
+    properties:
+      actual_usage:
+        type: string
+      started_bookings:
+        type: integer
+        format: int64
+      completed_bookings:
+        type: integer
+        format: int64
+    required:
+    - actual_usage
+    - started_bookings
+    - completed_bookings
 
   StoreStatusAdmin:
     type: object

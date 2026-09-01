@@ -56,6 +56,31 @@ func isAdmin(principal interface{}) (*lit.Token, error) {
 	return claims, nil
 }
 
+func hasAnyScope(principal interface{}, scopes ...string) (*lit.Token, error) {
+	claims, err := claimsCheck(principal)
+	if err != nil {
+		return nil, err
+	}
+	for _, granted := range claims.Scopes {
+		for _, wanted := range scopes {
+			if granted == wanted {
+				return claims, nil
+			}
+		}
+	}
+	return nil, errors.New("missing required booking scope")
+}
+
+// isMaintenanceOrAdmin authorizes narrowly scoped technicians without giving
+// them broad manifest or configuration administration.
+func isMaintenanceOrAdmin(principal interface{}) (*lit.Token, error) {
+	return hasAnyScope(principal, "booking:maintenance", "booking:admin")
+}
+
+func isOverrideOrAdmin(principal interface{}) (*lit.Token, error) {
+	return hasAnyScope(principal, "booking:booking-override", "booking:admin")
+}
+
 // isUser returns nil if token has booking:user scope, otherwise error
 func isUser(principal interface{}) (*lit.Token, error) {
 
@@ -108,6 +133,31 @@ func isAdminOrUser(principal interface{}) (bool, *lit.Token, error) {
 	}
 
 	return hasAdminScope, claims, nil
+}
+
+// isActivityCaller accepts ordinary users, admins, and maintenance operators.
+// The boolean is true only for administrators; maintenance operators must
+// still use a booking owned by their token subject.
+func isActivityCaller(principal interface{}) (bool, *lit.Token, error) {
+	claims, err := claimsCheck(principal)
+	if err != nil {
+		return false, nil, err
+	}
+	admin, user, maintenance := false, false, false
+	for _, scope := range claims.Scopes {
+		switch scope {
+		case "booking:admin":
+			admin = true
+		case "booking:user":
+			user = true
+		case "booking:maintenance":
+			maintenance = true
+		}
+	}
+	if !admin && !user && !maintenance {
+		return false, nil, errors.New("missing booking activity scope")
+	}
+	return admin, claims, nil
 }
 
 // ValidateHeader checks the bearer token.

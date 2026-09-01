@@ -451,7 +451,7 @@ func exportBookingsHandler(config config.ServerConfig) func(admin.ExportBookings
 func bookingToModel(booking store.Booking) *models.Booking {
 	model := &models.Booking{
 		Name: gog.Ptr(booking.Name), Policy: gog.Ptr(booking.Policy), Slot: gog.Ptr(booking.Slot), User: gog.Ptr(booking.User),
-		Cancelled: booking.Cancelled, Started: booking.Started, Unfulfilled: booking.Unfulfilled,
+		Cancelled: booking.Cancelled, Started: booking.Started, Unfulfilled: booking.Unfulfilled, Maintenance: booking.Maintenance,
 		When: gog.Ptr(models.Interval{Start: strfmt.DateTime(booking.When.Start), End: strfmt.DateTime(booking.When.End)}),
 	}
 	if !booking.CancelledAt.IsZero() {
@@ -482,7 +482,7 @@ func modelToReplacement(model *models.Booking) (store.Booking, error) {
 		return store.Booking{}, err
 	}
 	booking := store.Booking{Name: *model.Name, Policy: *model.Policy, Slot: *model.Slot, User: *model.User,
-		Cancelled: model.Cancelled, CancelledBy: model.CancelledBy, Started: model.Started, Unfulfilled: model.Unfulfilled,
+		Cancelled: model.Cancelled, CancelledBy: model.CancelledBy, Started: model.Started, Unfulfilled: model.Unfulfilled, Maintenance: model.Maintenance,
 		When: interval.Interval{Start: start, End: end}}
 	if !time.Time(model.CancelledAt).IsZero() {
 		booking.CancelledAt = time.Time(model.CancelledAt)
@@ -865,6 +865,66 @@ func getOperationalStatusHandler(config config.ServerConfig) func(admin.GetOpera
 		return admin.NewGetOperationalStatusOK().WithPayload(&models.OperationalStatus{
 			ManifestVersion: &version, Status: &status, Resources: resources, Slots: slots,
 		})
+	}
+}
+
+func getUsageSummaryHandler(config config.ServerConfig) func(admin.GetUsageSummaryParams, interface{}) middleware.Responder {
+	return func(params admin.GetUsageSummaryParams, principal interface{}) middleware.Responder {
+		if _, err := isAdmin(principal); err != nil {
+			code, message := "401", "no scope booking:admin"
+			return admin.NewGetUsageSummaryUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		summary := config.Store.GetUsageSummary()
+		actual := summary.ActualUsage.String()
+		return admin.NewGetUsageSummaryOK().WithPayload(&models.UsageSummary{
+			ActualUsage: &actual, StartedBookings: &summary.StartedBookings, CompletedBookings: &summary.CompletedBookings,
+		})
+	}
+}
+
+func makeMaintenanceBookingHandler(config config.ServerConfig) func(admin.MakeMaintenanceBookingParams, interface{}) middleware.Responder {
+	return func(params admin.MakeMaintenanceBookingParams, principal interface{}) middleware.Responder {
+		claims, err := isMaintenanceOrAdmin(principal)
+		if err != nil {
+			code, message := "401", "no scope booking:maintenance"
+			return admin.NewMakeMaintenanceBookingUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		booking, err := config.Store.MakeMaintenanceBooking(params.SlotName, claims.Subject, interval.Interval{
+			Start: time.Time(params.From), End: time.Time(params.To),
+		})
+		if err != nil {
+			code, message := "409", err.Error()
+			return admin.NewMakeMaintenanceBookingConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		return admin.NewMakeMaintenanceBookingOK().WithPayload(bookingToModel(booking))
+	}
+}
+
+func overrideCancelBookingHandler(config config.ServerConfig) func(admin.OverrideCancelBookingParams, interface{}) middleware.Responder {
+	return func(params admin.OverrideCancelBookingParams, principal interface{}) middleware.Responder {
+		claims, err := isOverrideOrAdmin(principal)
+		if err != nil {
+			code, message := "401", "no scope booking:booking-override"
+			return admin.NewOverrideCancelBookingUnauthorized().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		if strings.TrimSpace(params.Reason) == "" {
+			code, message := "409", "a cancellation reason is required"
+			return admin.NewOverrideCancelBookingConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		booking, err := config.Store.GetBooking(params.BookingName)
+		if err != nil {
+			code, message := "404", "booking not found"
+			return admin.NewOverrideCancelBookingNotFound().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		actor := claims.Subject
+		if actor == "" {
+			actor = "booking-override"
+		}
+		if err := config.Store.CancelBooking(booking, actor+": "+params.Reason); err != nil {
+			code, message := "409", err.Error()
+			return admin.NewOverrideCancelBookingConflict().WithPayload(&models.Error{Code: &code, Message: &message})
+		}
+		return admin.NewOverrideCancelBookingNoContent()
 	}
 }
 

@@ -697,7 +697,7 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 func getActivityHandler(config config.ServerConfig) func(users.GetActivityParams, interface{}) middleware.Responder {
 	return func(params users.GetActivityParams, principal interface{}) middleware.Responder {
 
-		isAdmin, claims, err := isAdminOrUser(principal)
+		isAdmin, claims, err := isActivityCaller(principal)
 
 		if err != nil {
 			c := "404"

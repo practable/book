@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	avl "github.com/practable/book/internal/trees/avltree"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/practable/book/internal/interval"
 )
@@ -73,6 +73,16 @@ func (d *Diary) SetAvailable(reason string) {
 // Request returns a booking, if it can be made
 // name must be specified
 func (d *Diary) Request(when interval.Interval, name string) error {
+	return d.request(when, name, true)
+}
+
+// RequestRegardlessAvailability reserves an interval while preserving all
+// overlap and name checks. It is for authorised maintenance only.
+func (d *Diary) RequestRegardlessAvailability(when interval.Interval, name string) error {
+	return d.request(when, name, false)
+}
+
+func (d *Diary) request(when interval.Interval, name string, requireAvailable bool) error {
 
 	if name == "" {
 		return errors.New("must not have empty name")
@@ -93,8 +103,10 @@ func (d *Diary) Request(when interval.Interval, name string) error {
 		}
 	}
 
-	if ok, msg := d.IsAvailable(); !ok {
-		return errors.New(msg)
+	if requireAvailable {
+		if ok, msg := d.IsAvailable(); !ok {
+			return errors.New(msg)
+		}
 	}
 
 	_, err = d.bookings.Put(when, name)

@@ -1166,6 +1166,34 @@ func TestMaintenancePausesOnlyNewBookingCreation(t *testing.T) {
 	require.Equal(t, message, s.Message)
 }
 
+func TestMaintenanceBookingUsesSuspendedResourceWithoutOverlapping(t *testing.T) {
+	s := New()
+	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	s.SetNow(func() time.Time { return now })
+	var m Manifest
+	require.NoError(t, yaml.Unmarshal(manifestYAML, &m))
+	require.NoError(t, s.ReplaceManifest(m))
+	require.NoError(t, s.SetResourceIsAvailable("r-a", false, "repair"))
+	when := interval.Interval{Start: now.Add(time.Hour), End: now.Add(2 * time.Hour)}
+	booking, err := s.MakeMaintenanceBooking("sl-a", "tech-a", when)
+	require.NoError(t, err)
+	require.True(t, booking.Maintenance)
+	_, err = s.MakeMaintenanceBooking("sl-a", "tech-b", when)
+	require.Error(t, err)
+	s.SetNow(func() time.Time { return when.Start })
+	_, err = s.GetActivity(booking)
+	require.NoError(t, err)
+}
+
+func TestActualUsageIsDerivedFromLifecycleTimes(t *testing.T) {
+	start := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
+	booking := Booking{StartedAt: start.Format(time.RFC3339Nano), When: interval.Interval{Start: start, End: start.Add(time.Hour)}}
+	require.Equal(t, 20*time.Minute, booking.ActualUsage(start.Add(20*time.Minute)))
+	booking.Cancelled = true
+	booking.CancelledAt = start.Add(35 * time.Minute)
+	require.Equal(t, 35*time.Minute, booking.ActualUsage(start.Add(90*time.Minute)))
+}
+
 func TestGetSlotAvailabilityWithNoBookings(t *testing.T) {
 
 	s := New()

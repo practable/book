@@ -113,8 +113,17 @@ func NewServeAPI(spec *loads.Document) *ServeAPI {
 		AdminGetSlotIsAvailableHandler: admin.GetSlotIsAvailableHandlerFunc(func(params admin.GetSlotIsAvailableParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.GetSlotIsAvailable has not yet been implemented")
 		}),
+		AdminGetUsageSummaryHandler: admin.GetUsageSummaryHandlerFunc(func(params admin.GetUsageSummaryParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetUsageSummary has not yet been implemented")
+		}),
 		UsersMakeBookingHandler: users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
+		}),
+		AdminMakeMaintenanceBookingHandler: admin.MakeMaintenanceBookingHandlerFunc(func(params admin.MakeMaintenanceBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.MakeMaintenanceBooking has not yet been implemented")
+		}),
+		AdminOverrideCancelBookingHandler: admin.OverrideCancelBookingHandlerFunc(func(params admin.OverrideCancelBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.OverrideCancelBooking has not yet been implemented")
 		}),
 		AdminReplaceBookingHandler: admin.ReplaceBookingHandlerFunc(func(params admin.ReplaceBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation admin.ReplaceBooking has not yet been implemented")
@@ -246,8 +255,14 @@ type ServeAPI struct {
 	AdminGetResourcesHandler admin.GetResourcesHandler
 	// AdminGetSlotIsAvailableHandler sets the operation handler for the get slot is available operation
 	AdminGetSlotIsAvailableHandler admin.GetSlotIsAvailableHandler
+	// AdminGetUsageSummaryHandler sets the operation handler for the get usage summary operation
+	AdminGetUsageSummaryHandler admin.GetUsageSummaryHandler
 	// UsersMakeBookingHandler sets the operation handler for the make booking operation
 	UsersMakeBookingHandler users.MakeBookingHandler
+	// AdminMakeMaintenanceBookingHandler sets the operation handler for the make maintenance booking operation
+	AdminMakeMaintenanceBookingHandler admin.MakeMaintenanceBookingHandler
+	// AdminOverrideCancelBookingHandler sets the operation handler for the override cancel booking operation
+	AdminOverrideCancelBookingHandler admin.OverrideCancelBookingHandler
 	// AdminReplaceBookingHandler sets the operation handler for the replace booking operation
 	AdminReplaceBookingHandler admin.ReplaceBookingHandler
 	// AdminReplaceBookingsHandler sets the operation handler for the replace bookings operation
@@ -421,8 +436,17 @@ func (o *ServeAPI) Validate() error {
 	if o.AdminGetSlotIsAvailableHandler == nil {
 		unregistered = append(unregistered, "admin.GetSlotIsAvailableHandler")
 	}
+	if o.AdminGetUsageSummaryHandler == nil {
+		unregistered = append(unregistered, "admin.GetUsageSummaryHandler")
+	}
 	if o.UsersMakeBookingHandler == nil {
 		unregistered = append(unregistered, "users.MakeBookingHandler")
+	}
+	if o.AdminMakeMaintenanceBookingHandler == nil {
+		unregistered = append(unregistered, "admin.MakeMaintenanceBookingHandler")
+	}
+	if o.AdminOverrideCancelBookingHandler == nil {
+		unregistered = append(unregistered, "admin.OverrideCancelBookingHandler")
 	}
 	if o.AdminReplaceBookingHandler == nil {
 		unregistered = append(unregistered, "admin.ReplaceBookingHandler")
@@ -643,10 +667,22 @@ func (o *ServeAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/admin/slots/{slot_name}"] = admin.NewGetSlotIsAvailable(o.context, o.AdminGetSlotIsAvailableHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/admin/usage"] = admin.NewGetUsageSummary(o.context, o.AdminGetUsageSummaryHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/slots/{slot_name}"] = users.NewMakeBooking(o.context, o.UsersMakeBookingHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/admin/maintenance/bookings"] = admin.NewMakeMaintenanceBooking(o.context, o.AdminMakeMaintenanceBookingHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/admin/booking-overrides/{booking_name}/cancel"] = admin.NewOverrideCancelBooking(o.context, o.AdminOverrideCancelBookingHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

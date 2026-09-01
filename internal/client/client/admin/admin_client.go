@@ -78,6 +78,26 @@ func WithContentTypeTextPlain(r *runtime.ClientOperation) {
 	r.ConsumesMediaTypes = []string{"text/plain"}
 }
 
+// WithAccept allows the client to force the Accept header
+// to negotiate a specific Producer from the server.
+//
+// You may use this option to set arbitrary extensions to your MIME media type.
+func WithAccept(mime string) ClientOption {
+	return func(r *runtime.ClientOperation) {
+		r.ProducesMediaTypes = []string{mime}
+	}
+}
+
+// WithAcceptApplicationJSON sets the Accept header to "application/json".
+func WithAcceptApplicationJSON(r *runtime.ClientOperation) {
+	r.ProducesMediaTypes = []string{"application/json"}
+}
+
+// WithAcceptTextPlain sets the Accept header to "text/plain".
+func WithAcceptTextPlain(r *runtime.ClientOperation) {
+	r.ProducesMediaTypes = []string{"text/plain"}
+}
+
 // ClientService is the interface for Client methods
 type ClientService interface {
 	CheckManifest(params *CheckManifestParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CheckManifestOK, *CheckManifestNoContent, error)
@@ -99,6 +119,12 @@ type ClientService interface {
 	GetResources(params *GetResourcesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetResourcesOK, error)
 
 	GetSlotIsAvailable(params *GetSlotIsAvailableParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetSlotIsAvailableOK, error)
+
+	GetUsageSummary(params *GetUsageSummaryParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetUsageSummaryOK, error)
+
+	MakeMaintenanceBooking(params *MakeMaintenanceBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeMaintenanceBookingOK, error)
+
+	OverrideCancelBooking(params *OverrideCancelBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*OverrideCancelBookingNoContent, error)
 
 	ReplaceBooking(params *ReplaceBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReplaceBookingOK, error)
 
@@ -527,6 +553,129 @@ func (a *Client) GetSlotIsAvailable(params *GetSlotIsAvailableParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for GetSlotIsAvailable: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+GetUsageSummary gets actual equipment usage
+
+Returns restart-safe actual use derived from booking activation, cancellation and end timestamps. Live bookings accrue to the report time.
+*/
+func (a *Client) GetUsageSummary(params *GetUsageSummaryParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetUsageSummaryOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetUsageSummaryParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "GetUsageSummary",
+		Method:             "GET",
+		PathPattern:        "/admin/usage",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &GetUsageSummaryReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetUsageSummaryOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for GetUsageSummary: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+MakeMaintenanceBooking creates a maintenance booking
+
+Creates a resource-constrained booking for a technician. It may use suspended equipment but never overlaps any existing booking. Requires booking:maintenance or booking:admin.
+*/
+func (a *Client) MakeMaintenanceBooking(params *MakeMaintenanceBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*MakeMaintenanceBookingOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewMakeMaintenanceBookingParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "MakeMaintenanceBooking",
+		Method:             "POST",
+		PathPattern:        "/admin/maintenance/bookings",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &MakeMaintenanceBookingReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*MakeMaintenanceBookingOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for MakeMaintenanceBooking: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+OverrideCancelBooking cancels a booking for urgent maintenance
+
+Cancels an eligible booking with a mandatory operational reason. Requires booking:booking-override or booking:admin.
+*/
+func (a *Client) OverrideCancelBooking(params *OverrideCancelBookingParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*OverrideCancelBookingNoContent, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewOverrideCancelBookingParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "OverrideCancelBooking",
+		Method:             "POST",
+		PathPattern:        "/admin/booking-overrides/{booking_name}/cancel",
+		ProducesMediaTypes: []string{"application/json", "text/plain"},
+		ConsumesMediaTypes: []string{"application/json", "text/plain"},
+		Schemes:            []string{"http"},
+		Params:             params,
+		Reader:             &OverrideCancelBookingReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*OverrideCancelBookingNoContent)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for OverrideCancelBooking: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

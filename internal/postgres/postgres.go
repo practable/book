@@ -239,16 +239,16 @@ type rowScanner interface{ Scan(...interface{}) error }
 func scanBooking(row rowScanner) (store.PersistentBooking, error) {
 	var revision int64
 	var name, collection, user, policy, slot, resource, cancelledBy, cancelledByText, startedAtText string
-	var constrained, unfulfilled, started, cancelled bool
+	var constrained, unfulfilled, started, cancelled, maintenance bool
 	var startsNS, endsNS, chargeNS int64
 	var startedNS, cancelledNS *int64
 	if err := row.Scan(&revision, &name, &collection, &user, &policy, &slot, &resource, &constrained,
 		&startsNS, &endsNS, &startedNS, &cancelledNS, &cancelledBy, &unfulfilled, &chargeNS,
-		&started, &startedAtText, &cancelled, &cancelledByText); err != nil {
+		&started, &startedAtText, &cancelled, &cancelledByText, &maintenance); err != nil {
 		return store.PersistentBooking{}, err
 	}
 	booking := store.Booking{Name: name, User: user, Policy: policy, Slot: slot,
-		Unfulfilled: unfulfilled, When: interval.Interval{Start: fromNS(startsNS), End: fromNS(endsNS)}}
+		Unfulfilled: unfulfilled, Maintenance: maintenance, When: interval.Interval{Start: fromNS(startsNS), End: fromNS(endsNS)}}
 	booking.Started = started
 	booking.StartedAt = startedAtText
 	if booking.StartedAt == "" && startedNS != nil {
@@ -281,8 +281,10 @@ func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBook
 	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
-	if err := assertAvailable(ctx, tx, request.Resource, request.Booking.Slot); err != nil {
-		return store.PersistentBooking{}, false, err
+	if !request.Maintenance {
+		if err := assertAvailable(ctx, tx, request.Resource, request.Booking.Slot); err != nil {
+			return store.PersistentBooking{}, false, err
+		}
 	}
 
 	row := tx.QueryRow(ctx, bookingSelect+` WHERE collection='live' AND NOT superseded
@@ -347,7 +349,7 @@ func (r *Repository) CreateBooking(ctx context.Context, request store.CreateBook
 const bookingSelect = `SELECT row_id, name, collection, user_name, policy_name, slot_name,
 	resource_name, resource_constrained, starts_ns, ends_ns, started_at_ns,
 	cancelled_at_ns, cancelled_by, unfulfilled, usage_charge_ns,
-	started, started_at_text, cancelled, cancelled_by_text FROM public.bookings`
+	started, started_at_text, cancelled, cancelled_by_text, maintenance FROM public.bookings`
 
 func (r *Repository) GetBooking(ctx context.Context, name string) (store.PersistentBooking, error) {
 	ctx, cancel := context.WithTimeout(ctx, r.operationTimeout)
@@ -364,7 +366,7 @@ func bookingMatchesRequest(persisted store.PersistentBooking, request store.Crea
 	b := persisted.Booking
 	r := request.Booking
 	return b.Name == r.Name && b.User == r.User && b.Policy == r.Policy && b.Slot == r.Slot &&
-		b.When.Start.Equal(r.When.Start) && b.When.End.Equal(r.When.End) &&
+		b.When.Start.Equal(r.When.Start) && b.When.End.Equal(r.When.End) && b.Maintenance == r.Maintenance &&
 		!b.Started && !b.Cancelled && !b.Unfulfilled &&
 		persisted.Resource == request.Resource && persisted.ResourceConstrained == request.ResourceConstrained
 }
@@ -421,8 +423,10 @@ func (r *Repository) ReplaceBooking(ctx context.Context, originalName string, ex
 	if err := assertManifestVersion(ctx, tx, request.ManifestVersion); err != nil {
 		return store.PersistentBooking{}, false, err
 	}
-	if err := assertAvailable(ctx, tx, request.Resource, request.Booking.Slot); err != nil {
-		return store.PersistentBooking{}, false, err
+	if !request.Maintenance {
+		if err := assertAvailable(ctx, tx, request.Resource, request.Booking.Slot); err != nil {
+			return store.PersistentBooking{}, false, err
+		}
 	}
 	var oldUser, oldPolicy, oldResource string
 	err = tx.QueryRow(ctx, `SELECT user_name,policy_name,resource_name FROM public.bookings
@@ -579,11 +583,11 @@ func insertBooking(ctx context.Context, tx pgx.Tx, request store.CreateBookingRe
 		startedAt, startedNS = parsed.UTC(), parsed.UnixNano()
 	}
 	err := tx.QueryRow(ctx, `INSERT INTO public.bookings
-		(name,collection,user_name,policy_name,slot_name,resource_name,resource_constrained,
+		(name,collection,user_name,policy_name,slot_name,resource_name,resource_constrained,maintenance,
 		 starts_at,ends_at,starts_ns,ends_ns,unfulfilled,usage_charge_ns,
 		 started,started_at_text,started_at,started_at_ns,cancelled,cancelled_at,cancelled_at_ns,cancelled_by,cancelled_by_text)
-		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING row_id`,
-		b.Name, collection, b.User, b.Policy, b.Slot, request.Resource, request.ResourceConstrained,
+		VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING row_id`,
+		b.Name, collection, b.User, b.Policy, b.Slot, request.Resource, request.ResourceConstrained, b.Maintenance,
 		b.When.Start.UTC(), b.When.End.UTC(), b.When.Start.UnixNano(), b.When.End.UnixNano(), b.Unfulfilled, charge.Nanoseconds(),
 		b.Started, b.StartedAt, startedAt, startedNS, b.Cancelled, cancelledAt, cancelledNS, databaseCancelledBy, b.CancelledBy).Scan(&rowID)
 	return rowID, err
@@ -667,17 +671,20 @@ func (r *Repository) StartBooking(ctx context.Context, name string, at time.Time
 	}
 	var rowID int64
 	var resource, slot string
+	var maintenance bool
 	var existing *int64
 	var alreadyStarted bool
-	if err := tx.QueryRow(ctx, `SELECT row_id,resource_name,slot_name,started,started_at_ns FROM public.bookings
-		WHERE name=$1 AND collection='live' AND NOT superseded FOR UPDATE`, name).Scan(&rowID, &resource, &slot, &alreadyStarted, &existing); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT row_id,resource_name,slot_name,started,started_at_ns,maintenance FROM public.bookings
+		WHERE name=$1 AND collection='live' AND NOT superseded FOR UPDATE`, name).Scan(&rowID, &resource, &slot, &alreadyStarted, &existing, &maintenance); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return store.PersistentBooking{}, store.ErrPersistentNotFound
 		}
 		return store.PersistentBooking{}, err
 	}
-	if err := assertAvailable(ctx, tx, resource, slot); err != nil {
-		return store.PersistentBooking{}, err
+	if !maintenance {
+		if err := assertAvailable(ctx, tx, resource, slot); err != nil {
+			return store.PersistentBooking{}, err
+		}
 	}
 	if !alreadyStarted {
 		if _, err := tx.Exec(ctx, "UPDATE public.bookings SET started=true,started_at_text=$2,started_at=$3,started_at_ns=$4,updated_at=clock_timestamp() WHERE row_id=$1", rowID, at.UTC().Format(time.RFC3339Nano), at.UTC(), at.UnixNano()); err != nil {

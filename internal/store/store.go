@@ -62,6 +62,9 @@ type Booking struct {
 	Group string `json:"group" yaml:"group"`
 	// booking unique reference
 	Name string `json:"name" yaml:"name"`
+	// Maintenance marks an operator-only booking. It never relaxes overlap
+	// protection; it only permits take-up while equipment is suspended.
+	Maintenance bool `json:"maintenance,omitempty" yaml:"maintenance,omitempty"`
 	// reference to policy it was booked under
 	Policy string `json:"policy" yaml:"policy"`
 	// slot name
@@ -81,6 +84,35 @@ type Booking struct {
 	UsageCharged time.Duration `json:"usage_charged" yaml:"usage_charged"`
 
 	When interval.Interval `json:"when" yaml:"when"`
+}
+
+// ActualUsage returns elapsed equipment use derived from lifecycle timestamps.
+// UsageCharged remains a separate policy/accounting value.
+func (b Booking) ActualUsage(asOf time.Time) time.Duration {
+	if b.StartedAt == "" {
+		return 0
+	}
+	started, err := time.Parse(time.RFC3339Nano, b.StartedAt)
+	if err != nil {
+		return 0
+	}
+	end := b.When.End
+	if b.Cancelled && !b.CancelledAt.IsZero() && b.CancelledAt.Before(end) {
+		end = b.CancelledAt
+	} else if !b.Cancelled && end.After(asOf) {
+		end = asOf
+	}
+	if !end.After(started) {
+		return 0
+	}
+	return end.Sub(started)
+}
+
+// UsageSummary is an administrator-facing aggregate of actual equipment time.
+type UsageSummary struct {
+	ActualUsage       time.Duration `json:"actual_usage" yaml:"actual_usage"`
+	StartedBookings   int64         `json:"started_bookings" yaml:"started_bookings"`
+	CompletedBookings int64         `json:"completed_bookings" yaml:"completed_bookings"`
 }
 
 // EditableBooking is the administrative envelope used for optimistic,
@@ -777,16 +809,22 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 
 	// Calculate the final usage charge before changing either durable or local
 	// state so any failure leaves the booking wholly active.
-	p, ok := s.Policies[booking.Policy]
-	if !ok {
-		return errors.New(msg + "could not find policy " + booking.Policy)
-	}
-	originalCharge := b.When.End.Sub(b.When.Start)
-	p, err := s.getPolicy(b.Policy)
-	if err != nil {
-		msg := "cannot cancel booking because cannot get policy: " + err.Error()
-		log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
-		return errors.New(msg)
+	p := Policy{EnforceUnlimitedUsers: false}
+	originalCharge := time.Duration(0)
+	if !b.Maintenance {
+		var ok bool
+		p, ok = s.Policies[booking.Policy]
+		if !ok {
+			return errors.New(msg + "could not find policy " + booking.Policy)
+		}
+		originalCharge = b.When.End.Sub(b.When.Start)
+		var err error
+		p, err = s.getPolicy(b.Policy)
+		if err != nil {
+			msg := "cannot cancel booking because cannot get policy: " + err.Error()
+			log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
+			return errors.New(msg)
+		}
 	}
 
 	cancelledAt := s.now()
@@ -794,12 +832,15 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 	cancelled.Cancelled = true
 	cancelled.CancelledAt = cancelledAt
 	cancelled.CancelledBy = cancelledBy
-	usage, err := calculateUsage(cancelled, p)
-
-	if err != nil {
-		msg := "cannot cancel booking because cannot calculate usage to refund: " + err.Error()
-		log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
-		return errors.New(msg)
+	usage := time.Duration(0)
+	if !b.Maintenance {
+		var err error
+		usage, err = calculateUsage(cancelled, p)
+		if err != nil {
+			msg := "cannot cancel booking because cannot calculate usage to refund: " + err.Error()
+			log.WithFields(log.Fields{"user": b.User, "booking": b.Name}).Error(msg)
+			return errors.New(msg)
+		}
 	}
 
 	refund := originalCharge - usage
@@ -844,7 +885,9 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 	s.OldBookings[b.Name] = b
 	delete(u.Bookings, b.Name)
 	u.OldBookings[b.Name] = b
-	*u.Usage[b.Policy] = *u.Usage[b.Policy] - refund
+	if !b.Maintenance {
+		*u.Usage[b.Policy] = *u.Usage[b.Policy] - refund
+	}
 
 	s.Users[b.User] = u
 
@@ -2079,6 +2122,27 @@ func (s *Store) GetOperationalStatus() OperationalStatus {
 	return result
 }
 
+// GetUsageSummary reports actual use from current and historical bookings.
+func (s *Store) GetUsageSummary() UsageSummary {
+	s.Lock()
+	defer s.Unlock()
+	now := s.now()
+	result := UsageSummary{}
+	for _, collection := range []map[string]*Booking{s.Bookings, s.OldBookings} {
+		for _, booking := range collection {
+			if booking.StartedAt == "" {
+				continue
+			}
+			result.StartedBookings++
+			if booking.Cancelled || !booking.When.End.After(now) {
+				result.CompletedBookings++
+			}
+			result.ActualUsage += booking.ActualUsage(now)
+		}
+	}
+	return result
+}
+
 // GetStoreStatusUser returns the store status without entity counts
 func (s *Store) GetStoreStatusUser() StoreStatusUser {
 
@@ -2171,6 +2235,60 @@ func (s *Store) MakeBooking(slot, user string, when interval.Interval) (Booking,
 
 	return b, err
 
+}
+
+// MakeMaintenanceBooking reserves a real slot for a technician. It bypasses
+// availability and user-policy checks only; the resource diary and database
+// exclusion constraint still prevent every overlap.
+func (s *Store) MakeMaintenanceBooking(slot, operator string, when interval.Interval) (Booking, error) {
+	s.Lock()
+	defer s.Unlock()
+	if err := s.expireAndRefreshLocked(context.Background()); err != nil {
+		return Booking{}, err
+	}
+	if operator == "" {
+		return Booking{}, errors.New("maintenance operator is required")
+	}
+	if !when.End.After(when.Start) {
+		return Booking{}, errors.New("maintenance booking end must be after start")
+	}
+	if when.Start.Before(s.now()) {
+		return Booking{}, errors.New("maintenance booking cannot start in the past")
+	}
+	sl, ok := s.Slots[slot]
+	if !ok {
+		return Booking{}, errors.New("slot " + slot + " not found")
+	}
+	r, ok := s.Resources[sl.Resource]
+	if !ok || r.Diary == nil {
+		return Booking{}, errors.New("resource " + sl.Resource + " not found")
+	}
+	name := uuid.New().String()
+	if err := r.Diary.RequestRegardlessAvailability(when, name); err != nil {
+		return Booking{}, err
+	}
+	booking := Booking{Name: name, User: operator, Policy: "__maintenance__", Slot: slot, Maintenance: true, When: when}
+	if s.repository != nil {
+		persisted, created, err := s.repository.CreateBooking(context.Background(), CreateBookingRequest{
+			Booking: booking, Resource: sl.Resource, ResourceConstrained: true,
+			ManifestVersion: s.manifestVersion, Now: s.now(), Maintenance: true,
+		})
+		if err != nil {
+			_ = r.Diary.Delete(name)
+			return Booking{}, err
+		}
+		if !created {
+			_ = r.Diary.Delete(name)
+			return persisted.Booking, nil
+		}
+		booking = persisted.Booking
+	}
+	if s.Users[operator] == nil {
+		s.Users[operator] = NewUser()
+	}
+	s.Bookings[name] = &booking
+	s.Users[operator].Bookings[name] = &booking
+	return booking, nil
 }
 
 // SetMaintenance durably pauses or resumes user booking creation. A nil message
@@ -3200,7 +3318,7 @@ func (s *Store) validateBooking(booking Booking) error {
 		return err
 	}
 
-	if !ok {
+	if !ok && !b.Maintenance {
 		return errors.New(reason)
 	}
 

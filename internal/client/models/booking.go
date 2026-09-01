@@ -32,6 +32,9 @@ type Booking struct {
 	// Example: auto-grace-expired
 	CancelledBy string `json:"cancelled_by,omitempty"`
 
+	// operator-only booking allowed to take up a suspended resource
+	Maintenance bool `json:"maintenance,omitempty"`
+
 	// unique name of the booking
 	// Required: true
 	Name *string `json:"name"`

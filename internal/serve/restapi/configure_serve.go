@@ -164,9 +164,24 @@ func configureAPI(api *operations.ServeAPI) http.Handler {
 			return middleware.NotImplemented("operation admin.GetSlotIsAvailable has not yet been implemented")
 		})
 	}
+	if api.AdminGetUsageSummaryHandler == nil {
+		api.AdminGetUsageSummaryHandler = admin.GetUsageSummaryHandlerFunc(func(params admin.GetUsageSummaryParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.GetUsageSummary has not yet been implemented")
+		})
+	}
 	if api.UsersMakeBookingHandler == nil {
 		api.UsersMakeBookingHandler = users.MakeBookingHandlerFunc(func(params users.MakeBookingParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation users.MakeBooking has not yet been implemented")
+		})
+	}
+	if api.AdminMakeMaintenanceBookingHandler == nil {
+		api.AdminMakeMaintenanceBookingHandler = admin.MakeMaintenanceBookingHandlerFunc(func(params admin.MakeMaintenanceBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.MakeMaintenanceBooking has not yet been implemented")
+		})
+	}
+	if api.AdminOverrideCancelBookingHandler == nil {
+		api.AdminOverrideCancelBookingHandler = admin.OverrideCancelBookingHandlerFunc(func(params admin.OverrideCancelBookingParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation admin.OverrideCancelBooking has not yet been implemented")
 		})
 	}
 	if api.AdminReplaceBookingHandler == nil {
