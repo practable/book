@@ -148,6 +148,40 @@ immediately and starts configured cleanup rather than holding the resource for
 the full worst-case retry window. Conflicting bookings return `409` without
 creating partial state.
 
-Releasing a technician hold continues to use the resource availability endpoint
-and is always an explicit technician action. Detailed metrics and diagnostics
-remain the responsibility of the job runner and monitoring system.
+The stream key in `stream_operations` is the key listed in the resource's
+`streams`, not the human-facing `for` value from the stream prototype. For
+example, the current ed0 manifest uses `st-video`, so its binding is:
+
+```yaml
+resources:
+  r-spin66:
+    streams: [st-data, st-video]
+    properties: {video_stream: spin66-video}
+    stream_operations:
+      st-video:
+        activation_pipeline: standard-video-activation
+        parameters:
+          stream: {from: resource.properties.video_stream}
+```
+
+Existing manifests without bindings remain valid, but Book cannot infer which
+checks are safe to execute. A verified technician release therefore requires
+at least one manifest-bound pipeline containing a `health_check` stage.
+
+Technician release is explicit and durable:
+
+```text
+POST /api/v1/admin/resource-holds/{resource}/release
+```
+
+Without an override reason, Book records a pending release and keeps the hold
+until every manifest-designated stream has produced a fresh successful check.
+Checks run sequentially because each owns the same physical resource. With
+`override_reason`, the resource is immediately released as a degraded offering;
+the reason and known unavailable streams are shown by catalogue, availability,
+preview, and activation APIs. A new activation of a known unavailable stream is
+rejected, while usable streams and interactive maintenance remain available.
+Fully healthy resources are preferred when assigning from a fungible pool.
+
+Detailed metrics and diagnostics remain the responsibility of the job runner
+and monitoring system.
