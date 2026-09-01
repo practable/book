@@ -788,9 +788,6 @@ func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing
 	manifest.OperationalWorkflows = map[string]store.OperationalWorkflow{
 		"daily-check": {Description: "Daily check", ExpectedDuration: 10 * time.Minute, MaximumDuration: 10 * time.Minute},
 	}
-	resource := manifest.Resources["r-a"]
-	resource.Operations.CostOwner = "physics-teaching-lab"
-	manifest.Resources["r-a"] = resource
 	recurrence := store.OperationalRecurrence{Timezone: "UTC", StartDate: "2022-11-05", EndDate: "2022-11-05", Weekdays: []string{"sat"}, Time: "10:00"}
 	manifest.OperationalSchedules = map[string]store.OperationalSchedule{
 		"a-required": {Slot: "sl-a", Workflow: "daily-check", Duration: 10 * time.Minute, Conflict: store.OperationalConflictRequire, Recurrence: recurrence},
@@ -827,7 +824,7 @@ func TestOperationalSchedulesAreDurableDeduplicatedAndRecordConflicts(t *testing
 		FROM public.operational_usage_ledger WHERE job_id IN (SELECT job_id FROM public.operational_jobs WHERE workflow_name='daily-check')`).
 		Scan(&scheduledJobID, &payerKind, &payerID, &phase, &chargeable))
 	require.Equal(t, "experiment_owner", payerKind)
-	require.Equal(t, "physics-teaching-lab", payerID)
+	require.Equal(t, "r-a", payerID)
 	require.Equal(t, "scheduled", phase)
 	require.True(t, chargeable)
 	listed, err := repository.ListScheduleOccurrences(context.Background(), now.Add(-2*time.Hour), now.Add(2*time.Hour), "", 20)

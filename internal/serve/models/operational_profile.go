@@ -25,7 +25,7 @@ type OperationalProfile struct {
 	// before booking
 	BeforeBooking []*OperationalGuard `json:"before_booking"`
 
-	// Opaque experiment-owner identifier charged for scheduled operational work.
+	// Optional opaque roll-up identifier charged for scheduled work; defaults to the resource name.
 	CostOwner string `json:"cost_owner,omitempty"`
 
 	// operating window

@@ -3733,7 +3733,7 @@ func init() {
           }
         },
         "cost_owner": {
-          "description": "Opaque experiment-owner identifier charged for scheduled operational work.",
+          "description": "Optional opaque roll-up identifier charged for scheduled work; defaults to the resource name.",
           "type": "string"
         },
         "operating_window": {
@@ -8824,7 +8824,7 @@ func init() {
           }
         },
         "cost_owner": {
-          "description": "Opaque experiment-owner identifier charged for scheduled operational work.",
+          "description": "Optional opaque roll-up identifier charged for scheduled work; defaults to the resource name.",
           "type": "string"
         },
         "operating_window": {

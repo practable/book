@@ -2481,7 +2481,7 @@ definitions:
     type: object
     properties:
       operating_window: {type: string}
-      cost_owner: {type: string, description: Opaque experiment-owner identifier charged for scheduled operational work.}
+      cost_owner: {type: string, description: Optional opaque roll-up identifier charged for scheduled work; defaults to the resource name.}
       before_booking:
         type: array
         items: {$ref: '#/definitions/OperationalGuard'}

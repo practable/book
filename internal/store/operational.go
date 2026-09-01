@@ -321,7 +321,7 @@ func (s *Store) MaterializeOperationalSchedules(ctx context.Context, from, until
 				IdempotencyKey: idempotencyKey, Payload: body},
 			Delivery: operations.Delivery{ID: deliveryID, JobID: jobID, Body: body},
 			Usage: &OperationalUsageAttribution{Phase: "scheduled", PayerKind: "experiment_owner",
-				PayerID: s.Resources[slot.Resource].Operations.CostOwner, Chargeable: true},
+				PayerID: operationalCostOwner(slot.Resource, s.Resources[slot.Resource].Operations), Chargeable: true},
 		}
 		result, err := repository.CreateScheduledOperation(ctx, occurrence.Schedule, occurrence.When.Start, occurrence.Conflict, item)
 		if err != nil {
@@ -455,6 +455,13 @@ type OperationalProfile struct {
 	CostOwner       string             `json:"cost_owner,omitempty" yaml:"cost_owner,omitempty"`
 	BeforeBooking   []OperationalGuard `json:"before_booking,omitempty" yaml:"before_booking,omitempty"`
 	AfterBooking    []OperationalGuard `json:"after_booking,omitempty" yaml:"after_booking,omitempty"`
+}
+
+func operationalCostOwner(resourceName string, profile OperationalProfile) string {
+	if owner := strings.TrimSpace(profile.CostOwner); owner != "" {
+		return owner
+	}
+	return resourceName
 }
 
 type OperationalGuardPlan struct {
@@ -693,11 +700,8 @@ func validateOperationalManifest(m Manifest) []string {
 		if !workflowOK {
 			messages = append(messages, "operational schedule "+name+" references non-existent workflow: "+schedule.Workflow)
 		}
-		slot, slotOK := m.Slots[schedule.Slot]
-		if !slotOK {
+		if _, ok := m.Slots[schedule.Slot]; !ok {
 			messages = append(messages, "operational schedule "+name+" references non-existent slot: "+schedule.Slot)
-		} else if resource, ok := m.Resources[slot.Resource]; ok && strings.TrimSpace(resource.Operations.CostOwner) == "" {
-			messages = append(messages, "operational schedule "+name+" resource "+slot.Resource+" has no operations cost_owner")
 		}
 		if schedule.Duration <= 0 || (workflowOK && schedule.Duration > workflow.MaximumDuration) {
 			messages = append(messages, "operational schedule "+name+" duration must be positive and within workflow maximum")

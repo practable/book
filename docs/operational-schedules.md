@@ -37,9 +37,11 @@ operational_schedules:
 explicit because it determines the activity configuration supplied to the job
 runner as well as the underlying resource.
 
-`cost_owner` is an opaque identifier for the team or service responsible for
-the experiment. A manifest that schedules work for a resource without a cost
-owner is rejected. Completed scheduled runner time is reported separately as
+`cost_owner` is an optional opaque identifier for the team or service
+responsible for the experiment. It defaults to the resource name, which keeps
+ordinary manifests valid and still attributes the cost to that experiment.
+Set it explicitly when several resources should roll up to one owning team.
+Completed scheduled runner time is reported separately as
 `scheduled_usage`, attributed to `experiment_owner`; it is never charged to a
 student or included in student usage-policy limits. The owner identifier is
 accounting metadata and does not grant access to the resource.
