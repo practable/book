@@ -43,6 +43,19 @@ export BOOK_TEST_ADMIN_DATABASE_URL="$BOOK_TEST_DATABASE_URL"
 GOCACHE=/tmp/book-go-cache go test -count=1 -v ./internal/postgres
 ```
 
+To exercise a production-sized manifest through database activation and a
+fresh repository load, provide its absolute path:
+
+```sh
+export BOOK_TEST_MANIFEST_PATH=/absolute/path/to/manifest.yaml
+GOCACHE=/tmp/book-go-cache go test -count=1 -v ./internal/postgres \
+  -run TestExternalLargeManifestSurvivesRepositoryRestart
+```
+
+This is opt-in so the Book repository test suite does not depend on a separate
+manifest checkout. It compares recovered resource, slot, policy, group, and
+stream inventories. The manifest is never modified.
+
 The integration suite truncates booking tables. Point it only at a disposable
 database. `BOOK_TEST_ADMIN_DATABASE_URL` must be a disposable administrative
 connection: the empty-database migration test uses it to create and drop one
@@ -50,7 +63,7 @@ uniquely named temporary database. Run the remaining checks with:
 
 ```sh
 GOCACHE=/tmp/book-go-cache go test ./internal/store ./internal/check ./internal/diary ./internal/filter ./internal/interval
-GOCACHE=/tmp/book-go-cache go test -race ./internal/store ./internal/postgres
+GOCACHE=/tmp/book-go-cache go test -race ./internal/store ./internal/postgres ./internal/server ./internal/serve
 GOCACHE=/tmp/book-go-cache go vet ./...
 ```
 

@@ -1498,6 +1498,35 @@ func TestManifestActivationIsIdempotentAndRefreshesAnotherInstance(t *testing.T)
 	require.ErrorIs(t, err, store.ErrStaleManifest)
 }
 
+func TestExternalLargeManifestSurvivesRepositoryRestart(t *testing.T) {
+	path := os.Getenv("BOOK_TEST_MANIFEST_PATH")
+	if path == "" {
+		t.Skip("BOOK_TEST_MANIFEST_PATH is not set")
+	}
+	repository := integrationRepository(t)
+	body, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var manifest store.Manifest
+	require.NoError(t, yaml.Unmarshal(body, &manifest))
+	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	first := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, first.WithRepository(repository))
+	require.NoError(t, first.ReplaceManifest(manifest))
+	require.Positive(t, first.ManifestVersion())
+
+	reopened, err := Open(context.Background(), os.Getenv("BOOK_TEST_DATABASE_URL"), 4, 10*time.Second)
+	require.NoError(t, err)
+	t.Cleanup(reopened.Close)
+	second := store.New().WithNow(func() time.Time { return now })
+	require.NoError(t, second.WithRepository(reopened))
+	recovered := second.ExportManifest()
+	require.Equal(t, len(manifest.Resources), len(recovered.Resources))
+	require.Equal(t, len(manifest.Slots), len(recovered.Slots))
+	require.Equal(t, len(manifest.Policies), len(recovered.Policies))
+	require.Equal(t, len(manifest.Groups), len(recovered.Groups))
+	require.Equal(t, len(manifest.Streams), len(recovered.Streams))
+}
+
 func TestInvalidManifestReplacementLeavesActiveVersionUnchanged(t *testing.T) {
 	repository := integrationRepository(t)
 	manifestBytes, err := os.ReadFile("../../demo/manifest.yaml")
