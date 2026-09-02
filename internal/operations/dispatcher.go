@@ -103,7 +103,7 @@ func (d *Dispatcher) DispatchOnce(ctx context.Context) (int, error) {
 		if delivery.Attempts >= maxAttempts {
 			next = now
 		}
-		if err := d.Repository.CompleteDelivery(ctx, delivery.ID, d.Owner, delivered, status, message, next, now); err != nil {
+		if err := d.Repository.CompleteDelivery(ctx, delivery.ID, d.Owner, delivered, status, message, now, next); err != nil {
 			return len(deliveries), err
 		}
 	}
