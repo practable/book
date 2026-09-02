@@ -8,6 +8,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	yamljson "sigs.k8s.io/yaml"
 )
 
 // the p-blank policy tests for errors on default intervals, which should become 0s
@@ -79,4 +80,49 @@ func TestDemoManifestSatisfiesAPIValidation(t *testing.T) {
 	apiManifest, _, err := YAMLToManifests(manifest)
 	require.NoError(t, err)
 	require.NoError(t, apiManifest.Validate(strfmt.Default))
+}
+
+func TestOperationalDurationsConvertFromYAMLAndJSON(t *testing.T) {
+	yamlManifest := []byte(`
+operational_workflows:
+  test-check:
+    description: check a stream
+    kind: health_check
+    expected_duration: 20ms
+    maximum_duration: 5s
+operational_job_templates:
+  stream-check:
+    workflow: test-check
+    timeout: 3s
+    retry:
+      attempts: 2
+      initial_delay: 100ms
+      backoff: 2
+      maximum_delay: 1s
+      total_timeout: 4s
+operational_pipeline_templates:
+  stream-activation:
+    stages:
+      - name: check
+        job_template: stream-check
+        wait_after: 250ms
+`)
+
+	_, yamlStore, err := YAMLToManifests(yamlManifest)
+	require.NoError(t, err)
+	assert.Equal(t, 20*time.Millisecond, yamlStore.OperationalWorkflows["test-check"].ExpectedDuration)
+	assert.Equal(t, 5*time.Second, yamlStore.OperationalWorkflows["test-check"].MaximumDuration)
+	assert.Equal(t, 3*time.Second, yamlStore.OperationalJobTemplates["stream-check"].Timeout)
+	assert.Equal(t, 100*time.Millisecond, yamlStore.OperationalJobTemplates["stream-check"].Retry.InitialDelay)
+	assert.Equal(t, time.Second, yamlStore.OperationalJobTemplates["stream-check"].Retry.MaximumDelay)
+	assert.Equal(t, 4*time.Second, yamlStore.OperationalJobTemplates["stream-check"].Retry.TotalTimeout)
+	assert.Equal(t, 250*time.Millisecond, yamlStore.OperationalPipelineTemplates["stream-activation"].Stages[0].WaitAfter)
+
+	jsonManifest, err := yamljson.YAMLToJSON(yamlManifest)
+	require.NoError(t, err)
+	_, jsonStore, err := JSONToManifests(jsonManifest)
+	require.NoError(t, err)
+	assert.Equal(t, yamlStore.OperationalWorkflows, jsonStore.OperationalWorkflows)
+	assert.Equal(t, yamlStore.OperationalJobTemplates, jsonStore.OperationalJobTemplates)
+	assert.Equal(t, yamlStore.OperationalPipelineTemplates, jsonStore.OperationalPipelineTemplates)
 }

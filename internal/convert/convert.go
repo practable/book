@@ -6,7 +6,8 @@ import (
 
 	"github.com/practable/book/internal/client/models"
 	"github.com/practable/book/internal/store"
-	"sigs.k8s.io/yaml"
+	yamlv2 "gopkg.in/yaml.v2"
+	yamljson "sigs.k8s.io/yaml"
 )
 
 func JSONToManifests(jb []byte) (models.Manifest, store.Manifest, error) {
@@ -14,7 +15,10 @@ func JSONToManifests(jb []byte) (models.Manifest, store.Manifest, error) {
 	m := models.Manifest{}
 	s := store.Manifest{}
 
-	err := json.Unmarshal(jb, &s)
+	// YAML v2 accepts JSON input and understands string representations of
+	// time.Duration. encoding/json cannot decode operational manifest duration
+	// fields such as "3s" directly into time.Duration.
+	err := yamlv2.Unmarshal(jb, &s)
 	if err != nil {
 		return m, s, errors.New("unable to unmarshal manifest into store format because " + err.Error())
 	}
@@ -30,7 +34,7 @@ func JSONToManifests(jb []byte) (models.Manifest, store.Manifest, error) {
 
 func YAMLToManifests(yb []byte) (models.Manifest, store.Manifest, error) {
 
-	jb, err := yaml.YAMLToJSON(yb)
+	jb, err := yamljson.YAMLToJSON(yb)
 	if err != nil {
 		return models.Manifest{}, store.Manifest{}, errors.New("unable to process manifest because " + err.Error())
 	}
