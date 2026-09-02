@@ -1620,11 +1620,11 @@ func (s *Store) ActivateOperationalJob(ctx context.Context, jobID, deliveryID, b
 	}
 	b := persisted.Booking
 	s.Bookings[b.Name] = &b
-	return s.operationalActivityLocked(b, job.Kind == "preflight")
+	return s.operationalActivityLocked(b, job.Kind == "preflight" || job.Kind == "recovery")
 }
 
-func (s *Store) operationalActivityLocked(b Booking, allowPreflight bool) (Activity, error) {
-	if !allowPreflight && (!b.Maintenance || !strings.HasPrefix(b.Policy, "__operations")) {
+func (s *Store) operationalActivityLocked(b Booking, allowBookingReservation bool) (Activity, error) {
+	if !allowBookingReservation && (!b.Maintenance || !strings.HasPrefix(b.Policy, "__operations")) {
 		return Activity{}, errors.New("booking is not an operational reservation")
 	}
 	sl, ok := s.Slots[b.Slot]

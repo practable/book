@@ -2753,6 +2753,24 @@ func TestOperationalActivityAllowsTechnicianOwnedHealthReservation(t *testing.T)
 	assert.Equal(t, "health-reservation", activity.BookingID)
 }
 
+func TestOperationalActivityAllowsRecoveryAgainstStudentReservation(t *testing.T) {
+	var manifest Manifest
+	require.NoError(t, yaml.Unmarshal(manifestYAML, &manifest))
+	bookStore := New()
+	require.NoError(t, bookStore.ReplaceManifest(manifest))
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	booking := Booking{
+		Name: "student-recovery", User: "student", Policy: "p-a", Slot: "sl-a",
+		When: interval.Interval{Start: now, End: now.Add(time.Minute)},
+	}
+
+	activity, err := bookStore.operationalActivityLocked(booking, true)
+	require.NoError(t, err)
+	assert.Equal(t, "student-recovery", activity.BookingID)
+	_, err = bookStore.operationalActivityLocked(booking, false)
+	require.EqualError(t, err, "booking is not an operational reservation")
+}
+
 func TestCheckManifestCatchMissingUI(t *testing.T) {
 
 	testManifest.Lock()
