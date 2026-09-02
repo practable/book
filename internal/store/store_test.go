@@ -117,10 +117,12 @@ display_guides:
   6m:
     book_ahead: 1h
     duration: 6m
+    label: 6 min
     max_slots: 12
   8m:
     book_ahead: 2h
     duration: 8m
+    label: 8 min
     max_slots: 8
 groups:
   g-a:
@@ -2722,6 +2724,19 @@ func TestCheckOKManifest(t *testing.T) {
 	assert.Equal(t, []string{}, msg)
 }
 
+func TestCheckDisplayGuidesRequiresLabel(t *testing.T) {
+	err, messages := checkDisplayGuides(map[string]DisplayGuide{
+		"1m": {
+			BookAhead: time.Minute,
+			Duration:  time.Minute,
+			MaxSlots:  1,
+		},
+	})
+
+	assert.Error(t, err)
+	assert.Equal(t, []string{"missing label field in display_guide 1m"}, messages)
+}
+
 func TestCheckManifestCatchMissingUI(t *testing.T) {
 
 	testManifest.Lock()
@@ -2950,11 +2965,13 @@ func TestGetPolicy(t *testing.T) {
 			"6m": DisplayGuide{
 				BookAhead: time.Duration(1 * time.Hour),
 				Duration:  time.Duration(6 * time.Minute),
+				Label:     "6 min",
 				MaxSlots:  12,
 			},
 			"8m": DisplayGuide{
 				BookAhead: time.Duration(2 * time.Hour),
 				Duration:  time.Duration(8 * time.Minute),
+				Label:     "8 min",
 				MaxSlots:  8,
 			},
 		},

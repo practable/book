@@ -3735,6 +3735,9 @@ func checkDisplayGuides(items map[string]DisplayGuide) (error, []string) {
 		if item.Duration == time.Duration(0) {
 			msg = append(msg, "missing duration field in display_guide "+k)
 		}
+		if item.Label == "" {
+			msg = append(msg, "missing label field in display_guide "+k)
+		}
 		if item.MaxSlots == 0 {
 			msg = append(msg, "missing max_slots field in display_guide "+k)
 		}

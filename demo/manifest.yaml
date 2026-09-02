@@ -36,6 +36,7 @@ display_guides:
   1m:
     book_ahead: 20m
     duration: 1m
+    label: 1 min
     max_slots: 15 
 policies:
   p-a:
@@ -142,5 +143,4 @@ windows:
     - start: 2022-11-04T00:00:00Z
       end: 2025-11-06T00:00:00Z
     denied: []
-
 

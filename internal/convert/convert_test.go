@@ -1,10 +1,13 @@
 package convert
 
 import (
+	"os"
 	"testing"
 	"time"
 
+	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // the p-blank policy tests for errors on default intervals, which should become 0s
@@ -67,4 +70,13 @@ func TestYAMLToManifests(t *testing.T) {
 	assert.Equal(t, time.Duration(1*time.Minute), s.Policies["p-modes"].StartsWithin)
 	assert.Equal(t, "1m0s", m.Policies["p-modes"].StartsWithin)
 
+}
+
+func TestDemoManifestSatisfiesAPIValidation(t *testing.T) {
+	manifest, err := os.ReadFile("../../demo/manifest.yaml")
+	require.NoError(t, err)
+
+	apiManifest, _, err := YAMLToManifests(manifest)
+	require.NoError(t, err)
+	require.NoError(t, apiManifest.Validate(strfmt.Default))
 }
