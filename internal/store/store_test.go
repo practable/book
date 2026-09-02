@@ -2737,6 +2737,22 @@ func TestCheckDisplayGuidesRequiresLabel(t *testing.T) {
 	assert.Equal(t, []string{"missing label field in display_guide 1m"}, messages)
 }
 
+func TestOperationalActivityAllowsTechnicianOwnedHealthReservation(t *testing.T) {
+	var manifest Manifest
+	require.NoError(t, yaml.Unmarshal(manifestYAML, &manifest))
+	bookStore := New()
+	require.NoError(t, bookStore.ReplaceManifest(manifest))
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+
+	activity, err := bookStore.operationalActivityLocked(Booking{
+		Name: "health-reservation", User: "technician", Policy: "__operations__:health", Slot: "sl-a", Maintenance: true,
+		When: interval.Interval{Start: now, End: now.Add(time.Minute)},
+	}, false)
+
+	require.NoError(t, err)
+	assert.Equal(t, "health-reservation", activity.BookingID)
+}
+
 func TestCheckManifestCatchMissingUI(t *testing.T) {
 
 	testManifest.Lock()

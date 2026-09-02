@@ -1624,7 +1624,7 @@ func (s *Store) ActivateOperationalJob(ctx context.Context, jobID, deliveryID, b
 }
 
 func (s *Store) operationalActivityLocked(b Booking, allowPreflight bool) (Activity, error) {
-	if !allowPreflight && (!b.Maintenance || b.User != "__operations__" || !strings.HasPrefix(b.Policy, "__operations")) {
+	if !allowPreflight && (!b.Maintenance || !strings.HasPrefix(b.Policy, "__operations")) {
 		return Activity{}, errors.New("booking is not an operational reservation")
 	}
 	sl, ok := s.Slots[b.Slot]
