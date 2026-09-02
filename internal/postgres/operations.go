@@ -847,6 +847,9 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 		if err := recordActivationHealthFailureTx(ctx, tx, runID, job.ID, code, callback.Error, callback.At.UTC()); err != nil {
 			return err
 		}
+		if err := finishAutoCloseActivationReservationTx(ctx, tx, runID, job, callback); err != nil {
+			return err
+		}
 		return startActivationCleanupRunTx(ctx, tx, runID, callback.At.UTC())
 	}
 	var healthCheck bool
@@ -873,7 +876,21 @@ func applyActivationCallbackTx(ctx context.Context, tx pgx.Tx, job operations.Jo
 			return err
 		}
 	}
+	if err := finishAutoCloseActivationReservationTx(ctx, tx, runID, job, callback); err != nil {
+		return err
+	}
 	return startActivationCleanupRunTx(ctx, tx, runID, callback.At.UTC())
+}
+
+func finishAutoCloseActivationReservationTx(ctx context.Context, tx pgx.Tx, runID string, job operations.Job, callback operations.Callback) error {
+	var autoClose bool
+	if err := tx.QueryRow(ctx, `SELECT auto_close FROM public.booking_activation_runs WHERE run_id=$1`, runID).Scan(&autoClose); err != nil {
+		return err
+	}
+	if !autoClose {
+		return nil
+	}
+	return finishOperationalReservationTx(ctx, tx, job, callback)
 }
 
 func startActivationRecoveryTx(ctx context.Context, tx pgx.Tx, runID string, targetStage int, at time.Time) (bool, error) {

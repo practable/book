@@ -148,6 +148,14 @@ immediately and starts configured cleanup rather than holding the resource for
 the full worst-case retry window. Conflicting bookings return `409` without
 creating partial state.
 
+A terminally failed manual or release-verification check also closes its scoped
+maintenance reservation once no recovery or cleanup work remains. This does not
+release the technician hold or mark the equipment healthy: the unhealthy stream,
+alert, and pending release remain durable until a later verified check or an
+explicit degraded override. Prompt reservation closure ensures a long reboot
+budget cannot make an operator-approved degraded release appear available while
+still being blocked by an obsolete maintenance interval.
+
 The stream key in `stream_operations` is the key listed in the resource's
 `streams`, not the human-facing `for` value from the stream prototype. For
 example, the current ed0 manifest uses `st-video`, so its binding is:
