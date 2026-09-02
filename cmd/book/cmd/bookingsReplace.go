@@ -79,7 +79,7 @@ The bookings must be in a file, in yaml format.
 
 		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme}).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
-		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
+		bc := apiclient.NewDiagnosticHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
 
 		// convert yaml file to models.Bookings

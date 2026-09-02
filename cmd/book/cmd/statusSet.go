@@ -81,7 +81,7 @@ book setstatus unlock "Bookings are open"
 
 		cfg := apiclient.DefaultTransportConfig().WithHost(host).WithSchemes([]string{scheme}).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
-		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
+		bc := apiclient.NewDiagnosticHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
 		params := admin.NewSetLockParams().WithTimeout(timeout).WithLock(lock).WithMsg(&message)
 		status, err := bc.Admin.SetLock(params, auth)

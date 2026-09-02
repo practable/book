@@ -127,7 +127,7 @@ The manifest must be in a file, default type is YAML.
 
 		cfg := apiclient.DefaultTransportConfig().WithSchemes([]string{scheme}).WithHost(host).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
-		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
+		bc := apiclient.NewDiagnosticHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
 		params := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(&clientManifest)
 		_, err = bc.Admin.ReplaceManifest(params, auth)

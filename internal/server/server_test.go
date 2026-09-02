@@ -789,7 +789,7 @@ func setLock(t *testing.T, locked bool, message string) {
 
 func newBc() *apiclient.Client {
 	c := apiclient.DefaultTransportConfig().WithHost(ch).WithSchemes([]string{cs})
-	return apiclient.NewHTTPClientWithConfig(nil, c)
+	return apiclient.NewDiagnosticHTTPClientWithConfig(nil, c)
 }
 
 func getBookings(t *testing.T) cmodels.Bookings {
@@ -919,6 +919,25 @@ func TestReplaceManifestWithClient(t *testing.T) {
 	p := admin.NewReplaceManifestParams().WithTimeout(timeout).WithManifest(&manifest)
 	_, err = bc.Admin.ReplaceManifest(p, auth)
 	assert.NoError(t, err)
+}
+
+func TestClientReportsManifestValidationResponse(t *testing.T) {
+	var manifest cmodels.Manifest
+	require.NoError(t, json.Unmarshal(manifestJSON, &manifest))
+	guide := manifest.DisplayGuides["1mFor20m"]
+	guide.Label = nil
+	manifest.DisplayGuides["1mFor20m"] = guide
+
+	satoken, err := signedAdminToken()
+	require.NoError(t, err)
+	auth := httptransport.APIKeyAuth("Authorization", "header", satoken)
+	params := admin.NewReplaceManifestParams().WithTimeout(time.Second).WithManifest(&manifest)
+
+	_, err = newBc().Admin.ReplaceManifest(params, auth)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "status 422")
+	assert.Contains(t, err.Error(), "display_guides.1mFor20m.label in body is required")
+	assert.NotContains(t, err.Error(), ": {}")
 }
 
 func TestLogin(t *testing.T) {

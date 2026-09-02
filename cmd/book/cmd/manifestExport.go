@@ -78,7 +78,7 @@ The exported manifest is printed to stdout, and can be piped to a file if requir
 
 		cfg := apiclient.DefaultTransportConfig().WithSchemes([]string{scheme}).WithHost(host).WithBasePath(basePath)
 		auth := httptransport.APIKeyAuth("Authorization", "header", token)
-		bc := apiclient.NewHTTPClientWithConfig(nil, cfg)
+		bc := apiclient.NewDiagnosticHTTPClientWithConfig(nil, cfg)
 		timeout := 10 * time.Second
 		params := admin.NewExportManifestParams().WithTimeout(timeout)
 		status, err := bc.Admin.ExportManifest(params, auth)

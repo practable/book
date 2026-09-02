@@ -76,7 +76,7 @@ func editClient() (*apiclient.Client, runtime.ClientAuthInfoWriter, time.Duratio
 	viper.SetDefault("base_path", "/api/v1")
 	viper.SetDefault("format", "yaml")
 	config := apiclient.DefaultTransportConfig().WithHost(viper.GetString("host")).WithSchemes([]string{viper.GetString("scheme")}).WithBasePath(viper.GetString("base_path"))
-	return apiclient.NewHTTPClientWithConfig(nil, config), httptransport.APIKeyAuth("Authorization", "header", viper.GetString("token")), 10 * time.Second
+	return apiclient.NewDiagnosticHTTPClientWithConfig(nil, config), httptransport.APIKeyAuth("Authorization", "header", viper.GetString("token")), 10 * time.Second
 }
 
 func requireEditToken() bool {
