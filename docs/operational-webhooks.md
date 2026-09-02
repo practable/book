@@ -82,6 +82,11 @@ the same transaction that starts the reservation and moves the job to
 `running`. Activation is allowed only during the reservation's half-open time
 interval. An exact retry returns the same activity without changing its
 original start time. A booking identifier by itself grants no runner access.
+The activity streams include complete Relay access URLs, scopes, and signed
+scoped tokens. Token time claims are derived from the persisted maintenance
+booking interval, so an exact retry does not mint time-varying credentials.
+These fields are sensitive and must not be logged or passed to an untrusted
+workflow process.
 
 Preflight jobs are different: the runner calls the activation endpoint to gain
 scoped equipment access, but that call does not mark the user's booking started
