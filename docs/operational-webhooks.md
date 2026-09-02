@@ -88,6 +88,13 @@ booking interval, so an exact retry does not mint time-varying credentials.
 These fields are sensitive and must not be logged or passed to an untrusted
 workflow process.
 
+A manifest stream marked `operator_only: true` is included in operational and
+maintenance activities but omitted from ordinary student activities. Use this
+for a per-experiment private control stream to an equipment-side edge agent.
+Student UIs must not list an operator-only stream in `streams_required`; manifest
+validation rejects that configuration. The control stream remains scoped to the
+one resource topic and reservation interval like every other Relay stream.
+
 Preflight jobs are different: the runner calls the activation endpoint to gain
 scoped equipment access, but that call does not mark the user's booking started
 or begin user usage accounting. Book advances the persisted preparation

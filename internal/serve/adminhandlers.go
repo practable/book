@@ -343,6 +343,7 @@ func convertModelsManifestToStore(mm models.Manifest) (store.Manifest, error) {
 		stm[k] = store.Stream{
 			ConnectionType: *(m.ConnectionType),
 			For:            *(m.For),
+			OperatorOnly:   m.OperatorOnly,
 			Scopes:         m.Scopes,
 			Topic:          *(m.Topic),
 			URL:            *(m.URL),
@@ -804,6 +805,7 @@ func exportManifestHandler(config config.ServerConfig) func(admin.ExportManifest
 			stm[k] = models.ManifestStream{
 				ConnectionType: gog.Ptr(s.ConnectionType),
 				For:            gog.Ptr(s.For),
+				OperatorOnly:   s.OperatorOnly,
 				Scopes:         s.Scopes,
 				Topic:          gog.Ptr(s.Topic),
 				URL:            gog.Ptr(s.URL),

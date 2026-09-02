@@ -21,6 +21,9 @@ import (
 // swagger:model ManifestStream
 type ManifestStream struct {
 
+	// If true, this stream is issued only to operational and maintenance reservations, never ordinary student activities.
+	OperatorOnly bool `json:"operator_only,omitempty"`
+
 	// connection type
 	// Required: true
 	ConnectionType *string `json:"connection_type"`

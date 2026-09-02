@@ -3811,6 +3811,10 @@ func init() {
         "url"
       ],
       "properties": {
+        "operator_only": {
+          "description": "If true, this stream is issued only to operational and maintenance reservations, never ordinary student activities.",
+          "type": "boolean"
+        },
         "connection_type": {
           "type": "string"
         },
@@ -9602,6 +9606,10 @@ func init() {
         "url"
       ],
       "properties": {
+        "operator_only": {
+          "description": "If true, this stream is issued only to operational and maintenance reservations, never ordinary student activities.",
+          "type": "boolean"
+        },
         "connection_type": {
           "type": "string"
         },

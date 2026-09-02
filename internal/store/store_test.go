@@ -1200,6 +1200,45 @@ func TestMaintenanceBookingUsesSuspendedResourceWithoutOverlapping(t *testing.T)
 	require.True(t, s.OldBookings[booking.Name].Cancelled)
 }
 
+func TestOperatorOnlyStreamIsHiddenFromStudentsButAvailableToMaintenance(t *testing.T) {
+	newStore := func() *Store {
+		s := New()
+		now := time.Date(2022, 11, 5, 0, 0, 0, 0, time.UTC)
+		s.SetNow(func() time.Time { return now })
+		var manifest Manifest
+		require.NoError(t, yaml.Unmarshal(manifestYAML, &manifest))
+		control := manifest.Streams["st-b"]
+		control.For, control.OperatorOnly = "control", true
+		manifest.Streams["st-control"] = control
+		resource := manifest.Resources["r-a"]
+		resource.Streams = append(resource.Streams, "st-control")
+		manifest.Resources["r-a"] = resource
+		require.NoError(t, s.ReplaceManifest(manifest))
+		return s
+	}
+
+	studentStore := newStore()
+	studentStore.AddGroupForUser("student", "g-a")
+	when := interval.Interval{Start: studentStore.Now().Add(30 * time.Minute), End: studentStore.Now().Add(40 * time.Minute)}
+	student, err := studentStore.MakeBooking("sl-a", "student", when)
+	require.NoError(t, err)
+	studentStore.SetNow(func() time.Time { return when.Start })
+	studentActivity, err := studentStore.GetActivity(student)
+	require.NoError(t, err)
+	require.Contains(t, studentActivity.Streams, "st-a")
+	require.NotContains(t, studentActivity.Streams, "st-control")
+
+	maintenanceStore := newStore()
+	maintenanceWhen := interval.Interval{Start: maintenanceStore.Now().Add(30 * time.Minute), End: maintenanceStore.Now().Add(40 * time.Minute)}
+	maintenance, err := maintenanceStore.MakeMaintenanceBooking("sl-a", "technician", maintenanceWhen)
+	require.NoError(t, err)
+	maintenanceStore.SetNow(func() time.Time { return maintenanceWhen.Start })
+	maintenanceActivity, err := maintenanceStore.GetActivity(maintenance)
+	require.NoError(t, err)
+	require.Contains(t, maintenanceActivity.Streams, "st-control")
+	require.True(t, maintenanceActivity.Streams["st-control"].OperatorOnly)
+}
+
 func TestActualUsageIsDerivedFromLifecycleTimes(t *testing.T) {
 	start := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
 	booking := Booking{StartedAt: start.Format(time.RFC3339Nano), When: interval.Interval{Start: start, End: start.Add(time.Hour)}}
@@ -2765,6 +2804,25 @@ func TestCheckManifestCatchMissingStream(t *testing.T) {
 	err, _ = checkManifest(testManifest.Manifest)
 	assert.NoError(t, err)
 
+}
+
+func TestCheckManifestRejectsOperatorOnlyStreamRequiredByUI(t *testing.T) {
+	testManifest.Lock()
+	defer testManifest.Unlock()
+
+	stream := testManifest.Manifest.Streams["st-a"]
+	stream.OperatorOnly = true
+	testManifest.Manifest.Streams["st-a"] = stream
+	defer func() {
+		stream.OperatorOnly = false
+		testManifest.Manifest.Streams["st-a"] = stream
+	}()
+
+	err, messages := checkManifest(testManifest.Manifest)
+
+	assert.Error(t, err)
+	assert.Contains(t, messages, "ui ui-a references operator-only stream: st-a")
+	assert.Contains(t, messages, "ui ui-b references operator-only stream: st-a")
 }
 
 func TestDeletePolicyAddPolicy(t *testing.T) {

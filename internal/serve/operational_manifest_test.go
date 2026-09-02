@@ -52,3 +52,17 @@ func TestStreamOperationBindingRoundTripThroughAPIModel(t *testing.T) {
 		t.Fatalf("stream bindings changed during round trip\n got: %#v\nwant: %#v", exported, input)
 	}
 }
+
+func TestOperatorOnlyManifestStreamConvertsToStore(t *testing.T) {
+	connection, purpose, topic, endpoint := "session", "control", "prototype", "https://relay.example.test"
+	manifest := models.Manifest{Streams: map[string]models.ManifestStream{"control": {
+		ConnectionType: &connection, For: &purpose, Scopes: []string{"read", "write"}, Topic: &topic, URL: &endpoint, OperatorOnly: true,
+	}}}
+	stored, err := convertModelsManifestToStore(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stored.Streams["control"].OperatorOnly {
+		t.Fatal("operator-only stream flag was discarded")
+	}
+}

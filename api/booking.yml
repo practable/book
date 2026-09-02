@@ -2316,6 +2316,9 @@ definitions:
     description: represents a prototype stream as described in manifest
     type: object
     properties:
+      operator_only:
+        type: boolean
+        description: If true, this stream is issued only to operational and maintenance reservations, never ordinary student activities.
       connection_type:
         type: string
       for:

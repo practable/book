@@ -432,6 +432,9 @@ type OperationalStatus struct {
 // Streams are typically accessed via POST with bearer token to an access API
 type Stream struct {
 	Audience string `json:"audience" yaml:"audience"`
+	// OperatorOnly prevents this stream from being issued to ordinary student
+	// activities. Operational and maintenance reservations still receive it.
+	OperatorOnly bool `json:"operator_only,omitempty" yaml:"operator_only,omitempty"`
 	// ConnectionType is whether for session or shell e.g. session
 	ConnectionType string `json:"connection_type"  yaml:"connection_type"`
 
@@ -1554,6 +1557,9 @@ func (s *Store) GetActivity(booking Booking) (Activity, error) {
 		st, ok := s.Streams[k]
 		if !ok {
 			return Activity{}, errors.New("stream " + k + " not found")
+		}
+		if st.OperatorOnly && !b.Maintenance {
+			continue
 		}
 		//Streams are prototypes, so make the specific topic
 		st.Topic = r.TopicStub + "-" + k
@@ -3919,8 +3925,12 @@ func checkManifest(m Manifest) (error, []string) {
 		}
 		// this check still applies, even though it relates in part to the templating process
 		for _, s := range v.StreamsRequired {
-			if _, ok := m.Streams[s]; !ok {
+			stream, ok := m.Streams[s]
+			if !ok {
 				m := "ui " + k + " references non-existent stream: " + s
+				msg = append(msg, m)
+			} else if stream.OperatorOnly {
+				m := "ui " + k + " references operator-only stream: " + s
 				msg = append(msg, m)
 			}
 		}
