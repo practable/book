@@ -1167,7 +1167,20 @@ func TestMaintenancePausesOnlyNewBookingCreation(t *testing.T) {
 }
 
 func TestMaintenanceBookingUsesSuspendedResourceWithoutOverlapping(t *testing.T) {
-	s := New()
+	requests := make(chan deny.Request, 2)
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		for {
+			select {
+			case request := <-requests:
+				request.Result <- "ok"
+			case <-done:
+				return
+			}
+		}
+	}()
+	s := New().WithDisableCancelAfterUse(true).WithDenyRequests(requests)
 	now := time.Date(2022, 11, 5, 10, 0, 0, 0, time.UTC)
 	s.SetNow(func() time.Time { return now })
 	var m Manifest
@@ -1183,6 +1196,8 @@ func TestMaintenanceBookingUsesSuspendedResourceWithoutOverlapping(t *testing.T)
 	s.SetNow(func() time.Time { return when.Start })
 	_, err = s.GetActivity(booking)
 	require.NoError(t, err)
+	require.NoError(t, s.CancelBooking(booking, "tech-a"))
+	require.True(t, s.OldBookings[booking.Name].Cancelled)
 }
 
 func TestActualUsageIsDerivedFromLifecycleTimes(t *testing.T) {

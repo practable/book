@@ -869,7 +869,7 @@ func getBookingsForUserHandler(config config.ServerConfig) func(users.GetBooking
 func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingParams, interface{}) middleware.Responder {
 	return func(params users.CancelBookingParams, principal interface{}) middleware.Responder {
 
-		isAdmin, claims, err := isAdminOrUser(principal)
+		isAdmin, claims, err := isActivityCaller(principal)
 
 		//fmt.Printf("CancelBooking %s by %s isAdmin?%v isLocked?%v\n", params.BookingName, params.UserName, isAdmin, config.Store.Locked)
 		if err != nil {
@@ -903,6 +903,11 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 			m := "not found"
 			return users.NewCancelBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 		}
+		if !cancelScopeAllowsBooking(isAdmin, claims, b) {
+			c := "401"
+			m := "maintenance scope may cancel only an owned maintenance booking"
+			return users.NewCancelBookingUnauthorized().WithPayload(&models.Error{Code: &c, Message: &m})
+		}
 
 		cancelledBy := claims.Subject
 		if isAdmin && claims.Subject == "" {
@@ -923,6 +928,18 @@ func cancelBookingHandler(config config.ServerConfig) func(users.CancelBookingPa
 		return users.NewCancelBookingNotFound().WithPayload(&models.Error{Code: &c, Message: &m})
 
 	}
+}
+
+func cancelScopeAllowsBooking(isAdmin bool, claims *lit.Token, booking store.Booking) bool {
+	if isAdmin {
+		return true
+	}
+	for _, scope := range claims.Scopes {
+		if scope == "booking:user" {
+			return true
+		}
+	}
+	return booking.Maintenance
 }
 
 // getActivityHandler

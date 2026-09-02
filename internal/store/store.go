@@ -783,7 +783,7 @@ func (s *Store) cancelBooking(booking Booking, cancelledBy string) error {
 
 	if b.Started {
 
-		if s.DisableCancelAfterUse {
+		if s.DisableCancelAfterUse && !b.Maintenance {
 			return errors.New("cannot cancel booking that has already been used")
 		}
 
