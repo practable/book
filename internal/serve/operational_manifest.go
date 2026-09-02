@@ -86,11 +86,19 @@ func modelOperationalTemplatesToStore(mm models.Manifest) (map[string]store.Oper
 		if err != nil {
 			return nil, nil, err
 		}
+		recovery, err := convertStages(value.Recovery, "operational pipeline "+name+" recovery")
+		if err != nil {
+			return nil, nil, err
+		}
 		cleanup, err := convertStages(value.Cleanup, "operational pipeline "+name+" cleanup")
 		if err != nil {
 			return nil, nil, err
 		}
-		pipelines[name] = store.OperationalPipelineTemplate{Stages: stages, Cleanup: cleanup}
+		recoveryAttempts := 0
+		if value.RecoveryAttempts != nil {
+			recoveryAttempts = int(*value.RecoveryAttempts)
+		}
+		pipelines[name] = store.OperationalPipelineTemplate{Stages: stages, Recovery: recovery, RecoveryAttempts: recoveryAttempts, Cleanup: cleanup}
 	}
 	return jobs, pipelines, nil
 }
@@ -159,7 +167,12 @@ func storeOperationalTemplatesToModel(sm store.Manifest) (map[string]models.Oper
 		return result
 	}
 	for name, value := range sm.OperationalPipelineTemplates {
-		pipelines[name] = models.OperationalPipelineTemplate{Stages: convertStages(value.Stages), Cleanup: convertStages(value.Cleanup)}
+		item := models.OperationalPipelineTemplate{Stages: convertStages(value.Stages), Recovery: convertStages(value.Recovery), Cleanup: convertStages(value.Cleanup)}
+		if value.RecoveryAttempts != 0 {
+			recoveryAttempts := int64(value.RecoveryAttempts)
+			item.RecoveryAttempts = &recoveryAttempts
+		}
+		pipelines[name] = item
 	}
 	return jobs, pipelines
 }

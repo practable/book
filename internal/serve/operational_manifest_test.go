@@ -11,7 +11,8 @@ func TestOperationalTemplatesRoundTripThroughAPIModel(t *testing.T) {
 	workflow, timeout := "video-health", "4s"
 	attempts := int64(3)
 	actionType, actionLabel := "contact_support", "Contact the lab"
-	stageName, cleanupStageName, templateName := "check-video", "stop-video", "standard-video-check"
+	stageName, recoveryStageName, cleanupStageName, templateName := "check-video", "reset-video", "stop-video", "standard-video-check"
+	recoveryAttempts := int64(1)
 	pipelineName := "standard-video-activation"
 	manifest := models.Manifest{
 		OperationalJobTemplates: map[string]models.OperationalJobTemplate{
@@ -25,8 +26,10 @@ func TestOperationalTemplatesRoundTripThroughAPIModel(t *testing.T) {
 		},
 		OperationalPipelineTemplates: map[string]models.OperationalPipelineTemplate{
 			pipelineName: {
-				Stages:  []*models.OperationalPipelineStage{{Name: &stageName, JobTemplate: &templateName, WaitAfter: "500ms"}},
-				Cleanup: []*models.OperationalPipelineStage{{Name: &cleanupStageName, JobTemplate: &templateName}},
+				Stages:           []*models.OperationalPipelineStage{{Name: &stageName, JobTemplate: &templateName, WaitAfter: "500ms"}},
+				Recovery:         []*models.OperationalPipelineStage{{Name: &recoveryStageName, JobTemplate: &templateName, WaitAfter: "250ms"}},
+				RecoveryAttempts: &recoveryAttempts,
+				Cleanup:          []*models.OperationalPipelineStage{{Name: &cleanupStageName, JobTemplate: &templateName}},
 			},
 		},
 	}
